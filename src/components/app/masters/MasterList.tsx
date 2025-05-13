@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, PackageSearch } from "lucide-react";
-import type { MasterItem, MasterItemType } from "@/lib/types";
+import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, PackageSearch, Building, Store, Briefcase } from "lucide-react";
+import type { MasterItem, MasterItemType, MasterItemSubtype } from "@/lib/types";
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
@@ -23,14 +23,21 @@ const typeIconMap: Record<MasterItemType, React.ElementType> = {
   Agent: UserCheck,
   Transporter: UserCog,
   Broker: Handshake,
-  Warehouse: PackageSearch, // Assuming Warehouse is a type of location/storage
-  Item: PackageSearch, // Default or specific icon for items
+  Warehouse: PackageSearch, 
+  Item: PackageSearch, 
 };
+
+const subtypeIconMap: Record<MasterItemSubtype, React.ElementType | undefined> = {
+  Retailer: Store,
+  Wholesaler: Building,
+  Corporate: Briefcase,
+};
+
 
 interface MasterListProps {
   data: MasterItem[];
-  itemType: MasterItemType | 'All'; // itemType can be 'All' now
-  isAllItemsTab?: boolean; // Explicitly pass if this is for the "All" tab
+  itemType: MasterItemType | 'All'; 
+  isAllItemsTab?: boolean; 
   onEdit: (item: MasterItem) => void;
   onDelete: (item: MasterItem) => void;
 }
@@ -43,6 +50,8 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
   const showCommissionColumn = isAllItemsTab || itemType === 'Agent' || itemType === 'Broker';
   const showTypeColumn = isAllItemsTab;
+  const showSubtypeColumn = isAllItemsTab || itemType === 'Customer';
+
 
   return (
     <ScrollArea className="rounded-md border shadow-sm max-h-[500px] min-h-[300px]">
@@ -52,6 +61,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
             <TableHead className="w-[100px] sm:w-[150px]">ID</TableHead>
             <TableHead>Name</TableHead>
             {showTypeColumn && <TableHead>Type</TableHead>}
+            {showSubtypeColumn && <TableHead>Bifurcation</TableHead>}
             {showCommissionColumn && <TableHead className="text-right">Commission (%)</TableHead>}
             <TableHead className="text-center w-[100px] sm:w-[120px]">Actions</TableHead>
           </TableRow>
@@ -60,6 +70,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           {data.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
             const TypeIcon = typeIconMap[item.type] || PackageSearch;
+            const SubtypeIcon = item.subtype ? subtypeIconMap[item.subtype] : null;
             return (
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">{item.id}</TableCell>
@@ -70,6 +81,16 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                       <TypeIcon className="w-3 h-3 mr-1.5" />
                       {item.type}
                     </Badge>
+                  </TableCell>
+                )}
+                 {showSubtypeColumn && (
+                  <TableCell>
+                    {item.type === 'Customer' && item.subtype ? (
+                       <Badge variant="outline" className="text-xs capitalize">
+                        {SubtypeIcon && <SubtypeIcon className="w-3 h-3 mr-1.5" />}
+                        {item.subtype}
+                      </Badge>
+                    ) : 'N/A'}
                   </TableCell>
                 )}
                 {showCommissionColumn && (

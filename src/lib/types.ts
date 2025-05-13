@@ -3,11 +3,11 @@ import type { LucideIcon } from 'lucide-react';
 export interface NavItem {
   title: string;
   href: string;
-  iconName: string; // Changed from icon: LucideIcon
+  iconName: string; 
   label?: string;
   disabled?: boolean;
   external?: boolean;
-  items?: NavItem[]; // For sub-menus, if needed
+  items?: NavItem[]; 
 }
 
 // Generic type for master data items
@@ -16,10 +16,12 @@ export interface MasterItem {
   name: string;
   commission?: number; // For Agents and Brokers
   type: MasterItemType;
+  subtype?: MasterItemSubtype; // For customer bifurcation
   [key: string]: any; // For additional fields
 }
 
 export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker' | 'Item';
+export type MasterItemSubtype = 'Retailer' | 'Wholesaler' | 'Corporate';
 
 
 // Example data types for features
@@ -31,33 +33,33 @@ export interface Purchase {
   supplierName?: string; // For display in table
   agentId?: string;
   agentName?: string; // For display in table
-  itemName: string; // For single item purchase - Assuming this is the commodity
+  itemName: string; 
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // per KG
-  expenses?: number; // Packaging, labour etc.
-  transportRate?: number; // Cost per kg or fixed for the lot
+  expenses?: number; 
+  transportRate?: number; 
   brokerId?: string;
   brokerName?: string;
   brokerageType?: 'Fixed' | 'Percentage';
-  brokerageValue?: number; // Actual amount or percentage rate
-  calculatedBrokerageAmount?: number; // Stored calculated amount
-  totalAmount: number; // Net Weight * Rate + Expenses + Transport Cost (if applicable per unit) - will need clarification on exact formula
-  locationId: string; // Using warehouseId as locationId
-  locationName?: string; // Using warehouseName as locationName
+  brokerageValue?: number; 
+  calculatedBrokerageAmount?: number; 
+  totalAmount: number; 
+  locationId: string; 
+  locationName?: string; 
   transporterId?: string;
-  transporterName?: string; // For display
+  transporterName?: string; 
 }
 
 export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber: string;
-  billAmount?: number; // Optional, auto-calculated from Net Weight * Rate
+  billAmount?: number; 
   customerId: string;
-  customerName?: string; // For display in table
-  lotNumber: string; // From existing inventory - for now text input
-  itemName: string; // Commodity name, likely fetched from lot
+  customerName?: string; 
+  lotNumber: string; 
+  itemName: string; 
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // Sale price per KG
@@ -66,16 +68,16 @@ export interface Sale {
   transportCost?: number;
   brokerId?: string;
   brokerName?: string;
-  brokerageAmount?: number; // Manual or auto-calculated
+  brokerageAmount?: number; 
   notes?: string;
-  totalAmount: number; // Net Weight * Rate
-  profit?: number; // Conceptual: Sale Amount - Purchase Cost - Transport - Brokerage
+  totalAmount: number; 
+  profit?: number; 
 }
 
 export interface InventoryItem {
   id: string;
   itemName: string;
-  location: string; // Could be warehouse name or ID
+  location: string; 
   quantity: number;
   lotNumber?: string;
   weight?: number;
@@ -123,7 +125,7 @@ export interface LedgerEntry {
   balance: number;
 }
 
-export interface Party { // For Ledger: Supplier, Agent, Transporter, Customer, Broker
+export interface Party { 
   id: string;
   name: string;
   type: MasterItemType;
@@ -133,15 +135,17 @@ export interface Party { // For Ledger: Supplier, Agent, Transporter, Customer, 
 // Specific master types
 export interface Supplier extends MasterItem {}
 export interface Agent extends MasterItem {
-  commission: number; // Percentage
+  commission: number; 
 }
 export interface Transporter extends MasterItem {}
-export interface Warehouse extends MasterItem {} // Used as Location
-export interface Customer extends MasterItem {}
-export interface Broker extends MasterItem {
-  commission?: number; // Percentage, if default brokerage is percentage based
+export interface Warehouse extends MasterItem {} 
+export interface Customer extends MasterItem {
+  subtype: MasterItemSubtype;
 }
-export interface Item extends MasterItem { // For item master (commodities)
+export interface Broker extends MasterItem {
+  commission?: number; 
+}
+export interface Item extends MasterItem { 
   category?: string;
   unit?: string;
 }

@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 import { MasterList } from '@/components/app/masters/MasterList';
-import type { MasterItem, MasterItemType } from '@/lib/types';
+import type { MasterItem, MasterItemType, MasterItemSubtype } from '@/lib/types';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -28,17 +28,22 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
-const initialCustomers: MasterItem[] = [{ id: 'c1', name: 'Alpha Customer', type: 'Customer' }];
+// Initial data (ensure subtypes are included for customers)
+const initialCustomers: MasterItem[] = [
+  { id: 'c1', name: 'Alpha Customer', type: 'Customer', subtype: 'Retailer' },
+  { id: 'c2', name: 'Gamma Wholesaler', type: 'Customer', subtype: 'Wholesaler' },
+];
 const initialSuppliers: MasterItem[] = [{ id: 's1', name: 'Beta Supplier', type: 'Supplier' }];
-const initialAgents: MasterItem[] = [{ id: 'a1', name: 'Gamma Agent', type: 'Agent', commission: 2.5 }];
+const initialAgents: MasterItem[] = [{ id: 'a1', name: 'Epsilon Agent', type: 'Agent', commission: 2.5 }];
 const initialTransporters: MasterItem[] = [{ id: 't1', name: 'Delta Transporter', type: 'Transporter' }];
-const initialBrokers: MasterItem[] = [{ id: 'b1', name: 'Epsilon Broker', type: 'Broker', commission: 1 }];
+const initialBrokers: MasterItem[] = [{ id: 'b1', name: 'Zeta Broker', type: 'Broker', commission: 1 }];
+
 
 type MasterPageTabKey = MasterItemType | 'All';
 
-const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType }[] = [
+const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; subtypes?: MasterItemSubtype[] }[] = [
   { value: "All", label: "All Items", icon: List },
-  { value: "Customer", label: "Customers", icon: Users },
+  { value: "Customer", label: "Customers", icon: Users, subtypes: ['Retailer', 'Wholesaler', 'Corporate'] },
   { value: "Supplier", label: "Suppliers", icon: Truck },
   { value: "Agent", label: "Agents", icon: UserCheck },
   { value: "Transporter", label: "Transporters", icon: UserCog },
@@ -67,7 +72,7 @@ export default function MastersPage() {
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
     if (type === 'All') {
-      return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All' as it's derived
+      return { data: allMasterItems, setData: () => {} };
     }
     switch (type) {
       case 'Customer': return { data: customers, setData: setCustomers };
@@ -80,7 +85,26 @@ export default function MastersPage() {
   }, [allMasterItems, customers, suppliers, agents, transporters, brokers, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
-    const { setData } = getMasterDataState(item.type);
+    const { data, setData } = getMasterDataState(item.type);
+    
+    // Duplicate name check (case-insensitive within the same type)
+    const trimmedNewName = item.name.trim().toLowerCase();
+    const isDuplicateName = data.some(
+      existingItem => 
+        existingItem.id !== item.id && // Exclude the item itself if editing
+        existingItem.name.trim().toLowerCase() === trimmedNewName &&
+        existingItem.type === item.type
+    );
+
+    if (isDuplicateName) {
+      toast({
+        title: "Duplicate Name",
+        description: `An item named "${item.name}" of type "${item.type}" already exists. Please use a different name.`,
+        variant: "destructive",
+      });
+      return; // Stop execution if duplicate
+    }
+
     setData(prev => {
       const existingIndex = prev.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
@@ -118,13 +142,25 @@ export default function MastersPage() {
 
   const openFormForNewItem = () => {
     setEditingItem(null);
+    // Determine initial type for the form. If 'All' tab is active, default to 'Customer'.
+    const initialTypeForForm = activeTab === 'All' ? 'Customer' : activeTab;
+    const activeTabConfig = TABS_CONFIG.find(t => t.value === initialTypeForForm);
+    
+    setEditingItem(prev => ({
+        ...prev,
+        type: initialTypeForForm as MasterItemType,
+        subtype: activeTabConfig?.subtypes?.[0] // Default to first subtype if available for the type
+    }));
     setIsFormOpen(true);
   };
   
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "Add New Item";
+    // Find the config for the currently active tab to get its label
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
-    return `Add New ${currentTabConfig?.label || 'Item'}`;
+    // Use singular form for the button label, e.g., "Add New Customer"
+    const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
+    return `Add New ${singularLabel || 'Item'}`;
   }, [activeTab]);
 
   return (
@@ -157,7 +193,7 @@ export default function MastersPage() {
               <CardContent>
                 <MasterList
                   data={getMasterDataState(tab.value).data}
-                  itemType={tab.value as MasterItemType} // MasterList expects MasterItemType, "All" will display all items
+                  itemType={tab.value as MasterItemType} 
                   isAllItemsTab={tab.value === "All"}
                   onEdit={handleEditItem}
                   onDelete={handleDeleteItemAttempt}
@@ -165,7 +201,7 @@ export default function MastersPage() {
               </CardContent>
               <CardFooter>
                 <p className="text-xs text-muted-foreground">
-                  Total {tab.label.toLowerCase()}: {getMasterDataState(tab.value).data.length}
+                  Total {tab.value === 'All' ? 'items' : tab.label.toLowerCase()}: {getMasterDataState(tab.value).data.length}
                 </p>
               </CardFooter>
             </Card>
@@ -179,8 +215,8 @@ export default function MastersPage() {
           onClose={() => { setIsFormOpen(false); setEditingItem(null); }}
           onSubmit={handleAddOrUpdateMasterItem}
           initialData={editingItem}
-          // If 'All' tab is active and we are adding new, default to first actual type or let form handle default
-          itemType={editingItem?.type || (activeTab === 'All' ? TABS_CONFIG.find(t=>t.value !== 'All')?.value as MasterItemType : activeTab as MasterItemType)} 
+          itemTypeFromButton={editingItem?.type || (activeTab === 'All' ? 'Customer' : activeTab as MasterItemType)}
+          customerSubtypes={TABS_CONFIG.find(t => t.value === 'Customer')?.subtypes}
         />
       )}
 
