@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, FilePlus2 } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter } from "@/lib/types";
+import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, Broker } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { useToast } from "@/hooks/use-toast";
@@ -28,24 +28,33 @@ const initialPurchasesData: Purchase[] = [
     id: "purchase-1",
     date: "2024-05-01", // FY 2024-2025
     lotNumber: "AB/6",
+    locationId: "w1",
+    locationName: "Mumbai Godown",
     supplierId: "s1",
     supplierName: "AR Agent Supplier",
     agentId: "a1",
     agentName: "AR Agent",
     itemName: "Wheat",
-    quantity: 6,
-    netWeight: 300,
-    rate: 320,
-    totalAmount: 96000,
-    warehouseId: "w1",
-    warehouseName: "Mumbai Godown",
+    quantity: 6, // bags
+    netWeight: 300, // kg
+    rate: 320, // per kg
+    expenses: 1000,
+    transportRate: 2000,
     transporterId: "t1",
-    transporterName: "Speedy Logistics"
+    transporterName: "Speedy Logistics",
+    brokerId: "b1",
+    brokerName: "Krishi Deals",
+    brokerageType: "Percentage",
+    brokerageValue: 2, // 2%
+    calculatedBrokerageAmount: (300 * 320 * 2)/100, // 1920
+    totalAmount: (300 * 320) + 1000 + 2000, // 96000 + 1000 + 2000 = 99000
   },
   {
     id: "purchase-2",
     date: "2023-10-15", // FY 2023-2024
     lotNumber: "CD/12",
+    locationId: "w2",
+    locationName: "Chiplun Storage",
     supplierId: "s2",
     supplierName: "Local Farm Co.",
     agentId: "a2",
@@ -54,43 +63,12 @@ const initialPurchasesData: Purchase[] = [
     quantity: 10,
     netWeight: 500,
     rate: 450,
-    totalAmount: 225000,
-    warehouseId: "w2",
-    warehouseName: "Chiplun Storage",
-    transporterId: "t2",
-    transporterName: "Bharat Transports"
-  },
-  {
-    id: "purchase-3",
-    date: "2024-02-20", // FY 2023-2024
-    lotNumber: "EF/3",
-    supplierId: "s1",
-    supplierName: "AR Agent Supplier",
-    itemName: "Maize",
-    quantity: 20,
-    netWeight: 1000,
-    rate: 280,
-    totalAmount: 280000,
-    warehouseId: "w1",
-    warehouseName: "Mumbai Godown",
-  },
-  {
-    id: "purchase-4",
-    date: "2025-01-10", // FY 2024-2025
-    lotNumber: "GH/78",
-    supplierId: "s2",
-    supplierName: "Local Farm Co.",
-    agentId: "a1",
-    agentName: "AR Agent",
-    itemName: "Cotton",
-    quantity: 15,
-    netWeight: 750,
-    rate: 600,
-    totalAmount: 450000,
-    warehouseId: "w2",
-    warehouseName: "Chiplun Storage",
-    transporterId: "t1",
-    transporterName: "Speedy Logistics"
+    brokerId: "b2",
+    brokerName: "FarmConnect",
+    brokerageType: "Fixed",
+    brokerageValue: 5000,
+    calculatedBrokerageAmount: 5000,
+    totalAmount: 500*450, // 225000
   },
 ];
 
@@ -98,8 +76,9 @@ const initialPurchasesData: Purchase[] = [
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+const WAREHOUSES_STORAGE_KEY = 'masterWarehouses'; // Also used for Locations
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 
 const initialSuppliers: Supplier[] = [
@@ -107,16 +86,20 @@ const initialSuppliers: Supplier[] = [
   { id: "s2", name: "Local Farm Co.", type: "Supplier" },
 ];
 const initialAgents: Agent[] = [
-  { id: "a1", name: "AR Agent", type: "Agent" },
-  { id: "a2", name: "Krishi Mitra", type: "Agent" },
+  { id: "a1", name: "AR Agent", type: "Agent", commission: 5 }, // 5% commission
+  { id: "a2", name: "Krishi Mitra", type: "Agent", commission: 3 },
 ];
-const initialWarehouses: Warehouse[] = [
+const initialWarehouses: Warehouse[] = [ // Used as Locations
   { id: "w1", name: "Mumbai Godown", type: "Warehouse" },
   { id: "w2", name: "Chiplun Storage", type: "Warehouse" },
 ];
 const initialTransporters: Transporter[] = [
   { id: "t1", name: "Speedy Logistics", type: "Transporter" },
   { id: "t2", name: "Bharat Transports", type: "Transporter" },
+];
+const initialBrokers: Broker[] = [
+    { id: "b1", name: "Krishi Deals", type: "Broker" },
+    { id: "b2", name: "FarmConnect", type: "Broker" },
 ];
 
 
@@ -127,8 +110,10 @@ export function PurchasesClient() {
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchasesData);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, initialSuppliers);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, initialAgents);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses); // Locations
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, initialBrokers);
+
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
@@ -182,11 +167,14 @@ export function PurchasesClient() {
       case "Agent":
         setAgents(prev => [newItem, ...prev]);
         break;
-      case "Warehouse":
+      case "Warehouse": // Location
         setWarehouses(prev => [newItem, ...prev]);
         break;
       case "Transporter":
         setTransporters(prev => [newItem, ...prev]);
+        break;
+      case "Broker":
+        setBrokers(prev => [newItem as Broker, ...prev]);
         break;
       default:
         break;
@@ -223,8 +211,9 @@ export function PurchasesClient() {
         onSubmit={handleAddOrUpdatePurchase}
         suppliers={suppliers}
         agents={agents}
-        warehouses={warehouses}
+        warehouses={warehouses} // Locations
         transporters={transporters}
+        brokers={brokers}
         onMasterDataUpdate={handleMasterDataUpdate}
         purchaseToEdit={purchaseToEdit}
       />

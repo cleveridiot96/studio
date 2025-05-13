@@ -1,5 +1,5 @@
 import { PlaceholderContent } from "@/components/PlaceholderContent";
-import { Users2, UserCheck, Truck, UserCog } from "lucide-react";
+import { Users2, UserCheck, Truck, UserCog, Handshake } from "lucide-react"; // Added Handshake for Brokers
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
@@ -15,7 +15,7 @@ export default function MastersPage() {
       </div>
 
       <Tabs defaultValue="suppliers" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-12">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 h-auto sm:h-12">
           <TabsTrigger value="suppliers" className="py-2 sm:py-3 text-base">
             <Truck className="w-5 h-5 mr-2" /> Suppliers
           </TabsTrigger>
@@ -24,6 +24,9 @@ export default function MastersPage() {
           </TabsTrigger>
           <TabsTrigger value="transporters" className="py-2 sm:py-3 text-base">
             <UserCog className="w-5 h-5 mr-2" /> Transporters
+          </TabsTrigger>
+           <TabsTrigger value="brokers" className="py-2 sm:py-3 text-base">
+            <Handshake className="w-5 h-5 mr-2" /> Brokers
           </TabsTrigger>
         </TabsList>
         <TabsContent value="suppliers" className="mt-6">
@@ -67,6 +70,21 @@ export default function MastersPage() {
                 title="Transporter Management" 
                 description="This section to manage transporter master data is currently under development."
                 icon={UserCog}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="brokers" className="mt-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-primary">Manage Brokers</CardTitle>
+              <CardDescription>Add, edit, and view broker details.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PlaceholderContent 
+                title="Broker Management" 
+                description="This section to manage broker master data is currently under development."
+                icon={Handshake}
               />
             </CardContent>
           </Card>

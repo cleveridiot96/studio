@@ -32,11 +32,14 @@ export function SaleTable({ data, onEdit, onDelete }: SaleTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Date</TableHead>
-            <TableHead>Bill Number</TableHead>
+            <TableHead>Bill No.</TableHead>
             <TableHead>Customer</TableHead>
+            <TableHead>Lot No.</TableHead>
             <TableHead>Item</TableHead>
-            <TableHead className="text-right">Quantity</TableHead>
-            <TableHead className="text-right">Price (₹)</TableHead>
+            <TableHead className="text-right">Bags</TableHead>
+            <TableHead className="text-right">Net Wt.(kg)</TableHead>
+            <TableHead className="text-right">Rate (₹/kg)</TableHead>
+            <TableHead>Broker</TableHead>
             <TableHead className="text-right">Total (₹)</TableHead>
             <TableHead className="text-center w-[100px]">Actions</TableHead>
           </TableRow>
@@ -44,13 +47,16 @@ export function SaleTable({ data, onEdit, onDelete }: SaleTableProps) {
         <TableBody>
           {data.map((sale) => (
             <TableRow key={sale.id}>
-              <TableCell>{format(new Date(sale.date), "dd-MM-yyyy")}</TableCell>
+              <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
               <TableCell>{sale.billNumber}</TableCell>
               <TableCell>{sale.customerName || sale.customerId}</TableCell>
+              <TableCell>{sale.lotNumber}</TableCell>
               <TableCell>{sale.itemName}</TableCell>
               <TableCell className="text-right">{sale.quantity}</TableCell>
-              <TableCell className="text-right">{sale.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-              <TableCell className="text-right font-semibold">{sale.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+              <TableCell className="text-right">{sale.netWeight.toLocaleString()}</TableCell>
+              <TableCell className="text-right">{sale.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+              <TableCell>{sale.brokerName || sale.brokerId || 'N/A'}</TableCell>
+              <TableCell className="text-right font-semibold">{(sale.billAmount || sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-center">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-2 hover:text-primary">
                   <Pencil className="h-4 w-4" />

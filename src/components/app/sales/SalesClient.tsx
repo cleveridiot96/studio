@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, FilePlus2 } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { useToast } from "@/hooks/use-toast";
@@ -31,10 +31,20 @@ const initialSalesData: Sale[] = [
     billNumber: "INV-00123",
     customerId: "c1",
     customerName: "Ram Kumar",
+    lotNumber: "AB/6", // From purchase
     itemName: "Basmati Rice",
-    quantity: 10,
-    price: 65,
-    totalAmount: 650,
+    quantity: 5, // bags
+    netWeight: 250, // kg
+    rate: 65, // per kg
+    billAmount: 250 * 65, // 16250
+    totalAmount: 250 * 65,
+    transporterId: "t1",
+    transporterName: "Quick Trans",
+    transportCost: 500,
+    brokerId: "b1",
+    brokerName: "AgriConnect",
+    brokerageAmount: 325, // e.g. 2% of 16250
+    notes: "Urgent delivery"
   },
   {
     id: "sale-2",
@@ -42,43 +52,34 @@ const initialSalesData: Sale[] = [
     billNumber: "INV-00124",
     customerId: "c2",
     customerName: "Sita Devi Traders",
+    lotNumber: "CD/12",
     itemName: "Wheat Flour",
-    quantity: 50,
-    price: 40,
-    totalAmount: 2000,
-  },
-  {
-    id: "sale-3",
-    date: "2024-03-05", // FY 2023-2024
-    billNumber: "INV-00125",
-    customerId: "c1",
-    customerName: "Ram Kumar",
-    itemName: "Sugar",
-    quantity: 25,
-    price: 42,
-    totalAmount: 1050,
-  },
-   {
-    id: "sale-4",
-    date: "2025-02-15", // FY 2024-2025
-    billNumber: "INV-00126",
-    customerId: "c2",
-    customerName: "Sita Devi Traders",
-    itemName: "Pulses",
-    quantity: 30,
-    price: 120,
-    totalAmount: 3600,
+    quantity: 20,
+    netWeight: 1000,
+    rate: 40,
+    billAmount: 1000 * 40, // 40000
+    totalAmount: 1000 * 40,
   },
 ];
 
 const SALES_STORAGE_KEY = 'salesData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-
+const TRANSPORTERS_STORAGE_KEY = 'masterTransporters'; // Shared with Purchases
+const BROKERS_STORAGE_KEY = 'masterBrokers'; // Shared with Purchases
 
 const initialCustomers: Customer[] = [
   { id: "c1", name: "Ram Kumar", type: "Customer" },
   { id: "c2", name: "Sita Devi Traders", type: "Customer" },
 ];
+const initialTransporters: Transporter[] = [
+    { id: "t1", name: "Quick Trans", type: "Transporter"},
+    { id: "t2", name: "Reliable Movers", type: "Transporter"}
+];
+const initialBrokers: Broker[] = [
+    { id: "b1", name: "AgriConnect", type: "Broker"},
+    { id: "b2", name: "MarketLink", type: "Broker"}
+];
+
 
 export function SalesClient() {
   const { toast } = useToast();
@@ -86,6 +87,8 @@ export function SalesClient() {
 
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSalesData);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, initialBrokers);
 
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
@@ -132,8 +135,18 @@ export function SalesClient() {
   };
 
   const handleMasterDataUpdate = (type: MasterItemType, newItem: MasterItem) => {
-    if (type === "Customer") {
-      setCustomers(prev => [newItem, ...prev]);
+    switch (type) {
+        case "Customer":
+            setCustomers(prev => [newItem, ...prev]);
+            break;
+        case "Transporter":
+            setTransporters(prev => [newItem, ...prev]);
+            break;
+        case "Broker":
+            setBrokers(prev => [newItem as Broker, ...prev]);
+            break;
+        default:
+            break;
     }
   };
 
@@ -166,6 +179,8 @@ export function SalesClient() {
         onClose={() => { setIsAddSaleFormOpen(false); setSaleToEdit(null); }}
         onSubmit={handleAddOrUpdateSale}
         customers={customers}
+        transporters={transporters}
+        brokers={brokers}
         onMasterDataUpdate={handleMasterDataUpdate}
         saleToEdit={saleToEdit}
       />

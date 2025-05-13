@@ -17,7 +17,8 @@ const LOCAL_STORAGE_KEYS = {
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
   transporters: 'masterTransporters',
-  warehouses: 'masterWarehouses',
+  warehouses: 'masterWarehouses', // Also used for Locations
+  brokers: 'masterBrokers', // Added brokers
   settingsFontSize: 'appFontSize',
   settingsFinancialYear: 'appFinancialYear',
   // Add any other relevant keys used by other features
@@ -100,7 +101,7 @@ export default function BackupPage() {
           // Check if the key from the backup file matches any of our defined LOCAL_STORAGE_KEYS values
           const appKey = Object.keys(LOCAL_STORAGE_KEYS).find(k => LOCAL_STORAGE_KEYS[k as keyof typeof LOCAL_STORAGE_KEYS] === keyInBackup);
           
-          if (appKey || keyInBackup === LOCAL_STORAGE_KEYS.settingsFontSize || keyInBackup === LOCAL_STORAGE_KEYS.settingsFinancialYear) {
+          if (appKey || Object.values(LOCAL_STORAGE_KEYS).includes(keyInBackup as any) ) { // simplified check
              const targetKey = keyInBackup; // Use the key from the backup file directly
              if (typeof restoredData[targetKey] === 'string') {
                 localStorage.setItem(targetKey, restoredData[targetKey]);

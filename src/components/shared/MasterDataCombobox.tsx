@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Check, ChevronsUpDown, PlusCircle } from "lucide-react"
+import type { LucideProps } from "lucide-react";
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,7 @@ interface MasterDataComboboxProps {
   notFoundMessage: string;
   addNewLabel: string;
   disabled?: boolean;
+  itemIcon?: React.ComponentType<LucideProps>; // Optional icon for the item
 }
 
 export function MasterDataCombobox({
@@ -43,8 +45,11 @@ export function MasterDataCombobox({
   notFoundMessage,
   addNewLabel,
   disabled,
+  itemIcon: ItemIcon,
 }: MasterDataComboboxProps) {
   const [open, setOpen] = React.useState(false)
+
+  const selectedItem = value ? items.find((item) => item.id === value) : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -56,9 +61,17 @@ export function MasterDataCombobox({
           className="w-full justify-between text-sm"
           disabled={disabled}
         >
-          {value
-            ? items.find((item) => item.id === value)?.name
-            : placeholder}
+          <span className="flex items-center">
+            {ItemIcon && !selectedItem && <ItemIcon className="mr-2 h-4 w-4 opacity-50" />}
+            {selectedItem ? (
+              <>
+                {ItemIcon && <ItemIcon className="mr-2 h-4 w-4" />}
+                {selectedItem.name}
+              </>
+            ) : (
+              placeholder
+            )}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -89,6 +102,7 @@ export function MasterDataCombobox({
                       value === item.id ? "opacity-100" : "opacity-0"
                     )}
                   />
+                   {ItemIcon && <ItemIcon className="mr-2 h-4 w-4 text-muted-foreground" />}
                   {item.name}
                 </CommandItem>
               ))}

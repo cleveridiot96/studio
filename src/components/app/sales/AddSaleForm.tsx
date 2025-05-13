@@ -28,16 +28,20 @@ import { CalendarIcon, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { saleSchema, type SaleFormValues } from "@/lib/schemas/saleSchema";
-import type { MasterItem, Sale, MasterItemType, Customer } from "@/lib/types";
+import type { MasterItem, Sale, MasterItemType, Customer, Transporter, Broker } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { AddMasterItemDialog } from "@/components/shared/AddMasterItemDialog";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AddSaleFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (sale: Sale) => void;
   customers: Customer[];
+  transporters: Transporter[];
+  brokers: Broker[];
+  // TODO: Pass inventory lots for lotNumber dropdown
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
 }
@@ -47,6 +51,8 @@ export function AddSaleForm({
   onClose,
   onSubmit,
   customers,
+  transporters,
+  brokers,
   onMasterDataUpdate,
   saleToEdit
 }: AddSaleFormProps) {
@@ -55,55 +61,72 @@ export function AddSaleForm({
   const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false);
   const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null);
 
-  const form = useForm<SaleFormValues>({
-    resolver: zodResolver(saleSchema),
-    defaultValues: saleToEdit ? {
+  const getDefaultValues = (): SaleFormValues => {
+    if (saleToEdit) {
+      return {
         date: new Date(saleToEdit.date),
         billNumber: saleToEdit.billNumber,
+        billAmount: saleToEdit.billAmount,
         customerId: saleToEdit.customerId,
+        lotNumber: saleToEdit.lotNumber, // This would ideally be linked to an inventory item
         itemName: saleToEdit.itemName,
         quantity: saleToEdit.quantity,
-        price: saleToEdit.price,
-    } : {
+        netWeight: saleToEdit.netWeight,
+        rate: saleToEdit.rate,
+        transporterId: saleToEdit.transporterId,
+        transportCost: saleToEdit.transportCost,
+        brokerId: saleToEdit.brokerId,
+        brokerageAmount: saleToEdit.brokerageAmount,
+        notes: saleToEdit.notes,
+      };
+    }
+    return {
       date: new Date(),
-      billNumber: "",
+      billNumber: `INV-${Date.now().toString().slice(-6)}`, // Example auto bill number
+      billAmount: undefined,
       customerId: undefined,
-      itemName: "",
-      quantity: 0,
-      price: 0,
-    },
+      lotNumber: "", // User needs to select from available lots
+      itemName: "", // Should auto-populate from lot selection
+      quantity: 0, // Bags
+      netWeight: 0, // KG
+      rate: 0, // Per KG
+      transporterId: undefined,
+      transportCost: undefined,
+      brokerId: undefined,
+      brokerageAmount: undefined,
+      notes: "",
+    };
+  };
+
+
+  const form = useForm<SaleFormValues>({
+    resolver: zodResolver(saleSchema),
+    defaultValues: getDefaultValues(),
   });
 
   React.useEffect(() => {
-    if (saleToEdit) {
-        form.reset({
-            date: new Date(saleToEdit.date),
-            billNumber: saleToEdit.billNumber,
-            customerId: saleToEdit.customerId,
-            itemName: saleToEdit.itemName,
-            quantity: saleToEdit.quantity,
-            price: saleToEdit.price,
-        });
-    } else {
-        form.reset({
-            date: new Date(),
-            billNumber: `INV-${Date.now().toString().slice(-6)}`, // Example auto bill number
-            customerId: undefined,
-            itemName: "",
-            quantity: 0,
-            price: 0,
-          });
+    form.reset(getDefaultValues());
+  }, [saleToEdit, isOpen, form]);
+
+  const netWeight = form.watch("netWeight");
+  const rate = form.watch("rate");
+  
+  const calculatedBillAmount = React.useMemo(() => {
+    const nw = parseFloat(String(netWeight || 0));
+    const r = parseFloat(String(rate || 0));
+    return isNaN(nw) || isNaN(r) ? 0 : nw * r;
+  }, [netWeight, rate]);
+
+  React.useEffect(() => {
+    // Auto-update billAmount if not manually entered
+    if (form.getValues("billAmount") === undefined || form.getValues("billAmount") === 0) {
+         // Check if it's not user-dirty, to avoid overwriting manual input
+        if (!form.formState.dirtyFields.billAmount) {
+            form.setValue("billAmount", calculatedBillAmount, { shouldValidate: true });
+        }
     }
-  }, [saleToEdit, form, isOpen]);
+  }, [calculatedBillAmount, form]);
 
-
-  const quantity = form.watch("quantity");
-  const price = form.watch("price");
-  const totalAmount = React.useMemo(() => {
-    const q = parseFloat(String(quantity || 0));
-    const p = parseFloat(String(price || 0));
-    return isNaN(q) || isNaN(p) ? 0 : q * p;
-  }, [quantity, price]);
 
   const handleAddNewMaster = (type: MasterItemType) => {
     setCurrentMasterType(type);
@@ -113,25 +136,39 @@ export function AddSaleForm({
   const handleMasterItemAdded = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type as MasterItemType, newItem);
     if (newItem.type === 'Customer') form.setValue('customerId', newItem.id, { shouldValidate: true });
+    if (newItem.type === 'Transporter') form.setValue('transporterId', newItem.id, { shouldValidate: true });
+    if (newItem.type === 'Broker') form.setValue('brokerId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added successfully!` });
   };
 
   const processSubmit = (values: SaleFormValues) => {
     setIsSubmitting(true);
+    const finalBillAmount = values.billAmount && values.billAmount > 0 ? values.billAmount : calculatedBillAmount;
     const saleData: Sale = {
       id: saleToEdit ? saleToEdit.id : `sale-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
       billNumber: values.billNumber,
+      billAmount: finalBillAmount,
       customerId: values.customerId,
       customerName: customers.find(c => c.id === values.customerId)?.name,
+      lotNumber: values.lotNumber,
       itemName: values.itemName,
       quantity: values.quantity,
-      price: values.price,
-      totalAmount: values.quantity * values.price,
+      netWeight: values.netWeight,
+      rate: values.rate,
+      totalAmount: finalBillAmount, // Total amount for ledger debit
+      transporterId: values.transporterId,
+      transporterName: transporters.find(t => t.id === values.transporterId)?.name,
+      transportCost: values.transportCost,
+      brokerId: values.brokerId,
+      brokerName: brokers.find(b => b.id === values.brokerId)?.name,
+      brokerageAmount: values.brokerageAmount,
+      notes: values.notes,
+      // Profit calculation would happen elsewhere, based on purchase cost of the lot
     };
     onSubmit(saleData);
     setIsSubmitting(false);
-    form.reset();
+    form.reset(getDefaultValues());
     onClose();
   };
   
@@ -139,8 +176,8 @@ export function AddSaleForm({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => { if(!open) {form.reset(); onClose(); }}}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={isOpen} onOpenChange={(open) => { if(!open) {form.reset(getDefaultValues()); onClose(); }}}>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
             <DialogDescription>
@@ -148,146 +185,138 @@ export function AddSaleForm({
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Sale Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+            <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+              {/* Section: Basic Details */}
+              <div className="p-4 border rounded-md shadow-sm">
+                <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <FormField control={form.control} name="date" render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Sale Date</FormLabel>
+                        <Popover><PopoverTrigger asChild><FormControl>
+                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date > new Date() || date < new Date("1900-01-01")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
+                        </FormControl></PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus /></PopoverContent>
+                        </Popover><FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="billNumber" render={({ field }) => (
+                        <FormItem><FormLabel>Bill Number</FormLabel>
+                        <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                     <FormField control={form.control} name="billAmount" render={({ field }) => (
+                        <FormItem><FormLabel>Bill Amount (Optional)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="Auto if empty" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
+                <FormField control={form.control} name="customerId" render={({ field }) => (
+                    <FormItem className="mt-4">
+                    <FormLabel>Customer</FormLabel>
+                    <MasterDataCombobox items={customers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Customer")} placeholder="Select Customer" searchPlaceholder="Search customers..." notFoundMessage="No customer found." addNewLabel="Add New Customer"/>
+                    <FormMessage />
                     </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="billNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bill Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., INV-001" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                )}/>
               </div>
 
-              <FormField
-                control={form.control}
-                name="customerId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer</FormLabel>
-                    <MasterDataCombobox
-                      items={customers}
-                      value={field.value}
-                      onChange={field.onChange}
-                      onAddNew={() => handleAddNewMaster("Customer")}
-                      placeholder="Select Customer"
-                      searchPlaceholder="Search customers..."
-                      notFoundMessage="No customer found."
-                      addNewLabel="Add New Customer"
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="itemName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Item Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Rice, Maize" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantity</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 50" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price (per unit)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 30.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* Section: Product Details */}
+              <div className="p-4 border rounded-md shadow-sm">
+                <h3 className="text-lg font-medium mb-3 text-primary">Product & Quantity</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="lotNumber" render={({ field }) => ( // TODO: Change to dropdown from inventory
+                        <FormItem><FormLabel>Lot Number</FormLabel>
+                        <FormControl><Input placeholder="Select Lot (text for now)" {...field} /></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                     <FormField control={form.control} name="itemName" render={({ field }) => (
+                        <FormItem><FormLabel>Item Name (Commodity)</FormLabel>
+                        <FormControl><Input placeholder="e.g., Wheat (from Lot)" {...field} /></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <FormField control={form.control} name="quantity" render={({ field }) => (
+                        <FormItem><FormLabel>No. of Bags</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g., 50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="netWeight" render={({ field }) => (
+                        <FormItem><FormLabel>Net Weight (kg)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 2500" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                    <FormField control={form.control} name="rate" render={({ field }) => (
+                        <FormItem><FormLabel>Rate (₹/kg)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 30.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
               </div>
+              
+              {/* Section: Transport & Broker (Optional) */}
+              <div className="p-4 border rounded-md shadow-sm">
+                <h3 className="text-lg font-medium mb-3 text-primary">Transport & Broker (Optional)</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="transporterId" render={({ field }) => (
+                        <FormItem> <FormLabel>Transporter</FormLabel>
+                        <MasterDataCombobox items={transporters} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Transporter")} placeholder="Select Transporter" searchPlaceholder="Search transporters..." notFoundMessage="No transporter found." addNewLabel="Add New Transporter"/>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                     <FormField control={form.control} name="transportCost" render={({ field }) => (
+                        <FormItem><FormLabel>Transport Cost (₹)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 1500" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <FormField control={form.control} name="brokerId" render={({ field }) => (
+                        <FormItem> <FormLabel>Broker</FormLabel>
+                        <MasterDataCombobox items={brokers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Broker")} placeholder="Select Broker" searchPlaceholder="Search brokers..." notFoundMessage="No broker found." addNewLabel="Add New Broker"/>
+                        <FormMessage />
+                        </FormItem>
+                    )}/>
+                     <FormField control={form.control} name="brokerageAmount" render={({ field }) => (
+                        <FormItem><FormLabel>Brokerage Amount (₹)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 500" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl><FormMessage />
+                        </FormItem>
+                    )}/>
+                 </div>
+              </div>
+
+              {/* Section: Notes */}
+               <div className="p-4 border rounded-md shadow-sm">
+                 <h3 className="text-lg font-medium mb-3 text-primary">Notes</h3>
+                 <FormField control={form.control} name="notes" render={({ field }) => (
+                    <FormItem><FormLabel>Additional Notes (Optional)</FormLabel>
+                    <FormControl><Textarea placeholder="Any remarks for this sale..." {...field} /></FormControl><FormMessage />
+                    </FormItem>
+                )}/>
+               </div>
               
               <div className="p-4 border border-dashed rounded-md bg-muted/50">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center text-lg font-semibold">
                         <Info className="w-5 h-5 mr-2 text-primary" />
-                        Calculated Total Amount
+                        Calculated Sale Value
                     </div>
                     <p className="text-2xl font-bold text-primary">
-                    ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{(form.watch("billAmount") || calculatedBillAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 pl-7">
-                    This is calculated as Quantity &times; Price.
+                    This is (Net Weight &times; Rate). Transport/Brokerage costs are separate.
                 </p>
               </div>
 
               <DialogFooter className="pt-4">
                 <DialogClose asChild>
-                    <Button type="button" variant="outline" onClick={() => { form.reset(); onClose();}}>
+                    <Button type="button" variant="outline" onClick={() => { form.reset(getDefaultValues()); onClose();}}>
                     Cancel
                     </Button>
                 </DialogClose>
