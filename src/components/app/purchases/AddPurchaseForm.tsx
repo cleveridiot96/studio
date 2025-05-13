@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent, रुपया } from "lucide-react";
+import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
@@ -145,9 +145,6 @@ export function AddPurchaseForm({
     // For now, brokerage isn't part of the purchase total amount directly, it's a separate payable.
     // The definition of totalAmount might need clarification: is it (NW*Rate) or (NW*Rate + OtherDirectCosts)?
     // Based on typical accounting, total purchase cost for inventory valuation would include direct expenses.
-    // Let's assume totalAmount is primarily NW * Rate, and other costs are tracked separately or added if policy.
-    // For simplicity, Total Amount = (Net Weight * Rate)
-    // If expenses and transport are to be part of the *cost of goods*, they should be added.
     // Let's assume they are for now.
     return (nw * r) + exp + trRate;
   }, [netWeight, rate, expenses, transportRate]);
@@ -282,7 +279,7 @@ export function AddPurchaseForm({
 
               {/* Section: Supplier Details */}
               <div className="p-4 border rounded-md shadow-sm">
-                <h3 className="text-lg font-medium mb-3 text-primary">Supplier & Agent</h3>
+                <h3 className="text-lg font-medium mb-3 text-primary">Supplier &amp; Agent</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -311,7 +308,7 @@ export function AddPurchaseForm({
               
               {/* Section: Quantity Details */}
               <div className="p-4 border rounded-md shadow-sm">
-                <h3 className="text-lg font-medium mb-3 text-primary">Item & Quantity</h3>
+                <h3 className="text-lg font-medium mb-3 text-primary">Item &amp; Quantity</h3>
                  <FormField
                     control={form.control}
                     name="itemName"
@@ -424,7 +421,7 @@ export function AddPurchaseForm({
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="Fixed"><span className="flex items-center">< रुपया className="w-4 h-4 mr-2"/>Fixed Amount</span></SelectItem>
+                                <SelectItem value="Fixed"><span className="flex items-center"><span className="mr-2">₹</span>Fixed Amount</span></SelectItem>
                                 <SelectItem value="Percentage"><span className="flex items-center"><Percent className="w-4 h-4 mr-2"/>Percentage</span></SelectItem>
                               </SelectContent>
                             </Select>
