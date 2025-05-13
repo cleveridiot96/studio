@@ -21,7 +21,7 @@ interface SaleTableProps {
   onDelete: (saleId: string) => void;
 }
 
-export function SaleTable({ data, onEdit, onDelete }: SaleTableProps) {
+const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }) => {
   if (data.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No sales recorded yet.</p>;
   }
@@ -73,3 +73,4 @@ export function SaleTable({ data, onEdit, onDelete }: SaleTableProps) {
     </ScrollArea>
   );
 }
+export const SaleTable = React.memo(SaleTableComponent);

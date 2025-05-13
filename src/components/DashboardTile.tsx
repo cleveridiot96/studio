@@ -2,36 +2,37 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import type { LucideProps } from 'lucide-react';
 import { 
-  BarChart, DollarSign, Package, Users, LineChart, TrendingUp, ShoppingCart as DefaultShoppingCartIcon, TrendingDown as DefaultTrendingDownIcon, HelpCircle as FallbackIcon,
-  ArrowLeftCircle as DefaultArrowLeftCircleIcon, // Added import for ArrowLeftCircle
-  ArrowRightCircle as DefaultArrowRightCircleIcon, // Added import for ArrowRightCircle for completeness
-  BookOpen as DefaultBookOpenIcon, // Added import for BookOpen
-  BookUser as DefaultBookUserIcon, // Added import for BookUser
-  Users2 as DefaultUsers2Icon, // Added import for Users2
-  DatabaseBackup as DefaultDatabaseBackupIcon, // Added import for DatabaseBackup
-  LayoutGrid as DefaultLayoutGridIcon, // Added import for LayoutGrid
-  Boxes as DefaultBoxesIcon, // Added import for Boxes
-  FileText as DefaultFileTextIcon, // Added import for FileText
-  Receipt as DefaultReceiptIcon // Added import for Receipt
+  BarChart, DollarSign, Package, Users, LineChart, TrendingUp, ShoppingCart as DefaultShoppingCartIcon, TrendingDown, HelpCircle as FallbackIcon,
+  ArrowLeftCircle as DefaultArrowLeftCircleIcon, 
+  ArrowRightCircle as DefaultArrowRightCircleIcon, 
+  BookOpen as DefaultBookOpenIcon, 
+  BookUser as DefaultBookUserIcon, 
+  Users2 as DefaultUsers2Icon, 
+  DatabaseBackup as DefaultDatabaseBackupIcon, 
+  LayoutGrid as DefaultLayoutGridIcon, 
+  Boxes as DefaultBoxesIcon, 
+  FileText as DefaultFileTextIcon, 
+  Receipt as DefaultReceiptIcon 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
+import React from 'react';
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<LucideProps>> = {
-  BarChart, // Already directly imported and used
-  DollarSign, // Already directly imported and used
-  Package, // Already directly imported and used
-  Users, // Already directly imported and used
-  LineChart, // Already directly imported and used
-  TrendingUp, // Already directly imported and used
+  BarChart, 
+  DollarSign, 
+  Package, 
+  Users, 
+  LineChart, 
+  TrendingUp, 
   ShoppingCart: DefaultShoppingCartIcon,
-  TrendingDown: DefaultTrendingDownIcon,
+  TrendingDown: TrendingDown,
   Receipt: DefaultReceiptIcon, 
   Boxes: DefaultBoxesIcon,
   FileText: DefaultFileTextIcon,
   ArrowRightCircle: DefaultArrowRightCircleIcon,
-  ArrowLeftCircle: DefaultArrowLeftCircleIcon, // Corrected mapping
+  ArrowLeftCircle: DefaultArrowLeftCircleIcon, 
   BookOpen: DefaultBookOpenIcon,
   BookUser: DefaultBookUserIcon,
   Users2: DefaultUsers2Icon,
@@ -50,7 +51,7 @@ interface DashboardTileProps {
   valueClassName?: string;
 }
 
-export function DashboardTile({ title, value, iconName, href, description, className, valueClassName }: DashboardTileProps) {
+const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, value, iconName, href, description, className, valueClassName }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
   return (
     <Link href={href} className="block group">
@@ -74,3 +75,4 @@ export function DashboardTile({ title, value, iconName, href, description, class
   );
 }
 
+export const DashboardTile = React.memo(DashboardTileComponent);

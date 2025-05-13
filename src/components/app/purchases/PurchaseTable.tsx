@@ -21,7 +21,7 @@ interface PurchaseTableProps {
   onDelete: (purchaseId: string) => void;
 }
 
-export function PurchaseTable({ data, onEdit, onDelete }: PurchaseTableProps) {
+const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, onDelete }) => {
   if (data.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No purchases recorded yet.</p>;
   }
@@ -81,3 +81,5 @@ export function PurchaseTable({ data, onEdit, onDelete }: PurchaseTableProps) {
     </ScrollArea>
   );
 }
+
+export const PurchaseTable = React.memo(PurchaseTableComponent);

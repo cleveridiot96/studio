@@ -30,7 +30,6 @@ import { format } from "date-fns";
 import { saleSchema, type SaleFormValues } from "@/lib/schemas/saleSchema";
 import type { MasterItem, Sale, MasterItemType, Customer, Transporter, Broker } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
-import { AddMasterItemDialog } from "@/components/shared/AddMasterItemDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -46,7 +45,7 @@ interface AddSaleFormProps {
   saleToEdit?: Sale | null;
 }
 
-export function AddSaleForm({
+const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -55,20 +54,20 @@ export function AddSaleForm({
   brokers,
   onMasterDataUpdate,
   saleToEdit
-}: AddSaleFormProps) {
+}) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false);
   const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null);
 
-  const getDefaultValues = (): SaleFormValues => {
+  const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
       return {
         date: new Date(saleToEdit.date),
         billNumber: saleToEdit.billNumber,
         billAmount: saleToEdit.billAmount,
         customerId: saleToEdit.customerId,
-        lotNumber: saleToEdit.lotNumber, // This would ideally be linked to an inventory item
+        lotNumber: saleToEdit.lotNumber, 
         itemName: saleToEdit.itemName,
         quantity: saleToEdit.quantity,
         netWeight: saleToEdit.netWeight,
@@ -82,21 +81,21 @@ export function AddSaleForm({
     }
     return {
       date: new Date(),
-      billNumber: `INV-${Date.now().toString().slice(-6)}`, // Example auto bill number
+      billNumber: `INV-${Date.now().toString().slice(-6)}`,
       billAmount: undefined,
       customerId: undefined,
-      lotNumber: "", // User needs to select from available lots
-      itemName: "", // Should auto-populate from lot selection
-      quantity: 0, // Bags
-      netWeight: 0, // KG
-      rate: 0, // Per KG
+      lotNumber: "", 
+      itemName: "", 
+      quantity: 0, 
+      netWeight: 0, 
+      rate: 0, 
       transporterId: undefined,
       transportCost: undefined,
       brokerId: undefined,
       brokerageAmount: undefined,
       notes: "",
     };
-  };
+  }, [saleToEdit]);
 
 
   const form = useForm<SaleFormValues>({
@@ -106,7 +105,7 @@ export function AddSaleForm({
 
   React.useEffect(() => {
     form.reset(getDefaultValues());
-  }, [saleToEdit, isOpen, form]);
+  }, [saleToEdit, isOpen, form, getDefaultValues]);
 
   const netWeight = form.watch("netWeight");
   const rate = form.watch("rate");
@@ -118,9 +117,7 @@ export function AddSaleForm({
   }, [netWeight, rate]);
 
   React.useEffect(() => {
-    // Auto-update billAmount if not manually entered
     if (form.getValues("billAmount") === undefined || form.getValues("billAmount") === 0) {
-         // Check if it's not user-dirty, to avoid overwriting manual input
         if (!form.formState.dirtyFields.billAmount) {
             form.setValue("billAmount", calculatedBillAmount, { shouldValidate: true });
         }
@@ -133,15 +130,15 @@ export function AddSaleForm({
     setShowAddMasterDialog(true);
   };
 
-  const handleMasterItemAdded = (newItem: MasterItem) => {
+  const handleMasterItemAdded = React.useCallback((newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type as MasterItemType, newItem);
     if (newItem.type === 'Customer') form.setValue('customerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Transporter') form.setValue('transporterId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') form.setValue('brokerId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added successfully!` });
-  };
+  },[onMasterDataUpdate, form, toast]);
 
-  const processSubmit = (values: SaleFormValues) => {
+  const processSubmit = React.useCallback((values: SaleFormValues) => {
     setIsSubmitting(true);
     const finalBillAmount = values.billAmount && values.billAmount > 0 ? values.billAmount : calculatedBillAmount;
     const saleData: Sale = {
@@ -156,7 +153,7 @@ export function AddSaleForm({
       quantity: values.quantity,
       netWeight: values.netWeight,
       rate: values.rate,
-      totalAmount: finalBillAmount, // Total amount for ledger debit
+      totalAmount: finalBillAmount, 
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
       transportCost: values.transportCost,
@@ -164,13 +161,23 @@ export function AddSaleForm({
       brokerName: brokers.find(b => b.id === values.brokerId)?.name,
       brokerageAmount: values.brokerageAmount,
       notes: values.notes,
-      // Profit calculation would happen elsewhere, based on purchase cost of the lot
     };
     onSubmit(saleData);
     setIsSubmitting(false);
     form.reset(getDefaultValues());
     onClose();
-  };
+  }, [
+      saleToEdit, 
+      calculatedBillAmount, 
+      customers, 
+      transporters, 
+      brokers, 
+      onSubmit, 
+      form, 
+      getDefaultValues, 
+      onClose
+    ]
+  );
   
   if (!isOpen) return null;
 
@@ -218,7 +225,7 @@ export function AddSaleForm({
                 <FormField control={form.control} name="customerId" render={({ field }) => (
                     <FormItem className="mt-4">
                     <FormLabel>Customer</FormLabel>
-                    <MasterDataCombobox items={customers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Customer")} placeholder="Select Customer" searchPlaceholder="Search customers..." notFoundMessage="No customer found." addNewLabel="Add New Customer"/>
+                    <MasterDataCombobox items={customers} value={field.value} onChange={field.onChange}  placeholder="Select Customer" searchPlaceholder="Search customers..." notFoundMessage="No customer found." addNewLabel="Add New Customer"/>
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -264,7 +271,7 @@ export function AddSaleForm({
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="transporterId" render={({ field }) => (
                         <FormItem> <FormLabel>Transporter</FormLabel>
-                        <MasterDataCombobox items={transporters} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Transporter")} placeholder="Select Transporter" searchPlaceholder="Search transporters..." notFoundMessage="No transporter found." addNewLabel="Add New Transporter"/>
+                        <MasterDataCombobox items={transporters} value={field.value} onChange={field.onChange}  placeholder="Select Transporter" searchPlaceholder="Search transporters..." notFoundMessage="No transporter found." addNewLabel="Add New Transporter"/>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -277,7 +284,7 @@ export function AddSaleForm({
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <FormField control={form.control} name="brokerId" render={({ field }) => (
                         <FormItem> <FormLabel>Broker</FormLabel>
-                        <MasterDataCombobox items={brokers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Broker")} placeholder="Select Broker" searchPlaceholder="Search brokers..." notFoundMessage="No broker found." addNewLabel="Add New Broker"/>
+                        <MasterDataCombobox items={brokers} value={field.value} onChange={field.onChange}  placeholder="Select Broker" searchPlaceholder="Search brokers..." notFoundMessage="No broker found." addNewLabel="Add New Broker"/>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -328,15 +335,8 @@ export function AddSaleForm({
           </Form>
         </DialogContent>
       </Dialog>
-
-      {currentMasterType && (
-        <AddMasterItemDialog
-          isOpen={showAddMasterDialog}
-          onClose={() => setShowAddMasterDialog(false)}
-          onAdd={handleMasterItemAdded}
-          itemType={currentMasterType}
-        />
-      )}
     </>
   );
 }
+
+export const AddSaleForm = React.memo(AddSaleFormComponent);

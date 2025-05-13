@@ -30,7 +30,6 @@ import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
 import type { MasterItem, Purchase, MasterItemType, Broker } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
-import { AddMasterItemDialog } from "@/components/shared/AddMasterItemDialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -48,7 +47,7 @@ interface AddPurchaseFormProps {
   purchaseToEdit?: Purchase | null;
 }
 
-export function AddPurchaseForm({
+const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -59,13 +58,13 @@ export function AddPurchaseForm({
   brokers,
   onMasterDataUpdate,
   purchaseToEdit
-}: AddPurchaseFormProps) {
+}) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false);
   const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null);
 
-  const getDefaultValues = (): PurchaseFormValues => {
+  const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
       return {
         date: new Date(purchaseToEdit.date),
@@ -102,7 +101,7 @@ export function AddPurchaseForm({
       brokerageType: undefined,
       brokerageValue: undefined,
     };
-  };
+  }, [purchaseToEdit]);
 
   const form = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema),
@@ -111,12 +110,12 @@ export function AddPurchaseForm({
 
   React.useEffect(() => {
     form.reset(getDefaultValues());
-  }, [purchaseToEdit, isOpen, form]); // form added to dependency array
+  }, [purchaseToEdit, isOpen, form, getDefaultValues]);
 
   const netWeight = form.watch("netWeight");
   const rate = form.watch("rate");
   const expenses = form.watch("expenses") || 0;
-  const transportRate = form.watch("transportRate") || 0; // Assuming this is total transport cost for the lot
+  const transportRate = form.watch("transportRate") || 0; 
   
   const brokerageType = form.watch("brokerageType");
   const brokerageValue = form.watch("brokerageValue") || 0;
@@ -137,15 +136,9 @@ export function AddPurchaseForm({
     const nw = parseFloat(String(netWeight || 0));
     const r = parseFloat(String(rate || 0));
     const exp = parseFloat(String(expenses || 0));
-    // Assuming transportRate is a total cost for the lot. If it's per kg, logic needs change.
     const trRate = parseFloat(String(transportRate || 0)); 
     
     if (isNaN(nw) || isNaN(r)) return 0;
-    // More precise calculation: (Net Weight * Rate) + Expenses + Transport Rate + Brokerage Amount
-    // For now, brokerage isn't part of the purchase total amount directly, it's a separate payable.
-    // The definition of totalAmount might need clarification: is it (NW*Rate) or (NW*Rate + OtherDirectCosts)?
-    // Based on typical accounting, total purchase cost for inventory valuation would include direct expenses.
-    // Let's assume they are for now.
     return (nw * r) + exp + trRate;
   }, [netWeight, rate, expenses, transportRate]);
 
@@ -155,7 +148,7 @@ export function AddPurchaseForm({
     setShowAddMasterDialog(true);
   };
 
-  const handleMasterItemAdded = (newItem: MasterItem) => {
+  const handleMasterItemAdded = React.useCallback((newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type as MasterItemType, newItem); 
     if (newItem.type === 'Supplier') form.setValue('supplierId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Agent') form.setValue('agentId', newItem.id, { shouldValidate: true });
@@ -163,9 +156,9 @@ export function AddPurchaseForm({
     if (newItem.type === 'Transporter') form.setValue('transporterId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') form.setValue('brokerId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added successfully!` });
-  };
+  }, [onMasterDataUpdate, form, toast]);
 
-  const processSubmit = (values: PurchaseFormValues) => {
+  const processSubmit = React.useCallback((values: PurchaseFormValues) => {
     setIsSubmitting(true);
     const purchaseData: Purchase = {
       id: purchaseToEdit ? purchaseToEdit.id : `purchase-${Date.now()}`,
@@ -190,13 +183,27 @@ export function AddPurchaseForm({
       brokerageType: values.brokerageType,
       brokerageValue: values.brokerageValue,
       calculatedBrokerageAmount: calculatedBrokerageAmount,
-      totalAmount: totalAmount, // Using the calculated total amount from useMemo
+      totalAmount: totalAmount,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
     form.reset(getDefaultValues());
     onClose();
-  };
+  }, [
+      purchaseToEdit, 
+      warehouses, 
+      suppliers, 
+      agents, 
+      transporters, 
+      brokers, 
+      calculatedBrokerageAmount, 
+      totalAmount, 
+      onSubmit, 
+      form, 
+      getDefaultValues, 
+      onClose
+    ]
+  );
 
   if (!isOpen) return null;
 
@@ -480,15 +487,7 @@ export function AddPurchaseForm({
           </Form>
         </DialogContent>
       </Dialog>
-
-      {currentMasterType && (
-        <AddMasterItemDialog
-          isOpen={showAddMasterDialog}
-          onClose={() => setShowAddMasterDialog(false)}
-          onAdd={handleMasterItemAdded}
-          itemType={currentMasterType}
-        />
-      )}
     </>
   );
 }
+export const AddPurchaseForm = React.memo(AddPurchaseFormComponent);

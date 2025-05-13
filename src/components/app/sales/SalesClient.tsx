@@ -101,7 +101,7 @@ export function SalesClient() {
     return sales.filter(sale => isDateInFinancialYear(sale.date, financialYear));
   }, [sales, financialYear]);
 
-  const handleAddOrUpdateSale = (sale: Sale) => {
+  const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     setSales(prevSales => {
       const isEditing = prevSales.some(s => s.id === sale.id);
       if (isEditing) {
@@ -113,28 +113,28 @@ export function SalesClient() {
       }
     });
     setSaleToEdit(null);
-  };
+  }, [setSales, toast]);
 
-  const handleEditSale = (sale: Sale) => {
+  const handleEditSale = React.useCallback((sale: Sale) => {
     setSaleToEdit(sale);
     setIsAddSaleFormOpen(true);
-  };
+  }, []);
 
-  const handleDeleteSaleAttempt = (saleId: string) => {
+  const handleDeleteSaleAttempt = React.useCallback((saleId: string) => {
     setSaleToDeleteId(saleId);
     setShowDeleteConfirm(true);
-  };
+  }, []);
 
-  const confirmDeleteSale = () => {
+  const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
       setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
       toast({ title: "Success!", description: "Sale deleted successfully." });
       setSaleToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  };
+  }, [saleToDeleteId, setSales, toast]);
 
-  const handleMasterDataUpdate = (type: MasterItemType, newItem: MasterItem) => {
+  const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     switch (type) {
         case "Customer":
             setCustomers(prev => [newItem, ...prev]);
@@ -148,12 +148,18 @@ export function SalesClient() {
         default:
             break;
     }
-  };
+  }, [setCustomers, setTransporters, setBrokers]);
 
-  const openAddSaleForm = () => {
+  const openAddSaleForm = React.useCallback(() => {
     setSaleToEdit(null); 
     setIsAddSaleFormOpen(true);
-  };
+  }, []);
+
+  const closeAddSaleForm = React.useCallback(() => {
+    setIsAddSaleFormOpen(false);
+    setSaleToEdit(null);
+  }, []);
+
 
   return (
     <div className="space-y-6">
@@ -173,17 +179,19 @@ export function SalesClient() {
       </div>
 
       <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
-
-      <AddSaleForm
-        isOpen={isAddSaleFormOpen}
-        onClose={() => { setIsAddSaleFormOpen(false); setSaleToEdit(null); }}
-        onSubmit={handleAddOrUpdateSale}
-        customers={customers}
-        transporters={transporters}
-        brokers={brokers}
-        onMasterDataUpdate={handleMasterDataUpdate}
-        saleToEdit={saleToEdit}
-      />
+      
+      {isAddSaleFormOpen && (
+        <AddSaleForm
+          isOpen={isAddSaleFormOpen}
+          onClose={closeAddSaleForm}
+          onSubmit={handleAddOrUpdateSale}
+          customers={customers}
+          transporters={transporters}
+          brokers={brokers}
+          onMasterDataUpdate={handleMasterDataUpdate}
+          saleToEdit={saleToEdit}
+        />
+      )}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

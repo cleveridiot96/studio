@@ -126,7 +126,7 @@ export function PurchasesClient() {
   }, [purchases, financialYear]);
 
 
-  const handleAddOrUpdatePurchase = (purchase: Purchase) => {
+  const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     setPurchases(prevPurchases => {
       const isEditing = prevPurchases.some(p => p.id === purchase.id);
       if (isEditing) {
@@ -138,28 +138,28 @@ export function PurchasesClient() {
       }
     });
     setPurchaseToEdit(null);
-  };
+  }, [setPurchases, toast]);
 
-  const handleEditPurchase = (purchase: Purchase) => {
+  const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);
     setIsAddPurchaseFormOpen(true);
-  };
+  }, []);
 
-  const handleDeletePurchaseAttempt = (purchaseId: string) => {
+  const handleDeletePurchaseAttempt = React.useCallback((purchaseId: string) => {
     setPurchaseToDeleteId(purchaseId);
     setShowDeleteConfirm(true);
-  };
+  }, []);
 
-  const confirmDeletePurchase = () => {
+  const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {
       setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
       toast({ title: "Success!", description: "Purchase deleted successfully." });
       setPurchaseToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  };
+  }, [purchaseToDeleteId, setPurchases, toast]);
 
-  const handleMasterDataUpdate = (type: MasterItemType, newItem: MasterItem) => {
+  const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     switch (type) {
       case "Supplier":
         setSuppliers(prev => [newItem, ...prev]);
@@ -179,12 +179,18 @@ export function PurchasesClient() {
       default:
         break;
     }
-  };
+  }, [setSuppliers, setAgents, setWarehouses, setTransporters, setBrokers]);
   
-  const openAddPurchaseForm = () => {
+  const openAddPurchaseForm = React.useCallback(() => {
     setPurchaseToEdit(null); 
     setIsAddPurchaseFormOpen(true);
-  };
+  }, []);
+
+  const closeAddPurchaseForm = React.useCallback(() => {
+    setIsAddPurchaseFormOpen(false);
+    setPurchaseToEdit(null);
+  }, []);
+
 
   return (
     <div className="space-y-6">
@@ -205,18 +211,20 @@ export function PurchasesClient() {
 
       <PurchaseTable data={filteredPurchases} onEdit={handleEditPurchase} onDelete={handleDeletePurchaseAttempt} />
 
-      <AddPurchaseForm
-        isOpen={isAddPurchaseFormOpen}
-        onClose={() => { setIsAddPurchaseFormOpen(false); setPurchaseToEdit(null); }}
-        onSubmit={handleAddOrUpdatePurchase}
-        suppliers={suppliers}
-        agents={agents}
-        warehouses={warehouses} // Locations
-        transporters={transporters}
-        brokers={brokers}
-        onMasterDataUpdate={handleMasterDataUpdate}
-        purchaseToEdit={purchaseToEdit}
-      />
+      {isAddPurchaseFormOpen && (
+        <AddPurchaseForm
+          isOpen={isAddPurchaseFormOpen}
+          onClose={closeAddPurchaseForm}
+          onSubmit={handleAddOrUpdatePurchase}
+          suppliers={suppliers}
+          agents={agents}
+          warehouses={warehouses} // Locations
+          transporters={transporters}
+          brokers={brokers}
+          onMasterDataUpdate={handleMasterDataUpdate}
+          purchaseToEdit={purchaseToEdit}
+        />
+      )}
       
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

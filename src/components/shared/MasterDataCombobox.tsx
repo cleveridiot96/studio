@@ -35,7 +35,7 @@ interface MasterDataComboboxProps {
   itemIcon?: React.ComponentType<LucideProps>; // Optional icon for the item
 }
 
-export function MasterDataCombobox({
+const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
   items,
   value,
   onChange,
@@ -46,7 +46,7 @@ export function MasterDataCombobox({
   addNewLabel,
   disabled,
   itemIcon: ItemIcon,
-}: MasterDataComboboxProps) {
+}) => {
   const [open, setOpen] = React.useState(false)
 
   const selectedItem = value ? items.find((item) => item.id === value) : null;
@@ -126,3 +126,4 @@ export function MasterDataCombobox({
     </Popover>
   )
 }
+export const MasterDataCombobox = React.memo(MasterDataComboboxComponent);

@@ -1,5 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Construction, HardHat } from 'lucide-react';
+import { HardHat } from 'lucide-react';
+import React from 'react';
 
 interface PlaceholderContentProps {
   title: string;
@@ -7,7 +8,7 @@ interface PlaceholderContentProps {
   icon?: React.ElementType;
 }
 
-export function PlaceholderContent({ title, description = "This section is currently under development. Please check back soon for updates!", icon: Icon = HardHat }: PlaceholderContentProps) {
+const PlaceholderContentComponent: React.FC<PlaceholderContentProps> = ({ title, description = "This section is currently under development. Please check back soon for updates!", icon: Icon = HardHat }) => {
   return (
     <Card className="w-full shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20">
       <CardHeader className="items-center text-center">
@@ -23,3 +24,5 @@ export function PlaceholderContent({ title, description = "This section is curre
     </Card>
   );
 }
+
+export const PlaceholderContent = React.memo(PlaceholderContentComponent);
