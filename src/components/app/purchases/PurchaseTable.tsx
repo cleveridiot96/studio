@@ -1,0 +1,73 @@
+"use client";
+
+import * as React from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Pencil, Trash2 } from "lucide-react";
+import type { Purchase } from "@/lib/types";
+import { format } from 'date-fns';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
+interface PurchaseTableProps {
+  data: Purchase[];
+  onEdit: (purchase: Purchase) => void;
+  onDelete: (purchaseId: string) => void;
+}
+
+export function PurchaseTable({ data, onEdit, onDelete }: PurchaseTableProps) {
+  if (data.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">No purchases recorded yet.</p>;
+  }
+
+  return (
+    <ScrollArea className="rounded-md border shadow-sm">
+      <Table className="min-w-full whitespace-nowrap">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Date</TableHead>
+            <TableHead>Lot Number</TableHead>
+            <TableHead>Supplier</TableHead>
+            <TableHead>Agent</TableHead>
+            <TableHead>Item</TableHead>
+            <TableHead className="text-right">Quantity</TableHead>
+            <TableHead className="text-right">Net Wt. (kg)</TableHead>
+            <TableHead className="text-right">Rate (₹/kg)</TableHead>
+            <TableHead className="text-right">Total (₹)</TableHead>
+            <TableHead className="text-center w-[100px]">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((purchase) => (
+            <TableRow key={purchase.id}>
+              <TableCell>{format(new Date(purchase.date), "dd-MM-yyyy")}</TableCell>
+              <TableCell>{purchase.lotNumber}</TableCell>
+              <TableCell>{purchase.supplierName || purchase.supplierId}</TableCell>
+              <TableCell>{purchase.agentName || purchase.agentId || 'N/A'}</TableCell>
+              <TableCell>{purchase.itemName}</TableCell>
+              <TableCell className="text-right">{purchase.quantity}</TableCell>
+              <TableCell className="text-right">{purchase.netWeight.toLocaleString()}</TableCell>
+              <TableCell className="text-right">{purchase.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+              <TableCell className="text-right font-semibold">{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+              <TableCell className="text-center">
+                <Button variant="ghost" size="icon" onClick={() => onEdit(purchase)} className="mr-2 hover:text-primary">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(purchase.id)} className="hover:text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
+  );
+}
