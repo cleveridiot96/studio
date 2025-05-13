@@ -49,6 +49,9 @@
     --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
     --sidebar-border: 225 47% 20%;
     --sidebar-ring: 45 100% 50%;
+
+    /* Base font size variable controlled by FontEnhancer */
+    /* font-size: 16px; is now handled by SettingsContext on the html element */
   }
 
   .dark {
@@ -96,18 +99,20 @@
   * {
     @apply border-border;
   }
+  html, body {
+    height: 100%; /* Ensure html and body take full height for sticky layouts */
+  }
   body {
     @apply bg-background text-foreground;
-    font-size: 16px; /* Base font size for "big fonts" feel */
+    /* font-size is now set dynamically via JS on the <html> element */
   }
-  /* Ensure h tags have larger default sizes if needed */
-  h1 { @apply text-4xl font-bold; }
-  h2 { @apply text-3xl font-semibold; }
-  h3 { @apply text-2xl font-semibold; }
-  h4 { @apply text-xl font-semibold; }
+  /* Ensure h tags have larger default sizes if needed, using relative units */
+  h1 { @apply text-2xl font-bold md:text-3xl lg:text-4xl; } /* Use relative sizing or responsive variants */
+  h2 { @apply text-xl font-semibold md:text-2xl lg:text-3xl; }
+  h3 { @apply text-lg font-semibold md:text-xl lg:text-2xl; }
+  h4 { @apply text-base font-semibold md:text-lg lg:text-xl; }
 
-  /* Increase default button padding and input sizes for tactile feel */
+  /* Increase default button padding and input sizes for tactile feel, adjust based on base font size */
   .btn-lg { @apply px-6 py-3 text-lg; } /* Example for larger buttons */
   .input-lg { @apply px-4 py-3 text-lg; } /* Example for larger inputs */
-
 }
