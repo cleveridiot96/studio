@@ -20,7 +20,7 @@ export interface MasterItem {
   [key: string]: any; // For additional fields
 }
 
-export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker' | 'Item';
+export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker';
 // export type MasterItemSubtype = 'Retailer' | 'Wholesaler' | 'Corporate'; // Removed
 
 
@@ -28,12 +28,11 @@ export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' 
 export interface Purchase {
   id: string;
   date: string; // ISO string date
-  lotNumber: string;
+  lotNumber: string; // This is the "Vakkal"
   supplierId: string;
   supplierName?: string; // For display in table
   agentId?: string;
   agentName?: string; // For display in table
-  itemName: string; 
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // per KG
@@ -58,8 +57,7 @@ export interface Sale {
   billAmount?: number; 
   customerId: string;
   customerName?: string; 
-  lotNumber: string; 
-  itemName: string; 
+  lotNumber: string; // This is the "Vakkal" from existing inventory
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // Sale price per KG
@@ -75,12 +73,13 @@ export interface Sale {
 }
 
 export interface InventoryItem {
-  id: string;
-  itemName: string;
+  id: string; // Corresponds to Purchase lotNumber (Vakkal)
+  vakkalNumber: string; // Lot Number
   location: string; 
-  quantity: number;
-  lotNumber?: string;
-  weight?: number;
+  quantity: number; // Current bags
+  netWeight: number; // Current net weight in KG
+  originalPurchaseRate?: number; // To help with profit calculation later
+  purchaseDate?: string;
 }
 
 export interface Payment {
@@ -145,7 +144,9 @@ export interface Customer extends MasterItem {
 export interface Broker extends MasterItem {
   commission?: number; 
 }
-export interface Item extends MasterItem { 
-  category?: string;
-  unit?: string;
-}
+// Item interface removed as per new requirement
+// export interface Item extends MasterItem { 
+//   category?: string;
+//   unit?: string;
+// }
+

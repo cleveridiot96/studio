@@ -4,11 +4,11 @@ export const purchaseSchema = z.object({
   date: z.date({
     required_error: "Purchase date is required.",
   }),
-  lotNumber: z.string().min(1, "Lot number is required."),
+  lotNumber: z.string().min(1, "Vakkal / Lot number is required."), // Changed label implicit here
   locationId: z.string().min(1, "Location (Warehouse) is required."),
   supplierId: z.string().min(1, "Supplier is required."),
   agentId: z.string().optional(),
-  itemName: z.string().min(1, "Item name is required."), // Commodity Name
+  // itemName: z.string().min(1, "Item name is required."), // Commodity Name - REMOVED
   quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."), // Number of Bags
   netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."), // KG
   rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."), // ₹/kg

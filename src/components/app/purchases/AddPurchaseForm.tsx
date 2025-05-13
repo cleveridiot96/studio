@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -61,18 +62,18 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false);
-  const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null);
+  // const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false); // Not used currently
+  // const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null); // Not used currently
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
       return {
         date: new Date(purchaseToEdit.date),
-        lotNumber: purchaseToEdit.lotNumber,
+        lotNumber: purchaseToEdit.lotNumber, // Vakkal
         locationId: purchaseToEdit.locationId,
         supplierId: purchaseToEdit.supplierId,
         agentId: purchaseToEdit.agentId,
-        itemName: purchaseToEdit.itemName,
+        // itemName: purchaseToEdit.itemName, // REMOVED
         quantity: purchaseToEdit.quantity,
         netWeight: purchaseToEdit.netWeight,
         rate: purchaseToEdit.rate,
@@ -86,11 +87,11 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
     }
     return {
       date: new Date(),
-      lotNumber: "",
+      lotNumber: "", // Vakkal
       locationId: undefined,
       supplierId: undefined,
       agentId: undefined,
-      itemName: "", // e.g. Wheat
+      // itemName: "", // REMOVED
       quantity: 0, // Bags
       netWeight: 0, // KG
       rate: 0, // Per KG
@@ -144,8 +145,12 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 
 
   const handleAddNewMaster = (type: MasterItemType) => {
-    setCurrentMasterType(type);
-    setShowAddMasterDialog(true);
+    // setCurrentMasterType(type); // This logic would typically open a separate MasterForm dialog
+    // setShowAddMasterDialog(true); // This implies a modal for adding new master item from this form
+    toast({ title: "Info", description: `Adding new ${type} would typically open a dedicated form. This feature is conceptual here.`});
+    // For actual implementation, you'd open MasterForm with itemTypeFromButton={type}
+    // and handle the submission to update master data lists (suppliers, agents etc.)
+    // and then set the newly added item's ID in the current purchase form.
   };
 
   const handleMasterItemAdded = React.useCallback((newItem: MasterItem) => {
@@ -163,14 +168,14 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
     const purchaseData: Purchase = {
       id: purchaseToEdit ? purchaseToEdit.id : `purchase-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      lotNumber: values.lotNumber,
+      lotNumber: values.lotNumber, // Vakkal
       locationId: values.locationId,
       locationName: warehouses.find(w => w.id === values.locationId)?.name,
       supplierId: values.supplierId,
       supplierName: suppliers.find(s => s.id === values.supplierId)?.name,
       agentId: values.agentId,
       agentName: agents.find(a => a.id === values.agentId)?.name,
-      itemName: values.itemName,
+      // itemName: values.itemName, // REMOVED
       quantity: values.quantity,
       netWeight: values.netWeight,
       rate: values.rate,
@@ -254,7 +259,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                     name="lotNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Lot Number</FormLabel>
+                        <FormLabel>Vakkal / Lot Number</FormLabel>
                         <FormControl><Input placeholder="e.g., AB/6" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -315,18 +320,8 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
               
               {/* Section: Quantity Details */}
               <div className="p-4 border rounded-md shadow-sm">
-                <h3 className="text-lg font-medium mb-3 text-primary">Item &amp; Quantity</h3>
-                 <FormField
-                    control={form.control}
-                    name="itemName"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel>Item Name (Commodity)</FormLabel>
-                        <FormControl><Input placeholder="e.g., Wheat, Soyabean" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <h3 className="text-lg font-medium mb-3 text-primary">Quantity &amp; Rate</h3>
+                 {/* itemName FormField removed */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}

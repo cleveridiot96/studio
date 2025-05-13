@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -11,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, PackageSearch } from "lucide-react";
+import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, PackageSearch, Building } from "lucide-react"; // PackageSearch might be reused or removed if only for Item
 import type { MasterItem, MasterItemType } from "@/lib/types";
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +24,8 @@ const typeIconMap: Record<MasterItemType, React.ElementType> = {
   Agent: UserCheck,
   Transporter: UserCog,
   Broker: Handshake,
-  Warehouse: PackageSearch, 
-  Item: PackageSearch, 
+  Warehouse: Building, 
+  // Item: PackageSearch, // Item removed
 };
 
 
@@ -38,7 +39,7 @@ interface MasterListProps {
 
 export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete }) => {
   if (data.length === 0) {
-    const typeLabel = itemType === 'All' ? 'items' : `${itemType.toLowerCase()}s`;
+    const typeLabel = itemType === 'All' ? 'parties/entities' : `${itemType.toLowerCase()}s`;
     return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
   }
 
@@ -61,7 +62,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
         <TableBody>
           {data.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
-            const TypeIcon = typeIconMap[item.type] || PackageSearch;
+            const TypeIcon = typeIconMap[item.type] || PackageSearch; // Fallback if needed, though all current types are in map
             return (
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">{item.id}</TableCell>
@@ -103,3 +104,4 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
     </ScrollArea>
   );
 };
+

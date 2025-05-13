@@ -7,8 +7,8 @@ export const saleSchema = z.object({
   billNumber: z.string().min(1, "Bill number is required."),
   billAmount: z.coerce.number().optional(), // Optional, auto-calculated
   customerId: z.string().min(1, "Customer is required."),
-  lotNumber: z.string().min(1, "Lot number is required."), // From existing inventory
-  itemName: z.string().min(1, "Item name is required."), // Commodity Name
+  lotNumber: z.string().min(1, "Vakkal / Lot number is required."), // From existing inventory
+  // itemName: z.string().min(1, "Item name is required."), // Commodity Name - REMOVED
   quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."), // Bags
   netWeight: z.coerce.number().min(0.01, "Net weight (kg) must be greater than 0."),
   rate: z.coerce.number().min(0.01, "Sale price (₹/kg) must be greater than 0."),

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -32,8 +33,8 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px]">Date</TableHead>
-            <TableHead>Lot No.</TableHead>
-            <TableHead>Item Name</TableHead>
+            <TableHead>Vakkal / Lot No.</TableHead>
+            {/* <TableHead>Item Name</TableHead> REMOVED */}
             <TableHead>Location</TableHead>
             <TableHead>Supplier</TableHead>
             <TableHead>Agent</TableHead>
@@ -53,7 +54,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
             <TableRow key={purchase.id}>
               <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
               <TableCell>{purchase.lotNumber}</TableCell>
-              <TableCell>{purchase.itemName}</TableCell>
+              {/* <TableCell>{purchase.itemName}</TableCell> REMOVED */}
               <TableCell>{purchase.locationName || purchase.locationId}</TableCell>
               <TableCell>{purchase.supplierName || purchase.supplierId}</TableCell>
               <TableCell>{purchase.agentName || purchase.agentId || 'N/A'}</TableCell>

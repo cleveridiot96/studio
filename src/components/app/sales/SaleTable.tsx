@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -34,8 +35,8 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
             <TableHead className="w-[100px]">Date</TableHead>
             <TableHead>Bill No.</TableHead>
             <TableHead>Customer</TableHead>
-            <TableHead>Lot No.</TableHead>
-            <TableHead>Item</TableHead>
+            <TableHead>Vakkal / Lot No.</TableHead>
+            {/* <TableHead>Item</TableHead> REMOVED */}
             <TableHead className="text-right">Bags</TableHead>
             <TableHead className="text-right">Net Wt.(kg)</TableHead>
             <TableHead className="text-right">Rate (₹/kg)</TableHead>
@@ -51,7 +52,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
               <TableCell>{sale.billNumber}</TableCell>
               <TableCell>{sale.customerName || sale.customerId}</TableCell>
               <TableCell>{sale.lotNumber}</TableCell>
-              <TableCell>{sale.itemName}</TableCell>
+              {/* <TableCell>{sale.itemName}</TableCell> REMOVED */}
               <TableCell className="text-right">{sale.quantity}</TableCell>
               <TableCell className="text-right">{sale.netWeight.toLocaleString()}</TableCell>
               <TableCell className="text-right">{sale.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>

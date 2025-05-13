@@ -34,13 +34,13 @@ const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolea
   { value: "Agent", label: "Agent", hasCommission: true },
   { value: "Transporter", label: "Transporter", hasCommission: false },
   { value: "Broker", label: "Broker", hasCommission: true },
-  { value: "Item", label: "Item", hasCommission: false },
+  // "Item" config removed
   { value: "Warehouse", label: "Warehouse", hasCommission: false },
 ];
 
 const masterItemSchema = z.object({
   name: z.string().min(1, "Name is required."),
-  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Item", "Warehouse"]),
+  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse"]), // "Item" removed
   commission: z.coerce.number().optional(),
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
@@ -152,13 +152,13 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                   <FormLabel>Type</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                        field.onChange(value);
+                        field.onChange(value as MasterItemType); // Ensure value is cast to MasterItemType
                         const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
                         if (!newTypeConfig?.hasCommission) {
                           form.setValue('commission', undefined);
                         }
                     }}
-                    value={field.value} // Use value for controlled component
+                    value={field.value} 
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -226,3 +226,4 @@ export const MasterForm: React.FC<MasterFormProps> = ({
     </Dialog>
   );
 };
+

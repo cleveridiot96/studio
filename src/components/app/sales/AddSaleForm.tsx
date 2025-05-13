@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -57,8 +58,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false);
-  const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null);
+  // const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false); // Not used currently
+  // const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null); // Not used currently
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
@@ -67,8 +68,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         billNumber: saleToEdit.billNumber,
         billAmount: saleToEdit.billAmount,
         customerId: saleToEdit.customerId,
-        lotNumber: saleToEdit.lotNumber, 
-        itemName: saleToEdit.itemName,
+        lotNumber: saleToEdit.lotNumber, // Vakkal
+        // itemName: saleToEdit.itemName, // REMOVED
         quantity: saleToEdit.quantity,
         netWeight: saleToEdit.netWeight,
         rate: saleToEdit.rate,
@@ -84,8 +85,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       billNumber: `INV-${Date.now().toString().slice(-6)}`,
       billAmount: undefined,
       customerId: undefined,
-      lotNumber: "", 
-      itemName: "", 
+      lotNumber: "", // Vakkal
+      // itemName: "", // REMOVED
       quantity: 0, 
       netWeight: 0, 
       rate: 0, 
@@ -126,8 +127,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
 
   const handleAddNewMaster = (type: MasterItemType) => {
-    setCurrentMasterType(type);
-    setShowAddMasterDialog(true);
+    // setCurrentMasterType(type); // This logic would typically open a separate MasterForm dialog
+    // setShowAddMasterDialog(true); // This implies a modal for adding new master item from this form
+    toast({ title: "Info", description: `Adding new ${type} would typically open a dedicated form. This feature is conceptual here.`});
   };
 
   const handleMasterItemAdded = React.useCallback((newItem: MasterItem) => {
@@ -148,8 +150,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       billAmount: finalBillAmount,
       customerId: values.customerId,
       customerName: customers.find(c => c.id === values.customerId)?.name,
-      lotNumber: values.lotNumber,
-      itemName: values.itemName,
+      lotNumber: values.lotNumber, // Vakkal
+      // itemName: values.itemName, // REMOVED
       quantity: values.quantity,
       netWeight: values.netWeight,
       rate: values.rate,
@@ -225,7 +227,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                 <FormField control={form.control} name="customerId" render={({ field }) => (
                     <FormItem className="mt-4">
                     <FormLabel>Customer</FormLabel>
-                    <MasterDataCombobox items={customers} value={field.value} onChange={field.onChange}  placeholder="Select Customer" searchPlaceholder="Search customers..." notFoundMessage="No customer found." addNewLabel="Add New Customer"/>
+                    <MasterDataCombobox 
+                        items={customers} 
+                        value={field.value} 
+                        onChange={field.onChange}  
+                        onAddNew={() => handleAddNewMaster("Customer")}
+                        placeholder="Select Customer" 
+                        searchPlaceholder="Search customers..." 
+                        notFoundMessage="No customer found." 
+                        addNewLabel="Add New Customer"/>
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -234,17 +244,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               {/* Section: Product Details */}
               <div className="p-4 border rounded-md shadow-sm">
                 <h3 className="text-lg font-medium mb-3 text-primary">Product & Quantity</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> {/* Changed to 1 col for Vakkal, itemName removed */}
                     <FormField control={form.control} name="lotNumber" render={({ field }) => ( // TODO: Change to dropdown from inventory
-                        <FormItem><FormLabel>Lot Number</FormLabel>
-                        <FormControl><Input placeholder="Select Lot (text for now)" {...field} /></FormControl><FormMessage />
+                        <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
+                        <FormControl><Input placeholder="Select Vakkal / Lot (text for now)" {...field} /></FormControl><FormMessage />
                         </FormItem>
                     )}/>
-                     <FormField control={form.control} name="itemName" render={({ field }) => (
-                        <FormItem><FormLabel>Item Name (Commodity)</FormLabel>
-                        <FormControl><Input placeholder="e.g., Wheat (from Lot)" {...field} /></FormControl><FormMessage />
-                        </FormItem>
-                    )}/>
+                     {/* itemName FormField removed */}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <FormField control={form.control} name="quantity" render={({ field }) => (
@@ -271,7 +277,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="transporterId" render={({ field }) => (
                         <FormItem> <FormLabel>Transporter</FormLabel>
-                        <MasterDataCombobox items={transporters} value={field.value} onChange={field.onChange}  placeholder="Select Transporter" searchPlaceholder="Search transporters..." notFoundMessage="No transporter found." addNewLabel="Add New Transporter"/>
+                        <MasterDataCombobox 
+                            items={transporters} 
+                            value={field.value} 
+                            onChange={field.onChange}  
+                            onAddNew={() => handleAddNewMaster("Transporter")}
+                            placeholder="Select Transporter" 
+                            searchPlaceholder="Search transporters..." 
+                            notFoundMessage="No transporter found." 
+                            addNewLabel="Add New Transporter"/>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -284,7 +298,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <FormField control={form.control} name="brokerId" render={({ field }) => (
                         <FormItem> <FormLabel>Broker</FormLabel>
-                        <MasterDataCombobox items={brokers} value={field.value} onChange={field.onChange}  placeholder="Select Broker" searchPlaceholder="Search brokers..." notFoundMessage="No broker found." addNewLabel="Add New Broker"/>
+                        <MasterDataCombobox 
+                            items={brokers} 
+                            value={field.value} 
+                            onChange={field.onChange}  
+                            onAddNew={() => handleAddNewMaster("Broker")}
+                            placeholder="Select Broker" 
+                            searchPlaceholder="Search brokers..." 
+                            notFoundMessage="No broker found." 
+                            addNewLabel="Add New Broker"/>
                         <FormMessage />
                         </FormItem>
                     )}/>
