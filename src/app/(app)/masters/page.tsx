@@ -1,5 +1,6 @@
+
 import { PlaceholderContent } from "@/components/PlaceholderContent";
-import { Users2, UserCheck, Truck, UserCog, Handshake } from "lucide-react"; // Added Handshake for Brokers
+import { Users2, UserCheck, Truck, UserCog, Handshake, Users } from "lucide-react"; // Added Users for Customers, Handshake for Brokers
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
@@ -14,8 +15,11 @@ export default function MastersPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="suppliers" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 h-auto sm:h-12">
+      <Tabs defaultValue="customers" className="w-full">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-5 h-auto sm:h-12"> {/* Adjusted grid-cols for 5 tabs */}
+          <TabsTrigger value="customers" className="py-2 sm:py-3 text-base">
+            <Users className="w-5 h-5 mr-2" /> Customers
+          </TabsTrigger>
           <TabsTrigger value="suppliers" className="py-2 sm:py-3 text-base">
             <Truck className="w-5 h-5 mr-2" /> Suppliers
           </TabsTrigger>
@@ -29,6 +33,21 @@ export default function MastersPage() {
             <Handshake className="w-5 h-5 mr-2" /> Brokers
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="customers" className="mt-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl text-primary">Manage Customers</CardTitle>
+              <CardDescription>Add, edit, and view customer details.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PlaceholderContent 
+                title="Customer Management" 
+                description="This section to manage customer master data is currently under development."
+                icon={Users}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
         <TabsContent value="suppliers" className="mt-6">
           <Card className="shadow-lg">
             <CardHeader>
@@ -48,7 +67,7 @@ export default function MastersPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-primary">Manage Agents</CardTitle>
-              <CardDescription>Add, edit, and view agent details.</CardDescription>
+              <CardDescription>Add, edit, and view agent details. Define commission rates here.</CardDescription>
             </CardHeader>
             <CardContent>
               <PlaceholderContent 
@@ -78,7 +97,7 @@ export default function MastersPage() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-primary">Manage Brokers</CardTitle>
-              <CardDescription>Add, edit, and view broker details.</CardDescription>
+              <CardDescription>Add, edit, and view broker details. Define commission rates here.</CardDescription>
             </CardHeader>
             <CardContent>
               <PlaceholderContent 
@@ -90,7 +109,7 @@ export default function MastersPage() {
           </Card>
         </TabsContent>
       </Tabs>
-      {/* TODO: Implement MasterDataClient components for each tab */}
+      {/* TODO: Implement MasterDataClient components for each tab. These clients would use AddMasterItemDialog. */}
     </div>
   );
 }
