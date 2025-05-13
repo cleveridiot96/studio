@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import React, { useEffect, useState } from 'react';
 
 export function FinancialYearToggle() {
   const { 
@@ -21,6 +22,14 @@ export function FinancialYearToggle() {
     getPreviousFinancialYear,
     getNextFinancialYear 
   } = useSettings();
+
+  const [buttonText, setButtonText] = useState("FY --"); // Placeholder for SSR
+
+  useEffect(() => {
+    // This effect runs only on the client, after hydration
+    setButtonText(`FY ${getFinancialYearShort()}`);
+  }, [financialYear, getFinancialYearShort]);
+
 
   const handleSetPreviousYear = () => {
     setFinancialYear(getPreviousFinancialYear());
@@ -52,7 +61,7 @@ export function FinancialYearToggle() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-[100px] text-sm font-semibold">
-            FY {getFinancialYearShort()}
+            {buttonText}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center">
@@ -72,3 +81,4 @@ export function FinancialYearToggle() {
     </div>
   );
 }
+
