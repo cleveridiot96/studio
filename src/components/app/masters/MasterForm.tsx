@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -45,17 +45,15 @@ const masterItemSchema = z.object({
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
   if (config?.hasCommission && (data.commission === undefined || data.commission < 0)) {
-    // Commission is required and must be non-negative if the type has commission
-    return false; 
+    return false;
   }
   if (config?.hasCommission && data.commission !== undefined && data.commission === 0) {
-    // Allow 0 commission
     return true;
   }
   return true;
 }, {
   message: "Commission must be a non-negative number if applicable.",
-  path: ["commission"], 
+  path: ["commission"],
 });
 
 
@@ -66,7 +64,7 @@ interface MasterFormProps {
   onClose: () => void;
   onSubmit: (item: MasterItem) => void;
   initialData?: MasterItem | null;
-  itemTypeFromButton?: MasterItemType; 
+  itemTypeFromButton?: MasterItemType;
 }
 
 export const MasterForm: React.FC<MasterFormProps> = ({
@@ -86,18 +84,20 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset({
-        name: initialData.name,
-        type: initialData.type,
-        commission: initialData.commission,
-      });
-    } else {
-      form.reset({
-        name: '',
-        type: itemTypeFromButton || 'Customer',
-        commission: undefined,
-      });
+    if (isOpen) {
+        if (initialData) {
+          form.reset({
+            name: initialData.name,
+            type: initialData.type,
+            commission: initialData.commission,
+          });
+        } else {
+          form.reset({
+            name: '',
+            type: itemTypeFromButton || 'Customer',
+            commission: undefined,
+          });
+        }
     }
   }, [initialData, itemTypeFromButton, form, isOpen]);
 
@@ -112,7 +112,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       name: values.name,
       type: values.type,
     };
-    if (showCommissionField && values.commission !== undefined ) { 
+    if (showCommissionField && values.commission !== undefined ) {
       itemToSubmit.commission = values.commission;
     }
     onSubmit(itemToSubmit);
@@ -150,16 +150,15 @@ export const MasterForm: React.FC<MasterFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select 
+                  <Select
                     onValueChange={(value) => {
                         field.onChange(value);
                         const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
                         if (!newTypeConfig?.hasCommission) {
                           form.setValue('commission', undefined);
                         }
-                    }} 
-                    defaultValue={field.value} 
-                    disabled={!!initialData}
+                    }}
+                    value={field.value} // Use value for controlled component
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -178,7 +177,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                 </FormItem>
               )}
             />
-            
+
             {showCommissionField && (
               <FormField
                 control={form.control}
@@ -196,11 +195,9 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                         value={field.value === undefined ? '' : field.value}
                         onChange={e => {
                             const val = e.target.value;
-                            // Allow empty string to represent undefined, parse to float if not empty
                             const numValue = val === '' ? undefined : parseFloat(val);
-                             // Ensure non-negative values, or handle specific validation in schema
                             if (numValue !== undefined && numValue < 0) {
-                                field.onChange(0); // or keep undefined / show error
+                                field.onChange(0);
                             } else {
                                 field.onChange(numValue);
                             }

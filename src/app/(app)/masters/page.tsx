@@ -1,7 +1,7 @@
-// @ts-nocheck
+
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, PackageSearch } from "lucide-react";
+import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, PackageSearch, Building } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,7 @@ const ITEMS_STORAGE_KEY = 'masterItems';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 
-// Initial data (ensure subtypes are included for customers)
+// Initial data
 const initialCustomers: MasterItem[] = [
   { id: 'c1', name: 'Alpha Customer', type: 'Customer' },
   { id: 'c2', name: 'Gamma Wholesaler', type: 'Customer' },
@@ -56,7 +56,7 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Transporter", label: "Transporters", icon: UserCog },
   { value: "Broker", label: "Brokers", icon: Handshake },
   { value: "Item", label: "Items", icon: PackageSearch },
-  { value: "Warehouse", label: "Warehouses", icon: PackageSearch },
+  { value: "Warehouse", label: "Warehouses", icon: Building },
 ];
 
 export default function MastersPage() {
@@ -76,8 +76,7 @@ export default function MastersPage() {
 
   const [itemToDelete, setItemToDelete] = useState<MasterItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
-  // Hydration check: ensure localStorage data is loaded before rendering lists that depend on it
+
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     setHydrated(true);
@@ -85,14 +84,14 @@ export default function MastersPage() {
 
 
   const allMasterItems = useMemo(() => {
-    if (!hydrated) return []; // Return empty array until hydrated
+    if (!hydrated) return [];
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...items, ...warehouses].sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, items, warehouses, hydrated]);
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
     if (type === 'All') {
-      return { data: allMasterItems, setData: () => {} }; // setData for 'All' is a no-op as it's derived
+      return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All'
     }
     switch (type) {
       case 'Customer': return { data: customers, setData: setCustomers };
@@ -107,15 +106,15 @@ export default function MastersPage() {
   }, [allMasterItems, customers, suppliers, agents, transporters, brokers, items, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setItems, setWarehouses]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
-    const { data, setData } = getMasterDataState(item.type);
-    
+    const { setData } = getMasterDataState(item.type);
+
     if (doesNameExist(item.name, item.type, item.id, allMasterItems)) {
       toast({
         title: "Duplicate Name",
         description: `An item named "${item.name}" of type "${item.type}" already exists. Please use a different name.`,
         variant: "destructive",
       });
-      return; // Stop execution if duplicate
+      return;
     }
 
     setData(prev => {
@@ -127,7 +126,6 @@ export default function MastersPage() {
         return updated;
       }
       toast({ title: `${item.type} added successfully!` });
-      // Add to the specific type list and ensure allMasterItems is re-calculated
       return [item, ...prev];
     });
     setIsFormOpen(false);
@@ -155,18 +153,10 @@ export default function MastersPage() {
   }, [itemToDelete, getMasterDataState, toast]);
 
   const openFormForNewItem = () => {
-    setEditingItem(null);
-    const initialTypeForForm = activeTab === 'All' ? 'Customer' : activeTab;
-    
-    setEditingItem(prev => ({ // Initialize with a structure expected by MasterForm, even if partially empty
-        ...prev, 
-        id: '', 
-        name: '',
-        type: initialTypeForForm as MasterItemType,
-    }));
+    setEditingItem(null); 
     setIsFormOpen(true);
   };
-  
+
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "Add New Item";
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
@@ -176,7 +166,7 @@ export default function MastersPage() {
 
   if (!hydrated) {
     return (
-        <div className="flex justify-center items-center h-screen">
+        <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading master data...</p>
         </div>
     );
@@ -212,7 +202,7 @@ export default function MastersPage() {
               <CardContent>
                 <MasterList
                   data={tab.value === "All" ? allMasterItems : getMasterDataState(tab.value).data}
-                  itemType={tab.value as MasterItemType} 
+                  itemType={tab.value as MasterItemType}
                   isAllItemsTab={tab.value === "All"}
                   onEdit={handleEditItem}
                   onDelete={handleDeleteItemAttempt}
@@ -234,7 +224,7 @@ export default function MastersPage() {
           onClose={() => { setIsFormOpen(false); setEditingItem(null); }}
           onSubmit={handleAddOrUpdateMasterItem}
           initialData={editingItem}
-          itemTypeFromButton={editingItem?.type || (activeTab === 'All' ? 'Customer' : activeTab as MasterItemType)}
+          itemTypeFromButton={editingItem ? editingItem.type : (activeTab === 'All' ? 'Customer' : activeTab as MasterItemType)}
         />
       )}
 
@@ -257,4 +247,3 @@ export default function MastersPage() {
     </div>
   );
 }
-
