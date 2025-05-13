@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatabaseBackup, UploadCloud, DownloadCloud, History, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import React, { useState, useEffect, ChangeEvent } from "react";
+import React, { ChangeEvent } from "react";
+import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
 // Define the keys for data stored in localStorage
+// These should align with keys used in PurchasesClient, SalesClient, etc.
 const LOCAL_STORAGE_KEYS = {
-  purchases: 'purchasesData', // Example key, align with actual keys used
+  purchases: 'purchasesData',
   sales: 'salesData',
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
@@ -18,22 +20,21 @@ const LOCAL_STORAGE_KEYS = {
   warehouses: 'masterWarehouses',
   settingsFontSize: 'appFontSize',
   settingsFinancialYear: 'appFinancialYear',
-  // Add any other relevant keys
+  // Add any other relevant keys used by other features
 };
 const LAST_BACKUP_TIMESTAMP_KEY = 'lastBackupTimestamp';
 
 export default function BackupPage() {
   const { toast } = useToast();
-  const [lastBackup, setLastBackup] = useState<string | null>(null);
+  const [lastBackupTimestamp, setLastBackupTimestamp] = useLocalStorageState<number | null>(LAST_BACKUP_TIMESTAMP_KEY, null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const timestamp = localStorage.getItem(LAST_BACKUP_TIMESTAMP_KEY);
-      if (timestamp) {
-        setLastBackup(new Date(parseInt(timestamp, 10)).toLocaleString());
-      }
+  const getFormattedLastBackup = () => {
+    if (lastBackupTimestamp) {
+      return new Date(lastBackupTimestamp).toLocaleString();
     }
-  }, []);
+    return "Not Available Yet";
+  };
+
 
   const handleBackup = () => {
     if (typeof window === 'undefined') return;
@@ -45,7 +46,7 @@ export default function BackupPage() {
           try {
             backupData[key] = JSON.parse(item);
           } catch (e) {
-            // If not JSON, store as is (e.g. plain string for font size)
+            // If not JSON, store as is (e.g. plain string for font size or FY)
              backupData[key] = item;
           }
         }
@@ -64,8 +65,7 @@ export default function BackupPage() {
       URL.revokeObjectURL(href);
 
       const now = Date.now();
-      localStorage.setItem(LAST_BACKUP_TIMESTAMP_KEY, now.toString());
-      setLastBackup(new Date(now).toLocaleString());
+      setLastBackupTimestamp(now);
 
       toast({
         title: "Backup Successful",
@@ -95,16 +95,17 @@ export default function BackupPage() {
         const jsonString = e.target?.result as string;
         const restoredData = JSON.parse(jsonString);
 
-        // Clear existing data before restoring (optional, based on desired behavior)
-        // Object.values(LOCAL_STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
-
         let restoreSuccess = false;
-        for (const key in restoredData) {
-          if (Object.values(LOCAL_STORAGE_KEYS).includes(key as any) || key === LOCAL_STORAGE_KEYS.settingsFontSize || key === LOCAL_STORAGE_KEYS.settingsFinancialYear) {
-             if (typeof restoredData[key] === 'string') {
-                localStorage.setItem(key, restoredData[key]);
+        for (const keyInBackup in restoredData) {
+          // Check if the key from the backup file matches any of our defined LOCAL_STORAGE_KEYS values
+          const appKey = Object.keys(LOCAL_STORAGE_KEYS).find(k => LOCAL_STORAGE_KEYS[k as keyof typeof LOCAL_STORAGE_KEYS] === keyInBackup);
+          
+          if (appKey || keyInBackup === LOCAL_STORAGE_KEYS.settingsFontSize || keyInBackup === LOCAL_STORAGE_KEYS.settingsFinancialYear) {
+             const targetKey = keyInBackup; // Use the key from the backup file directly
+             if (typeof restoredData[targetKey] === 'string') {
+                localStorage.setItem(targetKey, restoredData[targetKey]);
              } else {
-                localStorage.setItem(key, JSON.stringify(restoredData[key]));
+                localStorage.setItem(targetKey, JSON.stringify(restoredData[targetKey]));
              }
             restoreSuccess = true;
           }
@@ -112,9 +113,9 @@ export default function BackupPage() {
         
         if(restoreSuccess){
           const now = Date.now();
-          localStorage.setItem(LAST_BACKUP_TIMESTAMP_KEY, now.toString()); // Consider if restore should update this.
-          setLastBackup(`Restored at ${new Date(now).toLocaleString()}`);
-
+          // We don't update lastBackupTimestamp on restore, as it reflects the last *backup* action
+          // Or, we could change its meaning to "last data operation timestamp"
+          // For now, keep it as last backup. The user will see old data loaded.
 
           toast({
             title: "Restore Successful",
@@ -125,7 +126,7 @@ export default function BackupPage() {
         } else {
             toast({
             title: "Restore Failed",
-            description: "The backup file does not seem to contain valid application data.",
+            description: "The backup file does not seem to contain valid application data for the defined keys.",
             variant: "destructive",
           });
         }
@@ -139,7 +140,7 @@ export default function BackupPage() {
         });
       } finally {
         // Reset file input
-        event.target.value = "";
+        if(event.target) event.target.value = "";
       }
     };
     reader.readAsText(file);
@@ -197,7 +198,7 @@ export default function BackupPage() {
         <CardFooter className="flex-col items-start text-sm text-muted-foreground space-y-2">
           <div className="flex items-center">
             <History className="w-4 h-4 mr-2 text-accent"/>
-            <span>Last Backup: {lastBackup || "Not Available Yet"}</span>
+            <span>Last Backup: {getFormattedLastBackup()}</span>
           </div>
           <div className="flex items-start text-destructive p-3 rounded-md border border-destructive/50 bg-destructive/10">
             <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
