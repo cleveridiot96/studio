@@ -2,79 +2,93 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 56 88% 97%; /* Light cream */
+    --foreground: 225 47% 14%; /* Deep navy blue */
+
+    --card: 56 88% 97%; /* Light cream for cards */
+    --card-foreground: 225 47% 14%; /* Deep navy blue */
+
+    --popover: 56 88% 95%; /* Slightly adjusted Light cream for popovers */
+    --popover-foreground: 225 47% 14%; /* Deep navy blue */
+
+    --primary: 158 59% 27%; /* Deep green */
+    --primary-foreground: 56 88% 97%; /* Light cream (contrast with deep green) */
+
+    --secondary: 225 47% 90%; /* Lighter shade for secondary elements */
+    --secondary-foreground: 158 59% 27%; /* Deep green for secondary text */
+
+    --muted: 225 47% 88%; /* Muted version */
+    --muted-foreground: 225 47% 40%; /* Darker muted text */
+
+    --accent: 45 100% 50%; /* Saffron / turmeric yellow */
+    --accent-foreground: 225 47% 10%; /* Almost black (contrast with yellow) */
+
+    --destructive: 0 65% 38%; /* Maroon red */
+    --destructive-foreground: 56 88% 97%; /* Light cream */
+
+    --border: 225 47% 85%; /* Lighter border */
+    --input: 225 47% 92%; /* Light input background */
+    --ring: 158 59% 35%; /* Deep green for focus rings */
+
+    --radius: 0.75rem; /* Larger radius for tactile feel */
+
+    --chart-1: 158 59% 27%;
+    --chart-2: 45 100% 50%;
+    --chart-3: 225 47% 30%;
+    --chart-4: 0 65% 38%;
+    --chart-5: 158 59% 45%;
+
+    /* Sidebar specific colors, can be same as main or distinct */
+    --sidebar-background: 225 47% 10%; /* Deep Navy Blue */
+    --sidebar-foreground: 56 88% 90%; /* Light Cream / Off-white */
+    --sidebar-primary: 45 100% 50%; /* Saffron / Turmeric yellow for active/hover states */
+    --sidebar-primary-foreground: 225 47% 10%; /* Deep Navy for text on saffron */
+    --sidebar-accent: 225 47% 15%; /* Slightly lighter navy for hover backgrounds */
+    --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
+    --sidebar-border: 225 47% 20%;
+    --sidebar-ring: 45 100% 50%;
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Dark theme based on user request, can be refined */
+    --background: 225 47% 10%; /* Very dark navy */
+    --foreground: 56 88% 90%; /* Off-white/light cream */
+
+    --card: 225 47% 12%;
+    --card-foreground: 56 88% 90%;
+
+    --popover: 225 47% 10%;
+    --popover-foreground: 56 88% 90%;
+
+    --primary: 158 59% 35%; /* Slightly lighter deep green for dark mode */
+    --primary-foreground: 0 0% 98%; /* White */
+
+    --secondary: 225 47% 80%;
+    --secondary-foreground: 158 59% 35%;
+
+    --muted: 225 47% 25%;
+    --muted-foreground: 56 88% 70%;
+
+    --accent: 45 100% 55%; /* Slightly brighter Saffron */
+    --accent-foreground: 225 47% 10%;
+
+    --destructive: 0 65% 45%; /* Slightly lighter maroon */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --border: 225 47% 20%;
+    --input: 225 47% 18%;
+    --ring: 158 59% 35%;
+
+    --sidebar-background: 0 0% 8%; /* Darker than main dark bg */
+    --sidebar-foreground: 56 88% 85%; 
+    --sidebar-primary: 45 100% 55%; 
+    --sidebar-primary-foreground: 0 0% 8%; 
+    --sidebar-accent: 0 0% 12%; 
+    --sidebar-accent-foreground: 45 100% 60%; 
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 45 100% 55%;
   }
 }
 
@@ -84,5 +98,16 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 16px; /* Base font size for "big fonts" feel */
   }
+  /* Ensure h tags have larger default sizes if needed */
+  h1 { @apply text-4xl font-bold; }
+  h2 { @apply text-3xl font-semibold; }
+  h3 { @apply text-2xl font-semibold; }
+  h4 { @apply text-xl font-semibold; }
+
+  /* Increase default button padding and input sizes for tactile feel */
+  .btn-lg { @apply px-6 py-3 text-lg; } /* Example for larger buttons */
+  .input-lg { @apply px-4 py-3 text-lg; } /* Example for larger inputs */
+
 }
