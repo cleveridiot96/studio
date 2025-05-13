@@ -34,11 +34,13 @@ const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolea
   { value: "Agent", label: "Agent", hasCommission: true },
   { value: "Transporter", label: "Transporter", hasCommission: false },
   { value: "Broker", label: "Broker", hasCommission: true },
+  { value: "Item", label: "Item", hasCommission: false },
+  { value: "Warehouse", label: "Warehouse", hasCommission: false },
 ];
 
 const masterItemSchema = z.object({
   name: z.string().min(1, "Name is required."),
-  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker"]),
+  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Item", "Warehouse"]),
   commission: z.coerce.number().optional(),
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
@@ -136,7 +138,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder={`Enter ${selectedType.toLowerCase()} name`} {...field} />
+                    <Input placeholder={`Enter ${selectedType ? selectedType.toLowerCase() : 'item'} name`} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -148,18 +150,17 @@ export const MasterForm: React.FC<MasterFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select onValueChange={(value) => {
-                      field.onChange(value);
-                      const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
-                      if (!newTypeConfig?.hasCommission) {
-                        form.setValue('commission', undefined);
-                      } else {
-                        // If switching to a type that has commission, you might want to set a default or leave it undefined.
-                        // Forcing a default might be '' or 0, depends on desired UX.
-                        // form.setValue('commission', 0); // Example: default to 0
-                      }
-
-                  }} defaultValue={field.value} disabled={!!initialData}>
+                  <Select 
+                    onValueChange={(value) => {
+                        field.onChange(value);
+                        const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
+                        if (!newTypeConfig?.hasCommission) {
+                          form.setValue('commission', undefined);
+                        }
+                    }} 
+                    defaultValue={field.value} 
+                    disabled={!!initialData}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select item type" />
