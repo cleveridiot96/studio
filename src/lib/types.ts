@@ -16,12 +16,12 @@ export interface MasterItem {
   name: string;
   commission?: number; // For Agents and Brokers
   type: MasterItemType;
-  subtype?: MasterItemSubtype; // For customer bifurcation
+  // subtype?: MasterItemSubtype; // Removed for customer bifurcation
   [key: string]: any; // For additional fields
 }
 
 export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker' | 'Item';
-export type MasterItemSubtype = 'Retailer' | 'Wholesaler' | 'Corporate';
+// export type MasterItemSubtype = 'Retailer' | 'Wholesaler' | 'Corporate'; // Removed
 
 
 // Example data types for features
@@ -140,7 +140,7 @@ export interface Agent extends MasterItem {
 export interface Transporter extends MasterItem {}
 export interface Warehouse extends MasterItem {} 
 export interface Customer extends MasterItem {
-  subtype: MasterItemSubtype;
+  // subtype: MasterItemSubtype; // Removed
 }
 export interface Broker extends MasterItem {
   commission?: number; 

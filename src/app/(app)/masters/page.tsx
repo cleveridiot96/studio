@@ -1,13 +1,13 @@
 // @ts-nocheck
 "use client";
-import React, { useState, useCallback, useMemo } from 'react';
-import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List } from "lucide-react";
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, PackageSearch } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 import { MasterList } from '@/components/app/masters/MasterList';
-import type { MasterItem, MasterItemType, MasterItemSubtype } from '@/lib/types';
+import type { MasterItem, MasterItemType } from '@/lib/types';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -20,6 +20,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { doesNameExist } from '@/lib/masterUtils';
+
 
 // Storage keys
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
@@ -27,27 +29,34 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
+const ITEMS_STORAGE_KEY = 'masterItems';
+const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+
 
 // Initial data (ensure subtypes are included for customers)
 const initialCustomers: MasterItem[] = [
-  { id: 'c1', name: 'Alpha Customer', type: 'Customer', subtype: 'Retailer' },
-  { id: 'c2', name: 'Gamma Wholesaler', type: 'Customer', subtype: 'Wholesaler' },
+  { id: 'c1', name: 'Alpha Customer', type: 'Customer' },
+  { id: 'c2', name: 'Gamma Wholesaler', type: 'Customer' },
 ];
 const initialSuppliers: MasterItem[] = [{ id: 's1', name: 'Beta Supplier', type: 'Supplier' }];
 const initialAgents: MasterItem[] = [{ id: 'a1', name: 'Epsilon Agent', type: 'Agent', commission: 2.5 }];
 const initialTransporters: MasterItem[] = [{ id: 't1', name: 'Delta Transporter', type: 'Transporter' }];
 const initialBrokers: MasterItem[] = [{ id: 'b1', name: 'Zeta Broker', type: 'Broker', commission: 1 }];
+const initialItems: MasterItem[] = [{id: 'item1', name: 'Wheat', type: 'Item'}, {id: 'item2', name: 'Soyabean', type: 'Item'}];
+const initialWarehouses: MasterItem[] = [{id: 'wh1', name: 'Mumbai Godown', type: 'Warehouse'}, {id: 'wh2', name: 'Chiplun Storage', type: 'Warehouse'}];
 
 
 type MasterPageTabKey = MasterItemType | 'All';
 
-const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; subtypes?: MasterItemSubtype[] }[] = [
+const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; }[] = [
   { value: "All", label: "All Items", icon: List },
-  { value: "Customer", label: "Customers", icon: Users, subtypes: ['Retailer', 'Wholesaler', 'Corporate'] },
+  { value: "Customer", label: "Customers", icon: Users },
   { value: "Supplier", label: "Suppliers", icon: Truck },
   { value: "Agent", label: "Agents", icon: UserCheck },
   { value: "Transporter", label: "Transporters", icon: UserCog },
   { value: "Broker", label: "Brokers", icon: Handshake },
+  { value: "Item", label: "Items", icon: PackageSearch },
+  { value: "Warehouse", label: "Warehouses", icon: PackageSearch },
 ];
 
 export default function MastersPage() {
@@ -57,6 +66,9 @@ export default function MastersPage() {
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, initialAgents);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, initialBrokers);
+  const [items, setItems] = useLocalStorageState<MasterItem[]>(ITEMS_STORAGE_KEY, initialItems);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses);
+
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
@@ -64,15 +76,23 @@ export default function MastersPage() {
 
   const [itemToDelete, setItemToDelete] = useState<MasterItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Hydration check: ensure localStorage data is loaded before rendering lists that depend on it
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
 
   const allMasterItems = useMemo(() => {
-    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers].sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, suppliers, agents, transporters, brokers]);
+    if (!hydrated) return []; // Return empty array until hydrated
+    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...items, ...warehouses].sort((a,b) => a.name.localeCompare(b.name));
+  }, [customers, suppliers, agents, transporters, brokers, items, warehouses, hydrated]);
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
     if (type === 'All') {
-      return { data: allMasterItems, setData: () => {} };
+      return { data: allMasterItems, setData: () => {} }; // setData for 'All' is a no-op as it's derived
     }
     switch (type) {
       case 'Customer': return { data: customers, setData: setCustomers };
@@ -80,23 +100,16 @@ export default function MastersPage() {
       case 'Agent': return { data: agents, setData: setAgents };
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
+      case 'Item': return { data: items, setData: setItems };
+      case 'Warehouse': return { data: warehouses, setData: setWarehouses };
       default: return { data: [], setData: () => {} };
     }
-  }, [allMasterItems, customers, suppliers, agents, transporters, brokers, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers]);
+  }, [allMasterItems, customers, suppliers, agents, transporters, brokers, items, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setItems, setWarehouses]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { data, setData } = getMasterDataState(item.type);
     
-    // Duplicate name check (case-insensitive within the same type)
-    const trimmedNewName = item.name.trim().toLowerCase();
-    const isDuplicateName = data.some(
-      existingItem => 
-        existingItem.id !== item.id && // Exclude the item itself if editing
-        existingItem.name.trim().toLowerCase() === trimmedNewName &&
-        existingItem.type === item.type
-    );
-
-    if (isDuplicateName) {
+    if (doesNameExist(item.name, item.type, item.id, allMasterItems)) {
       toast({
         title: "Duplicate Name",
         description: `An item named "${item.name}" of type "${item.type}" already exists. Please use a different name.`,
@@ -114,11 +127,12 @@ export default function MastersPage() {
         return updated;
       }
       toast({ title: `${item.type} added successfully!` });
+      // Add to the specific type list and ensure allMasterItems is re-calculated
       return [item, ...prev];
     });
     setIsFormOpen(false);
     setEditingItem(null);
-  }, [getMasterDataState, toast]);
+  }, [getMasterDataState, toast, allMasterItems]);
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
@@ -142,26 +156,31 @@ export default function MastersPage() {
 
   const openFormForNewItem = () => {
     setEditingItem(null);
-    // Determine initial type for the form. If 'All' tab is active, default to 'Customer'.
     const initialTypeForForm = activeTab === 'All' ? 'Customer' : activeTab;
-    const activeTabConfig = TABS_CONFIG.find(t => t.value === initialTypeForForm);
     
-    setEditingItem(prev => ({
-        ...prev,
+    setEditingItem(prev => ({ // Initialize with a structure expected by MasterForm, even if partially empty
+        ...prev, 
+        id: '', 
+        name: '',
         type: initialTypeForForm as MasterItemType,
-        subtype: activeTabConfig?.subtypes?.[0] // Default to first subtype if available for the type
     }));
     setIsFormOpen(true);
   };
   
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "Add New Item";
-    // Find the config for the currently active tab to get its label
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
-    // Use singular form for the button label, e.g., "Add New Customer"
     const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
     return `Add New ${singularLabel || 'Item'}`;
   }, [activeTab]);
+
+  if (!hydrated) {
+    return (
+        <div className="flex justify-center items-center h-screen">
+            <p className="text-lg text-muted-foreground">Loading master data...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -176,7 +195,7 @@ export default function MastersPage() {
       </div>
 
       <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-6 h-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 h-auto">
           {TABS_CONFIG.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value} className="py-2 sm:py-3 text-sm sm:text-base flex-wrap">
               <tab.icon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> {tab.label}
@@ -192,7 +211,7 @@ export default function MastersPage() {
               </CardHeader>
               <CardContent>
                 <MasterList
-                  data={getMasterDataState(tab.value).data}
+                  data={tab.value === "All" ? allMasterItems : getMasterDataState(tab.value).data}
                   itemType={tab.value as MasterItemType} 
                   isAllItemsTab={tab.value === "All"}
                   onEdit={handleEditItem}
@@ -201,7 +220,7 @@ export default function MastersPage() {
               </CardContent>
               <CardFooter>
                 <p className="text-xs text-muted-foreground">
-                  Total {tab.value === 'All' ? 'items' : tab.label.toLowerCase()}: {getMasterDataState(tab.value).data.length}
+                  Total {tab.value === 'All' ? 'items' : tab.label.toLowerCase()}: {tab.value === "All" ? allMasterItems.length : getMasterDataState(tab.value).data.length}
                 </p>
               </CardFooter>
             </Card>
@@ -216,7 +235,6 @@ export default function MastersPage() {
           onSubmit={handleAddOrUpdateMasterItem}
           initialData={editingItem}
           itemTypeFromButton={editingItem?.type || (activeTab === 'All' ? 'Customer' : activeTab as MasterItemType)}
-          customerSubtypes={TABS_CONFIG.find(t => t.value === 'Customer')?.subtypes}
         />
       )}
 
@@ -239,3 +257,4 @@ export default function MastersPage() {
     </div>
   );
 }
+

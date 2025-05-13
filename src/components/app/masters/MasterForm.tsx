@@ -25,11 +25,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { MasterItem, MasterItemType, MasterItemSubtype } from '@/lib/types';
+import type { MasterItem, MasterItemType } from '@/lib/types';
 import { Percent } from 'lucide-react';
 
-const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolean; hasSubtypes?: boolean }[] = [
-  { value: "Customer", label: "Customer", hasCommission: false, hasSubtypes: true },
+const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolean; }[] = [
+  { value: "Customer", label: "Customer", hasCommission: false },
   { value: "Supplier", label: "Supplier", hasCommission: false },
   { value: "Agent", label: "Agent", hasCommission: true },
   { value: "Transporter", label: "Transporter", hasCommission: false },
@@ -39,24 +39,21 @@ const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolea
 const masterItemSchema = z.object({
   name: z.string().min(1, "Name is required."),
   type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker"]),
-  subtype: z.string().optional(), // For customer bifurcation
   commission: z.coerce.number().optional(),
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
-  if (config?.hasCommission && data.commission !== undefined && data.commission <= 0) {
-    // If commission is applicable and provided, it must be positive
-    // return false; // This would make 0 an invalid commission if hasCommission is true.
-    // For now, allow 0 as a valid commission. This can be adjusted.
+  if (config?.hasCommission && (data.commission === undefined || data.commission < 0)) {
+    // Commission is required and must be non-negative if the type has commission
+    return false; 
   }
-  if (data.type === 'Customer' && !data.subtype) {
-    // If type is Customer, subtype (bifurcation) is required.
-    // This path might not be directly reachable if dropdown is non-optional in UI,
-    // but good for data integrity.
+  if (config?.hasCommission && data.commission !== undefined && data.commission === 0) {
+    // Allow 0 commission
+    return true;
   }
-  return true; 
+  return true;
 }, {
-  message: "Commission must be a positive number if specified. Subtype is required for Customers.",
-  path: ["commission"], // Or a more general path if subtype logic is complex
+  message: "Commission must be a non-negative number if applicable.",
+  path: ["commission"], 
 });
 
 
@@ -68,7 +65,6 @@ interface MasterFormProps {
   onSubmit: (item: MasterItem) => void;
   initialData?: MasterItem | null;
   itemTypeFromButton?: MasterItemType; 
-  customerSubtypes?: MasterItemSubtype[];
 }
 
 export const MasterForm: React.FC<MasterFormProps> = ({
@@ -77,14 +73,12 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   onSubmit,
   initialData,
   itemTypeFromButton,
-  customerSubtypes = ['Retailer', 'Wholesaler', 'Corporate'], // Default subtypes
 }) => {
   const form = useForm<MasterItemFormValues>({
     resolver: zodResolver(masterItemSchema),
     defaultValues: {
       name: '',
       type: itemTypeFromButton || 'Customer',
-      subtype: (itemTypeFromButton === 'Customer' && customerSubtypes?.length) ? customerSubtypes[0] : undefined,
       commission: undefined,
     },
   });
@@ -94,23 +88,20 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       form.reset({
         name: initialData.name,
         type: initialData.type,
-        subtype: initialData.subtype,
         commission: initialData.commission,
       });
     } else {
       form.reset({
         name: '',
         type: itemTypeFromButton || 'Customer',
-        subtype: (itemTypeFromButton === 'Customer' && customerSubtypes?.length) ? customerSubtypes[0] : undefined,
         commission: undefined,
       });
     }
-  }, [initialData, itemTypeFromButton, customerSubtypes, form, isOpen]);
+  }, [initialData, itemTypeFromButton, form, isOpen]);
 
   const selectedType = form.watch('type');
   const currentTypeConfig = TABS_CONFIG.find(t => t.value === selectedType);
   const showCommissionField = currentTypeConfig?.hasCommission;
-  const showSubtypeField = selectedType === 'Customer';
 
 
   const handleSubmit = (values: MasterItemFormValues) => {
@@ -119,11 +110,8 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       name: values.name,
       type: values.type,
     };
-    if (showCommissionField && values.commission !== undefined ) { // Allow 0 commission
+    if (showCommissionField && values.commission !== undefined ) { 
       itemToSubmit.commission = values.commission;
-    }
-    if (showSubtypeField && values.subtype) {
-      itemToSubmit.subtype = values.subtype as MasterItemSubtype;
     }
     onSubmit(itemToSubmit);
   };
@@ -162,16 +150,13 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                   <FormLabel>Type</FormLabel>
                   <Select onValueChange={(value) => {
                       field.onChange(value);
-                      // Reset subtype if type changes from Customer
-                      if (value !== 'Customer') {
-                          form.setValue('subtype', undefined);
-                      } else if (customerSubtypes?.length) {
-                        form.setValue('subtype', customerSubtypes[0]); // Default to first subtype for Customer
-                      }
-                       // Reset commission if new type does not have commission
                       const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
                       if (!newTypeConfig?.hasCommission) {
                         form.setValue('commission', undefined);
+                      } else {
+                        // If switching to a type that has commission, you might want to set a default or leave it undefined.
+                        // Forcing a default might be '' or 0, depends on desired UX.
+                        // form.setValue('commission', 0); // Example: default to 0
                       }
 
                   }} defaultValue={field.value} disabled={!!initialData}>
@@ -192,33 +177,6 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                 </FormItem>
               )}
             />
-
-            {showSubtypeField && (
-              <FormField
-                control={form.control}
-                name="subtype"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer Bifurcation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select customer type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {customerSubtypes.map(subtype => (
-                          <SelectItem key={subtype} value={subtype}>
-                            {subtype}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
             
             {showCommissionField && (
               <FormField
@@ -237,7 +195,14 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                         value={field.value === undefined ? '' : field.value}
                         onChange={e => {
                             const val = e.target.value;
-                            field.onChange(val === '' ? undefined : parseFloat(val));
+                            // Allow empty string to represent undefined, parse to float if not empty
+                            const numValue = val === '' ? undefined : parseFloat(val);
+                             // Ensure non-negative values, or handle specific validation in schema
+                            if (numValue !== undefined && numValue < 0) {
+                                field.onChange(0); // or keep undefined / show error
+                            } else {
+                                field.onChange(numValue);
+                            }
                         }}
                         className="pr-8"
                       />
