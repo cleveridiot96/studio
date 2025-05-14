@@ -1,3 +1,4 @@
+
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -348,7 +349,8 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                     name="rate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rate (₹/kg)</n                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 20.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormLabel>Rate (₹/kg)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 20.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -485,3 +487,5 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   );
 }
 export const AddPurchaseForm = React.memo(AddPurchaseFormComponent);
+
+    
