@@ -14,33 +14,36 @@ export function useLocalStorageState<T>(key: string, defaultValue: T): [T, SetVa
         const storedValue = window.localStorage.getItem(key);
         if (storedValue !== null) {
           const parsed = JSON.parse(storedValue);
-          // If parsed is null but defaultValue isn't, it means localStorage had "null"
-          // for a key that might expect a non-null structure (e.g., an array).
-          // In such cases, falling back to defaultValue is safer to avoid type errors.
           if (parsed === null && defaultValue !== null) {
             setValue(defaultValue);
           } else {
             setValue(parsed);
           }
         }
-        // If storedValue is null (key not found), state remains defaultValue as initialized.
       } catch (error) {
         console.warn(`Error reading localStorage key "${key}" in useEffect:`, error);
-        // If error, state remains defaultValue.
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, defaultValue]); // Added defaultValue to ensure effect runs if it changes.
+  }, [key, defaultValue]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(value));
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
-      }
+      // Debounce the localStorage.setItem call
+      const handler = setTimeout(() => {
+        try {
+          console.log(`Debounced: Writing to localStorage key "${key}"`);
+          window.localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+          console.warn(`Error setting localStorage key "${key}" during debounced write:`, error);
+        }
+      }, 500); // Adjust debounce delay as needed (500ms is a common starting point)
+
+      // Cleanup function to clear the timeout if the effect runs again before the timeout completes
+      return () => {
+        clearTimeout(handler);
+      };
     }
-  }, [key, value]);
+  }, [key, value]); // Effect runs when key or value changes, but the write is debounced
 
   const setStoredValue: SetValue<T> = useCallback(
     (newValue) => {
