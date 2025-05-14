@@ -1,6 +1,3 @@
-
-"use client";
-
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,8 +35,8 @@ interface AddSaleFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (sale: Sale) => void;
-  customers: Customer[];
-  transporters: Transporter[];
+  customers: MasterItem[];
+  transporters: MasterItem[];
   brokers: Broker[];
   // TODO: Pass inventory lots for lotNumber dropdown
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
@@ -100,7 +97,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
 
   const form = useForm<SaleFormValues>({
-    resolver: zodResolver(saleSchema),
+    resolver: zodResolver(saleSchema(customers, transporters, brokers)),
     defaultValues: getDefaultValues(),
   });
 
@@ -237,6 +234,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         notFoundMessage="No customer found." 
                         addNewLabel="Add New Customer"/>
                     <FormMessage />
+                     {form.formState.errors.customerId && (<FormMessage>{form.formState.errors.customerId?.message}</FormMessage>)}
                     </FormItem>
                 )}/>
               </div>
@@ -287,6 +285,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             notFoundMessage="No transporter found." 
                             addNewLabel="Add New Transporter"/>
                         <FormMessage />
+                         {form.formState.errors.transporterId && (<FormMessage>{form.formState.errors.transporterId?.message}</FormMessage>)}
                         </FormItem>
                     )}/>
                      <FormField control={form.control} name="transportCost" render={({ field }) => (
@@ -308,6 +307,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             notFoundMessage="No broker found." 
                             addNewLabel="Add New Broker"/>
                         <FormMessage />
+                         {form.formState.errors.brokerId && (<FormMessage>{form.formState.errors.brokerId?.message}</FormMessage>)}
                         </FormItem>
                     )}/>
                      <FormField control={form.control} name="brokerageAmount" render={({ field }) => (

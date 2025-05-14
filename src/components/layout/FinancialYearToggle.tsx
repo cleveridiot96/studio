@@ -3,7 +3,6 @@
 
 import { useSettings } from '@/contexts/SettingsContext';
 import { Button } from '@/components/ui/button';
-import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,74 +10,98 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import React, { useEffect, useState } from 'react';
+} from "@/components/ui/dropdown-menu";
+import { useToast } from '@/hooks/use-toast';
+import React, { useEffect, useState, useCallback } from 'react';
+import { CalendarPlus, Check } from 'lucide-react';
 
 export function FinancialYearToggle() {
   const { 
     financialYear, 
     setFinancialYear, 
-    getFinancialYearShort,
-    getPreviousFinancialYear,
+    getPreviousFinancialYear, // Kept for potential future use or if direct year options are limited
     getNextFinancialYear 
   } = useSettings();
+  const { toast } = useToast();
 
-  const [buttonText, setButtonText] = useState("FY --"); // Placeholder for SSR
+  const [buttonText, setButtonText] = useState(`FY ${financialYear}`);
 
   useEffect(() => {
-    // This effect runs only on the client, after hydration
-    setButtonText(`FY ${getFinancialYearShort()}`);
-  }, [financialYear, getFinancialYearShort]);
-
-
-  const handleSetPreviousYear = () => {
-    setFinancialYear(getPreviousFinancialYear());
-  };
-
-  const handleSetNextYear = () => {
-    setFinancialYear(getNextFinancialYear());
-  };
+    setButtonText(`FY ${financialYear}`);
+  }, [financialYear]);
   
-  // Generate a few recent years for selection
-  const generateYearOptions = () => {
-    const currentFullYear = new Date().getFullYear();
+  const generateYearOptions = useCallback(() => {
     const options = [];
-    for (let i = 2; i >= -2; i--) { // Show current, 2 past, 2 future
-      const startYear = currentFullYear - i;
-      options.push(`${startYear -1 }-${startYear}`);
+    const currentFyParts = financialYear.split('-').map(Number);
+    if (currentFyParts.length !== 2 || isNaN(currentFyParts[0])) {
+        // Fallback to a default range if current financialYear is malformed
+        const currentActualYear = new Date().getFullYear();
+         for (let i = 2; i >= -2; i--) {
+            const startYear = currentActualYear - i;
+            options.push(`${startYear}-${startYear + 1}`);
+        }
+        return options.sort((a,b) => b.localeCompare(a));
     }
-    return options.reverse(); // Show most recent first in dropdown
-  };
+
+    const [currentFyStart] = currentFyParts;
+    
+    for (let i = 2; i >= -2; i--) { // Show current, 2 past, 2 future relative to current FY
+      const startYear = currentFyStart - i;
+      options.push(`${startYear}-${startYear + 1}`);
+    }
+    return options.sort((a,b) => b.localeCompare(a)); // Show most recent first in dropdown
+  }, [financialYear]);
+
   const yearOptions = generateYearOptions();
 
+  const handleAddNextFinancialYear = () => {
+    const nextFy = getNextFinancialYear();
+    setFinancialYear(nextFy);
+    toast({
+      title: "New Financial Year Added",
+      description: `Switched to FY ${nextFy}. Accounts for FY ${financialYear} would be finalized.`,
+    });
+    toast({
+      title: "Conceptual Action",
+      description: `Closing balances for FY ${financialYear} would be carried forward to FY ${nextFy}.`,
+      duration: 4000,
+    });
+    toast({
+      title: "Info",
+      description: "PDF report generation for closing balances is a planned feature.",
+      duration: 4000,
+    });
+  };
 
   return (
-    <div className="flex items-center gap-1">
-      <Button variant="ghost" size="icon" onClick={handleSetPreviousYear} aria-label="Previous Financial Year">
-        <ChevronsLeft className="h-5 w-5" />
-      </Button>
-      
+    <div className="flex items-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[100px] text-sm font-semibold">
+          <Button variant="outline" className="w-[140px] text-sm font-semibold">
             {buttonText}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="center">
+        <DropdownMenuContent align="center" className="w-[200px]">
           <DropdownMenuLabel>Select Financial Year</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {yearOptions.map(year => (
-            <DropdownMenuItem key={year} onClick={() => setFinancialYear(year)} disabled={year === financialYear}>
+            <DropdownMenuItem 
+              key={year} 
+              onClick={() => setFinancialYear(year)}
+              disabled={year === financialYear}
+              className="flex justify-between items-center"
+            >
               {year}
+              {year === financialYear && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
           ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleAddNextFinancialYear} className="text-primary hover:!text-primary-foreground hover:!bg-primary">
+            <CalendarPlus className="mr-2 h-4 w-4" />
+            Add Next FY ({getNextFinancialYear()})
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Button variant="ghost" size="icon" onClick={handleSetNextYear} aria-label="Next Financial Year">
-        <ChevronsRight className="h-5 w-5" />
-      </Button>
     </div>
   );
 }
-

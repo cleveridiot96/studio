@@ -1,6 +1,3 @@
-
-"use client";
-
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -105,7 +102,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   }, [purchaseToEdit]);
 
   const form = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema),
+    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, brokers)),
     defaultValues: getDefaultValues(),
   });
 
@@ -283,6 +280,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                           itemIcon={WarehouseIcon}
                         />
                         <FormMessage />
+                        {form.formState.errors.locationId && (<FormMessage>{form.formState.errors.locationId?.message}</FormMessage>)}
                       </FormItem>
                     )}
                   />
@@ -300,7 +298,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       <FormItem>
                         <FormLabel>Supplier</FormLabel>
                         <MasterDataCombobox items={suppliers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Supplier")} placeholder="Select Supplier" searchPlaceholder="Search suppliers..." notFoundMessage="No supplier found." addNewLabel="Add New Supplier"/>
-                        <FormMessage />
+                         {form.formState.errors.supplierId && (<FormMessage>{form.formState.errors.supplierId?.message}</FormMessage>)}
                       </FormItem>
                     )}
                   />
@@ -311,7 +309,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       <FormItem>
                         <FormLabel>Agent (Optional)</FormLabel>
                         <MasterDataCombobox items={agents} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Agent")} placeholder="Select Agent" searchPlaceholder="Search agents..." notFoundMessage="No agent found." addNewLabel="Add New Agent"/>
-                        <FormMessage />
+                         {form.formState.errors.agentId && (<FormMessage>{form.formState.errors.agentId?.message}</FormMessage>)}
                       </FormItem>
                     )}
                   />
@@ -350,8 +348,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                     name="rate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rate (₹/kg)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 20.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormLabel>Rate (₹/kg)</n                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 20.50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -389,6 +386,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       <FormLabel>Transporter (Optional)</FormLabel>
                       <MasterDataCombobox items={transporters} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Transporter")} placeholder="Select Transporter" searchPlaceholder="Search transporters..." notFoundMessage="No transporter found." addNewLabel="Add New Transporter"/>
                       <FormMessage />
+                      {form.formState.errors.transporterId && (<FormMessage>{form.formState.errors.transporterId?.message}</FormMessage>)}
                     </FormItem>
                   )}
                 />
@@ -404,8 +402,9 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       <FormItem className="mb-4">
                         <FormLabel>Broker</FormLabel>
                         <MasterDataCombobox items={brokers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Broker")} placeholder="Select Broker" searchPlaceholder="Search brokers..." notFoundMessage="No broker found." addNewLabel="Add New Broker"/>
-                        <FormMessage />
-                      </FormItem>
+                      <FormMessage />
+                      {form.formState.errors.brokerId && (<FormMessage>{form.formState.errors.brokerId?.message}</FormMessage>)}
+                    </FormItem>
                     )}
                   />
                   {form.watch("brokerId") && (

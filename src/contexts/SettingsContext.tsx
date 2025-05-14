@@ -5,8 +5,8 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 interface Settings {
-  fontSize: number; // e.g., 1 for 1rem, 1.2 for 1.2rem
-  financialYear: string; // e.g., "2023-2024"
+  fontSize: number; 
+  financialYear: string; 
 }
 
 interface SettingsContextType extends Settings {
@@ -17,40 +17,40 @@ interface SettingsContextType extends Settings {
   getNextFinancialYear: () => string;
 }
 
-const defaultSettings: Settings = {
-  fontSize: 16, // Base font size in pixels
-  financialYear: getCurrentFinancialYear(),
-};
-
-function getCurrentFinancialYear(): string {
+function getDefaultFinancialYear(): string {
   const today = new Date();
-  const currentMonth = today.getMonth(); // 0-11 (Jan-Dec)
+  const currentMonth = today.getMonth(); 
   const currentYear = today.getFullYear();
-  if (currentMonth >= 3) { // April or later
+  if (currentMonth >= 3) { 
     return `${currentYear}-${currentYear + 1}`;
-  } else { // Jan, Feb, March
+  } else { 
     return `${currentYear - 1}-${currentYear}`;
   }
 }
 
+const defaultSettings: Settings = {
+  fontSize: 16, 
+  financialYear: getDefaultFinancialYear(),
+};
+
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [fontSize, setFontSize] = useState<number>(() => {
+  const [fontSize, setFontSize] = useState<number>(defaultSettings.fontSize);
+  const [financialYear, setFinancialYear] = useState<string>(defaultSettings.financialYear);
+
+  // Effect for font size
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedFontSize = localStorage.getItem('appFontSize');
-      return storedFontSize ? parseFloat(storedFontSize) : defaultSettings.fontSize;
+      if (storedFontSize) {
+        const parsedSize = parseFloat(storedFontSize);
+        if (parsedSize !== defaultSettings.fontSize) {
+          setFontSize(parsedSize);
+        }
+      }
     }
-    return defaultSettings.fontSize;
-  });
-
-  const [financialYear, setFinancialYear] = useState<string>(() => {
-     if (typeof window !== 'undefined') {
-      const storedFy = localStorage.getItem('appFinancialYear');
-      return storedFy || defaultSettings.financialYear;
-    }
-    return defaultSettings.financialYear;
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -58,6 +58,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('appFontSize', fontSize.toString());
     }
   }, [fontSize]);
+
+  // Effect for financial year
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedFy = localStorage.getItem('appFinancialYear');
+      if (storedFy && storedFy !== defaultSettings.financialYear) {
+        setFinancialYear(storedFy);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -67,22 +77,41 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   
   const getFinancialYearShort = useCallback(() => {
     const years = financialYear.split('-');
-    return `${years[0].slice(-2)}-${years[1].slice(-2)}`;
+    if (years.length === 2 && years[0].length >= 4 && years[1].length >=4) {
+        return `${years[0].slice(-2)}-${years[1].slice(-2)}`;
+    }
+    return financialYear; // Fallback if format is unexpected
   }, [financialYear]);
 
-  const parseFinancialYear = (fy: string): [number, number] => {
-    const [startYear, endYear] = fy.split('-').map(Number);
-    return [startYear, endYear];
+  const parseFinancialYear = (fy: string): [number, number] | null => {
+    const parts = fy.split('-');
+    if (parts.length === 2) {
+      const startYear = parseInt(parts[0], 10);
+      const endYear = parseInt(parts[1], 10);
+      if (!isNaN(startYear) && !isNaN(endYear) && endYear === startYear + 1) {
+        return [startYear, endYear];
+      }
+    }
+    console.warn("Invalid financial year format for parsing:", fy);
+    return null;
   };
 
   const getPreviousFinancialYear = useCallback(() => {
-    const [startYear] = parseFinancialYear(financialYear);
-    return `${startYear - 1}-${startYear}`;
+    const parsed = parseFinancialYear(financialYear);
+    if (parsed) {
+      const [startYear] = parsed;
+      return `${startYear - 1}-${startYear}`;
+    }
+    return financialYear; // Fallback
   }, [financialYear]);
 
   const getNextFinancialYear = useCallback(() => {
-    const [, endYear] = parseFinancialYear(financialYear);
-    return `${endYear}-${endYear + 1}`;
+    const parsed = parseFinancialYear(financialYear);
+    if (parsed) {
+      const [, endYear] = parsed; // endYear is the second year of the FY string e.g. 2024 from "2023-2024"
+      return `${endYear}-${endYear + 1}`;
+    }
+    return financialYear; // Fallback
   }, [financialYear]);
 
 

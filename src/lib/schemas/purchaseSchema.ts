@@ -1,21 +1,32 @@
 import { z } from 'zod';
+import type { MasterItem, Broker } from '@/lib/types';
 
-export const purchaseSchema = z.object({
+export const purchaseSchema = (suppliers: MasterItem[], agents: MasterItem[], warehouses: MasterItem[], transporters: MasterItem[], brokers: Broker[]) => z.object({
   date: z.date({
     required_error: "Purchase date is required.",
   }),
   lotNumber: z.string().min(1, "Vakkal / Lot number is required."), // Changed label implicit here
-  locationId: z.string().min(1, "Location (Warehouse) is required."),
-  supplierId: z.string().min(1, "Supplier is required."),
-  agentId: z.string().optional(),
+  locationId: z.string().min(1, "Location (Warehouse) is required.").refine((locationId) => warehouses.some((w) => w.id === locationId), {
+    message: "Location does not exist.",
+  }),
+  supplierId: z.string().min(1, "Supplier is required.").refine((supplierId) => suppliers.some((s) => s.id === supplierId), {
+    message: "Supplier does not exist.",
+  }),
+  agentId: z.string().optional().refine((agentId) => !agentId || agents.some((a) => a.id === agentId), {
+    message: "Agent does not exist.",
+  }),
   // itemName: z.string().min(1, "Item name is required."), // Commodity Name - REMOVED
   quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."), // Number of Bags
   netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."), // KG
   rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."), // ₹/kg
   expenses: z.coerce.number().optional(), // Packaging, labour etc.
   transportRate: z.coerce.number().optional(), // Cost per kg or fixed
-  transporterId: z.string().optional(),
-  brokerId: z.string().optional(),
+  transporterId: z.string().optional().refine((transporterId) => !transporterId || transporters.some((t) => t.id === transporterId), {
+    message: "Transporter does not exist.",
+  }),
+  brokerId: z.string().optional().refine((brokerId) => !brokerId || brokers.some((b) => b.id === brokerId), {
+    message: "Broker does not exist.",
+  }),
   brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
   brokerageValue: z.coerce.number().optional(),
 }).refine(data => {
@@ -37,4 +48,4 @@ export const purchaseSchema = z.object({
 });
 
 
-export type PurchaseFormValues = z.infer<typeof purchaseSchema>;
+export type PurchaseFormValues = z.infer<ReturnType<typeof purchaseSchema>>;
