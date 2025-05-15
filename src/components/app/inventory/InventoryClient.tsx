@@ -42,9 +42,13 @@ interface AggregatedInventoryItem {
 }
 
 export function InventoryClient() {
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
-  const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
+  const memoizedInitialPurchases = React.useMemo(() => [], []);
+  const memoizedInitialSales = React.useMemo(() => [], []);
+  const memoizedInitialWarehouses = React.useMemo(() => [], []);
+
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
+  const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
   const { toast } = useToast();
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
@@ -73,7 +77,6 @@ export function InventoryClient() {
       }
       entry.totalPurchasedBags += p.quantity;
       entry.totalPurchasedWeight += p.netWeight;
-      // Update with latest purchase date/rate if this purchase is newer
       if (new Date(p.date) > new Date(entry.purchaseDate || 0)) {
         entry.purchaseDate = p.date;
         entry.purchaseRate = p.rate;
@@ -82,11 +85,6 @@ export function InventoryClient() {
     });
 
     sales.forEach(s => {
-      // Sales don't have locationId, so we need to find the purchase lot to determine its original location.
-      // This assumes a sale from a lotNumber deducts from that lotNumber across all locations,
-      // or that lotNumbers are unique per location in purchases.
-      // For simplicity, we'll find the first purchase matching the lot number to get a location.
-      // A more robust system might require sales to specify purchaseId or locationId.
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
       if (relatedPurchase) {
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
@@ -102,7 +100,7 @@ export function InventoryClient() {
     inventoryMap.forEach(item => {
       item.currentBags = item.totalPurchasedBags - item.totalSoldBags;
       item.currentWeight = item.totalPurchasedWeight - item.totalSoldWeight;
-      if (item.currentBags <= 5 && item.currentBags > 0 && item.totalPurchasedBags > 0) { // Near zero or low stock, but not yet sold out
+      if (item.currentBags <= 5 && item.currentBags > 0 && item.totalPurchasedBags > 0) { 
         toast({
           title: "Low Stock Alert",
           description: `Lot "${item.lotNumber}" at ${item.locationName} has only ${item.currentBags} bags remaining.`,
@@ -110,8 +108,7 @@ export function InventoryClient() {
           duration: 7000,
         });
       }
-      if (item.currentBags <= 0 && item.totalPurchasedBags > 0) { // Zero or negative stock (sold out)
-         // Only add to list if it was ever purchased; don't show if it was only sold (data error)
+      if (item.currentBags <= 0 && item.totalPurchasedBags > 0) { 
         result.push(item);
       } else if (item.currentBags > 0) {
         result.push(item);
@@ -146,17 +143,12 @@ export function InventoryClient() {
 
   const confirmArchiveItem = () => {
     if (itemToArchive) {
-      // Actual archival logic would involve moving this item from active inventory
-      // to an 'archived_inventory' list in localStorage or marking it as archived.
-      // For this demo, we'll just show a toast.
       toast({
         title: "Lot Archived (Conceptual)",
         description: `Lot "${itemToArchive.lotNumber}" at ${itemToArchive.locationName} would be moved to archives.`,
       });
       setItemToArchive(null);
       setShowArchiveConfirm(false);
-      // To actually remove it from view, you would filter `aggregatedInventory`
-      // or trigger a re-fetch/re-calculation of data that excludes archived items.
     }
   };
   
@@ -168,7 +160,6 @@ export function InventoryClient() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
-          {/* <p className="text-lg text-muted-foreground">Track your stock in real-time across locations.</p> */}
         </div>
       </div>
 
@@ -188,7 +179,6 @@ export function InventoryClient() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-primary">Overall Stock Summary</CardTitle>
-              {/* <CardDescription>Aggregated view of all your vakkals across all locations.</CardDescription> */}
             </CardHeader>
             <CardContent>
               <InventoryTable items={aggregatedInventory} onArchive={handleArchiveAttempt} />
@@ -201,7 +191,6 @@ export function InventoryClient() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">Stock at {wh.name}</CardTitle>
-                {/* <CardDescription>Current vakkals available at {wh.name}.</CardDescription> */}
               </CardHeader>
               <CardContent>
                 <InventoryTable items={inventoryByWarehouse[wh.id] || []} onArchive={handleArchiveAttempt} />

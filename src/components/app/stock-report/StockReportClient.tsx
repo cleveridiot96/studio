@@ -41,28 +41,30 @@ interface StockReportItem {
   purchaseValue: number;
   soldBags: number;
   soldWeight: number;
-  soldValue: number; // Based on average sale rate for simplicity, or sum of sale amounts
+  soldValue: number; 
   remainingBags: number;
   remainingWeight: number;
   avgSaleRate?: number;
-  // For trending/aging - simplified
   daysInStock?: number;
-  turnoverRate?: number; // soldBags / purchaseBags
+  turnoverRate?: number; 
 }
 
 export function StockReportClient() {
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
-  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
+  const memoizedInitialPurchases = React.useMemo(() => [], []);
+  const memoizedInitialSales = React.useMemo(() => [], []);
+  const memoizedInitialWarehouses = React.useMemo(() => [], []);
+
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
+  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
 
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [lotNumberFilter, setLotNumberFilter] = React.useState<string>("");
-  const [locationFilter, setLocationFilter] = React.useState<string>(""); // Warehouse ID
+  const [locationFilter, setLocationFilter] = React.useState<string>(""); 
   const [hydrated, setHydrated] = React.useState(false);
 
   React.useEffect(() => {
     setHydrated(true);
-    // Set initial date range on client side after hydration
     setDateRange({
         from: addDays(new Date(), -30),
         to: new Date(),
@@ -83,7 +85,7 @@ export function StockReportClient() {
     });
 
     filteredPurchases.forEach(p => {
-      const key = `${p.lotNumber}-${p.locationId}`; // Lot number is key for stock report
+      const key = `${p.lotNumber}-${p.locationId}`; 
       let item = reportItemsMap.get(key);
       if (!item) {
         item = {
@@ -93,7 +95,7 @@ export function StockReportClient() {
           purchaseDate: p.date,
           purchaseBags: 0,
           purchaseWeight: 0,
-          purchaseRate: p.rate, // Assuming rate is consistent for a lot, or take first/avg
+          purchaseRate: p.rate, 
           purchaseValue: 0,
           soldBags: 0,
           soldWeight: 0,
@@ -104,10 +106,10 @@ export function StockReportClient() {
       }
       item.purchaseBags += p.quantity;
       item.purchaseWeight += p.netWeight;
-      item.purchaseValue += p.totalAmount; // Or p.netWeight * p.rate + expenses
-      if (new Date(p.date) < new Date(item.purchaseDate || '9999-12-31')) { // Get earliest purchase date
+      item.purchaseValue += p.totalAmount; 
+      if (new Date(p.date) < new Date(item.purchaseDate || '9999-12-31')) { 
         item.purchaseDate = p.date;
-        item.purchaseRate = p.rate; // Reflect rate of earliest purchase for this lot
+        item.purchaseRate = p.rate; 
       }
       reportItemsMap.set(key, item);
     });
@@ -116,8 +118,6 @@ export function StockReportClient() {
         const saleDate = new Date(s.date);
         const fromDate = dateRange?.from ? new Date(dateRange.from) : null;
         const toDate = dateRange?.to ? new Date(dateRange.to) : null;
-        // Filter sales by date range and lot number. Location filtering for sales is tricky
-        // as sales don't directly store location. We rely on purchase location.
         return (!fromDate || saleDate >= fromDate) && 
                (!toDate || saleDate <= toDate) &&
                (!lotNumberFilter || s.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase()));
@@ -125,15 +125,14 @@ export function StockReportClient() {
 
 
     filteredSales.forEach(s => {
-      // Find related purchase to link to location for the report item
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber && (!locationFilter || p.locationId === locationFilter));
       if (relatedPurchase) {
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
         let item = reportItemsMap.get(key);
-        if (item) { // Only update if a purchase for this lot exists in the map
+        if (item) { 
           item.soldBags += s.quantity;
           item.soldWeight += s.netWeight;
-          item.soldValue += s.totalAmount; // Or s.netWeight * s.rate
+          item.soldValue += s.totalAmount; 
         }
       }
     });
@@ -166,7 +165,6 @@ export function StockReportClient() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
-          {/* <p className="text-lg text-muted-foreground">Detailed insights into your inventory performance.</p> */}
         </div>
         <Sheet>
           <SheetTrigger asChild>
@@ -224,10 +222,6 @@ export function StockReportClient() {
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
             <FileText className="h-7 w-7"/> Stock Movement & Status
           </CardTitle>
-          {/* <CardDescription>
-            Report from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "today"}.
-            Lot: {lotNumberFilter || "All"}, Location: {warehouses.find(w=>w.id === locationFilter)?.name || "All"}.
-          </CardDescription> */}
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[500px] rounded-md border">

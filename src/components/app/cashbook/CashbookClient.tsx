@@ -34,8 +34,11 @@ interface DailyCashBookEntry {
 }
 
 export function CashbookClient() {
-  const [payments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, []);
-  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
+  const memoizedInitialPayments = React.useMemo(() => [], []);
+  const memoizedInitialReceipts = React.useMemo(() => [], []);
+
+  const [payments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
+  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
   
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [hydrated, setHydrated] = React.useState(false);
@@ -63,7 +66,7 @@ export function CashbookClient() {
       id: `pay-${p.id}`,
       date: p.date,
       type: 'Payment',
-      particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${p.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`, // Corrected to p.referenceNo
+      particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${p.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`,
       amount: p.amount
     }));
     return combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -125,7 +128,6 @@ export function CashbookClient() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
-          {/* <p className="text-lg text-muted-foreground">Track your daily cash inflow and outflow.</p> */}
         </div>
         <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="max-w-sm" />
       </div>
@@ -133,10 +135,6 @@ export function CashbookClient() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl text-primary flex items-center"><BookOpen className="mr-3 h-7 w-7"/>Daily Cash Transactions</CardTitle>
-          {/* <CardDescription>
-            Displaying transactions from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "today"}.
-            All amounts in (₹).
-          </CardDescription> */}
         </CardHeader>
         <CardContent>
           <div className="mb-4 p-3 border rounded-md bg-muted/50">
