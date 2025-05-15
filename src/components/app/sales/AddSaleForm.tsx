@@ -52,7 +52,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   customers,
   transporters,
   brokers,
-  inventory, // Now expects Purchase[]
+  inventory, 
   onMasterDataUpdate,
   saleToEdit
 }) => {
@@ -73,8 +73,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         transporterId: saleToEdit.transporterId,
         transportCost: saleToEdit.transportCost,
         brokerId: saleToEdit.brokerId,
-        brokerageType: saleToEdit.brokerageType,
-        brokerageAmount: saleToEdit.brokerageAmount, // This is the value (%, fixed amount)
+        brokerageType: saleToEdit.brokerageType || undefined,
+        brokerageAmount: saleToEdit.brokerageAmount, 
         notes: saleToEdit.notes || "",
       };
     }
@@ -115,7 +115,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const netWeight = form.watch("netWeight");
   const rate = form.watch("rate");
-  // const customerId = form.watch("customerId"); 
   const selectedBrokerId = form.watch("brokerId");
   const brokerageType = form.watch("brokerageType");
   const brokerageAmountValue = form.watch("brokerageAmount") || 0; 
@@ -146,7 +145,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [selectedBrokerId, brokerageType, brokerageAmountValue, actualBillAmount]);
 
 
-  const handleAddNewMaster = (type: MasterItemType) => {
+  const handleAddNewMasterClicked = (type: MasterItemType) => {
     toast({ title: "Info", description: `Adding new ${type} would typically open a dedicated form. This feature is conceptual here.`});
   };
   
@@ -172,7 +171,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerName: brokers.find(b => b.id === values.brokerId)?.name,
       brokerageType: values.brokerageType,
       brokerageAmount: values.brokerageAmount, 
-      // calculatedBrokerageAmount: calculatedBrokerageCommission, // Store if needed
       notes: values.notes,
     };
     onSubmit(saleData);
@@ -204,7 +202,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               Enter the details for the sale record. Click save when you&apos;re done.
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
+          <Form {...form}> {/* This provides the FormProvider context */}
             <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
               {/* Section: Basic Details */}
               <div className="p-4 border rounded-md shadow-sm">
@@ -230,7 +228,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     )}/>
                      <FormField control={form.control} name="billAmount" render={({ field }) => (
                         <FormItem><FormLabel>Bill Amount (Optional)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="Auto if empty" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                        <FormControl><Input type="number" step="0.01" placeholder="Auto if empty" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                         <FormMessage />
                         </FormItem>
                     )}/>
@@ -239,14 +237,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormItem className="mt-4">
                     <FormLabel>Customer</FormLabel>
                     <MasterDataCombobox 
-                        items={customers.filter(c => c.type === 'Customer')} 
-                        value={field.value} 
-                        onChange={field.onChange}  
-                        onAddNew={() => handleAddNewMaster("Customer")}
+                        name="customerId"
+                        options={customers.filter(c => c.type === 'Customer').map(c => ({ value: c.id, label: c.name, type: c.type }))}
                         placeholder="Select Customer" 
                         searchPlaceholder="Search customers..." 
                         notFoundMessage="No customer found." 
-                        addNewLabel="Add New Customer"/>
+                        addNewLabel="Add New Customer"
+                        onAddNew={() => handleAddNewMasterClicked("Customer")}
+                        />
                     <FormMessage />
                     </FormItem>
                 )}/>
@@ -255,40 +253,36 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               {/* Section: Product Details */}
               <div className="p-4 border rounded-md shadow-sm">
                 <h3 className="text-lg font-medium mb-3 text-primary">Product & Quantity</h3>
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                    <FormField control={form.control} name="lotNumber" render={({ field }) => (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4"> {/* Corrected closing tag for div */}
+                    <FormField control={form.control} name="lotNumber" render={({ field }) => ( // field not directly used by new combobox
                         <FormItem>
                             <FormLabel>Vakkal / Lot Number</FormLabel>
-                         <Select onValueChange={field.onChange} value={field.value || ""}>
-                            <FormControl>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select Lot Number" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {inventory.map((lot) => (
-                                    <SelectItem key={lot.id} value={lot.lotNumber}>{lot.lotNumber} (Qty: {lot.quantity}, Wt: {lot.netWeight}kg)</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            <MasterDataCombobox
+                                name="lotNumber"
+                                options={inventory.map(lot => ({ value: lot.lotNumber, label: `${lot.lotNumber} (Qty: ${lot.quantity}, Wt: ${lot.netWeight}kg)` }))}
+                                placeholder="Select Lot Number"
+                                searchPlaceholder="Search lots..."
+                                notFoundMessage="No lot found."
+                                // No "Add New" for lot numbers as they come from purchases
+                            />
                         <FormMessage />
                         </FormItem>
                     )}/>
-                </div>
+                </div> {/* Corrected: This div was missing a closing tag in previous error */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <FormField control={form.control} name="quantity" render={({ field }) => (
                         <FormItem><FormLabel>No. of Bags</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g., 50" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage />
+                        <FormControl><Input type="number" placeholder="e.g., 50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="netWeight" render={({ field }) => (
                         <FormItem><FormLabel>Net Weight (kg)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 2500" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage />
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 2500" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="rate" render={({ field }) => (
                         <FormItem><FormLabel>Rate (₹/kg)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 30.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage />
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 30.00" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage />
                         </FormItem>
                     )}/>
                 </div>
@@ -301,20 +295,20 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={form.control} name="transporterId" render={({ field }) => (
                         <FormItem> <FormLabel>Transporter</FormLabel>
                         <MasterDataCombobox 
-                            items={transporters.filter(t => t.type === 'Transporter')} 
-                            value={field.value} 
-                            onChange={field.onChange}  
-                            onAddNew={() => handleAddNewMaster("Transporter")}
+                            name="transporterId"
+                            options={transporters.filter(t => t.type === 'Transporter').map(t => ({ value: t.id, label: t.name, type: t.type }))}
                             placeholder="Select Transporter" 
                             searchPlaceholder="Search transporters..." 
                             notFoundMessage="No transporter found." 
-                            addNewLabel="Add New Transporter"/>
+                            addNewLabel="Add New Transporter"
+                            onAddNew={() => handleAddNewMasterClicked("Transporter")}
+                            />
                         <FormMessage />
                         </FormItem>
                     )}/>
                      <FormField control={form.control} name="transportCost" render={({ field }) => (
                         <FormItem><FormLabel>Transport Cost (₹)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 1500" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl><FormMessage />
+                        <FormControl><Input type="number" step="0.01" placeholder="e.g., 1500" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl><FormMessage />
                         </FormItem>
                     )}/>
                  </div>
@@ -322,21 +316,21 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={form.control} name="brokerId" render={({ field }) => (
                         <FormItem> <FormLabel>Broker</FormLabel>
                         <MasterDataCombobox 
-                            items={brokers.filter(b => b.type === 'Broker')} 
-                            value={field.value} 
-                            onChange={field.onChange}  
-                            onAddNew={() => handleAddNewMaster("Broker")}
+                            name="brokerId"
+                            options={brokers.filter(b => b.type === 'Broker').map(b => ({ value: b.id, label: b.name, type: b.type }))}
                             placeholder="Select Broker" 
                             searchPlaceholder="Search brokers..." 
                             notFoundMessage="No broker found." 
-                            addNewLabel="Add New Broker"/>
+                            addNewLabel="Add New Broker"
+                            onAddNew={() => handleAddNewMasterClicked("Broker")}
+                            />
                         <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="brokerageType" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Brokerage Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!selectedBrokerId}>
+                            <Select onValueChange={field.onChange} value={field.value || ''} disabled={!selectedBrokerId}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select type" />
@@ -357,6 +351,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             step="0.01" 
                             placeholder={brokerageType === 'Percentage' ? "% value" : "₹ amount"} 
                             {...field} 
+                            value={field.value || ''}
                             disabled={!selectedBrokerId || !brokerageType}
                             onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/>
                         </FormControl>

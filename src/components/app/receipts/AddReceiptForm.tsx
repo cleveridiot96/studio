@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Users, Handshake } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { receiptSchema, type ReceiptFormValues } from "@/lib/schemas/receiptSchema";
@@ -39,20 +39,10 @@ interface AddReceiptFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (receipt: Receipt) => void;
-  parties: MasterItem[]; // Combined list of customers and brokers
+  parties: MasterItem[]; 
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   receiptToEdit?: Receipt | null;
 }
-
-const typeIconMap: Record<MasterItemType, React.ElementType> = {
-    Customer: Users,
-    Supplier: Users, // Not used here, but for completeness
-    Agent: Users, // Not used here
-    Transporter: Users, // Not used here
-    Broker: Handshake,
-    Warehouse: Users, // Not used here
-};
-
 
 const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
   isOpen,
@@ -95,7 +85,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
     form.reset(getDefaultValues());
   }, [receiptToEdit, isOpen, form, getDefaultValues]);
 
-  const handleAddNewMaster = (type: MasterItemType) => {
+  const handleAddNewMasterClicked = (type: MasterItemType) => {
     toast({ title: "Info", description: `Adding new ${type} from here is a planned feature.`});
   };
 
@@ -111,7 +101,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
     const receiptData: Receipt = {
       id: receiptToEdit ? receiptToEdit.id : `receipt-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      partyId: values.partyId,
+      partyId: values.partyId as string,
       partyName: selectedParty.name,
       partyType: selectedParty.type,
       amount: values.amount,
@@ -136,7 +126,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
             Enter the details for the receipt. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form}> {/* This provides the FormProvider context */}
           <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-3">
             <FormField
               control={form.control}
@@ -167,21 +157,19 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
             <FormField
               control={form.control}
               name="partyId"
-              render={({ field }) => (
+              render={({ field }) => ( // field not directly used by new combobox
                 <FormItem>
                   <FormLabel>Party</FormLabel>
                   <MasterDataCombobox
-                    items={parties}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onAddNew={() => {
-                        handleAddNewMaster('Customer'); // Example default for receipts
-                    }}
+                    name="partyId" // react-hook-form field name
+                    options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})`, type: p.type }))}
                     placeholder="Select Party"
                     searchPlaceholder="Search customers/brokers..."
                     notFoundMessage="No party found."
                     addNewLabel="Add New Party"
-                    itemIcon={(item) => typeIconMap[item.type as MasterItemType] || Users}
+                    onAddNew={() => {
+                        handleAddNewMasterClicked('Customer'); 
+                    }}
                   />
                   <FormMessage />
                 </FormItem>
@@ -193,7 +181,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount (₹)</FormLabel>
-                  <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                  <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -204,7 +192,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Receipt Method</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || 'Cash'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select receipt method" />
@@ -260,5 +248,3 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
 }
 
 export const AddReceiptForm = React.memo(AddReceiptFormComponent);
-
-    

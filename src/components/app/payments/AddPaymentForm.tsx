@@ -39,20 +39,10 @@ interface AddPaymentFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payment: Payment) => void;
-  parties: MasterItem[]; // Combined list of suppliers, agents, brokers, transporters
+  parties: MasterItem[]; 
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   paymentToEdit?: Payment | null;
 }
-
-const typeIconMap: Record<MasterItemType, React.ElementType> = {
-    Customer: Users,
-    Supplier: Truck,
-    Agent: UserCheck,
-    Transporter: Building, // Using Building for Transporter as UserCog is not very distinct in a list
-    Broker: Handshake,
-    Warehouse: Building,
-};
-
 
 const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
   isOpen,
@@ -95,8 +85,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
     form.reset(getDefaultValues());
   }, [paymentToEdit, isOpen, form, getDefaultValues]);
 
-  const handleAddNewMaster = (type: MasterItemType) => {
-    // This would ideally open the MasterForm dialog
+  const handleAddNewMasterClicked = (type: MasterItemType) => {
     toast({ title: "Info", description: `Adding new ${type} from here is a planned feature.`});
   };
 
@@ -112,7 +101,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
     const paymentData: Payment = {
       id: paymentToEdit ? paymentToEdit.id : `payment-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      partyId: values.partyId,
+      partyId: values.partyId as string,
       partyName: selectedParty.name,
       partyType: selectedParty.type,
       amount: values.amount,
@@ -137,7 +126,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
             Enter the details for the payment. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
+        <Form {...form}> {/* This provides the FormProvider context */}
           <form onSubmit={form.handleSubmit(processSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-3">
             <FormField
               control={form.control}
@@ -168,22 +157,20 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
             <FormField
               control={form.control}
               name="partyId"
-              render={({ field }) => (
+              render={({ field }) => ( // field not directly used by new combobox
                 <FormItem>
                   <FormLabel>Party</FormLabel>
                   <MasterDataCombobox
-                    items={parties}
-                    value={field.value}
-                    onChange={field.onChange}
-                    onAddNew={() => {
-                        // Determine a default type or open a modal to select type first
-                        handleAddNewMaster('Supplier'); // Example default
-                    }}
+                    name="partyId" // react-hook-form field name
+                    options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})`, type: p.type }))}
                     placeholder="Select Party"
                     searchPlaceholder="Search parties..."
                     notFoundMessage="No party found."
                     addNewLabel="Add New Party"
-                    itemIcon={(item) => typeIconMap[item.type as MasterItemType] || Users}
+                    onAddNew={() => {
+                        // This needs to be smarter, maybe open a sub-dialog to choose party type first
+                        handleAddNewMasterClicked('Supplier'); 
+                    }}
                   />
                   <FormMessage />
                 </FormItem>
@@ -195,7 +182,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount (₹)</FormLabel>
-                  <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                  <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -206,7 +193,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Payment Method</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || 'Cash'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select payment method" />
@@ -262,5 +249,3 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
 }
 
 export const AddPaymentForm = React.memo(AddPaymentFormComponent);
-
-    

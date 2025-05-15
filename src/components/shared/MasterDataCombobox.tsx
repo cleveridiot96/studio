@@ -2,65 +2,53 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, PlusCircle } from "lucide-react"
-import type { LucideProps } from "lucide-react";
+import { useFormContext } from "react-hook-form";
+import { Command, CommandInput, CommandItem, CommandList, CommandEmpty, CommandGroup, CommandSeparator } from "@/components/ui/command";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronsUpDown, PlusCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { MasterItem } from "@/lib/types"; // Assuming MasterItem is still relevant for typing options if needed
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import type { MasterItem, MasterItemType } from "@/lib/types"
-
-interface MasterDataComboboxProps {
-  items: MasterItem[];
-  value: string | undefined; // This is the ID of the selected item
-  onChange: (value: string | undefined) => void;
-  onAddNew: () => void;
-  placeholder: string;
-  searchPlaceholder: string;
-  notFoundMessage: string;
-  addNewLabel: string;
-  disabled?: boolean;
-  itemIcon?: React.ComponentType<LucideProps> | ((item: MasterItem) => React.ComponentType<LucideProps>);
+// The options prop should be an array of objects with value and label
+interface Option {
+  value: string;
+  label: string;
+  // Optionally include original item type if needed for display or logic
+  type?: string; 
 }
 
-const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
-  items,
-  value,
-  onChange,
+interface MasterDataComboboxProps {
+  name: string; // react-hook-form field name
+  options: Option[];
+  placeholder?: string;
+  searchPlaceholder?: string;
+  notFoundMessage?: string;
+  addNewLabel?: string;
+  onAddNew?: () => void; // For triggering "Add New" functionality
+  disabled?: boolean;
+}
+
+export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
+  name,
+  options,
+  placeholder = "Select an option",
+  searchPlaceholder = "Search...",
+  notFoundMessage = "No match found.",
+  addNewLabel = "Add New",
   onAddNew,
-  placeholder,
-  searchPlaceholder,
-  notFoundMessage,
-  addNewLabel,
   disabled,
-  itemIcon,
 }) => {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
+  const { watch, setValue } = useFormContext(); // Get form context
+  const currentValue = watch(name); // Watch the current value of the field
 
-  const selectedItem = value ? items.find((item) => item.id === value) : null;
+  const handleSelect = (selectedValue: string) => {
+    setValue(name, selectedValue, { shouldValidate: true }); // Set form value
+    setOpen(false);
+  };
 
-  const getIcon = (item?: MasterItem | null) => {
-    if (!itemIcon) return null;
-    if (typeof itemIcon === 'function' && item) {
-      return itemIcon(item);
-    }
-    return itemIcon as React.ComponentType<LucideProps>;
-  }
-
-  const SelectedItemIcon = selectedItem ? getIcon(selectedItem) : (typeof itemIcon !== 'function' ? itemIcon as React.ComponentType<LucideProps> : null);
+  const displayLabel = options.find((opt) => opt.value === currentValue)?.label || placeholder;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -69,74 +57,67 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between text-sm"
+          className={cn("w-full justify-between text-sm", !currentValue && "text-muted-foreground")}
           disabled={disabled}
         >
           <span className="flex items-center truncate">
-            {SelectedItemIcon && <SelectedItemIcon className="mr-2 h-4 w-4 flex-shrink-0" />}
-            {selectedItem ? (
-              selectedItem.name
-            ) : (
-              placeholder
-            )}
+            {displayLabel}
           </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
+
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        {/* Removed value={value} from Command. The value prop on Command is for the search input string, not the selected item value. */}
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
             <CommandEmpty>
                 {notFoundMessage}
-                 <Button variant="ghost" className="mt-1 w-full justify-start text-sm" onClick={() => { onAddNew(); setOpen(false); }}>
+                {onAddNew && (
+                  <Button variant="ghost" className="mt-1 w-full justify-start text-sm" onClick={() => { onAddNew(); setOpen(false); }}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     {addNewLabel}
-                </Button>
+                  </Button>
+                )}
             </CommandEmpty>
             <CommandGroup>
-              {items.map((item) => {
-                const CurrentItemIcon = getIcon(item);
-                return (
-                  <CommandItem
-                    key={item.id}
-                    value={item.id} // cmkdk uses this for filtering and provides it to onSelect
-                    onSelect={() => { // Explicitly use item.id from the closure
-                      onChange(item.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === item.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {CurrentItemIcon && <CurrentItemIcon className="mr-2 h-4 w-4 text-muted-foreground" />}
-                    {item.name}
-                    {item.type && <span className="ml-2 text-xs text-muted-foreground">({item.type})</span>}
-                  </CommandItem>
-                )
-              })}
-            </CommandGroup>
-            <CommandSeparator />
-            <CommandGroup>
+              {options.map((option) => (
                 <CommandItem
-                    onSelect={() => {
-                        onAddNew();
-                        setOpen(false);
-                    }}
-                    className="cursor-pointer"
+                  key={option.value}
+                  value={option.value} // cmdk uses this for filtering AND passes it to onSelect
+                  onSelect={() => {
+                    handleSelect(option.value);
+                  }}
+                  className="cursor-pointer"
                 >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    {addNewLabel}
+                  <Check
+                    className={cn("mr-2 h-4 w-4", currentValue === option.value ? "opacity-100" : "opacity-0")}
+                  />
+                  {option.label}
+                  {option.type && <span className="ml-2 text-xs text-muted-foreground">({option.type})</span>}
                 </CommandItem>
+              ))}
             </CommandGroup>
+            {onAddNew && (
+                <>
+                    <CommandSeparator />
+                    <CommandGroup>
+                        <CommandItem
+                            onSelect={() => {
+                                onAddNew();
+                                setOpen(false);
+                            }}
+                            className="cursor-pointer"
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            {addNewLabel}
+                        </CommandItem>
+                    </CommandGroup>
+                </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
-  )
-}
-export const MasterDataCombobox = React.memo(MasterDataComboboxComponent);
+  );
+};
