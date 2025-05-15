@@ -13,6 +13,7 @@ import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subM
 import { BookUser, CalendarRange } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -36,6 +37,9 @@ interface LedgerTransaction {
   debit?: number;
   credit?: number;
   relatedDocId: string; // ID of the original purchase/sale/payment/receipt
+  rate?: number;
+  netWeight?: number;
+  transactionAmount?: number; // Main amount of the transaction (purchase total, sale bill, payment/receipt amount)
 }
 
 interface LedgerEntryWithBalance extends LedgerTransaction {
@@ -88,9 +92,8 @@ export function LedgerClient() {
       loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
       setAllMasters(loadedMasters);
       
-      // Initialize date range after masters are loaded and component is hydrated
       setDateRange({
-          from: startOfDay(addDays(new Date(), -90)), // Default to last 90 days
+          from: startOfDay(addDays(new Date(), -90)), 
           to: endOfDay(new Date()),
       });
     }
@@ -109,43 +112,79 @@ export function LedgerClient() {
 
     purchases.forEach(p => {
       if (p.supplierId === selectedPartyId) {
-        partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, particulars: `Goods purchased (Lot: ${p.lotNumber})`, credit: p.totalAmount });
+        partyTransactions.push({ 
+          relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, 
+          particulars: `Goods purchased (Lot: ${p.lotNumber})`, credit: p.totalAmount,
+          rate: p.rate, netWeight: p.netWeight, transactionAmount: p.totalAmount
+        });
       }
       if (p.agentId === selectedPartyId && p.agentName && party.commission) {
         const commission = (p.netWeight * p.rate * (party.commission || 0) / 100);
-        if (commission > 0) partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, particulars: `Commission on Lot ${p.lotNumber}`, credit: commission });
+        if (commission > 0) partyTransactions.push({ 
+            relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, 
+            particulars: `Commission on Lot ${p.lotNumber}`, credit: commission,
+            transactionAmount: commission
+        });
       }
       if (p.transporterId === selectedPartyId && p.transportRate) {
-        partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber, particulars: `Transport for Lot ${p.lotNumber}`, credit: p.transportRate });
+        partyTransactions.push({ 
+            relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber, 
+            particulars: `Transport for Lot ${p.lotNumber}`, credit: p.transportRate,
+            transactionAmount: p.transportRate
+        });
       }
        if (p.brokerId === selectedPartyId && p.calculatedBrokerageAmount) {
-         partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Brokerage Exp.', refNo: p.lotNumber, particulars: `Brokerage for Lot ${p.lotNumber}`, credit: p.calculatedBrokerageAmount });
+         partyTransactions.push({ 
+            relatedDocId: p.id, date: p.date, type: 'Brokerage Exp.', refNo: p.lotNumber, 
+            particulars: `Brokerage for Lot ${p.lotNumber}`, credit: p.calculatedBrokerageAmount,
+            transactionAmount: p.calculatedBrokerageAmount
+        });
       }
     });
 
     sales.forEach(s => {
       if (s.customerId === selectedPartyId) {
-        partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber, particulars: `Goods sold (Bill: ${s.billNumber}, Lot: ${s.lotNumber})`, debit: s.totalAmount });
+        partyTransactions.push({ 
+            relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber, 
+            particulars: `Goods sold (Bill: ${s.billNumber}, Lot: ${s.lotNumber})`, debit: s.totalAmount,
+            rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
+        });
       }
       if (s.brokerId === selectedPartyId && party.commission) { 
         const saleBillAmount = s.billAmount || (s.netWeight * s.rate);
         const saleBrokerage = s.brokerageType === 'Percentage' ? (saleBillAmount * (s.brokerageAmount || 0)/100) : (s.brokerageAmount || 0);
-        if (saleBrokerage > 0) partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Brokerage Inc.', refNo: s.billNumber, particulars: `Brokerage on Sale ${s.billNumber}`, debit: saleBrokerage });
+        if (saleBrokerage > 0) partyTransactions.push({ 
+            relatedDocId: s.id, date: s.date, type: 'Brokerage Inc.', refNo: s.billNumber, 
+            particulars: `Brokerage on Sale ${s.billNumber}`, debit: saleBrokerage,
+            transactionAmount: saleBrokerage
+        });
       }
        if (s.transporterId === selectedPartyId && s.transportCost) { 
-        partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Transport Exp.', refNo: s.billNumber, particulars: `Transport for Sale ${s.billNumber}`, credit: s.transportCost });
+        partyTransactions.push({ 
+            relatedDocId: s.id, date: s.date, type: 'Transport Exp.', refNo: s.billNumber, 
+            particulars: `Transport for Sale ${s.billNumber}`, credit: s.transportCost,
+            transactionAmount: s.transportCost
+        });
       }
     });
 
     payments.forEach(pm => {
       if (pm.partyId === selectedPartyId) {
-        partyTransactions.push({ relatedDocId: pm.id, date: pm.date, type: 'Payment', refNo: pm.referenceNo, particulars: `Payment via ${pm.paymentMethod} ${pm.notes ? '- '+pm.notes : ''}`, debit: pm.amount });
+        partyTransactions.push({ 
+            relatedDocId: pm.id, date: pm.date, type: 'Payment', refNo: pm.referenceNo, 
+            particulars: `Payment via ${pm.paymentMethod} ${pm.notes ? '- '+pm.notes : ''}`, debit: pm.amount,
+            transactionAmount: pm.amount
+        });
       }
     });
 
     receipts.forEach(rc => {
       if (rc.partyId === selectedPartyId) {
-        partyTransactions.push({ relatedDocId: rc.id, date: rc.date, type: 'Receipt', refNo: rc.referenceNo, particulars: `Receipt via ${rc.paymentMethod} ${rc.notes ? '- '+rc.notes : ''}`, credit: rc.amount });
+        partyTransactions.push({ 
+            relatedDocId: rc.id, date: rc.date, type: 'Receipt', refNo: rc.referenceNo, 
+            particulars: `Receipt via ${rc.paymentMethod} ${rc.notes ? '- '+rc.notes : ''}`, credit: rc.amount,
+            transactionAmount: rc.amount
+        });
       }
     });
     
@@ -208,16 +247,16 @@ export function LedgerClient() {
   const setLastFinancialYearFilter = () => {
     const [currentFyStartYearStr] = currentFinancialYearString.split('-');
     const lastFyStartYear = parseInt(currentFyStartYearStr, 10) - 1;
-    const from = new Date(lastFyStartYear, 3, 1); // April 1st
-    const to = new Date(lastFyStartYear + 1, 2, 31); // March 31st
+    const from = new Date(lastFyStartYear, 3, 1); 
+    const to = new Date(lastFyStartYear + 1, 2, 31); 
     setDateRange({ from: startOfDay(from), to: endOfDay(to) });
   };
 
-  const setCurrentFinancialYearFilter = () => { // YTD
+  const setCurrentFinancialYearFilter = () => { 
     const [currentFyStartYearStr] = currentFinancialYearString.split('-');
     const currentFyStartYear = parseInt(currentFyStartYearStr, 10);
-    const from = new Date(currentFyStartYear, 3, 1); // April 1st
-    const to = endOfDay(new Date()); // Today
+    const from = new Date(currentFyStartYear, 3, 1); 
+    const to = endOfDay(new Date()); 
     setDateRange({ from: startOfDay(from), to });
   };
   
@@ -283,6 +322,7 @@ export function LedgerClient() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+          <TooltipProvider>
             <ScrollArea className="h-[500px] rounded-md border">
               <Table>
                 <TableHeader>
@@ -291,6 +331,9 @@ export function LedgerClient() {
                     <TableHead>Particulars</TableHead>
                     <TableHead>Vch Type</TableHead>
                     <TableHead>Ref. No.</TableHead>
+                    <TableHead className="text-right">Rate (₹)</TableHead>
+                    <TableHead className="text-right">Net Wt. (kg)</TableHead>
+                    <TableHead className="text-right">Trans. Amt. (₹)</TableHead>
                     <TableHead className="text-right">Debit (₹)</TableHead>
                     <TableHead className="text-right">Credit (₹)</TableHead>
                     <TableHead className="text-right">Balance (₹)</TableHead>
@@ -304,6 +347,22 @@ export function LedgerClient() {
                         <TableCell className="max-w-xs truncate">{entry.particulars}</TableCell>
                         <TableCell>{entry.type}</TableCell>
                         <TableCell>{entry.refNo || 'N/A'}</TableCell>
+                        <TableCell className="text-right">{entry.rate?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
+                        <TableCell className="text-right">{entry.netWeight?.toLocaleString() || '-'}</TableCell>
+                        <TableCell className="text-right">
+                           {entry.transactionAmount !== undefined ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>{entry.transactionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </TooltipTrigger>
+                              {entry.refNo && (
+                                <TooltipContent>
+                                  <p>Ref: {entry.refNo}</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          ) : '-'}
+                        </TableCell>
                         <TableCell className="text-right">{entry.debit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
                         <TableCell className="text-right">{entry.credit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
                         <TableCell className={`text-right font-semibold ${entry.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -313,7 +372,7 @@ export function LedgerClient() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center h-32">
+                      <TableCell colSpan={10} className="text-center h-32">
                         No transactions for this party in the selected period.
                       </TableCell>
                     </TableRow>
@@ -322,7 +381,7 @@ export function LedgerClient() {
                 {ledgerTransactions && ledgerTransactions.entries.length > 0 && (
                     <TableFooter>
                         <TableRow className="bg-muted/80 font-bold">
-                            <TableCell colSpan={6} className="text-right">Closing Balance:</TableCell>
+                            <TableCell colSpan={9} className="text-right">Closing Balance:</TableCell>
                             <TableCell className={`text-right ${ledgerTransactions.closingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                                 {Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ledgerTransactions.closingBalance < 0 ? 'Cr' : 'Dr'}
                             </TableCell>
@@ -331,6 +390,7 @@ export function LedgerClient() {
                 )}
               </Table>
             </ScrollArea>
+          </TooltipProvider>
           </CardContent>
         </Card>
       ) : (
@@ -346,3 +406,4 @@ export function LedgerClient() {
     </div>
   );
 }
+
