@@ -49,8 +49,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarProvider defaultOpen={false}> {/* defaultOpen is false */}
         <AppExitHandler />
         <div className="flex min-h-screen bg-background">
-          <Sidebar className="border-r border-sidebar-border shadow-lg">
-            <SidebarHeader className="p-4 border-b border-sidebar-border border-2 border-red-500"> {/* Temporary debug border */}
+          <Sidebar className="border-r border-sidebar-border shadow-lg" collapsible="icon"> {/* Changed collapsible to "icon" */}
+            <SidebarHeader className="p-4 border-b border-sidebar-border"> {/* Removed temporary debug border */}
               <Link href="/dashboard" className="flex items-center gap-2 group">
                 <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
                 <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
@@ -90,3 +90,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SettingsProvider>
   );
 }
+
