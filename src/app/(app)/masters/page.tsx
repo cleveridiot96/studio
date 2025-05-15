@@ -169,7 +169,7 @@ export default function MastersPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Masters</h1>
-          <p className="text-lg text-muted-foreground">Manage your core business entities.</p>
+          {/* <p className="text-lg text-muted-foreground">Manage your core business entities.</p> */}
         </div>
         <Button onClick={openFormForNewItem} size="lg" className="text-base py-3 px-6 shadow-md">
           <PlusCircle className="mr-2 h-5 w-5" /> {addButtonLabel}
@@ -189,7 +189,7 @@ export default function MastersPage() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
-                <CardDescription>View, add, or edit {tab.label.toLowerCase()} details.</CardDescription>
+                {/* <CardDescription>View, add, or edit {tab.label.toLowerCase()} details.</CardDescription> */}
               </CardHeader>
               <CardContent>
                 <MasterList
@@ -239,4 +239,3 @@ export default function MastersPage() {
     </div>
   );
 }
-

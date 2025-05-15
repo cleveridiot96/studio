@@ -52,9 +52,9 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <header>
         <h1 className="text-4xl font-bold text-foreground tracking-tight">Welcome to Kisan Khata</h1>
-        <p className="text-lg text-muted-foreground mt-1">
+        {/* <p className="text-lg text-muted-foreground mt-1">
           Your agricultural business at a glance.
-        </p>
+        </p> */}
       </header>
 
       <section>

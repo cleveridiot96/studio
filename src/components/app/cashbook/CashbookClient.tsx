@@ -124,8 +124,8 @@ export function CashbookClient() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Cash Book (T-Format)</h1>
-          <p className="text-lg text-muted-foreground">Track your daily cash inflow and outflow.</p>
+          <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
+          {/* <p className="text-lg text-muted-foreground">Track your daily cash inflow and outflow.</p> */}
         </div>
         <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="max-w-sm" />
       </div>
@@ -133,10 +133,10 @@ export function CashbookClient() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl text-primary flex items-center"><BookOpen className="mr-3 h-7 w-7"/>Daily Cash Transactions</CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             Displaying transactions from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "today"}.
             All amounts in (₹).
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent>
           <div className="mb-4 p-3 border rounded-md bg-muted/50">
@@ -228,4 +228,3 @@ export function CashbookClient() {
     </div>
   );
 }
-

@@ -165,8 +165,8 @@ export function StockReportClient() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Stock Analysis Report</h1>
-          <p className="text-lg text-muted-foreground">Detailed insights into your inventory performance.</p>
+          <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
+          {/* <p className="text-lg text-muted-foreground">Detailed insights into your inventory performance.</p> */}
         </div>
         <Sheet>
           <SheetTrigger asChild>
@@ -224,10 +224,10 @@ export function StockReportClient() {
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
             <FileText className="h-7 w-7"/> Stock Movement & Status
           </CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             Report from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "today"}.
             Lot: {lotNumberFilter || "All"}, Location: {warehouses.find(w=>w.id === locationFilter)?.name || "All"}.
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[500px] rounded-md border">
@@ -286,4 +286,3 @@ export function StockReportClient() {
     </div>
   );
 }
-

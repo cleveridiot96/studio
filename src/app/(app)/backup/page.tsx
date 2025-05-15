@@ -148,19 +148,19 @@ export default function BackupPage() {
     <div className="space-y-8 max-w-2xl mx-auto">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-foreground">Data Backup & Restore</h1>
-        <p className="text-lg text-muted-foreground mt-2">
+        {/* <p className="text-lg text-muted-foreground mt-2">
           Secure your data by creating local backups and restore when needed.
-        </p>
+        </p> */}
       </div>
 
       <Card className="shadow-xl border-2 border-primary/20">
         <CardHeader className="items-center">
           <DatabaseBackup className="w-16 h-16 text-primary mb-4" />
           <CardTitle className="text-2xl">Manage Your Data</CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             It's crucial to regularly back up your application data to prevent loss.
             You can restore from a previously saved backup file.
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -209,5 +209,3 @@ export default function BackupPage() {
     </div>
   );
 }
-
-    

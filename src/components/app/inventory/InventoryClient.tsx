@@ -167,8 +167,8 @@ export function InventoryClient() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Inventory Management</h1>
-          <p className="text-lg text-muted-foreground">Track your stock in real-time across locations.</p>
+          <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
+          {/* <p className="text-lg text-muted-foreground">Track your stock in real-time across locations.</p> */}
         </div>
       </div>
 
@@ -188,7 +188,7 @@ export function InventoryClient() {
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-primary">Overall Stock Summary</CardTitle>
-              <CardDescription>Aggregated view of all your vakkals across all locations.</CardDescription>
+              {/* <CardDescription>Aggregated view of all your vakkals across all locations.</CardDescription> */}
             </CardHeader>
             <CardContent>
               <InventoryTable items={aggregatedInventory} onArchive={handleArchiveAttempt} />
@@ -201,7 +201,7 @@ export function InventoryClient() {
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-2xl text-primary">Stock at {wh.name}</CardTitle>
-                <CardDescription>Current vakkals available at {wh.name}.</CardDescription>
+                {/* <CardDescription>Current vakkals available at {wh.name}.</CardDescription> */}
               </CardHeader>
               <CardContent>
                 <InventoryTable items={inventoryByWarehouse[wh.id] || []} onArchive={handleArchiveAttempt} />

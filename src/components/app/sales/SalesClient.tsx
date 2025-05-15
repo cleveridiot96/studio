@@ -133,8 +133,8 @@ export function SalesClient() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Sales</h1>
-          <p className="text-lg text-muted-foreground">Generate sales bills and track sales records for FY {financialYear}.</p>
+          <h1 className="text-3xl font-bold text-foreground">Sales (FY {financialYear})</h1>
+          {/* <p className="text-lg text-muted-foreground">Generate sales bills and track sales records for FY {financialYear}.</p> */}
         </div>
         <div className="flex gap-2">
           <Button onClick={openAddSaleForm} size="lg" className="text-base py-3 px-6 shadow-md">
@@ -182,4 +182,3 @@ export function SalesClient() {
     </div>
   );
 }
-

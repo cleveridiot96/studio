@@ -134,8 +134,8 @@ export function PurchasesClient() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Purchases</h1>
-          <p className="text-lg text-muted-foreground">Add and manage your purchase records for FY {financialYear}.</p>
+          <h1 className="text-3xl font-bold text-foreground">Purchases (FY {financialYear})</h1>
+          {/* <p className="text-lg text-muted-foreground">Add and manage your purchase records for FY {financialYear}.</p> */}
         </div>
         <div className="flex gap-2">
           <Button onClick={openAddPurchaseForm} size="lg" className="text-base py-3 px-6 shadow-md">

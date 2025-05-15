@@ -136,8 +136,8 @@ export function ReceiptsClient() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Receipts</h1>
-          <p className="text-lg text-muted-foreground">Manage incoming payments for FY {financialYear}.</p>
+          <h1 className="text-3xl font-bold text-foreground">Receipts (FY {financialYear})</h1>
+          {/* <p className="text-lg text-muted-foreground">Manage incoming payments for FY {financialYear}.</p> */}
         </div>
         <Button onClick={openAddReceiptForm} size="lg" className="text-base py-3 px-6 shadow-md">
           <PlusCircle className="mr-2 h-5 w-5" /> Add Receipt
@@ -176,5 +176,3 @@ export function ReceiptsClient() {
     </div>
   );
 }
-
-    

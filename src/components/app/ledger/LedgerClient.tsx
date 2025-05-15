@@ -276,7 +276,7 @@ export function LedgerClient() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                 <h1 className="text-3xl font-bold text-foreground">Party Ledger</h1>
-                <p className="text-lg text-muted-foreground">View outstanding balances and transaction history party-wise.</p>
+                {/* <p className="text-lg text-muted-foreground">View outstanding balances and transaction history party-wise.</p> */}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                 {allMasters.length > 0 ? (
@@ -316,10 +316,10 @@ export function LedgerClient() {
             <CardTitle className="text-2xl text-primary flex items-center">
                 <BookUser className="mr-3 h-7 w-7" /> Ledger: {selectedPartyDetails.name} ({selectedPartyDetails.type})
             </CardTitle>
-            <CardDescription>
+            {/* <CardDescription>
                 Transactions from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "end"}.
                 Opening Balance for period: ₹{ledgerTransactions?.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </CardDescription>
+            </CardDescription> */}
           </CardHeader>
           <CardContent>
           <TooltipProvider>
@@ -406,4 +406,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
