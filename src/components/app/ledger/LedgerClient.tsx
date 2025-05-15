@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -81,19 +82,12 @@ export function LedgerClient() {
     setAllMasters(loadedMasters.sort((a,b) => a.name.localeCompare(b.name)));
   }, []);
 
-  const selectedParty = React.useMemo(() => {
-    if (!selectedPartyId) return null;
-    return allMasters.find(p => p.id === selectedPartyId);
-  }, [selectedPartyId, allMasters]);
-
-  const selectedPartyType = selectedParty?.type;
-
   const ledgerTransactions = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !dateRange?.to) {
       return { entries: [], openingBalance: 0, closingBalance: 0 };
     }
 
-    const party = allMasters.find(m => m.id === selectedPartyId); // Re-fetch party for safety within this memo
+    const party = allMasters.find(m => m.id === selectedPartyId); 
     if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 };
 
     const partyTransactions: LedgerTransaction[] = [];
@@ -165,9 +159,9 @@ export function LedgerClient() {
 
   }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange]);
 
-  const handlePartySelect = React.useCallback((value: string) => { // Radix onValueChange provides string
+  const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
-  }, []); // Empty dependency array ensures stable callback reference
+  }, []); 
 
   const customerOptions = React.useMemo(() =>
     allMasters.filter(m => m.type === 'Customer').map(c => <SelectItem key={`cust-${c.id}`} value={c.id}>{c.name}</SelectItem>),
@@ -198,6 +192,14 @@ export function LedgerClient() {
     );
   }
 
+  const selectedPartyDisplay = () => {
+    if (!selectedPartyId) return "Select Party...";
+    const party = allMasters.find(p => p.id === selectedPartyId);
+    if (!party) return "Select Party..."; // Or selectedPartyId if no name found
+    return `${party.name} (${party.type})`;
+  };
+
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -206,10 +208,10 @@ export function LedgerClient() {
           <p className="text-lg text-muted-foreground">View outstanding balances and transaction history party-wise.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-            <Select onValueChange={handlePartySelect} value={selectedPartyId}>
+            <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
                 <SelectTrigger className="w-full md:w-[280px]">
                      <SelectValue placeholder="Select Party...">
-                        {selectedParty ? `${selectedParty.name} (${selectedPartyType || 'N/A'})` : "Select Party..."}
+                        {selectedPartyDisplay()}
                      </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -243,7 +245,7 @@ export function LedgerClient() {
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl text-primary flex items-center">
-                <BookUser className="mr-3 h-7 w-7" /> Ledger: {selectedParty?.name || "Selected Party"} {selectedPartyType ? `(${selectedPartyType})` : ''}
+                <BookUser className="mr-3 h-7 w-7" /> Ledger: {allMasters.find(p=>p.id === selectedPartyId)?.name || "Selected Party"} ({allMasters.find(p=>p.id === selectedPartyId)?.type || ''})
             </CardTitle>
             <CardDescription>
                 Transactions from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "end"}.
@@ -312,4 +314,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
