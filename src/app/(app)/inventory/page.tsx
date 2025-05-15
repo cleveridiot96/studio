@@ -12,11 +12,11 @@ export default function InventoryPage() {
         </div>
       </div>
       <PlaceholderContent 
-        title="Live Inventory Tracking" 
-        description="This section will display your current stock levels item-wise (by Lot Number/Vakkal) across all your registered Warehouses/Locations. You'll be able to see quantity in bags, net weight, and potentially the purchase value of stock on hand. Features like stock transfer between locations and adjustments are planned. If a Lot Number's stock reaches zero, you'll be prompted if you wish to remove it from active inventory lists."
+        title="Live Inventory Tracking & Management" 
+        description="This section will display your current stock levels item-wise (by Lot Number/Vakkal), bifurcated by each registered Warehouse/Location. A summary page will provide an overview of all inventory. You'll see quantity in bags, net weight, and potentially the purchase value. Features like stock transfer between locations and adjustments are planned. If a Lot Number's stock (bag-wise) reaches zero or is near zero, you'll be notified with a suggestion to remove it from active inventory lists."
         icon={Boxes}
       />
-      {/* TODO: Implement InventoryClient component with table (potentially editable for adjustments/transfers) showing lot number, location, bags, net weight. */}
+      {/* TODO: Implement InventoryClient component with table (potentially editable for adjustments/transfers) showing lot number, location, bags, net weight. Warehouse-wise bifurcation and summary view. Zero-stock notification logic. */}
       {/* <InventoryClient /> */}
     </div>
   );

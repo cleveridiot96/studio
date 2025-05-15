@@ -13,10 +13,10 @@ export default function StockReportPage() {
       </div>
       <PlaceholderContent 
         title="Detailed Stock Analysis Report" 
-        description="This section will provide comprehensive reports on your inventory. You'll be able to filter by Lot Number (Vakkal), Warehouse/Location, and date ranges. Reports will show details like available quantity (bags), net weight (kg), purchase rate, and current stock value. This will help in stock valuation and identifying aging inventory."
+        description="This section will provide comprehensive reports on your inventory. You'll be able to filter by Lot Number (Vakkal), Warehouse/Location, and date ranges. Reports will show details like purchased vs. sold quantities for each vakkal, purchase prices, identify trending (fast-moving) and potential loss-making (slow-moving or aging) vakkals. This will help in stock valuation, profitability analysis per vakkal, and identifying aging inventory."
         icon={FileText}
       />
-      {/* TODO: Implement StockReportClient component with filters (date, location, lot) and a detailed table. */}
+      {/* TODO: Implement StockReportClient component with filters (date, location, lot) and a detailed table showing purchase/sale history per vakkal, profitability, and aging. */}
       {/* <StockReportClient /> */}
     </div>
   );
