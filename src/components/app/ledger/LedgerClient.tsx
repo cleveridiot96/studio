@@ -9,8 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
-import { BookUser } from "lucide-react";
+import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
+import { BookUser, CalendarRange } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useSettings } from "@/contexts/SettingsContext";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -54,6 +56,8 @@ export function LedgerClient() {
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const { financialYear: currentFinancialYearString } = useSettings();
+
 
   React.useEffect(() => {
     setHydrated(true);
@@ -83,17 +87,15 @@ export function LedgerClient() {
       });
       loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
       setAllMasters(loadedMasters);
-    }
-  }, [hydrated]);
-
-  React.useEffect(() => {
-    if (hydrated) {
+      
+      // Initialize date range after masters are loaded and component is hydrated
       setDateRange({
-          from: startOfDay(addDays(new Date(), -90)),
+          from: startOfDay(addDays(new Date(), -90)), // Default to last 90 days
           to: endOfDay(new Date()),
       });
     }
   }, [hydrated]);
+
 
   const ledgerTransactions = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !dateRange?.to || !hydrated) {
@@ -196,6 +198,28 @@ export function LedgerClient() {
     allMasters.filter(m => m.type === 'Transporter').map(t => <SelectItem key={`trans-${t.id}`} value={t.id}>{t.name}</SelectItem>),
     [allMasters]
   );
+
+  const setDateFilter = (months: number) => {
+    const to = endOfDay(new Date());
+    const from = startOfDay(subMonths(to, months));
+    setDateRange({ from, to });
+  };
+
+  const setLastFinancialYearFilter = () => {
+    const [currentFyStartYearStr] = currentFinancialYearString.split('-');
+    const lastFyStartYear = parseInt(currentFyStartYearStr, 10) - 1;
+    const from = new Date(lastFyStartYear, 3, 1); // April 1st
+    const to = new Date(lastFyStartYear + 1, 2, 31); // March 31st
+    setDateRange({ from: startOfDay(from), to: endOfDay(to) });
+  };
+
+  const setCurrentFinancialYearFilter = () => { // YTD
+    const [currentFyStartYearStr] = currentFinancialYearString.split('-');
+    const currentFyStartYear = parseInt(currentFyStartYearStr, 10);
+    const from = new Date(currentFyStartYear, 3, 1); // April 1st
+    const to = endOfDay(new Date()); // Today
+    setDateRange({ from: startOfDay(from), to });
+  };
   
   if (!hydrated) {
     return (
@@ -204,65 +228,54 @@ export function LedgerClient() {
       </div>
     );
   }
+  const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Party Ledger</h1>
-          <p className="text-lg text-muted-foreground">View outstanding balances and transaction history party-wise.</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          {allMasters.length > 0 ? (
-            <Select onValueChange={handlePartySelect} value={selectedPartyId}>
-                <SelectTrigger className="w-full md:w-[280px]">
-                     <SelectValue placeholder="Select Party..." />
-                </SelectTrigger>
-                <SelectContent>
-                    {customerOptions.length > 0 && (
-                      <SelectGroup key="customer-group">
-                          <SelectLabel>Customers</SelectLabel>
-                          {customerOptions}
-                      </SelectGroup>
-                    )}
-                    {supplierOptions.length > 0 && (
-                      <SelectGroup key="supplier-group">
-                          <SelectLabel>Suppliers</SelectLabel>
-                          {supplierOptions}
-                      </SelectGroup>
-                    )}
-                    {agentOptions.length > 0 && (
-                      <SelectGroup key="agent-group">
-                          <SelectLabel>Agents</SelectLabel>
-                          {agentOptions}
-                      </SelectGroup>
-                    )}
-                    {brokerOptions.length > 0 && (
-                      <SelectGroup key="broker-group">
-                          <SelectLabel>Brokers</SelectLabel>
-                          {brokerOptions}
-                      </SelectGroup>
-                    )}
-                    {transporterOptions.length > 0 && (
-                      <SelectGroup key="transporter-group">
-                          <SelectLabel>Transporters</SelectLabel>
-                          {transporterOptions}
-                      </SelectGroup>
-                    )}
-                </SelectContent>
-            </Select>
-          ) : (
-            <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties available.</p>
-          )}
-            <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
-        </div>
-      </div>
+      <Card className="shadow-md">
+        <CardHeader>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                <h1 className="text-3xl font-bold text-foreground">Party Ledger</h1>
+                <p className="text-lg text-muted-foreground">View outstanding balances and transaction history party-wise.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                {allMasters.length > 0 ? (
+                    <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
+                        <SelectTrigger className="w-full md:w-[280px]">
+                            <SelectValue placeholder="Select Party..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {customerOptions.length > 0 && (<SelectGroup key="customer-group"><SelectLabel>Customers</SelectLabel>{customerOptions}</SelectGroup>)}
+                            {supplierOptions.length > 0 && (<SelectGroup key="supplier-group"><SelectLabel>Suppliers</SelectLabel>{supplierOptions}</SelectGroup>)}
+                            {agentOptions.length > 0 && (<SelectGroup key="agent-group"><SelectLabel>Agents</SelectLabel>{agentOptions}</SelectGroup>)}
+                            {brokerOptions.length > 0 && (<SelectGroup key="broker-group"><SelectLabel>Brokers</SelectLabel>{brokerOptions}</SelectGroup>)}
+                            {transporterOptions.length > 0 && (<SelectGroup key="transporter-group"><SelectLabel>Transporters</SelectLabel>{transporterOptions}</SelectGroup>)}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                    <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties available.</p>
+                )}
+                    <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
+                </div>
+            </div>
+        </CardHeader>
+        <CardContent>
+            <div className="flex flex-wrap gap-2 mb-4">
+                <Button variant="outline" size="sm" onClick={() => setDateFilter(3)}><CalendarRange className="mr-2 h-4 w-4" /> Last 3 Months</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter(6)}><CalendarRange className="mr-2 h-4 w-4" /> Last 6 Months</Button>
+                <Button variant="outline" size="sm" onClick={setLastFinancialYearFilter}><CalendarRange className="mr-2 h-4 w-4" /> Last FY</Button>
+                <Button variant="outline" size="sm" onClick={setCurrentFinancialYearFilter}><CalendarRange className="mr-2 h-4 w-4" /> YTD (Current FY)</Button>
+            </div>
+        </CardContent>
+      </Card>
 
-      {selectedPartyId && allMasters.find(p => p.id === selectedPartyId) ? (
+
+      {selectedPartyId && selectedPartyDetails ? (
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl text-primary flex items-center">
-                <BookUser className="mr-3 h-7 w-7" /> Ledger: {allMasters.find(p=>p.id === selectedPartyId)?.name || "Selected Party"} ({allMasters.find(p=>p.id === selectedPartyId)?.type || ''})
+                <BookUser className="mr-3 h-7 w-7" /> Ledger: {selectedPartyDetails.name} ({selectedPartyDetails.type})
             </CardTitle>
             <CardDescription>
                 Transactions from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "end"}.
@@ -333,7 +346,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
-    
-
-    
