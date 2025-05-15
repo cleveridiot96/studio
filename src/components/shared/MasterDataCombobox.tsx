@@ -27,7 +27,7 @@ interface MasterDataComboboxProps {
   items: MasterItem[];
   value: string | undefined;
   onChange: (value: string | undefined) => void;
-  onAddNew: () => void; // Simplified: Add new of a pre-determined type or opens a generic modal
+  onAddNew: () => void; 
   placeholder: string;
   searchPlaceholder: string;
   notFoundMessage: string;
@@ -101,7 +101,7 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
                 return (
                   <CommandItem
                     key={item.id}
-                    value={item.name} // Ensure this is unique enough for search or use item.id if names can duplicate across types
+                    value={item.id} // Changed from item.name to item.id
                     onSelect={() => {
                       onChange(item.id === value ? undefined : item.id)
                       setOpen(false)
