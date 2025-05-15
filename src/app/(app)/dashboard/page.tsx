@@ -1,15 +1,16 @@
+
 import { DashboardTile } from "@/components/DashboardTile";
 import { navItems } from "@/lib/config/nav";
 // Removed Lucide imports that were aliased, DashboardTile will handle icon resolution based on iconName.
 
-// Mock data - replace with actual data fetching
+// Mock data - set to empty/zero for testing format functionality
 const summaryData = {
-  totalPurchases: "₹1.2M",
-  totalSales: "₹2.5M",
-  inventoryValue: "₹800K",
-  outstandingReceivables: "₹300K",
-  outstandingPayables: "₹150K",
-  activeCustomers: 78,
+  totalPurchases: "₹0",
+  totalSales: "₹0",
+  inventoryValue: "₹0",
+  outstandingReceivables: "₹0",
+  outstandingPayables: "₹0",
+  activeCustomers: 0,
 };
 
 // Helper function to map nav items to dashboard tiles
@@ -86,5 +87,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-// Removed dummy icon aliases ShoppingCart and TrendingDown
