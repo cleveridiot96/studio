@@ -1,16 +1,17 @@
+
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, Home, Settings as SettingsIcon, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
-import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
+import { AppExitHandler } from '@/components/layout/AppExitHandler';
 
 
 function AppHeaderContent() {
@@ -46,6 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
       <SidebarProvider defaultOpen>
+        <AppExitHandler />
         <div className="flex min-h-screen bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
@@ -60,7 +62,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
-              {/* User profile section removed */}
+              {/* User profile section removed as per user request */}
             </SidebarFooter>
           </Sidebar>
           
