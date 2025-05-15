@@ -1,85 +1,98 @@
 
 import { DashboardTile } from "@/components/DashboardTile";
-import { navItems } from "@/lib/config/nav";
-// Removed Lucide imports that were aliased, DashboardTile will handle icon resolution based on iconName.
 
-// Mock data - set to empty/zero for testing format functionality
-const summaryData = {
-  totalPurchases: "₹0",
-  totalSales: "₹0",
-  inventoryValue: "₹0",
-  outstandingReceivables: "₹0",
-  outstandingPayables: "₹0",
-  activeCustomers: 0,
-};
-
-// Helper function to map nav items to dashboard tiles
-const getDashboardTiles = () => {
-  // Mapping icon names used in navItems to icon names expected by DashboardTile's iconMap (if different)
-  // Or ensure navItems use icon names that are keys in DashboardTile's iconMap.
-  // For simplicity, we assume navItems.iconName can be directly used.
-  
-  const tileMappings: { [key: string]: { valueKey?: keyof typeof summaryData, description?: string, value?: string, iconName?: string } } = {
-    '/purchases': { iconName: 'ShoppingCart', valueKey: 'totalPurchases', description: 'Total Purchases YTD' },
-    '/sales': { iconName: 'DollarSign', valueKey: 'totalSales', description: 'Total Sales YTD' },
-    '/inventory': { iconName: 'Package', valueKey: 'inventoryValue', description: 'Current Inventory Value' },
-    '/ledger': { iconName: 'Users', valueKey: 'activeCustomers', description: 'Active Parties' }, 
-    '/stock-report': { iconName: 'LineChart', value: 'View Report', description: 'Analyze Stock Details' },
-    '/payments': { iconName: 'TrendingUp', valueKey: 'outstandingPayables', description: 'Total Payments Due' },
-    // Add more as needed, ensuring iconName matches a key in DashboardTile's iconMap
-  };
-
-  return navItems
-    .filter(item => item.href !== '/dashboard' && (tileMappings[item.href] || navItems.find(ni => ni.href === item.href)?.iconName))
-    .map(item => {
-      const mapping = tileMappings[item.href];
-      return {
-        title: item.title,
-        // @ts-ignore
-        value: mapping?.valueKey ? summaryData[mapping.valueKey] : mapping?.value || 'N/A',
-        iconName: mapping?.iconName || item.iconName, // Use mapping's iconName or fallback to navItem's iconName
-        href: item.href,
-        description: mapping?.description || `Manage ${item.title}`,
-      };
-    });
-};
-
+// Define the tiles for the "Quick Actions" section
+// These are manually defined to match the desired appearance and order
+const quickActionTiles = [
+  { 
+    title: "Purchases", 
+    description: "Record and manage purchases", 
+    iconName: "ShoppingCart", 
+    href: "/purchases", 
+    className: "bg-purple-600 hover:bg-purple-700 text-white" 
+  },
+  { 
+    title: "Sales", 
+    description: "Create and manage sales", 
+    iconName: "Receipt", 
+    href: "/sales", 
+    className: "bg-blue-600 hover:bg-blue-700 text-white" 
+  },
+  { 
+    title: "Inventory", 
+    description: "View and manage stock", 
+    iconName: "Boxes", 
+    href: "/inventory", 
+    className: "bg-teal-500 hover:bg-teal-600 text-white" 
+  },
+  { 
+    title: "Stock Report", 
+    description: "Real-time stock analysis", 
+    iconName: "FileText", 
+    href: "/stock-report", 
+    className: "bg-orange-500 hover:bg-orange-600 text-white" 
+  },
+  { 
+    title: "Location Transfer", 
+    description: "Transfer stock between locations", 
+    iconName: "ArrowRightLeft", 
+    href: "/location-transfer", 
+    className: "bg-indigo-500 hover:bg-indigo-600 text-white" 
+  },
+  { 
+    title: "Payments", 
+    description: "Record outgoing payments", 
+    iconName: "ArrowRightCircle", 
+    href: "/payments", 
+    className: "bg-red-600 hover:bg-red-700 text-white" 
+  },
+  { 
+    title: "Receipts", 
+    description: "Manage incoming payments", 
+    iconName: "ArrowLeftCircle", 
+    href: "/receipts", 
+    className: "bg-green-600 hover:bg-green-700 text-white" 
+  },
+  { 
+    title: "Master Data", 
+    description: "Manage people & companies", 
+    iconName: "Users2", 
+    href: "/masters", 
+    className: "bg-sky-600 hover:bg-sky-700 text-white" 
+  },
+  { 
+    title: "Cash Book", 
+    description: "Track cash transactions", 
+    iconName: "BookOpen", 
+    href: "/cashbook", 
+    className: "bg-pink-600 hover:bg-pink-700 text-white" 
+  },
+  { 
+    title: "Party Ledger", 
+    description: "View party balances", 
+    iconName: "BookUser", 
+    href: "/ledger", 
+    className: "bg-slate-700 hover:bg-slate-800 text-white" 
+  },
+];
 
 export default function DashboardPage() {
-  const dashboardTiles = getDashboardTiles();
-
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-4xl font-bold text-foreground tracking-tight">Welcome to Kisan Khata</h1>
-        {/* <p className="text-lg text-muted-foreground mt-1">
-          Your agricultural business at a glance.
-        </p> */}
+      <header className="text-center">
+        <h1 className="text-4xl font-bold text-foreground tracking-tight">Quick Actions</h1>
       </header>
 
       <section>
-        <h2 className="text-2xl font-semibold text-foreground mb-4">Quick Summary</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <DashboardTile title="Total Sales" value={summaryData.totalSales} iconName="DollarSign" href="/sales" description="Year-to-Date" className="bg-green-50 dark:bg-green-900/30 border-green-500/50" valueClassName="text-green-600 dark:text-green-400"/>
-          <DashboardTile title="Total Purchases" value={summaryData.totalPurchases} iconName="ShoppingCart" href="/purchases" description="Year-to-Date" className="bg-blue-50 dark:bg-blue-900/30 border-blue-500/50" valueClassName="text-blue-600 dark:text-blue-400"/>
-          <DashboardTile title="Inventory Value" value={summaryData.inventoryValue} iconName="Package" href="/inventory" description="Current Stock Value" className="bg-yellow-50 dark:bg-yellow-900/30 border-yellow-500/50" valueClassName="text-yellow-600 dark:text-yellow-400"/>
-          <DashboardTile title="Receivables" value={summaryData.outstandingReceivables} iconName="TrendingUp" href="/receipts" description="Outstanding from Customers" className="bg-purple-50 dark:bg-purple-900/30 border-purple-500/50" valueClassName="text-purple-600 dark:text-purple-400"/>
-          <DashboardTile title="Payables" value={summaryData.outstandingPayables} iconName="TrendingDown" href="/payments" description="Outstanding to Suppliers" className="bg-red-50 dark:bg-red-900/30 border-red-500/50" valueClassName="text-red-600 dark:text-red-400"/>
-           <DashboardTile title="Active Parties" value={summaryData.activeCustomers.toString()} iconName="Users" href="/ledger" description="Customers & Suppliers" className="bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500/50" valueClassName="text-indigo-600 dark:text-indigo-400"/>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-2xl font-semibold text-foreground mb-4">Manage Your Business</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {dashboardTiles.map((tile) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+          {quickActionTiles.map((tile) => (
             <DashboardTile
               key={tile.href}
               title={tile.title}
-              value={tile.value.toString()}
               iconName={tile.iconName}
               href={tile.href}
               description={tile.description}
+              className={tile.className}
             />
           ))}
         </div>

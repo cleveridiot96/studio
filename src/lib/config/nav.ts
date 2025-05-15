@@ -11,6 +11,7 @@ import {
   Users2,
   DatabaseBackup,
   Tractor, // App icon
+  ArrowRightLeft, // For Location Transfer
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -67,6 +68,11 @@ export const navItems: NavItem[] = [
     title: 'Masters',
     href: '/masters',
     iconName: 'Users2',
+  },
+  {
+    title: 'Location Transfer',
+    href: '/location-transfer',
+    iconName: 'ArrowRightLeft',
   },
   {
     title: 'Backup/Restore',

@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card'; // Removed CardHeader, CardContent
 import type { LucideProps } from 'lucide-react';
 import { 
   BarChart, DollarSign, Package, Users, LineChart, TrendingUp, ShoppingCart as DefaultShoppingCartIcon, TrendingDown, HelpCircle as FallbackIcon,
@@ -13,7 +13,8 @@ import {
   LayoutGrid as DefaultLayoutGridIcon, 
   Boxes as DefaultBoxesIcon, 
   FileText as DefaultFileTextIcon, 
-  Receipt as DefaultReceiptIcon 
+  Receipt as DefaultReceiptIcon,
+  ArrowRightLeft, // Added for Location Transfer
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -39,38 +40,30 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   Users2: DefaultUsers2Icon,
   DatabaseBackup: DefaultDatabaseBackupIcon,
   LayoutGrid: DefaultLayoutGridIcon,
+  ArrowRightLeft, // Added
 };
 
 
 interface DashboardTileProps {
   title: string;
-  value: string | number;
   iconName: string; 
   href: string;
   description?: string;
-  className?: string;
-  valueClassName?: string;
+  className?: string; // Will carry background and text color classes
 }
 
-const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, value, iconName, href, description, className, valueClassName }) => {
+const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
   return (
-    <Link href={href} className="block group">
+    <Link href={href} className="block group h-full">
       <Card className={cn(
         "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-        "bg-card text-card-foreground border-border rounded-xl overflow-hidden",
-        className
+        "rounded-xl p-6 flex flex-col items-center text-center justify-center h-full", // Centering content
+        className // This will carry custom background and text color, e.g., "bg-purple-600 text-white"
       )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4 sm:px-6">
-          <CardTitle className="text-2xl font-semibold text-primary">{title}</CardTitle>
-          <Icon className="h-10 w-10 text-accent opacity-80 group-hover:opacity-100 transition-opacity" />
-        </CardHeader>
-        <CardContent className="pb-4 px-4 sm:px-6">
-          <div className={cn("text-6xl font-bold text-foreground group-hover:text-primary transition-colors", valueClassName)}>
-            {value}
-          </div>
-          {description && <p className="text-sm text-muted-foreground pt-1">{description}</p>}
-        </CardContent>
+        <Icon className="h-12 w-12 mb-4" /> {/* Icon styling for better visibility and white text */}
+        <CardTitle className="text-xl font-semibold mb-1">{title}</CardTitle>
+        {description && <p className="text-sm opacity-90">{description}</p>}
       </Card>
     </Link>
   );
