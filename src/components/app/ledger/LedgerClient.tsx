@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -48,8 +47,7 @@ export function LedgerClient() {
   const [receipts] = useLocalStorageState<Receipt[]>(TRANSACTIONS_KEYS.receipts, []);
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string | undefined>();
-  const [selectedPartyType, setSelectedPartyType] = React.useState<MasterItemType | undefined>();
-
+  
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [hydrated, setHydrated] = React.useState(false);
 
@@ -65,9 +63,15 @@ export function LedgerClient() {
       const data = localStorage.getItem(key);
       if (data) {
         try {
-          const parsedData = JSON.parse(data);
-          if (Array.isArray(parsedData)) {
-            loadedMasters.push(...parsedData);
+          const parsedDataArray = JSON.parse(data);
+          if (Array.isArray(parsedDataArray)) {
+            parsedDataArray.forEach(item => {
+              if (item && typeof item === 'object' && item.id && typeof item.id === 'string' && item.name && typeof item.name === 'string' && item.type && typeof item.type === 'string') {
+                loadedMasters.push(item as MasterItem);
+              } else {
+                console.warn("Skipping malformed master item from localStorage:", item, "from key:", key);
+              }
+            });
           }
         } catch (e) {
           console.error("Failed to parse master data from localStorage for key:", key, e);
@@ -77,27 +81,35 @@ export function LedgerClient() {
     setAllMasters(loadedMasters.sort((a,b) => a.name.localeCompare(b.name)));
   }, []);
 
+  const selectedParty = React.useMemo(() => {
+    if (!selectedPartyId) return null;
+    return allMasters.find(p => p.id === selectedPartyId);
+  }, [selectedPartyId, allMasters]);
+
+  const selectedPartyType = selectedParty?.type;
+
   const ledgerTransactions = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !dateRange?.to) {
       return { entries: [], openingBalance: 0, closingBalance: 0 };
     }
 
-    const partyTransactions: LedgerTransaction[] = [];
-    const party = allMasters.find(m => m.id === selectedPartyId);
+    const party = allMasters.find(m => m.id === selectedPartyId); // Re-fetch party for safety within this memo
     if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 };
+
+    const partyTransactions: LedgerTransaction[] = [];
 
     purchases.forEach(p => {
       if (p.supplierId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, particulars: `Goods purchased (Lot: ${p.lotNumber})`, credit: p.totalAmount });
       }
       if (p.agentId === selectedPartyId && p.agentName && party.commission) {
-        const commission = (p.netWeight * p.rate * (party.commission || 0) / 100); // Commission on basic value
+        const commission = (p.netWeight * p.rate * (party.commission || 0) / 100);
         if (commission > 0) partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, particulars: `Commission on Lot ${p.lotNumber}`, credit: commission });
       }
       if (p.transporterId === selectedPartyId && p.transportRate) {
         partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber, particulars: `Transport for Lot ${p.lotNumber}`, credit: p.transportRate });
       }
-      if (p.brokerId === selectedPartyId && p.calculatedBrokerageAmount) {
+       if (p.brokerId === selectedPartyId && p.calculatedBrokerageAmount) {
          partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Brokerage Exp.', refNo: p.lotNumber, particulars: `Brokerage for Lot ${p.lotNumber}`, credit: p.calculatedBrokerageAmount });
       }
     });
@@ -153,11 +165,9 @@ export function LedgerClient() {
 
   }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange]);
 
-  const handlePartySelect = React.useCallback((value: string) => {
-    const party = allMasters.find(p => p.id === value);
+  const handlePartySelect = React.useCallback((value: string) => { // Radix onValueChange provides string
     setSelectedPartyId(value);
-    setSelectedPartyType(party?.type);
-  }, [allMasters]);
+  }, []); // Empty dependency array ensures stable callback reference
 
   const customerOptions = React.useMemo(() =>
     allMasters.filter(m => m.type === 'Customer').map(c => <SelectItem key={`cust-${c.id}`} value={c.id}>{c.name}</SelectItem>),
@@ -198,7 +208,9 @@ export function LedgerClient() {
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
             <Select onValueChange={handlePartySelect} value={selectedPartyId}>
                 <SelectTrigger className="w-full md:w-[280px]">
-                    <SelectValue placeholder="Select Party..." />
+                     <SelectValue placeholder="Select Party...">
+                        {selectedParty ? `${selectedParty.name} (${selectedPartyType || 'N/A'})` : "Select Party..."}
+                     </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                     <SelectGroup>
@@ -231,7 +243,7 @@ export function LedgerClient() {
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl text-primary flex items-center">
-                <BookUser className="mr-3 h-7 w-7" /> Ledger: {allMasters.find(p=>p.id === selectedPartyId)?.name} ({selectedPartyType})
+                <BookUser className="mr-3 h-7 w-7" /> Ledger: {selectedParty?.name || "Selected Party"} {selectedPartyType ? `(${selectedPartyType})` : ''}
             </CardTitle>
             <CardDescription>
                 Transactions from {dateRange?.from ? format(dateRange.from, "PPP") : "start"} to {dateRange?.to ? format(dateRange.to, "PPP") : "end"}.
