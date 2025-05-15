@@ -40,55 +40,68 @@ interface LedgerEntryWithBalance extends LedgerTransaction {
   balance: number;
 }
 
-export function LedgerClient() {
-  const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
-  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, []);
-  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, []);
-  const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, []);
-  const [receipts] = useLocalStorageState<Receipt[]>(TRANSACTIONS_KEYS.receipts, []);
+const initialLedgerData = { entries: [], openingBalance: 0, closingBalance: 0 };
 
-  const [selectedPartyId, setSelectedPartyId] = React.useState<string | undefined>();
-  
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+export function LedgerClient() {
   const [hydrated, setHydrated] = React.useState(false);
+  const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
+  
+  const memoizedEmptyArray = React.useMemo(() => [], []);
+  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
+  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
+  const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, memoizedEmptyArray);
+  const [receipts] = useLocalStorageState<Receipt[]>(TRANSACTIONS_KEYS.receipts, memoizedEmptyArray);
+
+  const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   React.useEffect(() => {
     setHydrated(true);
-    setDateRange({
-        from: startOfDay(addDays(new Date(), -90)),
-        to: endOfDay(new Date()),
-    });
-
-    const loadedMasters: MasterItem[] = [];
-    Object.values(MASTERS_KEYS).forEach(key => {
-      const data = localStorage.getItem(key);
-      if (data) {
-        try {
-          const parsedDataArray = JSON.parse(data);
-          if (Array.isArray(parsedDataArray)) {
-            parsedDataArray.forEach(item => {
-              if (item && typeof item === 'object' && item.id && typeof item.id === 'string' && item.name && typeof item.name === 'string' && item.type && typeof item.type === 'string') {
-                loadedMasters.push(item as MasterItem);
-              } else {
-                console.warn("Skipping malformed master item from localStorage:", item, "from key:", key);
-              }
-            });
-          }
-        } catch (e) {
-          console.error("Failed to parse master data from localStorage for key:", key, e);
-        }
-      }
-    });
-    setAllMasters(loadedMasters.sort((a,b) => a.name.localeCompare(b.name)));
   }, []);
 
+  React.useEffect(() => {
+    if (hydrated) {
+      const loadedMasters: MasterItem[] = [];
+      Object.values(MASTERS_KEYS).forEach(key => {
+        const data = localStorage.getItem(key);
+        if (data) {
+          try {
+            const parsedDataArray = JSON.parse(data);
+            if (Array.isArray(parsedDataArray)) {
+              parsedDataArray.forEach(item => {
+                if (item && typeof item === 'object' && item.id && typeof item.id === 'string' && item.name && typeof item.name === 'string' && item.type && typeof item.type === 'string') {
+                  loadedMasters.push(item as MasterItem);
+                } else {
+                  console.warn("Skipping malformed master item from localStorage:", item, "from key:", key);
+                }
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse master data from localStorage for key:", key, e);
+          }
+        }
+      });
+      loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
+      setAllMasters(loadedMasters);
+    }
+  }, [hydrated]);
+
+  React.useEffect(() => {
+    if (hydrated) {
+      setDateRange({
+          from: startOfDay(addDays(new Date(), -90)),
+          to: endOfDay(new Date()),
+      });
+    }
+  }, [hydrated]);
+
   const ledgerTransactions = React.useMemo(() => {
-    if (!selectedPartyId || !dateRange?.from || !dateRange?.to) {
-      return { entries: [], openingBalance: 0, closingBalance: 0 };
+    if (!selectedPartyId || !dateRange?.from || !dateRange?.to || !hydrated) {
+      return initialLedgerData;
     }
 
     const party = allMasters.find(m => m.id === selectedPartyId); 
-    if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 };
+    if (!party) return initialLedgerData;
 
     const partyTransactions: LedgerTransaction[] = [];
 
@@ -157,7 +170,7 @@ export function LedgerClient() {
 
     return { entries: entriesWithBalance, openingBalance: openingBalanceForPeriod, closingBalance: currentPeriodBalance };
 
-  }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange]);
+  }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange, hydrated]);
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
@@ -192,14 +205,6 @@ export function LedgerClient() {
     );
   }
 
-  const selectedPartyDisplay = () => {
-    if (!selectedPartyId) return "Select Party...";
-    const party = allMasters.find(p => p.id === selectedPartyId);
-    if (!party) return "Select Party..."; // Or selectedPartyId if no name found
-    return `${party.name} (${party.type})`;
-  };
-
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -208,40 +213,52 @@ export function LedgerClient() {
           <p className="text-lg text-muted-foreground">View outstanding balances and transaction history party-wise.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-            <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
+          {allMasters.length > 0 ? (
+            <Select onValueChange={handlePartySelect} value={selectedPartyId}>
                 <SelectTrigger className="w-full md:w-[280px]">
-                     <SelectValue placeholder="Select Party...">
-                        {selectedPartyDisplay()}
-                     </SelectValue>
+                     <SelectValue placeholder="Select Party..." />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectGroup>
-                        <SelectLabel>Customers</SelectLabel>
-                        {customerOptions}
-                    </SelectGroup>
-                    <SelectGroup>
-                        <SelectLabel>Suppliers</SelectLabel>
-                        {supplierOptions}
-                    </SelectGroup>
-                    <SelectGroup>
-                        <SelectLabel>Agents</SelectLabel>
-                        {agentOptions}
-                    </SelectGroup>
-                     <SelectGroup>
-                        <SelectLabel>Brokers</SelectLabel>
-                        {brokerOptions}
-                    </SelectGroup>
-                     <SelectGroup>
-                        <SelectLabel>Transporters</SelectLabel>
-                        {transporterOptions}
-                    </SelectGroup>
+                    {customerOptions.length > 0 && (
+                      <SelectGroup key="customer-group">
+                          <SelectLabel>Customers</SelectLabel>
+                          {customerOptions}
+                      </SelectGroup>
+                    )}
+                    {supplierOptions.length > 0 && (
+                      <SelectGroup key="supplier-group">
+                          <SelectLabel>Suppliers</SelectLabel>
+                          {supplierOptions}
+                      </SelectGroup>
+                    )}
+                    {agentOptions.length > 0 && (
+                      <SelectGroup key="agent-group">
+                          <SelectLabel>Agents</SelectLabel>
+                          {agentOptions}
+                      </SelectGroup>
+                    )}
+                    {brokerOptions.length > 0 && (
+                      <SelectGroup key="broker-group">
+                          <SelectLabel>Brokers</SelectLabel>
+                          {brokerOptions}
+                      </SelectGroup>
+                    )}
+                    {transporterOptions.length > 0 && (
+                      <SelectGroup key="transporter-group">
+                          <SelectLabel>Transporters</SelectLabel>
+                          {transporterOptions}
+                      </SelectGroup>
+                    )}
                 </SelectContent>
             </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties available.</p>
+          )}
             <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
         </div>
       </div>
 
-      {selectedPartyId ? (
+      {selectedPartyId && allMasters.find(p => p.id === selectedPartyId) ? (
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl text-primary flex items-center">
@@ -307,10 +324,16 @@ export function LedgerClient() {
         <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center">
           <div className="text-center">
             <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />
-            <p className="text-xl text-muted-foreground">Please select a party to view their ledger.</p>
+            <p className="text-xl text-muted-foreground">
+              {allMasters.length === 0 && hydrated ? "No parties found. Please add master data." : "Please select a party to view their ledger."}
+            </p>
           </div>
         </Card>
       )}
     </div>
   );
 }
+
+    
+
+    
