@@ -38,11 +38,6 @@ interface LedgerTransaction {
 
 interface LedgerEntryWithBalance extends LedgerTransaction {
   balance: number;
-  // For Tally-style bill-wise details (future enhancement)
-  // openingAmount?: number;
-  // pendingAmount?: number;
-  // dueDate?: string;
-  // overdueDays?: number;
 }
 
 export function LedgerClient() {
@@ -60,7 +55,6 @@ export function LedgerClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-    // Set initial date range on client side after hydration
     setDateRange({
         from: startOfDay(addDays(new Date(), -90)),
         to: endOfDay(new Date()),
@@ -70,7 +64,14 @@ export function LedgerClient() {
     Object.values(MASTERS_KEYS).forEach(key => {
       const data = localStorage.getItem(key);
       if (data) {
-        loadedMasters.push(...JSON.parse(data));
+        try {
+          const parsedData = JSON.parse(data);
+          if (Array.isArray(parsedData)) {
+            loadedMasters.push(...parsedData);
+          }
+        } catch (e) {
+          console.error("Failed to parse master data from localStorage for key:", key, e);
+        }
       }
     });
     setAllMasters(loadedMasters.sort((a,b) => a.name.localeCompare(b.name)));
@@ -85,13 +86,12 @@ export function LedgerClient() {
     const party = allMasters.find(m => m.id === selectedPartyId);
     if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 };
 
-    // Purchases: Party is Supplier (Credit), Agent (Debit for commission earned by agent, payable by us), Transporter (Debit for cost), Broker (Debit for cost)
     purchases.forEach(p => {
       if (p.supplierId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, particulars: `Goods purchased (Lot: ${p.lotNumber})`, credit: p.totalAmount });
       }
-      if (p.agentId === selectedPartyId && p.agentName) { 
-        const commission = (p.totalAmount * (party.commission || 0) / 100); 
+      if (p.agentId === selectedPartyId && p.agentName && party.commission) {
+        const commission = (p.netWeight * p.rate * (party.commission || 0) / 100); // Commission on basic value
         if (commission > 0) partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, particulars: `Commission on Lot ${p.lotNumber}`, credit: commission });
       }
       if (p.transporterId === selectedPartyId && p.transportRate) {
@@ -102,13 +102,13 @@ export function LedgerClient() {
       }
     });
 
-    // Sales: Party is Customer (Debit), Broker (Credit for commission earned by broker)
     sales.forEach(s => {
       if (s.customerId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber, particulars: `Goods sold (Bill: ${s.billNumber}, Lot: ${s.lotNumber})`, debit: s.totalAmount });
       }
-      if (s.brokerId === selectedPartyId && s.brokerageAmount && party.commission) { 
-        const saleBrokerage = s.brokerageType === 'Percentage' ? (s.totalAmount * (s.brokerageAmount/100)) : s.brokerageAmount;
+      if (s.brokerId === selectedPartyId && party.commission) { 
+        const saleBillAmount = s.billAmount || (s.netWeight * s.rate);
+        const saleBrokerage = s.brokerageType === 'Percentage' ? (saleBillAmount * (s.brokerageAmount || 0)/100) : (s.brokerageAmount || 0);
         if (saleBrokerage > 0) partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Brokerage Inc.', refNo: s.billNumber, particulars: `Brokerage on Sale ${s.billNumber}`, debit: saleBrokerage });
       }
        if (s.transporterId === selectedPartyId && s.transportCost) { 
@@ -116,14 +116,12 @@ export function LedgerClient() {
       }
     });
 
-    // Payments: Party is Supplier/Agent/Broker/Transporter (Debit to their account)
     payments.forEach(pm => {
       if (pm.partyId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: pm.id, date: pm.date, type: 'Payment', refNo: pm.referenceNo, particulars: `Payment via ${pm.paymentMethod} ${pm.notes ? '- '+pm.notes : ''}`, debit: pm.amount });
       }
     });
 
-    // Receipts: Party is Customer/Broker (Credit to their account)
     receipts.forEach(rc => {
       if (rc.partyId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: rc.id, date: rc.date, type: 'Receipt', refNo: rc.referenceNo, particulars: `Receipt via ${rc.paymentMethod} ${rc.notes ? '- '+rc.notes : ''}`, credit: rc.amount });
@@ -131,24 +129,20 @@ export function LedgerClient() {
     });
     
     let balance = 0;
-    // Calculate opening balance before the start of the selected date range
     partyTransactions.forEach(t => {
-        if (new Date(t.date) < startOfDay(dateRange.from! )) { // Ensure dateRange.from is defined
+        if (new Date(t.date) < startOfDay(dateRange.from! )) { 
             balance += (t.debit || 0) - (t.credit || 0);
         }
     });
     const openingBalanceForPeriod = balance;
 
-    // Filter by date range after calculating overall opening balance
     const dateFilteredTransactions = partyTransactions.filter(t => {
         const transactionDate = parseISO(t.date);
         return isWithinInterval(transactionDate, { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) });
     });
 
-    // Sort and calculate running balance for the filtered period
     dateFilteredTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     
-    // Start running balance from the calculated openingBalanceForPeriod
     let currentPeriodBalance = openingBalanceForPeriod;
     const entriesWithBalance: LedgerEntryWithBalance[] = dateFilteredTransactions.map(t => {
       currentPeriodBalance += (t.debit || 0) - (t.credit || 0);
@@ -159,11 +153,32 @@ export function LedgerClient() {
 
   }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange]);
 
-  const handlePartySelect = (value: string) => {
+  const handlePartySelect = React.useCallback((value: string) => {
     const party = allMasters.find(p => p.id === value);
     setSelectedPartyId(value);
     setSelectedPartyType(party?.type);
-  };
+  }, [allMasters]);
+
+  const customerOptions = React.useMemo(() =>
+    allMasters.filter(m => m.type === 'Customer').map(c => <SelectItem key={`cust-${c.id}`} value={c.id}>{c.name}</SelectItem>),
+    [allMasters]
+  );
+  const supplierOptions = React.useMemo(() =>
+    allMasters.filter(m => m.type === 'Supplier').map(s => <SelectItem key={`supp-${s.id}`} value={s.id}>{s.name}</SelectItem>),
+    [allMasters]
+  );
+  const agentOptions = React.useMemo(() =>
+    allMasters.filter(m => m.type === 'Agent').map(a => <SelectItem key={`agent-${a.id}`} value={a.id}>{a.name}</SelectItem>),
+    [allMasters]
+  );
+  const brokerOptions = React.useMemo(() =>
+    allMasters.filter(m => m.type === 'Broker').map(b => <SelectItem key={`brok-${b.id}`} value={b.id}>{b.name}</SelectItem>),
+    [allMasters]
+  );
+  const transporterOptions = React.useMemo(() =>
+    allMasters.filter(m => m.type === 'Transporter').map(t => <SelectItem key={`trans-${t.id}`} value={t.id}>{t.name}</SelectItem>),
+    [allMasters]
+  );
   
   if (!hydrated) {
     return (
@@ -188,23 +203,23 @@ export function LedgerClient() {
                 <SelectContent>
                     <SelectGroup>
                         <SelectLabel>Customers</SelectLabel>
-                        {allMasters.filter(m => m.type === 'Customer').map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        {customerOptions}
                     </SelectGroup>
                     <SelectGroup>
                         <SelectLabel>Suppliers</SelectLabel>
-                        {allMasters.filter(m => m.type === 'Supplier').map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        {supplierOptions}
                     </SelectGroup>
                     <SelectGroup>
                         <SelectLabel>Agents</SelectLabel>
-                        {allMasters.filter(m => m.type === 'Agent').map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                        {agentOptions}
                     </SelectGroup>
                      <SelectGroup>
                         <SelectLabel>Brokers</SelectLabel>
-                        {allMasters.filter(m => m.type === 'Broker').map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                        {brokerOptions}
                     </SelectGroup>
                      <SelectGroup>
                         <SelectLabel>Transporters</SelectLabel>
-                        {allMasters.filter(m => m.type === 'Transporter').map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                        {transporterOptions}
                     </SelectGroup>
                 </SelectContent>
             </Select>
