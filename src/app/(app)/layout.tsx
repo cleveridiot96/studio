@@ -46,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen>
+      <SidebarProvider defaultOpen={false}> {/* Changed defaultOpen to false */}
         <AppExitHandler />
         <div className="flex min-h-screen bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg">
