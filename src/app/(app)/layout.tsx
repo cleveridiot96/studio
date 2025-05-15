@@ -60,16 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
-              <div className="flex items-center gap-3 group-data-[state=collapsed]:justify-center">
-                  <Avatar className="h-10 w-10 border-2 border-sidebar-primary">
-                      <AvatarImage src="https://picsum.photos/100/100" alt="User" data-ai-hint="farmer person" />
-                      <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">KB</AvatarFallback>
-                  </Avatar>
-                  <div className="group-data-[state=collapsed]:hidden">
-                      <p className="text-sm font-medium text-sidebar-foreground">Kisan Bhai</p>
-                      <p className="text-xs text-sidebar-foreground/70">Admin</p>
-                  </div>
-              </div>
+              {/* User profile section removed */}
             </SidebarFooter>
           </Sidebar>
           
