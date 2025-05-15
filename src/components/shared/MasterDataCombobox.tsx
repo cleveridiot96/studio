@@ -25,9 +25,9 @@ import type { MasterItem, MasterItemType } from "@/lib/types"
 
 interface MasterDataComboboxProps {
   items: MasterItem[];
-  value: string | undefined;
-  onChange: (value: string | undefined) => void;
-  onAddNew: () => void; 
+  value: string | undefined; // This is the ID of the selected item from react-hook-form
+  onChange: (value: string | undefined) => void; // This is field.onChange from react-hook-form
+  onAddNew: () => void;
   placeholder: string;
   searchPlaceholder: string;
   notFoundMessage: string;
@@ -38,8 +38,8 @@ interface MasterDataComboboxProps {
 
 const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
   items,
-  value,
-  onChange,
+  value, // Current selected item's ID from the form
+  onChange, // Function to update the form's value
   onAddNew,
   placeholder,
   searchPlaceholder,
@@ -51,7 +51,7 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false)
 
   const selectedItem = value ? items.find((item) => item.id === value) : null;
-  
+
   const getIcon = (item?: MasterItem | null) => {
     if (!itemIcon) return null;
     if (typeof itemIcon === 'function' && item) {
@@ -61,7 +61,6 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
   }
 
   const SelectedItemIcon = selectedItem ? getIcon(selectedItem) : (typeof itemIcon !== 'function' ? itemIcon as React.ComponentType<LucideProps> : null);
-
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -101,20 +100,20 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
                 return (
                   <CommandItem
                     key={item.id}
-                    value={item.id} // Changed from item.name to item.id
-                    onSelect={() => {
-                      onChange(item.id === value ? undefined : item.id)
-                      setOpen(false)
+                    value={item.id} // This value is passed to onSelect
+                    onSelect={(currentValue) => { // currentValue will be item.id
+                      onChange(currentValue); // Directly set the form value to the selected item's ID
+                      setOpen(false);
                     }}
                   >
                     <Check
                       className={cn(
                         "mr-2 h-4 w-4",
-                        value === item.id ? "opacity-100" : "opacity-0"
+                        value === item.id ? "opacity-100" : "opacity-0" // `value` is the prop from the form field
                       )}
                     />
                     {CurrentItemIcon && <CurrentItemIcon className="mr-2 h-4 w-4 text-muted-foreground" />}
-                    {item.name} 
+                    {item.name}
                     {item.type && <span className="ml-2 text-xs text-muted-foreground">({item.type})</span>}
                   </CommandItem>
                 )
@@ -123,7 +122,7 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
             <CommandSeparator />
             <CommandGroup>
                 <CommandItem
-                    onSelect={() => {
+                    onSelect={() => { // This onSelect is for the "Add New" item
                         onAddNew();
                         setOpen(false);
                     }}
@@ -140,5 +139,3 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
   )
 }
 export const MasterDataCombobox = React.memo(MasterDataComboboxComponent);
-
-    
