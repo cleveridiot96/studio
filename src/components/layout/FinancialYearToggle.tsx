@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -84,17 +85,15 @@ export function FinancialYearToggle() {
         <DropdownMenuContent align="center" className="w-[200px]">
           <DropdownMenuLabel>Select Financial Year</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {yearOptions.map(year => (
-            <DropdownMenuItem 
+ {yearOptions.map(year => (
+ <DropdownMenuRadioItem 
               key={year} 
-              onClick={() => setFinancialYear(year)}
-              disabled={year === financialYear}
-              className="flex justify-between items-center"
+ value={year}
+ onSelect={() => setFinancialYear(year)}
             >
               {year}
-              {year === financialYear && <Check className="h-4 w-4 text-primary" />}
-            </DropdownMenuItem>
-          ))}
+ </DropdownMenuRadioItem>
+ ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleAddNextFinancialYear} className="text-primary hover:!text-primary-foreground hover:!bg-primary">
             <CalendarPlus className="mr-2 h-4 w-4" />

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -104,15 +105,17 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* font-size is now set dynamically via JS on the <html> element */
+    /* font-size is now set dynamically via JS on the <html> element by SettingsContext. */
+    /* Use the FontEnhancer in Settings to adjust base font size for better readability. */
   }
   /* Ensure h tags have larger default sizes if needed, using relative units */
-  h1 { @apply text-2xl font-bold md:text-3xl lg:text-4xl; } /* Use relative sizing or responsive variants */
-  h2 { @apply text-xl font-semibold md:text-2xl lg:text-3xl; }
-  h3 { @apply text-lg font-semibold md:text-xl lg:text-2xl; }
-  h4 { @apply text-base font-semibold md:text-lg lg:text-xl; }
+  h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; } /* Increased base heading sizes */
+  h2 { @apply text-2xl font-semibold md:text-3xl lg:text-4xl; }
+  h3 { @apply text-xl font-semibold md:text-2xl lg:text-3xl; }
+  h4 { @apply text-lg font-semibold md:text-xl lg:text-2xl; }
 
   /* Increase default button padding and input sizes for tactile feel, adjust based on base font size */
   .btn-lg { @apply px-6 py-3 text-lg; } /* Example for larger buttons */
   .input-lg { @apply px-4 py-3 text-lg; } /* Example for larger inputs */
 }
+

@@ -25,7 +25,7 @@ import type { MasterItem, MasterItemType } from "@/lib/types"
 
 interface MasterDataComboboxProps {
   items: MasterItem[];
-  value: string | undefined;
+  value: string | undefined; // This is the ID of the selected item
   onChange: (value: string | undefined) => void;
   onAddNew: () => void;
   placeholder: string;
@@ -84,6 +84,7 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        {/* Removed value={value} from Command. The value prop on Command is for the search input string, not the selected item value. */}
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
@@ -100,8 +101,8 @@ const MasterDataComboboxComponent: React.FC<MasterDataComboboxProps> = ({
                 return (
                   <CommandItem
                     key={item.id}
-                    value={item.id} // Ensure this value is what onSelect receives
-                    onSelect={() => { // Use item.id directly from the closure
+                    value={item.id} // cmkdk uses this for filtering and provides it to onSelect
+                    onSelect={() => { // Explicitly use item.id from the closure
                       onChange(item.id);
                       setOpen(false);
                     }}
