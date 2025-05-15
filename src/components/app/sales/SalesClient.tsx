@@ -1,10 +1,11 @@
+
 // @ts-nocheck
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, FilePlus2 } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { useToast } from "@/hooks/use-toast";
@@ -23,62 +24,19 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
 
-// Mock Data - Replace with API calls in a real application
-const initialSalesData: Sale[] = [
-  {
-    id: "sale-1",
-    date: "2024-05-10", // FY 2024-2025
-    billNumber: "INV-00123",
-    customerId: "c1",
-    customerName: "Ram Kumar",
-    lotNumber: "AB/6", // From purchase
-    itemName: "Basmati Rice",
-    quantity: 5, // bags
-    netWeight: 250, // kg
-    rate: 65, // per kg
-    billAmount: 250 * 65, // 16250
-    totalAmount: 250 * 65,
-    transporterId: "t1",
-    transporterName: "Quick Trans",
-    transportCost: 500,
-    brokerId: "b1",
-    brokerName: "AgriConnect",
-    brokerageAmount: 325, // e.g. 2% of 16250
-    notes: "Urgent delivery"
-  },
-  {
-    id: "sale-2",
-    date: "2023-11-20", // FY 2023-2024
-    billNumber: "INV-00124",
-    customerId: "c2",
-    customerName: "Sita Devi Traders",
-    lotNumber: "CD/12",
-    itemName: "Wheat Flour",
-    quantity: 20,
-    netWeight: 1000,
-    rate: 40,
-    billAmount: 1000 * 40, // 40000
-    totalAmount: 1000 * 40,
-  },
-];
+// Initial Data set to empty arrays
+const initialSalesData: Sale[] = [];
+const initialCustomers: Customer[] = [];
+const initialTransporters: Transporter[] = [];
+const initialBrokers: Broker[] = [];
+const initialInventory: Purchase[] = []; // Purchases will act as inventory source
+
 
 const SALES_STORAGE_KEY = 'salesData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters'; // Shared with Purchases
-const BROKERS_STORAGE_KEY = 'masterBrokers'; // Shared with Purchases
-
-const initialCustomers: Customer[] = [
-  { id: "c1", name: "Ram Kumar", type: "Customer" },
-  { id: "c2", name: "Sita Devi Traders", type: "Customer" },
-];
-const initialTransporters: Transporter[] = [
-    { id: "t1", name: "Quick Trans", type: "Transporter"},
-    { id: "t2", name: "Reliable Movers", type: "Transporter"}
-];
-const initialBrokers: Broker[] = [
-    { id: "b1", name: "AgriConnect", type: "Broker"},
-    { id: "b2", name: "MarketLink", type: "Broker"}
-];
+const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
+const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory source
 
 
 export function SalesClient() {
@@ -89,6 +47,7 @@ export function SalesClient() {
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, initialBrokers);
+  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialInventory);
 
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
@@ -101,6 +60,13 @@ export function SalesClient() {
     return sales.filter(sale => isDateInFinancialYear(sale.date, financialYear));
   }, [sales, financialYear]);
 
+  const availableInventoryForSale = React.useMemo(() => {
+    // Basic transformation: for now, all purchases are considered inventory lots
+    // In a real system, you'd track remaining quantities here
+    return inventorySource.map(p => ({ id: p.id, vakkalNumber: p.lotNumber, ...p }));
+  }, [inventorySource]);
+
+
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     setSales(prevSales => {
       const isEditing = prevSales.some(s => s.id === sale.id);
@@ -109,6 +75,7 @@ export function SalesClient() {
         return prevSales.map(s => s.id === sale.id ? sale : s);
       } else {
         toast({ title: "Success!", description: "Sale added successfully." });
+        // TODO: Add inventory deduction logic here
         return [sale, ...prevSales];
       }
     });
@@ -128,6 +95,7 @@ export function SalesClient() {
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
       setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
+      // TODO: Add inventory restitution logic here if sale is deleted
       toast({ title: "Success!", description: "Sale deleted successfully." });
       setSaleToDeleteId(null);
       setShowDeleteConfirm(false);
@@ -137,13 +105,13 @@ export function SalesClient() {
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     switch (type) {
         case "Customer":
-            setCustomers(prev => [newItem, ...prev]);
+            setCustomers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
             break;
         case "Transporter":
-            setTransporters(prev => [newItem, ...prev]);
+            setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
             break;
         case "Broker":
-            setBrokers(prev => [newItem as Broker, ...prev]);
+            setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]);
             break;
         default:
             break;
@@ -188,6 +156,7 @@ export function SalesClient() {
           customers={customers}
           transporters={transporters}
           brokers={brokers}
+          inventory={availableInventoryForSale}
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />
@@ -213,3 +182,4 @@ export function SalesClient() {
     </div>
   );
 }
+

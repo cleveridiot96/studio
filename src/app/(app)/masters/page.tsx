@@ -1,5 +1,4 @@
 
-
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, Building } from "lucide-react";
@@ -33,16 +32,13 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 
-// Initial data
-const initialCustomers: MasterItem[] = [
-  { id: 'c1', name: 'Alpha Customer', type: 'Customer' },
-  { id: 'c2', name: 'Gamma Wholesaler', type: 'Customer' },
-];
-const initialSuppliers: MasterItem[] = [{ id: 's1', name: 'Beta Supplier', type: 'Supplier' }];
-const initialAgents: MasterItem[] = [{ id: 'a1', name: 'Epsilon Agent', type: 'Agent', commission: 2.5 }];
-const initialTransporters: MasterItem[] = [{ id: 't1', name: 'Delta Transporter', type: 'Transporter' }];
-const initialBrokers: MasterItem[] = [{ id: 'b1', name: 'Zeta Broker', type: 'Broker', commission: 1 }];
-const initialWarehouses: MasterItem[] = [{id: 'wh1', name: 'Mumbai Godown', type: 'Warehouse'}, {id: 'wh2', name: 'Chiplun Storage', type: 'Warehouse'}];
+// Initial data set to empty arrays
+const initialCustomers: MasterItem[] = [];
+const initialSuppliers: MasterItem[] = [];
+const initialAgents: MasterItem[] = [];
+const initialTransporters: MasterItem[] = [];
+const initialBrokers: MasterItem[] = [];
+const initialWarehouses: MasterItem[] = [];
 
 
 type MasterPageTabKey = MasterItemType | 'All';
