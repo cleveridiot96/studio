@@ -72,11 +72,11 @@ export function LedgerClient() {
   }, []);
 
   const ledgerTransactions = React.useMemo(() => {
-    if (!selectedPartyId) return [];
+    if (!selectedPartyId) return { entries: [], openingBalance: 0, closingBalance: 0 }; // Ensure consistent object structure
 
     const partyTransactions: LedgerTransaction[] = [];
     const party = allMasters.find(m => m.id === selectedPartyId);
-    if (!party) return [];
+    if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 }; // Ensure consistent object structure
 
     // Purchases: Party is Supplier (Credit), Agent (Debit for commission earned by agent, payable by us), Transporter (Debit for cost), Broker (Debit for cost)
     purchases.forEach(p => {
