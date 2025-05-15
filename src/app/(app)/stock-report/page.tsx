@@ -1,3 +1,4 @@
+
 import { PlaceholderContent } from "@/components/PlaceholderContent";
 import { FileText } from "lucide-react";
 
@@ -11,11 +12,11 @@ export default function StockReportPage() {
         </div>
       </div>
       <PlaceholderContent 
-        title="Stock Analysis Report" 
-        description="Detailed analysis of current stock by lot number, warehouse, weight, etc., will be available here."
+        title="Detailed Stock Analysis Report" 
+        description="This section will provide comprehensive reports on your inventory. You'll be able to filter by Lot Number (Vakkal), Warehouse/Location, and date ranges. Reports will show details like available quantity (bags), net weight (kg), purchase rate, and current stock value. This will help in stock valuation and identifying aging inventory."
         icon={FileText}
       />
-      {/* TODO: Implement StockReportClient component with filters and table */}
+      {/* TODO: Implement StockReportClient component with filters (date, location, lot) and a detailed table. */}
       {/* <StockReportClient /> */}
     </div>
   );
