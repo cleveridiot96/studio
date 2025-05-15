@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,15 +22,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
+import { CalendarIcon, Info, Warehouse as WarehouseIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType, Broker } from "@/lib/types";
+import type { MasterItem, Purchase, MasterItemType } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 
 interface AddPurchaseFormProps {
   isOpen: boolean;
@@ -41,7 +38,6 @@ interface AddPurchaseFormProps {
   agents: MasterItem[];
   warehouses: MasterItem[]; // Used as Locations
   transporters: MasterItem[];
-  brokers: Broker[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   purchaseToEdit?: Purchase | null;
 }
@@ -54,14 +50,11 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   agents,
   warehouses, // Locations
   transporters,
-  brokers,
   onMasterDataUpdate,
   purchaseToEdit
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  // const [showAddMasterDialog, setShowAddMasterDialog] = React.useState(false); // Not used currently
-  // const [currentMasterType, setCurrentMasterType] = React.useState<MasterItemType | null>(null); // Not used currently
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -71,16 +64,12 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
         locationId: purchaseToEdit.locationId,
         supplierId: purchaseToEdit.supplierId,
         agentId: purchaseToEdit.agentId,
-        // itemName: purchaseToEdit.itemName, // REMOVED
         quantity: purchaseToEdit.quantity,
         netWeight: purchaseToEdit.netWeight,
         rate: purchaseToEdit.rate,
         expenses: purchaseToEdit.expenses,
         transportRate: purchaseToEdit.transportRate,
         transporterId: purchaseToEdit.transporterId,
-        brokerId: purchaseToEdit.brokerId,
-        brokerageType: purchaseToEdit.brokerageType,
-        brokerageValue: purchaseToEdit.brokerageValue,
       };
     }
     return {
@@ -89,21 +78,17 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       locationId: undefined,
       supplierId: undefined,
       agentId: undefined,
-      // itemName: "", // REMOVED
       quantity: 0, // Bags
       netWeight: 0, // KG
       rate: 0, // Per KG
       expenses: undefined,
       transportRate: undefined,
       transporterId: undefined,
-      brokerId: undefined,
-      brokerageType: undefined,
-      brokerageValue: undefined,
     };
   }, [purchaseToEdit]);
 
   const form = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, brokers)),
+    resolver: zodResolver(purchaseSchema(suppliers.filter(s => s.bifurcation === 'Suppliers'), agents.filter(a => a.bifurcation === 'Agents'), warehouses, transporters.filter(t => t.bifurcation === 'Transporters'))),
     defaultValues: getDefaultValues(),
   });
 
@@ -115,20 +100,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   const rate = form.watch("rate");
   const expenses = form.watch("expenses") || 0;
   const transportRate = form.watch("transportRate") || 0; 
-  
-  const brokerageType = form.watch("brokerageType");
-  const brokerageValue = form.watch("brokerageValue") || 0;
-
-  const calculatedBrokerageAmount = React.useMemo(() => {
-    if (!brokerageType || !brokerageValue || !netWeight || !rate) return 0;
-    const subTotal = netWeight * rate;
-    if (brokerageType === 'Fixed') {
-      return brokerageValue;
-    } else if (brokerageType === 'Percentage') {
-      return (subTotal * brokerageValue) / 100;
-    }
-    return 0;
-  }, [brokerageType, brokerageValue, netWeight, rate]);
   
 
   const totalAmount = React.useMemo(() => {
@@ -143,12 +114,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 
 
   const handleAddNewMaster = (type: MasterItemType) => {
-    // setCurrentMasterType(type); // This logic would typically open a separate MasterForm dialog
-    // setShowAddMasterDialog(true); // This implies a modal for adding new master item from this form
     toast({ title: "Info", description: `Adding new ${type} would typically open a dedicated form. This feature is conceptual here.`});
-    // For actual implementation, you'd open MasterForm with itemTypeFromButton={type}
-    // and handle the submission to update master data lists (suppliers, agents etc.)
-    // and then set the newly added item's ID in the current purchase form.
   };
 
   const handleMasterItemAdded = React.useCallback((newItem: MasterItem) => {
@@ -157,7 +123,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
     if (newItem.type === 'Agent') form.setValue('agentId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Warehouse') form.setValue('locationId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Transporter') form.setValue('transporterId', newItem.id, { shouldValidate: true });
-    if (newItem.type === 'Broker') form.setValue('brokerId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added successfully!` });
   }, [onMasterDataUpdate, form, toast]);
 
@@ -173,7 +138,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       supplierName: suppliers.find(s => s.id === values.supplierId)?.name,
       agentId: values.agentId,
       agentName: agents.find(a => a.id === values.agentId)?.name,
-      // itemName: values.itemName, // REMOVED
       quantity: values.quantity,
       netWeight: values.netWeight,
       rate: values.rate,
@@ -181,11 +145,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       transportRate: values.transportRate,
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
-      brokerId: values.brokerId,
-      brokerName: brokers.find(b => b.id === values.brokerId)?.name,
-      brokerageType: values.brokerageType,
-      brokerageValue: values.brokerageValue,
-      calculatedBrokerageAmount: calculatedBrokerageAmount,
       totalAmount: totalAmount,
     };
     onSubmit(purchaseData);
@@ -198,8 +157,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       suppliers, 
       agents, 
       transporters, 
-      brokers, 
-      calculatedBrokerageAmount, 
       totalAmount, 
       onSubmit, 
       form, 
@@ -394,65 +351,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                 />
               </div>
 
-              {/* Section: Broker (Optional) */}
-               <div className="p-4 border rounded-md shadow-sm">
-                <h3 className="text-lg font-medium mb-3 text-primary">Broker Details (Optional)</h3>
-                <FormField
-                    control={form.control}
-                    name="brokerId"
-                    render={({ field }) => (
-                      <FormItem className="mb-4">
-                        <FormLabel>Broker</FormLabel>
-                        <MasterDataCombobox items={brokers} value={field.value} onChange={field.onChange} onAddNew={() => handleAddNewMaster("Broker")} placeholder="Select Broker" searchPlaceholder="Search brokers..." notFoundMessage="No broker found." addNewLabel="Add New Broker"/>
-                      <FormMessage />
-                      {form.formState.errors.brokerId && (<FormMessage>{form.formState.errors.brokerId?.message}</FormMessage>)}
-                    </FormItem>
-                    )}
-                  />
-                  {form.watch("brokerId") && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <FormField
-                        control={form.control}
-                        name="brokerageType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Brokerage Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select brokerage type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Fixed"><span className="flex items-center"><span className="mr-2">₹</span>Fixed Amount</span></SelectItem>
-                                <SelectItem value="Percentage"><span className="flex items-center"><Percent className="w-4 h-4 mr-2"/>Percentage</span></SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="brokerageValue"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Brokerage Value</FormLabel>
-                            <FormControl><Input type="number" step="0.01" placeholder={brokerageType === 'Percentage' ? "% value" : "₹ amount"} {...field} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  )}
-                   {form.watch("brokerId") && brokerageType && brokerageValue > 0 && (
-                     <div className="mt-3 text-sm text-muted-foreground">
-                        Calculated Brokerage: ₹{calculatedBrokerageAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                     </div>
-                   )}
-               </div>
-
-
               <div className="p-4 border border-dashed rounded-md bg-muted/50">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center text-lg font-semibold">
@@ -464,7 +362,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                     </p>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1 pl-7">
-                    (Net Weight &times; Rate) + Expenses + Transport Cost. Brokerage is handled separately.
+                    (Net Weight &times; Rate) + Expenses + Transport Cost.
                 </p>
               </div>
 
@@ -487,5 +385,3 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   );
 }
 export const AddPurchaseForm = React.memo(AddPurchaseFormComponent);
-
-    

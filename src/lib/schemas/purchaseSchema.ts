@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import type { MasterItem, Broker } from '@/lib/types';
+import type { MasterItem } from '@/lib/types';
 
-export const purchaseSchema = (suppliers: MasterItem[], agents: MasterItem[], warehouses: MasterItem[], transporters: MasterItem[], brokers: Broker[]) => z.object({
+export const purchaseSchema = (suppliers: MasterItem[], agents: MasterItem[], warehouses: MasterItem[], transporters: MasterItem[]) => z.object({
   date: z.date({
     required_error: "Purchase date is required.",
   }),
@@ -15,7 +15,6 @@ export const purchaseSchema = (suppliers: MasterItem[], agents: MasterItem[], wa
   agentId: z.string().optional().refine((agentId) => !agentId || agents.some((a) => a.id === agentId), {
     message: "Agent does not exist.",
   }),
-  // itemName: z.string().min(1, "Item name is required."), // Commodity Name - REMOVED
   quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."), // Number of Bags
   netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."), // KG
   rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."), // ₹/kg
@@ -24,27 +23,6 @@ export const purchaseSchema = (suppliers: MasterItem[], agents: MasterItem[], wa
   transporterId: z.string().optional().refine((transporterId) => !transporterId || transporters.some((t) => t.id === transporterId), {
     message: "Transporter does not exist.",
   }),
-  brokerId: z.string().optional().refine((brokerId) => !brokerId || brokers.some((b) => b.id === brokerId), {
-    message: "Broker does not exist.",
-  }),
-  brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
-  brokerageValue: z.coerce.number().optional(),
-}).refine(data => {
-  if (data.brokerId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue <=0)) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Brokerage type and value are required if a broker is selected.",
-  path: ["brokerageValue"], // You can point to a general path or specific fields
-}).refine(data => {
-    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue <=0)) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Brokerage value is required if brokerage type is selected.",
-    path: ["brokerageValue"],
 });
 
 

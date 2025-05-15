@@ -9,16 +9,17 @@ import React, { ChangeEvent } from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
 // Define the keys for data stored in localStorage
-// These should align with keys used in PurchasesClient, SalesClient, etc.
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
+  receipts: 'receiptsData', // Added receipts
+  payments: 'paymentsData', // Added payments
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   warehouses: 'masterWarehouses', // Also used for Locations
-  brokers: 'masterBrokers', // Added brokers
+  brokers: 'masterBrokers',
   settingsFontSize: 'appFontSize',
   settingsFinancialYear: 'appFinancialYear',
   // Add any other relevant keys used by other features
@@ -113,11 +114,7 @@ export default function BackupPage() {
         }
         
         if(restoreSuccess){
-          const now = Date.now();
           // We don't update lastBackupTimestamp on restore, as it reflects the last *backup* action
-          // Or, we could change its meaning to "last data operation timestamp"
-          // For now, keep it as last backup. The user will see old data loaded.
-
           toast({
             title: "Restore Successful",
             description: "Data has been restored from the backup file. Please refresh the application.",
@@ -161,14 +158,14 @@ export default function BackupPage() {
           <DatabaseBackup className="w-16 h-16 text-primary mb-4" />
           <CardTitle className="text-2xl">Manage Your Data</CardTitle>
           <CardDescription>
-            It's crucial to regularly back up your application data to prevent loss. 
+            It's crucial to regularly back up your application data to prevent loss.
             You can restore from a previously saved backup file.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button 
-              onClick={handleBackup} 
+            <Button
+              onClick={handleBackup}
               className="w-full text-lg py-6 bg-green-600 hover:bg-green-700 text-white"
               variant="default"
               size="lg"
@@ -176,7 +173,7 @@ export default function BackupPage() {
               <DownloadCloud className="mr-2 h-6 w-6" />
               Backup Data Locally
             </Button>
-            <Button 
+            <Button
               asChild
               className="w-full text-lg py-6"
               variant="outline"
@@ -185,12 +182,12 @@ export default function BackupPage() {
               <label htmlFor="restore-file-input" className="cursor-pointer flex items-center justify-center">
                 <UploadCloud className="mr-2 h-6 w-6" />
                 Restore Data from Backup
-                <input 
-                  type="file" 
-                  id="restore-file-input" 
-                  accept=".json" 
-                  onChange={handleRestore} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  id="restore-file-input"
+                  accept=".json"
+                  onChange={handleRestore}
+                  className="hidden"
                 />
               </label>
             </Button>
@@ -212,3 +209,5 @@ export default function BackupPage() {
     </div>
   );
 }
+
+    

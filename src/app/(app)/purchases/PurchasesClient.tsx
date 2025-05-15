@@ -1,11 +1,10 @@
-
 // @ts-nocheck
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, FilePlus2 } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, Broker } from "@/lib/types";
+import type { Purchase, MasterItem, MasterItemType } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +34,6 @@ const initialPurchasesData: Purchase[] = [
     supplierName: "AR Agent Supplier",
     agentId: "a1",
     agentName: "AR Agent",
-    // itemName: "Wheat", // REMOVED
     quantity: 6, // bags
     netWeight: 300, // kg
     rate: 320, // per kg
@@ -43,11 +41,6 @@ const initialPurchasesData: Purchase[] = [
     transportRate: 2000,
     transporterId: "t1",
     transporterName: "Speedy Logistics",
-    brokerId: "b1",
-    brokerName: "Krishi Deals",
-    brokerageType: "Percentage",
-    brokerageValue: 2, // 2%
-    calculatedBrokerageAmount: (300 * 320 * 2)/100, // 1920
     totalAmount: (300 * 320) + 1000 + 2000, // 96000 + 1000 + 2000 = 99000
   },
   {
@@ -60,15 +53,9 @@ const initialPurchasesData: Purchase[] = [
     supplierName: "Local Farm Co.",
     agentId: "a2",
     agentName: "Krishi Mitra",
-    // itemName: "Soyabean", // REMOVED
     quantity: 10,
     netWeight: 500,
     rate: 450,
-    brokerId: "b2",
-    brokerName: "FarmConnect",
-    brokerageType: "Fixed",
-    brokerageValue: 5000,
-    calculatedBrokerageAmount: 5000,
     totalAmount: 500*450, // 225000
   },
 ];
@@ -79,28 +66,23 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses'; // Also used for Locations
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 
-const initialSuppliers: Supplier[] = [
-  { id: "s1", name: "AR Agent Supplier", type: "Supplier" },
-  { id: "s2", name: "Local Farm Co.", type: "Supplier" },
+const initialSuppliers: MasterItem[] = [
+  { id: "s1", name: "AR Agent Supplier", type: "Supplier", bifurcation: 'Suppliers' },
+  { id: "s2", name: "Local Farm Co.", type: "Supplier", bifurcation: 'Suppliers' },
 ];
-const initialAgents: Agent[] = [
-  { id: "a1", name: "AR Agent", type: "Agent", commission: 5 }, // 5% commission
-  { id: "a2", name: "Krishi Mitra", type: "Agent", commission: 3 },
+const initialAgents: MasterItem[] = [
+  { id: "a1", name: "AR Agent", type: "Agent", commission: 5, bifurcation: 'Agents' }, // 5% commission
+  { id: "a2", name: "Krishi Mitra", type: "Agent", commission: 3, bifurcation: 'Agents' },
 ];
-const initialWarehouses: Warehouse[] = [ // Used as Locations
-  { id: "w1", name: "Mumbai Godown", type: "Warehouse" },
-  { id: "w2", name: "Chiplun Storage", type: "Warehouse" },
+const initialWarehouses: MasterItem[] = [ // Used as Locations
+  { id: "w1", name: "Mumbai Godown", type: "Warehouse", bifurcation: 'Warehouses' },
+  { id: "w2", name: "Chiplun Storage", type: "Warehouse", bifurcation: 'Warehouses' },
 ];
-const initialTransporters: Transporter[] = [
-  { id: "t1", name: "Speedy Logistics", type: "Transporter" },
-  { id: "t2", name: "Bharat Transports", type: "Transporter" },
-];
-const initialBrokers: Broker[] = [
-    { id: "b1", name: "Krishi Deals", type: "Broker" },
-    { id: "b2", name: "FarmConnect", type: "Broker" },
+const initialTransporters: MasterItem[] = [
+  { id: "t1", name: "Speedy Logistics", type: "Transporter", bifurcation: 'Transporters' },
+  { id: "t2", name: "Bharat Transports", type: "Transporter", bifurcation: 'Transporters' },
 ];
 
 
@@ -113,7 +95,6 @@ export function PurchasesClient() {
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, initialAgents);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses); // Locations
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, initialBrokers);
 
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
@@ -174,13 +155,10 @@ export function PurchasesClient() {
       case "Transporter":
         setTransporters(prev => [newItem, ...prev]);
         break;
-      case "Broker":
-        setBrokers(prev => [newItem as Broker, ...prev]);
-        break;
       default:
         break;
     }
-  }, [setSuppliers, setAgents, setWarehouses, setTransporters, setBrokers]);
+  }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
   
   const openAddPurchaseForm = React.useCallback(() => {
     setPurchaseToEdit(null); 
@@ -221,7 +199,6 @@ export function PurchasesClient() {
           agents={agents}
           warehouses={warehouses} // Locations
           transporters={transporters}
-          brokers={brokers}
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />
