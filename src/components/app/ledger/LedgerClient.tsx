@@ -55,12 +55,17 @@ export function LedgerClient() {
   const [selectedPartyId, setSelectedPartyId] = React.useState<string | undefined>();
   const [selectedPartyType, setSelectedPartyType] = React.useState<MasterItemType | undefined>();
 
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: startOfDay(addDays(new Date(), -90)), // Default to last 90 days
-    to: endOfDay(new Date()),
-  });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [hydrated, setHydrated] = React.useState(false);
 
   React.useEffect(() => {
+    setHydrated(true);
+    // Set initial date range on client side after hydration
+    setDateRange({
+        from: startOfDay(addDays(new Date(), -90)),
+        to: endOfDay(new Date()),
+    });
+
     const loadedMasters: MasterItem[] = [];
     Object.values(MASTERS_KEYS).forEach(key => {
       const data = localStorage.getItem(key);
@@ -72,21 +77,21 @@ export function LedgerClient() {
   }, []);
 
   const ledgerTransactions = React.useMemo(() => {
-    if (!selectedPartyId) return { entries: [], openingBalance: 0, closingBalance: 0 }; // Ensure consistent object structure
+    if (!selectedPartyId || !dateRange?.from || !dateRange?.to) {
+      return { entries: [], openingBalance: 0, closingBalance: 0 };
+    }
 
     const partyTransactions: LedgerTransaction[] = [];
     const party = allMasters.find(m => m.id === selectedPartyId);
-    if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 }; // Ensure consistent object structure
+    if (!party) return { entries: [], openingBalance: 0, closingBalance: 0 };
 
     // Purchases: Party is Supplier (Credit), Agent (Debit for commission earned by agent, payable by us), Transporter (Debit for cost), Broker (Debit for cost)
     purchases.forEach(p => {
       if (p.supplierId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, particulars: `Goods purchased (Lot: ${p.lotNumber})`, credit: p.totalAmount });
       }
-      if (p.agentId === selectedPartyId && p.agentName) { // Agent Commission is a payable for us
-         // This logic needs refinement based on how agent commission is accounted as payable
-         // For now, assuming agent ledger shows credit for commission DUE TO them from us
-        const commission = (p.totalAmount * (party.commission || 0) / 100); // Example calc, actual might differ
+      if (p.agentId === selectedPartyId && p.agentName) { 
+        const commission = (p.totalAmount * (party.commission || 0) / 100); 
         if (commission > 0) partyTransactions.push({ relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, particulars: `Commission on Lot ${p.lotNumber}`, credit: commission });
       }
       if (p.transporterId === selectedPartyId && p.transportRate) {
@@ -102,11 +107,11 @@ export function LedgerClient() {
       if (s.customerId === selectedPartyId) {
         partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber, particulars: `Goods sold (Bill: ${s.billNumber}, Lot: ${s.lotNumber})`, debit: s.totalAmount });
       }
-      if (s.brokerId === selectedPartyId && s.brokerageAmount && party.commission) { // Broker commission is income for broker
+      if (s.brokerId === selectedPartyId && s.brokerageAmount && party.commission) { 
         const saleBrokerage = s.brokerageType === 'Percentage' ? (s.totalAmount * (s.brokerageAmount/100)) : s.brokerageAmount;
         if (saleBrokerage > 0) partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Brokerage Inc.', refNo: s.billNumber, particulars: `Brokerage on Sale ${s.billNumber}`, debit: saleBrokerage });
       }
-       if (s.transporterId === selectedPartyId && s.transportCost) { // Transport cost on sale, if paid by us to transporter for customer
+       if (s.transporterId === selectedPartyId && s.transportCost) { 
         partyTransactions.push({ relatedDocId: s.id, date: s.date, type: 'Transport Exp.', refNo: s.billNumber, particulars: `Transport for Sale ${s.billNumber}`, credit: s.transportCost });
       }
     });
@@ -125,32 +130,32 @@ export function LedgerClient() {
       }
     });
     
-    // Filter by date range
-    const dateFilteredTransactions = partyTransactions.filter(t => {
-        const transactionDate = parseISO(t.date);
-        return isWithinInterval(transactionDate, { start: startOfDay(dateRange?.from || new Date(0)), end: endOfDay(dateRange?.to || new Date()) });
-    });
-
-
-    // Sort and calculate running balance
-    dateFilteredTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
     let balance = 0;
     // Calculate opening balance before the start of the selected date range
     partyTransactions.forEach(t => {
-        if (new Date(t.date) < startOfDay(dateRange?.from || new Date(0) )) {
+        if (new Date(t.date) < startOfDay(dateRange.from! )) { // Ensure dateRange.from is defined
             balance += (t.debit || 0) - (t.credit || 0);
         }
     });
     const openingBalanceForPeriod = balance;
 
-
-    const entriesWithBalance: LedgerEntryWithBalance[] = dateFilteredTransactions.map(t => {
-      balance += (t.debit || 0) - (t.credit || 0);
-      return { ...t, balance };
+    // Filter by date range after calculating overall opening balance
+    const dateFilteredTransactions = partyTransactions.filter(t => {
+        const transactionDate = parseISO(t.date);
+        return isWithinInterval(transactionDate, { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) });
     });
 
-    return { entries: entriesWithBalance, openingBalance: openingBalanceForPeriod, closingBalance: balance };
+    // Sort and calculate running balance for the filtered period
+    dateFilteredTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    // Start running balance from the calculated openingBalanceForPeriod
+    let currentPeriodBalance = openingBalanceForPeriod;
+    const entriesWithBalance: LedgerEntryWithBalance[] = dateFilteredTransactions.map(t => {
+      currentPeriodBalance += (t.debit || 0) - (t.credit || 0);
+      return { ...t, balance: currentPeriodBalance };
+    });
+
+    return { entries: entriesWithBalance, openingBalance: openingBalanceForPeriod, closingBalance: currentPeriodBalance };
 
   }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange]);
 
@@ -159,6 +164,14 @@ export function LedgerClient() {
     setSelectedPartyId(value);
     setSelectedPartyType(party?.type);
   };
+  
+  if (!hydrated) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
+        <p className="text-lg text-muted-foreground">Loading ledger data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

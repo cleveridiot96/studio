@@ -55,12 +55,19 @@ export function StockReportClient() {
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
 
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: addDays(new Date(), -30),
-    to: new Date(),
-  });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [lotNumberFilter, setLotNumberFilter] = React.useState<string>("");
   const [locationFilter, setLocationFilter] = React.useState<string>(""); // Warehouse ID
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+    // Set initial date range on client side after hydration
+    setDateRange({
+        from: addDays(new Date(), -30),
+        to: new Date(),
+    });
+  }, []);
 
   const processedReportData = React.useMemo(() => {
     const reportItemsMap = new Map<string, StockReportItem>();
@@ -145,6 +152,14 @@ export function StockReportClient() {
 
     return result.sort((a,b) => (a.purchaseDate && b.purchaseDate) ? new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime() : 0);
   }, [purchases, sales, warehouses, dateRange, lotNumberFilter, locationFilter]);
+  
+  if (!hydrated) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
+        <p className="text-lg text-muted-foreground">Loading stock report data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

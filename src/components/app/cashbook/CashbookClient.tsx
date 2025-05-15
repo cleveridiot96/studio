@@ -37,10 +37,18 @@ export function CashbookClient() {
   const [payments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, []);
   const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
   
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: startOfDay(addDays(new Date(), -7)),
-    to: endOfDay(new Date()),
-  });
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+    // Set initial date range on client side after hydration
+    setDateRange({
+        from: startOfDay(addDays(new Date(), -7)),
+        to: endOfDay(new Date()),
+    });
+  }, []);
+
 
   const allTransactions = React.useMemo(() => {
     const combined: CashBookTransaction[] = [];
@@ -55,14 +63,16 @@ export function CashbookClient() {
       id: `pay-${p.id}`,
       date: p.date,
       type: 'Payment',
-      particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${r.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`,
+      particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${p.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`, // Corrected to p.referenceNo
       amount: p.amount
     }));
     return combined.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [payments, receipts]);
 
   const dailyCashbookData = React.useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return [];
+    if (!dateRange?.from || !dateRange?.to) {
+        return { dailyEntries: [], overallOpeningBalance: 0, finalClosingBalance: 0 };
+    }
 
     const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
     let runningBalance = 0;
@@ -100,6 +110,14 @@ export function CashbookClient() {
     });
     return { dailyEntries, overallOpeningBalance, finalClosingBalance: runningBalance };
   }, [allTransactions, dateRange]);
+
+  if (!hydrated) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
+        <p className="text-lg text-muted-foreground">Loading cashbook data...</p>
+      </div>
+    );
+  }
 
 
   return (
