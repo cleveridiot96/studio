@@ -107,11 +107,15 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     {option.label}
                   </CommandItem>
                 ))}
-                {/* Show "Add New" button if onAddNew is provided and not already shown in CommandEmpty or if there are results */}
-                 {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
+                {/* Ensure "Add New" is consistently available if onAddNew is provided */}
+                {onAddNew && (
                   <CommandItem
-                    key="add-new-action"
-                    onSelect={() => {
+                    key="add-new-action" // Unique key for this item
+                    // Adding a distinct value for the "Add New" item can prevent issues
+                    // if an actual option could have the same label as addNewLabel.
+                    // However, onSelect is more direct.
+                    value={`__add_new_${name}__`} // A unique value to differentiate from data options
+                    onSelect={() => { // This onSelect is specifically for the "Add New" CommandItem
                       onAddNew?.();
                       setOpen(false);
                       setSearch("");
