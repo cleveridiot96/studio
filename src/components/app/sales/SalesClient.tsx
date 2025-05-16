@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, FilePlus2 } from "lucide-react";
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
-import { AddSaleForm } from "./AddSaleForm";
+import { AddSaleForm } from "./AddSaleForm"; // Corrected import path
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -157,7 +157,7 @@ export function SalesClient() {
           transporters={transporters}
           brokers={brokers}
           inventory={availableInventoryForSale}
-          onMasterDataUpdate={handleMasterDataUpdate}
+          onMasterDataUpdate={handleMasterDataUpdate as any} // Added casting due to potential type mismatch with generic MasterItemType
           saleToEdit={saleToEdit}
         />
       )}

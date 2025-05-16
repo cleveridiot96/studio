@@ -119,7 +119,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { form.reset(getDefaultValues()); onClose(); } }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" style={{ zIndex: 160 }}>
         <DialogHeader>
           <DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>
           <DialogDescription>

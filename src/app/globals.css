@@ -119,3 +119,16 @@
   .input-lg { @apply px-4 py-3 text-lg; } /* Example for larger inputs */
 }
 
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+

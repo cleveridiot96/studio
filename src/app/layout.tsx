@@ -14,18 +14,25 @@ export const metadata: Metadata = {
   description: "Your smart agricultural accounting assistant.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning={true}>
-      <body 
-        className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable)}
-        suppressHydrationWarning={true}
-      >
-        {children}
+    <html lang="en" className="h-full">
+      <body className={cn("h-full w-full bg-gray-50", fontSans.variable)}>
+        <div className="flex flex-col min-h-screen">
+          <header className="h-16 bg-white shadow z-10 sticky top-0">
+            {/* Your Header Component */}
+          </header>
+
+          <main className="flex-1 overflow-auto px-4 py-6">
+            <div className="max-w-7xl mx-auto w-full">
+              {children}
+            </div>
+          </main>
+
+          <footer className="h-12 bg-white border-t text-center text-xs py-2 text-gray-500">
+            {/* Footer if needed */}
+          </footer>
+        </div>
       </body>
     </html>
   );

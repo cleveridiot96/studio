@@ -3,7 +3,7 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  FileText,
+  BarChart,
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
@@ -42,7 +42,7 @@ export const navItems: NavItem[] = [
   {
     title: 'Stock Report',
     href: '/stock-report',
-    iconName: 'FileText',
+    iconName: 'BarChart',
   },
   {
     title: 'Payments',

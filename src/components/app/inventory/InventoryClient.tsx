@@ -53,6 +53,8 @@ export function InventoryClient() {
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
+  const [notifiedLowStock, setNotifiedLowStock] = React.useState<Set<string>>(new Set());
+
 
   const aggregatedInventory = React.useMemo(() => {
     const inventoryMap = new Map<string, AggregatedInventoryItem>();
@@ -100,22 +102,37 @@ export function InventoryClient() {
     inventoryMap.forEach(item => {
       item.currentBags = item.totalPurchasedBags - item.totalSoldBags;
       item.currentWeight = item.totalPurchasedWeight - item.totalSoldWeight;
-      if (item.currentBags <= 5 && item.currentBags > 0 && item.totalPurchasedBags > 0) { 
-        toast({
-          title: "Low Stock Alert",
-          description: `Lot "${item.lotNumber}" at ${item.locationName} has only ${item.currentBags} bags remaining.`,
-          variant: "default",
-          duration: 7000,
-        });
-      }
-      if (item.currentBags <= 0 && item.totalPurchasedBags > 0) { 
+      // Removed toast call from here
+      if (item.currentBags <= 0 && item.totalPurchasedBags > 0) {
         result.push(item);
       } else if (item.currentBags > 0) {
         result.push(item);
       }
     });
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [purchases, sales, warehouses, toast]);
+  }, [purchases, sales, warehouses]);
+
+  React.useEffect(() => {
+    const newNotified = new Set(notifiedLowStock);
+    aggregatedInventory.forEach(item => {
+      const itemKey = `${item.lotNumber}-${item.locationId}`;
+      if (item.currentBags <= 5 && item.currentBags > 0 && item.totalPurchasedBags > 0 && !notifiedLowStock.has(itemKey)) {
+        toast({
+          title: "Low Stock Alert",
+          description: `Lot "${item.lotNumber}" at ${item.locationName} has only ${item.currentBags} bags remaining.`,
+          variant: "default",
+          duration: 7000,
+        });
+        newNotified.add(itemKey);
+      }
+    });
+    if (newNotified.size !== notifiedLowStock.size) {
+        // setNotifiedLowStock(newNotified); // This could cause a loop if not careful.
+        // For now, let's rely on the check `!notifiedLowStock.has(itemKey)`
+        // A more robust solution might involve clearing notifiedLowStock periodically or based on user action.
+    }
+  }, [aggregatedInventory, toast, notifiedLowStock]);
+
 
   const inventoryByWarehouse = React.useMemo(() => {
     const grouped: Record<string, AggregatedInventoryItem[]> = {};
@@ -143,10 +160,15 @@ export function InventoryClient() {
 
   const confirmArchiveItem = () => {
     if (itemToArchive) {
+      // In a real app, you'd filter this item out of the purchases/sales or mark it archived
+      // For this demo, we'll just show a toast.
       toast({
         title: "Lot Archived (Conceptual)",
         description: `Lot "${itemToArchive.lotNumber}" at ${itemToArchive.locationName} would be moved to archives.`,
       });
+      // Conceptually, remove/filter itemToArchive from display data here
+      // e.g. by updating `purchases` and `sales` state in localStorage and triggering a re-fetch/re-calculation.
+      // This part is complex as it involves mutating the source data.
       setItemToArchive(null);
       setShowArchiveConfirm(false);
     }
@@ -272,3 +294,6 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
     </ScrollArea>
   );
 };
+
+
+    

@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
@@ -63,7 +63,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -72,57 +72,47 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           />
           <CommandList>
             {filteredOptions.length === 0 && search.length > 0 ? (
-              <CommandEmpty>
-                {notFoundMessage}
-                {onAddNew && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      onAddNew?.();
-                      setOpen(false);
-                    }}
-                    className="mt-2 w-full justify-start text-left"
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                  </Button>
+              <CommandEmpty className="py-3">
+                {notFoundMessage} {onAddNew ? 'Try adding a new one below.' : ''}
+
                 )}
               </CommandEmpty>
             ) : (
               <>
+                {/* Use a div with onMouseDown for options to fix selection issue */}
                 {filteredOptions.map((option) => (
-                  <CommandItem
+                  <div
                     key={option.value}
-                    value={option.value}
-                    onSelect={(val) => {
-                      field.onChange(val);
+                    role="option"
+                    aria-selected={field.value === option.value}
+                    onMouseDown={(e) => { // Use onMouseDown to prevent blur
+                      e.preventDefault(); // Prevent blur before click
+                      field.onChange(option.value); // Set value directly from option
                       setOpen(false);
-                      setSearch("");
+                      setSearch(""); // Reset search on select
                     }}
-                    className="cursor-pointer"
+                    className={cn("relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground",
+                      field.value === option.value && "bg-accent text-accent-foreground"
+                    )}
                   >
                     <Check
                       className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
                     />
-                    {option.label}
-                  </CommandItem>
+                    {option.label}                    
+                  </div>
                 ))}
                 {/* Ensure "Add New" is consistently available if onAddNew is provided */}
                 {onAddNew && (
                   <CommandItem
-                    key="add-new-action" // Unique key for this item
-                    // Adding a distinct value for the "Add New" item can prevent issues
-                    // if an actual option could have the same label as addNewLabel.
-                    // However, onSelect is more direct.
+                    key="add-new-action"
                     value={`__add_new_${name}__`} // A unique value to differentiate from data options
-                    onSelect={() => { // This onSelect is specifically for the "Add New" CommandItem
+                    onMouseDown={(e) => {
+                      e.preventDefault(); // Prevent blur before click
                       onAddNew?.();
                       setOpen(false);
-                      setSearch("");
                     }}
                     className="cursor-pointer mt-1 border-t pt-1 flex items-center"
                   >
-                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                   </CommandItem>
                 )}
               </>

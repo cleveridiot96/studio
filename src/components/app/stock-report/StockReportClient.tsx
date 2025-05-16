@@ -13,19 +13,11 @@ import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, TrendingDown, TrendingUp, FileText, SlidersHorizontal } from "lucide-react";
-import {
+import { TrendingDown, TrendingUp, SlidersHorizontal, BarChart as BarChartIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
   Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-  SheetClose
+  SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose,
 } from "@/components/ui/sheet";
-
-
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
@@ -220,7 +212,7 @@ export function StockReportClient() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
-            <FileText className="h-7 w-7"/> Stock Movement & Status
+            <BarChartIcon className="h-7 w-7"/> Stock Movement & Status
           </CardTitle>
         </CardHeader>
         <CardContent>
