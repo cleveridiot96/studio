@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
+import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
@@ -13,7 +13,7 @@ interface Option {
 }
 
 interface MasterDataComboboxProps {
-  name: string;
+  name: string; // react-hook-form field name
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -63,7 +63,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -71,51 +71,41 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             onValueChange={setSearch}
           />
           <CommandList>
-            {filteredOptions.length === 0 && search.length > 0 ? (
-              <CommandEmpty className="py-3">
-                {notFoundMessage} {onAddNew ? 'Try adding a new one below.' : ''}
-
-                )}
+            {filteredOptions.length === 0 && search.length > 0 && (
+              <CommandEmpty>
+                {notFoundMessage}
               </CommandEmpty>
-            ) : (
-              <>
-                {/* Use a div with onMouseDown for options to fix selection issue */}
-                {filteredOptions.map((option) => (
-                  <div
-                    key={option.value}
-                    role="option"
-                    aria-selected={field.value === option.value}
-                    onMouseDown={(e) => { // Use onMouseDown to prevent blur
-                      e.preventDefault(); // Prevent blur before click
-                      field.onChange(option.value); // Set value directly from option
-                      setOpen(false);
-                      setSearch(""); // Reset search on select
-                    }}
-                    className={cn("relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground",
-                      field.value === option.value && "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    <Check
-                      className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
-                    />
-                    {option.label}                    
-                  </div>
-                ))}
-                {/* Ensure "Add New" is consistently available if onAddNew is provided */}
-                {onAddNew && (
-                  <CommandItem
-                    key="add-new-action"
-                    value={`__add_new_${name}__`} // A unique value to differentiate from data options
-                    onMouseDown={(e) => {
-                      e.preventDefault(); // Prevent blur before click
-                      onAddNew?.();
-                      setOpen(false);
-                    }}
-                    className="cursor-pointer mt-1 border-t pt-1 flex items-center"
-                  >
-                  </CommandItem>
-                )}
-              </>
+            )}
+            {filteredOptions.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value} // This value is used by cmdk and passed to onSelect
+                onSelect={(currentValue) => { // currentValue will be option.value
+                  field.onChange(currentValue);
+                  setOpen(false);
+                  setSearch(""); // Reset search on select
+                }}
+                className="cursor-pointer"
+              >
+                <Check
+                  className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
+                />
+                {option.label}
+              </CommandItem>
+            ))}
+            {/* "Add New" option always available at the bottom if onAddNew is provided */}
+            {onAddNew && (
+              <CommandItem
+                key="add-new-action" // Unique key
+                onSelect={() => {
+                  onAddNew(); // Call the passed function
+                  setOpen(false);
+                  setSearch(""); // Reset search
+                }}
+                className="cursor-pointer mt-1 border-t pt-1 flex items-center text-primary hover:bg-accent"
+              >
+                <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+              </CommandItem>
             )}
           </CommandList>
         </Command>

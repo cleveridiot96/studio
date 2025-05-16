@@ -1,9 +1,10 @@
+
 import {
   LayoutGrid,
   ShoppingCart,
   Receipt,
   Boxes,
-  BarChart,
+  TrendingDown, // Changed from BarChart
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
@@ -16,7 +17,7 @@ import {
 import type { NavItem } from '@/lib/types';
 
 export const APP_NAME = "Kisan Khata";
-export const APP_ICON = Tractor; // This is used in AppLayout (Server Component), so it's fine as a component.
+export const APP_ICON = Tractor;
 
 export const navItems: NavItem[] = [
   {
@@ -42,7 +43,7 @@ export const navItems: NavItem[] = [
   {
     title: 'Stock Report',
     href: '/stock-report',
-    iconName: 'BarChart',
+    iconName: 'TrendingDown', // Changed icon
   },
   {
     title: 'Payments',

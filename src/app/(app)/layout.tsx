@@ -16,7 +16,6 @@ import { AppExitHandler } from '@/components/layout/AppExitHandler';
 
 function AppHeaderContent() {
   // This component is created to use useSettings hook as AppLayout is a Server Component.
-  // Alternatively, pass settings down as props.
   return (
     <>
       <Link href="/dashboard">
@@ -46,11 +45,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen={false}> {/* defaultOpen is false */}
+      <SidebarProvider defaultOpen={false}> {/* Ensure defaultOpen is false */}
         <AppExitHandler />
-        <div className="flex h-screen bg-background overflow-hidden"> {/* Use h-screen and hide overflow */}
-          <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto" collapsible="icon"> {/* Add overflow-y-auto to sidebar */}
-            <SidebarHeader className="p-4 border-b border-sidebar-border"> {/* Removed temporary debug border */}
+        <div className="flex h-screen bg-background overflow-hidden">
+          <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto" collapsible="icon"> {/* Ensure collapsible is "icon" */}
+            <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
                 <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
                 <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
@@ -58,15 +57,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </h1>
               </Link>
             </SidebarHeader>
-            <SidebarContent className="py-2">
+            <SidebarContent className="py-2 overflow-y-auto"> {/* Added overflow-y-auto here as well */}
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
-              {/* User profile section removed as per user request */}
+              {/* User profile section removed */}
             </SidebarFooter>
           </Sidebar>
           
-          <div className="flex flex-col flex-1 h-full"> {/* Use h-full to take full height */}
+          <div className="flex flex-col flex-1 h-full">
             <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden -ml-2">
@@ -80,7 +79,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <AppHeaderContent />
               </div>
             </header>
-            <SidebarInset className="flex-1 overflow-y-auto"> {/* Make content area scrollable vertically */}
+            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"> {/* Added default padding to content area */}
               {children}
             </SidebarInset>
           </div>
@@ -90,4 +89,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SettingsProvider>
   );
 }
-

@@ -1,20 +1,20 @@
 
 import Link from 'next/link';
-import { Card, CardTitle } from '@/components/ui/card'; // Removed CardHeader, CardContent
+import { Card, CardTitle } from '@/components/ui/card';
 import type { LucideProps } from 'lucide-react';
 import { 
   BarChart, DollarSign, Package, Users, LineChart, TrendingUp, ShoppingCart as DefaultShoppingCartIcon, TrendingDown, HelpCircle as FallbackIcon,
-  ArrowLeftCircle as DefaultArrowLeftCircleIcon, 
-  ArrowRightCircle as DefaultArrowRightCircleIcon, 
-  BookOpen as DefaultBookOpenIcon, 
-  BookUser as DefaultBookUserIcon, 
-  Users2 as DefaultUsers2Icon, 
-  DatabaseBackup as DefaultDatabaseBackupIcon, 
-  LayoutGrid as DefaultLayoutGridIcon, 
-  Boxes as DefaultBoxesIcon, 
-  FileText as DefaultFileTextIcon, 
-  Receipt as DefaultReceiptIcon,
-  ArrowRightLeft, // Added for Location Transfer
+  ArrowLeftCircle, 
+  ArrowRightCircle, 
+  BookOpen, 
+  BookUser, 
+  Users2, 
+  DatabaseBackup, 
+  LayoutGrid, 
+  Boxes, 
+  FileText, 
+  Receipt, // Ensured Receipt is here
+  ArrowRightLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -24,23 +24,23 @@ import React from 'react';
 const iconMap: Record<string, ComponentType<LucideProps>> = {
   BarChart, 
   DollarSign, 
-  Package, 
-  Users, 
+  Package, // Used for Inventory tile
+  Users, // Used for Master Data tile (originally Users2)
   LineChart, 
   TrendingUp, 
   ShoppingCart: DefaultShoppingCartIcon,
-  TrendingDown: TrendingDown,
-  Receipt: DefaultReceiptIcon, 
-  Boxes: DefaultBoxesIcon,
-  FileText: DefaultFileTextIcon,
-  ArrowRightCircle: DefaultArrowRightCircleIcon,
-  ArrowLeftCircle: DefaultArrowLeftCircleIcon, 
-  BookOpen: DefaultBookOpenIcon,
-  BookUser: DefaultBookUserIcon,
-  Users2: DefaultUsers2Icon,
-  DatabaseBackup: DefaultDatabaseBackupIcon,
-  LayoutGrid: DefaultLayoutGridIcon,
-  ArrowRightLeft, // Added
+  TrendingDown, // Used for Stock Report tile
+  Receipt, // Used for Sales tile
+  Boxes, // Generic, not currently used directly by a specific tile but available
+  FileText,
+  ArrowRightCircle, // Used for Payments tile
+  ArrowLeftCircle, // Used for Receipts tile
+  BookOpen, // Used for Cash Book tile
+  BookUser, // Used for Ledger tile
+  Users2, // Available, Master Data uses Users for simplicity now
+  DatabaseBackup,
+  LayoutGrid, // Used for Dashboard tile
+  ArrowRightLeft, // Used for Location Transfer tile
 };
 
 
@@ -58,11 +58,11 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
     <Link href={href} className="block group h-full">
       <Card className={cn(
         "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-        "rounded-xl p-6 flex flex-col items-center text-center justify-center h-full", // Centering content
-        className // This will carry custom background and text color, e.g., "bg-purple-600 text-white"
+        "rounded-xl p-6 flex flex-col items-center text-center justify-center h-full min-h-[180px]", // Added min-h
+        className 
       )}>
-        <Icon className="h-12 w-12 mb-4" /> {/* Icon styling for better visibility and white text */}
-        <CardTitle className="text-xl font-semibold mb-1">{title}</CardTitle>
+        <Icon className="h-10 w-10 mb-3" /> {/* Adjusted icon size and margin */}
+        <CardTitle className="text-xl font-semibold mb-1">{title}</CardTitle> {/* Increased title font */}
         {description && <p className="text-sm opacity-90">{description}</p>}
       </Card>
     </Link>

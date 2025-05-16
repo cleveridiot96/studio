@@ -1,13 +1,12 @@
 
-// @ts-nocheck
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, FilePlus2 } from "lucide-react";
+import { PlusCircle } from "lucide-react"; // Removed FilePlus2
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
-import { AddSaleForm } from "./AddSaleForm"; // Corrected import path
+import { AddSaleForm } from "./AddSaleForm";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -23,14 +22,12 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
-
 // Initial Data set to empty arrays
 const initialSalesData: Sale[] = [];
 const initialCustomers: Customer[] = [];
 const initialTransporters: Transporter[] = [];
 const initialBrokers: Broker[] = [];
-const initialInventory: Purchase[] = []; // Purchases will act as inventory source
-
+const initialInventorySource: Purchase[] = []; // Purchases will act as inventory source
 
 const SALES_STORAGE_KEY = 'salesData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
@@ -38,34 +35,31 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory source
 
-
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false);
 
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSalesData);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, initialBrokers);
-  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialInventory);
-
+  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialInventorySource);
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const filteredSales = React.useMemo(() => {
+    if (!hydrated) return [];
     return sales.filter(sale => isDateInFinancialYear(sale.date, financialYear));
-  }, [sales, financialYear]);
-
-  const availableInventoryForSale = React.useMemo(() => {
-    // Basic transformation: for now, all purchases are considered inventory lots
-    // In a real system, you'd track remaining quantities here
-    return inventorySource.map(p => ({ id: p.id, vakkalNumber: p.lotNumber, ...p }));
-  }, [inventorySource]);
-
+  }, [sales, financialYear, hydrated]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     setSales(prevSales => {
@@ -75,7 +69,7 @@ export function SalesClient() {
         return prevSales.map(s => s.id === sale.id ? sale : s);
       } else {
         toast({ title: "Success!", description: "Sale added successfully." });
-        // TODO: Add inventory deduction logic here
+        // TODO: Add inventory deduction logic here based on sale.lotNumber, sale.quantity, sale.netWeight
         return [sale, ...prevSales];
       }
     });
@@ -114,9 +108,11 @@ export function SalesClient() {
             setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]);
             break;
         default:
+            toast({title: "Info", description: `Master type ${type} not handled here.`})
             break;
     }
-  }, [setCustomers, setTransporters, setBrokers]);
+    toast({ title: `${newItem.type} "${newItem.name}" added/updated from Sales.` });
+  }, [setCustomers, setTransporters, setBrokers, toast]);
 
   const openAddSaleForm = React.useCallback(() => {
     setSaleToEdit(null); 
@@ -128,21 +124,25 @@ export function SalesClient() {
     setSaleToEdit(null);
   }, []);
 
+  if (!hydrated) {
+    return (
+        <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
+            <p className="text-lg text-muted-foreground">Loading sales data...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Sales (FY {financialYear})</h1>
-          {/* <p className="text-lg text-muted-foreground">Generate sales bills and track sales records for FY {financialYear}.</p> */}
         </div>
         <div className="flex gap-2">
           <Button onClick={openAddSaleForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
           </Button>
-          <Button variant="outline" size="lg" className="text-base py-3 px-6 shadow-md" onClick={() => toast({title: "Info", description: "Multi-item sale functionality coming soon!"})}>
-            <FilePlus2 className="mr-2 h-5 w-5" /> Add Multi-Item Sale
-          </Button>
+          {/* Multi-Item Sale Button removed as requested */}
         </div>
       </div>
 
@@ -156,8 +156,9 @@ export function SalesClient() {
           customers={customers}
           transporters={transporters}
           brokers={brokers}
-          inventory={availableInventoryForSale}
-          onMasterDataUpdate={handleMasterDataUpdate as any} // Added casting due to potential type mismatch with generic MasterItemType
+          inventoryLots={inventorySource} // Pass purchases as inventory source
+          existingSales={sales} // Pass existing sales for stock calculation
+          onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />
       )}
@@ -167,8 +168,7 @@ export function SalesClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the sale
-              record.
+              This action cannot be undone. This will permanently delete the sale record.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

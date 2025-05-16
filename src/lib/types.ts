@@ -17,7 +17,6 @@ export interface MasterItem {
   name: string;
   commission?: number; // For Agents and Brokers
   type: MasterItemType;
-  // bifurcation?: string; // Removed as per user request
   [key: string]: any; // For additional fields
 }
 
@@ -32,20 +31,19 @@ export interface Purchase {
   supplierName?: string; // For display in table
   agentId?: string;
   agentName?: string; // For display in table
-  // itemName: string; // Removed as per user request
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // per KG
-  expenses?: number;
-  transportRate?: number;
+  expenses?: number; // Other misc expenses added to cost
+  transportRatePerKg?: number; // Transport cost per KG
   transporterId?: string;
   transporterName?: string;
   brokerId?: string;
   brokerName?: string;
   brokerageType?: 'Fixed' | 'Percentage';
-  brokerageValue?: number;
-  calculatedBrokerageAmount?: number;
-  totalAmount: number;
+  brokerageValue?: number; // The rate/percentage for brokerage
+  calculatedBrokerageAmount?: number; // The actual calculated amount
+  totalAmount: number; // (netWeight * rate) + expenses + (transportRatePerKg * grossWeightIfApplicable) + calculatedBrokerageAmount
   locationId: string;
   locationName?: string;
 }
@@ -53,26 +51,26 @@ export interface Purchase {
 export interface Sale {
   id: string;
   date: string; // ISO string date
-  billNumber: string;
-  billAmount?: number;
+  billNumber?: string; // Optional
+  billAmount?: number; // Optional override for final bill amount. If not provided, calculated from rate*weight.
+  cutBill?: boolean; // Optional
   customerId: string;
   customerName?: string;
   lotNumber: string; // This is the "Vakkal" from existing inventory
-  // itemName: string; // Removed as per user request
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // Sale price per KG
   transporterId?: string;
   transporterName?: string;
-  transportCost?: number;
+  transportCost?: number; // Fixed transport cost for this sale, affects profit
   brokerId?: string;
   brokerName?: string;
-  brokerageType?: 'Fixed' | 'Percentage'; // Added to match purchase form
-  brokerageAmount?: number; // This is the value (e.g. 2 for 2% or 500 for fixed)
-  // calculatedBrokerageAmount is not directly stored on Sale, but can be derived
+  brokerageType?: 'Fixed' | 'Percentage'; // For broker commission calculation
+  brokerageAmount?: number; // If fixed, this is the amount. If percentage, this is the % value.
+  calculatedBrokerageCommission?: number; // The actual brokerage commission amount
   notes?: string;
-  totalAmount: number; // Typically billAmount (rate * netWeight)
-  profit?: number;
+  totalAmount: number; // Final amount for the customer, usually billAmount or (rate * netWeight)
+  // profit will be calculated dynamically, not stored directly on the sale object
 }
 
 export interface InventoryItem {
@@ -138,13 +136,11 @@ export interface Party {
 // Specific master types
 export interface Supplier extends MasterItem {}
 export interface Agent extends MasterItem {
-  commission?: number; // Made optional to align with MasterItem
+  commission?: number;
 }
 export interface Transporter extends MasterItem {}
-export interface Warehouse extends MasterItem {}
+export interface Warehouse extends MasterItem {} // Represents a Location
 export interface Customer extends MasterItem {}
 export interface Broker extends MasterItem {
-  commission?: number; // Made optional to align with MasterItem
+  commission?: number;
 }
-
-    

@@ -26,7 +26,7 @@ export const purchaseSchema = (
   netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."),
   rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."),
   expenses: z.coerce.number().optional(),
-  transportRate: z.coerce.number().optional(),
+  transportRatePerKg: z.coerce.number().optional(), // Changed from transportRate
   transporterId: z.string().optional().refine((transporterId) => !transporterId || transporters.some((t) => t.id === transporterId), {
     message: "Transporter does not exist.",
   }),
@@ -42,7 +42,7 @@ export const purchaseSchema = (
     return true;
   }, {
     message: "If a Broker is selected, Brokerage Type and a valid Brokerage Value (non-negative) are required.",
-    path: ["brokerageValue"], // Or path: ["brokerageType"] or a more general path
+    path: ["brokerageValue"], 
   }).refine(data => {
     if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue < 0)) {
         return false;
@@ -53,6 +53,4 @@ export const purchaseSchema = (
     path: ["brokerageValue"],
   });
 
-
 export type PurchaseFormValues = z.infer<ReturnType<typeof purchaseSchema>>;
-
