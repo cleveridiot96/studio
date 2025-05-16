@@ -5,7 +5,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingDown as StockReportIcon, SlidersHorizontal } from "lucide-react"; // Changed icon
+import { TrendingDown as StockReportIcon, SlidersHorizontal, TrendingUp } from "lucide-react"; // Import TrendingUp
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -59,7 +59,6 @@ export function StockReportClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-    // Initialize dateRange on client-side to avoid hydration mismatch
     setDateRange({
         from: addDays(new Date(), -30),
         to: new Date(),
@@ -67,11 +66,11 @@ export function StockReportClient() {
   }, []);
 
   const processedReportData = React.useMemo(() => {
-    if (!hydrated) return []; // Ensure data processing only happens after hydration
+    if (!hydrated) return [];
     const reportItemsMap = new Map<string, StockReportItem>();
 
     const filteredPurchases = purchases.filter(p => {
-      if (!dateRange?.from || !dateRange?.to) return true; // No date filter if range not set
+      if (!dateRange?.from || !dateRange?.to) return true;
       const purchaseDate = new Date(p.date);
       return purchaseDate >= dateRange.from && 
              purchaseDate <= dateRange.to &&
@@ -213,9 +212,8 @@ export function StockReportClient() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
-            <StockReportIcon className="h-7 w-7"/> Stock Movement & Status
+            <TrendingUp className="h-7 w-7"/> Stock Movement & Status 
           </CardTitle>
-          {/* <CardDescription>Detailed analysis of stock by lot, warehouse, weight, and trends.</CardDescription> */}
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[500px] rounded-md border">
@@ -257,9 +255,9 @@ export function StockReportClient() {
                       {item.remainingBags <= 0 && item.purchaseBags > 0 ? (
                         <Badge variant="destructive">Sold Out</Badge>
                       ) : (item.turnoverRate || 0) >= 75 ? (
-                        <Badge className="bg-green-500 hover:bg-green-600 text-white"><StockReportIcon className="h-3 w-3 mr-1 transform rotate-180"/> Fast Moving</Badge> // TrendingUp icon
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white"><StockReportIcon className="h-3 w-3 mr-1 transform rotate-180"/> Fast Moving</Badge>
                       ) : (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (
-                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><StockReportIcon className="h-3 w-3 mr-1"/> Slow / Aging</Badge> // TrendingDown icon
+                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><StockReportIcon className="h-3 w-3 mr-1"/> Slow / Aging</Badge>
                       ) : (
                         <Badge variant="secondary">In Stock</Badge>
                       )}
@@ -274,3 +272,4 @@ export function StockReportClient() {
     </div>
   );
 }
+
