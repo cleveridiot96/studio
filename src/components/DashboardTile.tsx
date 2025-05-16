@@ -12,7 +12,7 @@ import {
   DatabaseBackup, 
   LayoutGrid, 
   Boxes, 
-  FileText, 
+  FileText, // Ensured FileText is imported
   Receipt, // Ensured Receipt is here
   ArrowRightLeft,
 } from 'lucide-react';
@@ -29,10 +29,10 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   LineChart, 
   TrendingUp, 
   ShoppingCart: DefaultShoppingCartIcon,
-  TrendingDown, // Used for Stock Report tile
+  TrendingDown, 
   Receipt, // Used for Sales tile
   Boxes, // Generic, not currently used directly by a specific tile but available
-  FileText,
+  FileText, // Added FileText to map
   ArrowRightCircle, // Used for Payments tile
   ArrowLeftCircle, // Used for Receipts tile
   BookOpen, // Used for Cash Book tile

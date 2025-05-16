@@ -29,7 +29,7 @@ const quickActions = [
     title: "Stock Report",
     description: "Real-time stock analysis",
     href: "/stock-report",
-    iconName: "TrendingDown", // Changed icon
+    iconName: "FileText", // Changed icon from TrendingDown to FileText
     className: "bg-orange-600 hover:bg-orange-700 text-white",
   },
   {
