@@ -98,37 +98,28 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border box-border; /* Added box-sizing: border-box; */
   }
   html, body {
-    height: 100%; /* Ensure html and body take full height for sticky layouts */
+    height: 100%; 
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent scroll bleed at the very top level */
   }
   body {
     @apply bg-background text-foreground;
+    overflow-y: auto; /* Allow body to scroll if needed */
+    overscroll-behavior: contain; /* Prevent scrolling parent when at edge */
     /* font-size is now set dynamically via JS on the <html> element by SettingsContext. */
-    /* Use the FontEnhancer in Settings to adjust base font size for better readability. */
   }
   /* Ensure h tags have larger default sizes if needed, using relative units */
-  h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; } /* Increased base heading sizes */
+  h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; } 
   h2 { @apply text-2xl font-semibold md:text-3xl lg:text-4xl; }
   h3 { @apply text-xl font-semibold md:text-2xl lg:text-3xl; }
   h4 { @apply text-lg font-semibold md:text-xl lg:text-2xl; }
 
   /* Increase default button padding and input sizes for tactile feel, adjust based on base font size */
-  .btn-lg { @apply px-6 py-3 text-lg; } /* Example for larger buttons */
-  .input-lg { @apply px-4 py-3 text-lg; } /* Example for larger inputs */
+  .btn-lg { @apply px-6 py-3 text-lg; } 
+  .input-lg { @apply px-4 py-3 text-lg; } 
 }
-
-html, body {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-body {
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-

@@ -45,10 +45,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen={false}> {/* Ensure defaultOpen is false */}
+      <SidebarProvider defaultOpen={false}> {/* Sidebar starts collapsed */}
         <AppExitHandler />
-        <div className="flex h-screen bg-background overflow-hidden">
-          <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto" collapsible="icon"> {/* Ensure collapsible is "icon" */}
+        {/* This div manages the overall height and flex behavior for sidebar + content */}
+        <div className="flex h-screen bg-background overflow-hidden"> {/* Ensures this container doesn't scroll, child elements will */}
+          <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
                 <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
@@ -57,7 +58,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </h1>
               </Link>
             </SidebarHeader>
-            <SidebarContent className="py-2 overflow-y-auto"> {/* Added overflow-y-auto here as well */}
+            <SidebarContent className="py-2 overflow-y-auto"> {/* Allows sidebar menu to scroll if long */}
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
@@ -65,7 +66,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </Sidebar>
           
-          <div className="flex flex-col flex-1 h-full">
+          {/* This div contains the header and the scrollable content area */}
+          <div className="flex flex-col flex-1 h-full"> {/* Takes remaining space, full height */}
             <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden -ml-2">
@@ -79,7 +81,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <AppHeaderContent />
               </div>
             </header>
-            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8"> {/* Added default padding to content area */}
+            {/* This is the main content area that will scroll */}
+            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
               {children}
             </SidebarInset>
           </div>
