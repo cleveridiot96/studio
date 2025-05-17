@@ -1,4 +1,3 @@
-
 import DashboardClient from "@/components/app/dashboard/DashboardClient";
 import { Separator } from "@/components/ui/separator";
 import { DashboardTile } from "@/components/DashboardTile";
@@ -15,21 +14,21 @@ const quickActions = [
     title: "Sales",
     description: "Create and manage sales",
     href: "/sales",
-    iconName: "Receipt", // Updated to match Sales nav item
+    iconName: "Receipt",
     className: "bg-blue-600 hover:bg-blue-700 text-white",
   },
   {
     title: "Inventory",
     description: "View and manage stock",
     href: "/inventory",
-    iconName: "Package", // Package is a common icon for inventory
+    iconName: "Package", 
     className: "bg-teal-600 hover:bg-teal-700 text-white",
   },
   {
     title: "Stock Report",
     description: "Real-time stock analysis",
     href: "/stock-report",
-    iconName: "FileText", // Changed icon from TrendingDown to FileText
+    iconName: "FileText",
     className: "bg-orange-600 hover:bg-orange-700 text-white",
   },
   {
@@ -37,41 +36,41 @@ const quickActions = [
     description: "Transfer stock between locations",
     href: "/location-transfer",
     iconName: "ArrowRightLeft",
-    className: "bg-cyan-600 hover:bg-cyan-700 text-white", // Different color
+    className: "bg-cyan-600 hover:bg-cyan-700 text-white", 
   },
   {
     title: "Payments",
     description: "Record outgoing payments",
     href: "/payments",
-    iconName: "ArrowRightCircle", // Consistent with nav
+    iconName: "ArrowRightCircle", 
     className: "bg-red-600 hover:bg-red-700 text-white",
   },
   {
     title: "Receipts",
     description: "Manage incoming payments",
     href: "/receipts",
-    iconName: "ArrowLeftCircle", // Consistent with nav
+    iconName: "ArrowLeftCircle",
     className: "bg-green-600 hover:bg-green-700 text-white",
   },
   {
     title: "Master Data",
     description: "Manage people & companies",
     href: "/masters",
-    iconName: "Users", // Consistent with nav Users2
-    className: "bg-sky-600 hover:bg-sky-700 text-white", // Different color
+    iconName: "Users", 
+    className: "bg-sky-600 hover:bg-sky-700 text-white",
   },
   {
     title: "Cash Book",
     description: "Track cash transactions",
     href: "/cashbook",
-    iconName: "BookOpen", // Consistent with nav
+    iconName: "BookOpen", 
     className: "bg-pink-600 hover:bg-pink-700 text-white",
   },
   {
     title: "Party Ledger",
     description: "View party balances",
     href: "/ledger",
-    iconName: "BookUser", // Consistent with nav
+    iconName: "BookUser", 
     className: "bg-gray-700 hover:bg-gray-800 text-white",
   },
 ];
@@ -79,18 +78,16 @@ const quickActions = [
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
-       <div className="text-left"> {/* Changed from text-center */}
+       <div className="text-left"> 
         <h1 className="text-3xl font-bold text-foreground">Quick Actions</h1>
-        {/* <p className="text-lg text-muted-foreground mt-1">Access key modules of the application.</p> Removed as per user request */}
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {/* Adjusted grid columns */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> 
         {quickActions.map((action) => (
           <DashboardTile key={action.title} {...action} />
         ))}
       </div>
-      {/* DashboardClient placeholder can be re-enabled or replaced with actual summary components later */}
-      {/* <Separator /> */}
-      {/* <DashboardClient /> */}
+      <Separator className="my-4"/>
+      <DashboardClient />
     </div>
   );
 }

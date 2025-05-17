@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatabaseBackup, UploadCloud, DownloadCloud, History, AlertTriangle } from "lucide-react";
+import { DatabaseBackup, UploadCloud, FileJson, History, AlertTriangle } from "lucide-react"; // Changed DownloadCloud to FileJson
 import { useToast } from "@/hooks/use-toast";
 import React, { ChangeEvent } from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -12,13 +12,13 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
-  receipts: 'receiptsData', // Added receipts
-  payments: 'paymentsData', // Added payments
+  receipts: 'receiptsData', 
+  payments: 'paymentsData', 
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
   transporters: 'masterTransporters',
-  warehouses: 'masterWarehouses', // Also used for Locations
+  warehouses: 'masterWarehouses', 
   brokers: 'masterBrokers',
   settingsFontSize: 'appFontSize',
   settingsFinancialYear: 'appFinancialYear',
@@ -38,10 +38,11 @@ export default function BackupPage() {
   };
 
 
-  const handleBackup = () => {
+  const handleExportToPortable = () => {
     if (typeof window === 'undefined') return;
     try {
       const backupData: Record<string, any> = {};
+      // Gather all specified LOCAL_STORAGE_KEYS values
       Object.values(LOCAL_STORAGE_KEYS).forEach(key => {
         const item = localStorage.getItem(key);
         if (item !== null) {
@@ -53,6 +54,12 @@ export default function BackupPage() {
           }
         }
       });
+      
+      // Also include lastBackupTimestamp itself if it exists
+      if (lastBackupTimestamp) {
+        backupData[LAST_BACKUP_TIMESTAMP_KEY] = lastBackupTimestamp;
+      }
+
 
       const jsonString = JSON.stringify(backupData, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
@@ -60,24 +67,24 @@ export default function BackupPage() {
       const link = document.createElement("a");
       link.href = href;
       const currentDate = new Date().toISOString().slice(0, 10);
-      link.download = `kisan_khata_backup_${currentDate}.json`;
+      link.download = `KKS_Portable_Backup_${currentDate}.json`; // Standardized filename
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(href);
 
       const now = Date.now();
-      setLastBackupTimestamp(now);
+      setLastBackupTimestamp(now); // Update last backup time for this action
 
       toast({
-        title: "Backup Successful",
-        description: "Your data has been backed up locally.",
+        title: "Portable Export Successful",
+        description: "Your data has been exported to a portable JSON file.",
       });
     } catch (error) {
-      console.error("Backup failed:", error);
+      console.error("Portable Export failed:", error);
       toast({
-        title: "Backup Failed",
-        description: "An error occurred while creating the backup.",
+        title: "Portable Export Failed",
+        description: "An error occurred while creating the portable JSON backup.",
         variant: "destructive",
       });
     }
@@ -99,27 +106,29 @@ export default function BackupPage() {
 
         let restoreSuccess = false;
         for (const keyInBackup in restoredData) {
-          // Check if the key from the backup file matches any of our defined LOCAL_STORAGE_KEYS values
-          const appKey = Object.keys(LOCAL_STORAGE_KEYS).find(k => LOCAL_STORAGE_KEYS[k as keyof typeof LOCAL_STORAGE_KEYS] === keyInBackup);
+          // Check if the key from the backup file matches any of our defined LOCAL_STORAGE_KEYS values or the timestamp key
+          const appKeyMatch = Object.values(LOCAL_STORAGE_KEYS).find(k => k === keyInBackup);
           
-          if (appKey || Object.values(LOCAL_STORAGE_KEYS).includes(keyInBackup as any) ) { // simplified check
-             const targetKey = keyInBackup; // Use the key from the backup file directly
+          if (appKeyMatch || keyInBackup === LAST_BACKUP_TIMESTAMP_KEY ) {
+             const targetKey = keyInBackup; 
              if (typeof restoredData[targetKey] === 'string') {
                 localStorage.setItem(targetKey, restoredData[targetKey]);
              } else {
                 localStorage.setItem(targetKey, JSON.stringify(restoredData[targetKey]));
              }
             restoreSuccess = true;
+            // If restoring the lastBackupTimestamp, update the state as well
+            if (targetKey === LAST_BACKUP_TIMESTAMP_KEY && typeof restoredData[targetKey] === 'number') {
+                setLastBackupTimestamp(restoredData[targetKey]);
+            }
           }
         }
         
         if(restoreSuccess){
-          // We don't update lastBackupTimestamp on restore, as it reflects the last *backup* action
           toast({
             title: "Restore Successful",
             description: "Data has been restored from the backup file. Please refresh the application.",
           });
-           // Force refresh or use context to update app state
           setTimeout(() => window.location.reload(), 1500);
         } else {
             toast({
@@ -137,7 +146,6 @@ export default function BackupPage() {
           variant: "destructive",
         });
       } finally {
-        // Reset file input
         if(event.target) event.target.value = "";
       }
     };
@@ -148,30 +156,23 @@ export default function BackupPage() {
     <div className="space-y-8 max-w-2xl mx-auto">
       <div className="text-center">
         <h1 className="text-3xl font-bold text-foreground">Data Backup & Restore</h1>
-        {/* <p className="text-lg text-muted-foreground mt-2">
-          Secure your data by creating local backups and restore when needed.
-        </p> */}
       </div>
 
       <Card className="shadow-xl border-2 border-primary/20">
         <CardHeader className="items-center">
           <DatabaseBackup className="w-16 h-16 text-primary mb-4" />
           <CardTitle className="text-2xl">Manage Your Data</CardTitle>
-          {/* <CardDescription>
-            It's crucial to regularly back up your application data to prevent loss.
-            You can restore from a previously saved backup file.
-          </CardDescription> */}
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
-              onClick={handleBackup}
+              onClick={handleExportToPortable}
               className="w-full text-lg py-6 bg-green-600 hover:bg-green-700 text-white"
               variant="default"
               size="lg"
             >
-              <DownloadCloud className="mr-2 h-6 w-6" />
-              Backup Data Locally
+              <FileJson className="mr-2 h-6 w-6" />
+              Export to Portable Version
             </Button>
             <Button
               asChild
@@ -196,7 +197,7 @@ export default function BackupPage() {
         <CardFooter className="flex-col items-start text-sm text-muted-foreground space-y-2">
           <div className="flex items-center">
             <History className="w-4 h-4 mr-2 text-accent"/>
-            <span>Last Backup: {getFormattedLastBackup()}</span>
+            <span>Last Backup/Export: {getFormattedLastBackup()}</span>
           </div>
           <div className="flex items-start text-destructive p-3 rounded-md border border-destructive/50 bg-destructive/10">
             <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
