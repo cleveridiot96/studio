@@ -26,14 +26,14 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react"; // Removed Users, Truck, UserCheck, Handshake, Building
+import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { paymentSchema, type PaymentFormValues } from "@/lib/schemas/paymentSchema";
 import type { MasterItem, Payment, MasterItemType } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore"; // Import Firebase functions
+// import { addDoc, collection, serverTimestamp } from "firebase/firestore"; // Firebase functions commented out as db is not used
 import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 
@@ -41,10 +41,10 @@ interface AddPaymentFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payment: Payment) => void;
-  parties: MasterItem[]; 
+  parties: MasterItem[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   paymentToEdit?: Payment | null;
-  db: any; // Add db prop for Firebase,
+  db?: any; // db prop made optional as it's not used
 }
 
 const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
@@ -53,8 +53,8 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
   onSubmit,
   parties,
   onMasterDataUpdate,
-  paymentToEdit
-  db, // Destructure db,
+  paymentToEdit, // Added comma here
+  db,
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -84,17 +84,21 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
     };
   }, [paymentToEdit]);
 
-  // Function to create a new master entry in Firebase
-  const createMasterEntry = React.useCallback(async (label: string, type: string) => {
-    const docRef = await addDoc(collection(db, 'masters'), {
-      name: label,
-      type,
-      createdAt: serverTimestamp(),
-    });
-    return { value: docRef.id, label };
-  }, [db]);
+  // Function to create a new master entry (Firebase specific, commented out if db not used)
+  // const createMasterEntry = React.useCallback(async (label: string, type: string) => {
+  //   if (!db) {
+  //     toast({ title: "Error", description: "Database not configured.", variant: "destructive" });
+  //     return { value: `temp-${Date.now()}`, label }; // Fallback if db not present
+  //   }
+  //   const docRef = await addDoc(collection(db, 'masters'), {
+  //     name: label,
+  //     type,
+  //     createdAt: serverTimestamp(),
+  //   });
+  //   return { value: docRef.id, label };
+  // }, [db, toast]);
 
-  const methods = useForm<PaymentFormValues>({ // Changed from 'form' to 'methods'
+  const methods = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema(parties)),
     defaultValues: getDefaultValues(),
   });
@@ -104,17 +108,13 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
   }, [paymentToEdit, isOpen, methods, getDefaultValues]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
-    // Determine the correct type. For payments, it could be Supplier, Agent, etc.
-    // For simplicity, we might need a way to infer this or have specific "Add New Supplier" buttons.
-    // For now, let's assume a generic "Add Party" and the MasterForm itself can guide type selection.
-    // Or better, the MasterForm is opened with a *suggested* type from the combobox context if possible.
-    setMasterFormItemType(type); // The combobox should ideally pass the relevant type.
+    setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
-    if (newItem.type === masterFormItemType) { // Check if the added type matches the context
+    if (newItem.type === masterFormItemType) {
         methods.setValue('partyId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
@@ -161,7 +161,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
             </DialogDescription>
           </DialogHeader>
           <FormProvider {...methods}>
-            <Form {...methods}> 
+            <Form {...methods}>
               <form onSubmit={methods.handleSubmit(processSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-3">
                 <FormField
                   control={methods.control}
@@ -192,17 +192,22 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
                 <FormField
                   control={methods.control}
                   name="partyId"
-                  render={({ field }) => ( 
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>Party</FormLabel>
                       <MasterDataCombobox
-                        name="partyId" 
+                        name="partyId"
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
-                        type="party" // Specify the type
-                        createMasterEntry={createMasterEntry} // Pass the creation function
+                        addNewLabel="Add New Party"
+                        // onAddNew={() => handleOpenMasterForm('Supplier')} // Example, determine type dynamically or make MasterForm generic
+                        onAddNew={() => {
+                            // Infer type or default to a common one for payments
+                            const inferredType = parties.find(p => p.id === field.value)?.type || 'Supplier';
+                            handleOpenMasterForm(inferredType);
+                        }}
                       />
                       <FormMessage />
                     </FormItem>
@@ -295,3 +300,5 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
 }
 
 export const AddPaymentForm = React.memo(AddPaymentFormComponent);
+
+    

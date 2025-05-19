@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatabaseBackup, UploadCloud, FileJson, History, AlertTriangle } from "lucide-react"; // Changed DownloadCloud to FileJson
+import { DatabaseBackup, UploadCloud, FileJson, History, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import React, { ChangeEvent } from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -13,7 +13,8 @@ const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
   receipts: 'receiptsData', 
-  payments: 'paymentsData', 
+  payments: 'paymentsData',
+  locationTransfers: 'locationTransfersData', // Added location transfers
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
@@ -22,7 +23,6 @@ const LOCAL_STORAGE_KEYS = {
   brokers: 'masterBrokers',
   settingsFontSize: 'appFontSize',
   settingsFinancialYear: 'appFinancialYear',
-  // Add any other relevant keys used by other features
 };
 const LAST_BACKUP_TIMESTAMP_KEY = 'lastBackupTimestamp';
 

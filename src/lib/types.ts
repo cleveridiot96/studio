@@ -38,12 +38,8 @@ export interface Purchase {
   transportRatePerKg?: number; // Transport cost per KG
   transporterId?: string;
   transporterName?: string;
-  brokerId?: string;
-  brokerName?: string;
-  brokerageType?: 'Fixed' | 'Percentage';
-  brokerageValue?: number; // The rate/percentage for brokerage
-  calculatedBrokerageAmount?: number; // The actual calculated amount
-  totalAmount: number; // (netWeight * rate) + expenses + (transportRatePerKg * grossWeightIfApplicable) + calculatedBrokerageAmount
+  // Broker fields removed from Purchase as per previous request
+  totalAmount: number; // (netWeight * rate) + expenses + (transportRatePerKg * netWeight)
   locationId: string;
   locationName?: string;
 }
@@ -52,7 +48,7 @@ export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber?: string; // Optional
-  billAmount?: number; // Optional override for final bill amount. If not provided, calculated from rate*weight.
+  billAmount?: number; // Optional override for final bill amount.
   cutBill?: boolean; // Optional
   customerId: string;
   customerName?: string;
@@ -69,8 +65,7 @@ export interface Sale {
   brokerageAmount?: number; // If fixed, this is the amount. If percentage, this is the % value.
   calculatedBrokerageCommission?: number; // The actual brokerage commission amount
   notes?: string;
-  totalAmount: number; // Final amount for the customer, usually billAmount or (rate * netWeight)
-  // profit will be calculated dynamically, not stored directly on the sale object
+  totalAmount: number; // Final amount for the customer
 }
 
 export interface InventoryItem {
@@ -108,6 +103,26 @@ export interface Receipt {
   notes?: string;
 }
 
+export interface LocationTransferItem {
+  lotNumber: string;
+  bagsToTransfer: number;
+  netWeightToTransfer: number; // Calculated based on bags or average weight
+}
+
+export interface LocationTransfer {
+  id: string;
+  date: string; // ISO string date
+  fromWarehouseId: string;
+  fromWarehouseName?: string;
+  toWarehouseId: string;
+  toWarehouseName?: string;
+  transporterId?: string;
+  transporterName?: string;
+  items: LocationTransferItem[];
+  notes?: string;
+}
+
+
 export interface CashBookEntry {
   id: string;
   date: string; // ISO string date
@@ -142,5 +157,6 @@ export interface Transporter extends MasterItem {}
 export interface Warehouse extends MasterItem {} // Represents a Location
 export interface Customer extends MasterItem {}
 export interface Broker extends MasterItem {
-  commission?: number;
+  commission?: number; // Assumed to be percentage for auto-population
+  brokerageType?: 'Fixed' | 'Percentage'; // Default brokerage type from master
 }
