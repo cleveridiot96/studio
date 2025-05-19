@@ -96,6 +96,10 @@
   }
 }
 
+.MuiPopover-root {
+  z-index: 9999 !important; /* Ensure dropdowns appear above modals */
+}
+
 @layer base {
   * {
     @apply border-border box-border; /* Added box-sizing: border-box; */

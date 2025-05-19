@@ -43,6 +43,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
             <TableHead>Broker</TableHead>
             <TableHead className="text-right">Total (₹)</TableHead>
             <TableHead className="text-center w-[100px]">Actions</TableHead>
+            <TableHead className="text-right">Profit/Loss (₹)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </header>
             {/* This is the main content area that will scroll */}
-            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full">
               {children}
             </SidebarInset>
           </div>

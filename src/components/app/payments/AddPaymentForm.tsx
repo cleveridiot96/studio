@@ -33,6 +33,7 @@ import { paymentSchema, type PaymentFormValues } from "@/lib/schemas/paymentSche
 import type { MasterItem, Payment, MasterItemType } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore"; // Import Firebase functions
 import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 
@@ -43,6 +44,7 @@ interface AddPaymentFormProps {
   parties: MasterItem[]; 
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   paymentToEdit?: Payment | null;
+  db: any; // Add db prop for Firebase,
 }
 
 const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
@@ -52,6 +54,7 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
   parties,
   onMasterDataUpdate,
   paymentToEdit
+  db, // Destructure db,
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -80,6 +83,16 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
       notes: "",
     };
   }, [paymentToEdit]);
+
+  // Function to create a new master entry in Firebase
+  const createMasterEntry = React.useCallback(async (label: string, type: string) => {
+    const docRef = await addDoc(collection(db, 'masters'), {
+      name: label,
+      type,
+      createdAt: serverTimestamp(),
+    });
+    return { value: docRef.id, label };
+  }, [db]);
 
   const methods = useForm<PaymentFormValues>({ // Changed from 'form' to 'methods'
     resolver: zodResolver(paymentSchema(parties)),
@@ -188,8 +201,8 @@ const AddPaymentFormComponent: React.FC<AddPaymentFormProps> = ({
                         placeholder="Select Party"
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
-                        addNewLabel="Add New Party"
-                        onAddNew={() => handleOpenMasterForm('Supplier')} // Default to 'Supplier', MasterForm can allow change
+                        type="party" // Specify the type
+                        createMasterEntry={createMasterEntry} // Pass the creation function
                       />
                       <FormMessage />
                     </FormItem>

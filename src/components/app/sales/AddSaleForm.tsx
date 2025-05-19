@@ -117,7 +117,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     reset(getDefaultValues());
   }, [saleToEdit, isOpen, reset, getDefaultValues]);
 
-  const netWeight = watch("netWeight");
+  const quantity = watch("quantity");
+  const netWeight = watch("netWeight"); // Still watch for manual changes
   const rate = watch("rate");
   const billAmountManual = watch("billAmount");
   
@@ -126,12 +127,22 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageAmount") || 0;
 
   const calculatedBillAmount = React.useMemo(() => {
-    const nw = parseFloat(String(netWeight || 0));
-    const r = parseFloat(String(rate || 0));
-    return nw * r;
-  }, [netWeight, rate]);
+    const calculatedNetWeight = (quantity || 0) * 50;
+    const finalNetWeight = netWeight !== undefined && netWeight > 0 ? netWeight : calculatedNetWeight; // Use manual if provided, otherwise calculated
+    const r = parseFloat(String(rate || 0)); // Ensure rate is a number
+    return finalNetWeight * r;
+  }, [quantity, netWeight, rate]);
 
+  // Calculate Profit
   const finalBillAmountToUse = billAmountManual !== undefined && billAmountManual > 0 ? billAmountManual : calculatedBillAmount;
+
+  const selectedLot = inventoryLots.find(lot => lot.lotNumber === watch("lotNumber"));
+  const purchaseRatePerKg = selectedLot ? selectedLot.rate / 50 : 0; // Assuming rate is per bag in purchase
+  const calculatedProfit = React.useMemo(() => {
+    const finalNetWeight = netWeight !== undefined && netWeight > 0 ? netWeight : (quantity || 0) * 50;
+    const costOfGoodsSold = finalNetWeight * purchaseRatePerKg;
+    return finalBillAmountToUse - costOfGoodsSold;
+  }, [finalBillAmountToUse, quantity, netWeight, purchaseRatePerKg]);  
 
   const calculatedBrokerageCommission = React.useMemo(() => {
     if (selectedBrokerId && brokerageType && brokerageValue > 0) {
@@ -141,8 +152,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       return brokerageValue; 
     }
     return 0;
-  }, [selectedBrokerId, brokerageType, brokerageValue, finalBillAmountToUse]);
-
+  }, [selectedBrokerId, brokerageType, brokerageValue, finalBillAmountToUse]); 
   const totalAmountForCustomer = finalBillAmountToUse;
 
 
@@ -288,7 +298,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormItem><FormLabel>No. of Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="e.g., 50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}
                       />
-                      <FormField control={control} name="netWeight" render={({ field }) => (
+                     <FormField control={control} name="netWeight" render={({ field }) => (
                           <FormItem><FormLabel>Net Weight (kg)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="e.g., 2500" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}
                       />
@@ -378,6 +388,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           Calculated Brokerage Commission: <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </p>
                   )}
+
+                   {/* Display Profit */}
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center text-md font-semibold">
+                          <Info className="w-5 h-5 mr-2 text-primary" />
+                          Calculated Profit:
+                      </div>
+                      <p className={`text-xl font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                  </div>
                 </div>
 
                 <DialogFooter className="pt-4">

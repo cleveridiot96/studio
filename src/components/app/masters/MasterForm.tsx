@@ -121,8 +121,8 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-lg" style={{ zIndex: 160 }}>
+ <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initialData ? `Edit ${initialData.type}` : `Add New Master Item`}</DialogTitle>
           <DialogDescription>
@@ -161,7 +161,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                     value={field.value} 
                   >
                     <FormControl>
-                      <SelectTrigger>
+ <SelectTrigger>
                         <SelectValue placeholder="Select item type" />
                       </SelectTrigger>
                     </FormControl>

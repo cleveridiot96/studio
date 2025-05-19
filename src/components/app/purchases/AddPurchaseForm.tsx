@@ -1,6 +1,7 @@
 
 import * as React from "react";
 import { useForm, FormProvider } from "react-hook-form";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { db } from "@/lib/firebase"; // Assuming you have your firebase instance initialized and exported as `db`
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
 import type { MasterItem, Purchase, MasterItemType } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -95,8 +97,18 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       expenses: undefined,
       transportRatePerKg: undefined,
       transporterId: undefined,
-      brokerId: undefined,
-      brokerageType: undefined,
+      // brokerId: undefined, // Keep field to allow setting via automatic master addition
+      locationId: undefined,
+      supplierId: undefined,
+      agentId: undefined,
+      quantity: 0,
+      netWeight: 0,
+      rate: 0,
+      expenses: undefined,
+      transportRatePerKg: undefined,
+      transporterId: undefined,
+        // brokerId: undefined, // Keep field to allow setting via automatic master addition
+        // brokerageType: undefined, // Keep field to allow setting via automatic master addition
       brokerageValue: undefined,
     };
   }, [purchaseToEdit]);
@@ -143,31 +155,24 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   const transportRatePerKgValue = watch("transportRatePerKg") || 0;
   const grossWeight = (watch("quantity") || 0) * 50; 
 
-  const selectedBrokerId = watch("brokerId");
-  const brokerageType = watch("brokerageType");
-  const brokerageValue = watch("brokerageValue") || 0;
-
-  const calculatedBrokerageAmount = React.useMemo(() => {
-    if (selectedBrokerId && brokerageType && brokerageValue > 0) {
-      const baseAmountForBrokerage = (parseFloat(String(netWeight || 0)) * parseFloat(String(rate || 0)));
-      if (brokerageType === 'Percentage') {
-        return (baseAmountForBrokerage * brokerageValue) / 100;
-      }
-      return brokerageValue; 
-    }
-    return 0;
-  }, [selectedBrokerId, brokerageType, brokerageValue, netWeight, rate]);
-
-
   const totalAmount = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
     const r = parseFloat(String(rate || 0));
     const exp = parseFloat(String(expenses || 0));
     const transportCost = parseFloat(String(transportRatePerKgValue || 0)) * grossWeight;
-    const brokerage = calculatedBrokerageAmount;
-    if (isNaN(nw) || isNaN(r)) return 0;
-    return (nw * r) + exp + transportCost + brokerage;
-  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeight, calculatedBrokerageAmount]);
+  // const brokerage = calculatedBrokerageAmount; // Removed as per previous instruction
+  if (isNaN(nw) || isNaN(r)) return 0;
+    return (nw * r) + exp + transportCost;
+  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeight]); // Removed brokerage from dependencies
+
+  const createMasterEntry = async (label: string, type: string) => {
+    const docRef = await addDoc(collection(db, 'masters'), {
+      name: label,
+      type,
+      createdAt: serverTimestamp(),
+    });
+    return { value: docRef.id, label };
+  };
 
   const rateAfterExpensesAndTransport = React.useMemo(() => {
     const totalPurchaseCost = (parseFloat(String(netWeight || 0)) * parseFloat(String(rate || 0))) + (parseFloat(String(expenses || 0))) + (parseFloat(String(transportRatePerKgValue || 0)) * grossWeight);
@@ -217,9 +222,9 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
       brokerId: values.brokerId,
-      brokerName: brokers.find(b => b.id === values.brokerId)?.name,
-      brokerageType: values.brokerageType,
-      brokerageValue: values.brokerageValue,
+      brokerName: values.brokerId ? brokers.find(b => b.id === values.brokerId)?.name : undefined, // Only include if brokerId is present
+      brokerageType: values.brokerageType, // Keep to potentially set from master data later
+      brokerageValue: values.brokerageValue, // Keep to potentially set from master data later
       calculatedBrokerageAmount: calculatedBrokerageAmount,
       totalAmount: totalAmount,
     };
@@ -322,6 +327,8 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                               searchPlaceholder="Search suppliers..." 
                               notFoundMessage="No supplier found." 
                               addNewLabel="Add New Supplier"
+                              type="Supplier" // Add the type prop
+                              createMasterEntry={createMasterEntry} // Pass the createMasterEntry function
                               onAddNew={() => handleOpenMasterForm("Supplier")}
                           />
                           <FormMessage />
@@ -341,6 +348,8 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                               searchPlaceholder="Search agents..." 
                               notFoundMessage="No agent found." 
                               addNewLabel="Add New Agent"
+                              type="Agent" // Add the type prop
+                              createMasterEntry={createMasterEntry} // Pass the createMasterEntry function
                               onAddNew={() => handleOpenMasterForm("Agent")}
                           />
                           <FormMessage />
@@ -438,76 +447,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
 
-                {/* Section: Broker Details */}
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Broker Details (Optional)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                          control={control}
-                          name="brokerId"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Broker</FormLabel>
-                              <MasterDataCombobox
-                                  name="brokerId"
-                                  options={brokers.filter(b => b.type === "Broker").map(b => ({ value: b.id, label: b.name }))}
-                                  placeholder="Select Broker"
-                                  searchPlaceholder="Search brokers..."
-                                  notFoundMessage="No broker found."
-                                  addNewLabel="Add New Broker"
-                                  onAddNew={() => handleOpenMasterForm("Broker")}
-                              />
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
-                      <FormField
-                          control={control}
-                          name="brokerageType"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Brokerage Type</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!selectedBrokerId}>
-                                  <FormControl>
-                                      <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      <SelectItem value="Fixed">Fixed Amount (₹)</SelectItem>
-                                      <SelectItem value="Percentage">Percentage (%)</SelectItem>
-                                  </SelectContent>
-                              </Select>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
-                      <FormField
-                          control={control}
-                          name="brokerageValue"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Brokerage Value</FormLabel>
-                              <div className="relative">
-                                  <FormControl>
-                                      <Input 
-                                          type="number" 
-                                          step="0.01" 
-                                          placeholder="e.g., 100 or 2.5" 
-                                          {...field} 
-                                          value={field.value || ''} 
-                                          onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}
-                                          disabled={!selectedBrokerId || !brokerageType}
-                                          className={brokerageType === 'Percentage' ? "pr-8" : ""}
-                                      />
-                                  </FormControl>
-                                  {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                              </div>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
-                  </div>
-                </div>
-
                 {/* Calculated Summary */}
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
@@ -522,11 +461,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                   <p className="text-sm text-muted-foreground pl-7">
                       Effective Rate (incl. expenses & transport): <span className="font-semibold">₹{rateAfterExpensesAndTransport.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
                   </p>
-                  {calculatedBrokerageAmount > 0 && (
-                      <p className="text-sm text-muted-foreground pl-7">
-                          Calculated Brokerage: <span className="font-semibold">₹{calculatedBrokerageAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </p>
-                  )}
                 </div>
 
 
