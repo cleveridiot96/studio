@@ -1,21 +1,23 @@
 
+"use client";
+
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
 import { Menu, Home, Settings as SettingsIcon } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
-import { SettingsProvider } from "@/contexts/SettingsContext";
+import { SettingsProvider, useSettings } from "@/contexts/SettingsContext"; 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
-
+import React from "react";
 
 function AppHeaderContent() {
-  // This component is created to use useSettings hook as AppLayout is a Server Component.
+  // This component is rendered by AppLayout, which is "use client"
   return (
     <>
       <Link href="/dashboard">
@@ -39,16 +41,48 @@ function AppHeaderContent() {
   );
 }
 
+// LoadingBar is a client component because it uses client-side hooks (useState, useEffect)
+// and consumes a client-side context (useSettings).
+function LoadingBar() {
+  // "use client"; // Not strictly needed here as AppLayout (its parent) is already "use client"
+  // and this function is defined within that client component's scope.
+  // However, for clarity if it were a separate file, it would have "use client" at the top.
+  
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Inner component to ensure useSettings is only called after isMounted is true.
+  const BarContent = () => {
+    const { isAppHydrating } = useSettings();
+    if (!isAppHydrating) return null;
+    return <div className="w-full h-1 bg-primary animate-pulse" />;
+  };
+
+  if (!isMounted) {
+    return null; // Don't render anything on the server or before client mount.
+  }
+
+  return <BarContent />; // Render the content that uses the hook only when mounted.
+}
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  // "use client"; // This is already at the top of the file
+  const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsAppLayoutMounted(true);
+  }, []);
+
   const AppIcon = APP_ICON;
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen={false}> {/* Sidebar starts collapsed */}
+      <SidebarProvider defaultOpen={false} collapsible="icon">
         <AppExitHandler />
-        {/* This div manages the overall height and flex behavior for sidebar + content */}
-        <div className="flex h-screen bg-background"> {/* Ensures this container doesn't scroll, child elements will; REMOVED overflow-hidden */}
+        <div className="flex h-screen bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
@@ -58,16 +92,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </h1>
               </Link>
             </SidebarHeader>
-            <SidebarContent className="py-2 overflow-y-auto"> {/* Allows sidebar menu to scroll if long */}
+            <SidebarContent className="py-2 overflow-y-auto">
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
               {/* User profile section removed */}
             </SidebarFooter>
           </Sidebar>
-          
-          {/* This div contains the header and the scrollable content area */}
-          <div className="flex flex-col flex-1 h-full"> {/* Takes remaining space, full height */}
+
+          <div className="flex flex-col flex-1 h-full">
             <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden -ml-2">
@@ -78,10 +111,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarTrigger>
               </div>
               <div className="flex items-center gap-2">
-                <AppHeaderContent />
+                {isAppLayoutMounted && <AppHeaderContent />}{" "} {/* Ensure header content also waits for mount if it uses client hooks implicitly */}
               </div>
             </header>
-            {/* This is the main content area that will scroll */}
+            {isAppLayoutMounted && <LoadingBar />} 
             <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full">
               {children}
             </SidebarInset>
