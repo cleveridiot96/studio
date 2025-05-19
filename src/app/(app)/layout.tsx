@@ -48,7 +48,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarProvider defaultOpen={false}> {/* Sidebar starts collapsed */}
         <AppExitHandler />
         {/* This div manages the overall height and flex behavior for sidebar + content */}
-        <div className="flex h-screen bg-background overflow-hidden"> {/* Ensures this container doesn't scroll, child elements will */}
+        <div className="flex h-screen bg-background"> {/* Ensures this container doesn't scroll, child elements will; REMOVED overflow-hidden */}
           <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
