@@ -4,8 +4,8 @@
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Sale, Purchase, TransactionalProfitInfo, MonthlyProfitInfo } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, DollarSign, BarChart3, Package } from "lucide-react";
 import { format, parseISO, startOfMonth } from "date-fns";
@@ -39,8 +39,9 @@ export function ProfitAnalysisClient() {
       // For display purposes, we might still want to show COGS.
       // Find the related purchase to get cost basis (simplification: using first purchase of lot)
       const purchaseForLot = purchases.find(p => p.lotNumber === sale.lotNumber);
-      const purchaseRatePerKg = purchaseForLot ? purchaseForLot.rate : 0; 
-      const costOfGoodsSold = sale.netWeight * purchaseRatePerKg;
+      // Ensure purchaseForLot exists and rate is a number before calculation
+      const purchaseRatePerKg = (purchaseForLot && typeof purchaseForLot.rate === 'number') ? purchaseForLot.rate : 0; 
+      const costOfGoodsSold = (typeof sale.netWeight === 'number' ? sale.netWeight : 0) * purchaseRatePerKg;
 
       transactions.push({
         saleId: sale.id,
@@ -69,10 +70,15 @@ export function ProfitAnalysisClient() {
 
     const monthlySummary: MonthlyProfitInfo[] = Object.entries(monthlyAgg)
       .map(([key, value]) => ({
-        monthYear: format(parseISO(key + "-01"), "MMMM yyyy"),
+        monthYear: format(parseISO(key + "-01"), "MMMM yyyy"), // Ensure date parsing is robust
         ...value,
       }))
-      .sort((a, b) => parseISO(b.monthYear.split(" ")[1] + "-" + (new Date(Date.parse(a.monthYear.split(" ")[0] +" 1, 2012")).getMonth()+1)).getTime() - parseISO(a.monthYear.split(" ")[1] + "-" + (new Date(Date.parse(b.monthYear.split(" ")[0] +" 1, 2012")).getMonth()+1)).getTime());
+      .sort((a, b) => {
+        // Robust sorting for monthYear strings like "May 2024"
+        const dateA = parseISO(a.monthYear.split(" ")[1] + "-" + (new Date(Date.parse(a.monthYear.split(" ")[0] +" 1, 2000")).getMonth()+1).toString().padStart(2, '0') + "-01");
+        const dateB = parseISO(b.monthYear.split(" ")[1] + "-" + (new Date(Date.parse(b.monthYear.split(" ")[0] +" 1, 2000")).getMonth()+1).toString().padStart(2, '0') + "-01");
+        return dateB.getTime() - dateA.getTime(); // Sort descending (most recent first)
+      });
     
     const overallProfit = transactions.reduce((sum, tx) => sum + tx.netProfit, 0);
 
