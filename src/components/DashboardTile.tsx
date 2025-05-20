@@ -15,7 +15,7 @@ import {
   FileText, 
   Receipt, 
   ArrowRightLeft,
-  TreasureChest, // Added TreasureChest icon
+  // TreasureChest removed as it does not exist in lucide-react
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -42,7 +42,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   DatabaseBackup,
   LayoutGrid,  
   ArrowRightLeft,
-  TreasureChest, // Added TreasureChest to map
+  // TreasureChest mapping removed
 };
 
 
