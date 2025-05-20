@@ -1,7 +1,7 @@
+
 import DashboardClient from "@/components/app/dashboard/DashboardClient";
 import { Separator } from "@/components/ui/separator";
 import { DashboardTile } from "@/components/DashboardTile";
-// import ProfitAnalysis from "@/components/app/dashboard/ProfitAnalysis"; // Removed
 
 const quickActions = [
  {
@@ -78,8 +78,8 @@ const quickActions = [
     title: "Profit Analysis",
     description: "View profit/loss reports",
     href: "/profit-analysis",
-    iconName: "BarChart3",
-    className: "bg-slate-700 hover:bg-slate-800 text-white",
+    iconName: "TreasureChest", // Changed icon
+    className: "bg-green-500 hover:bg-green-600 text-white", // Changed background
   },
 ];
 
@@ -95,8 +95,6 @@ export default function DashboardPage() {
         ))}
       </div>
       <Separator className="my-4"/>
-      {/* <ProfitAnalysis /> Removed */}
-      {/* <Separator className="my-4"/> Removed, DashboardClient will be the next section */}
       <DashboardClient />
     </div>
   );
