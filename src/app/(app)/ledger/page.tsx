@@ -1,6 +1,6 @@
 
-import { LedgerClient } from "@/components/app/ledger/LedgerClient";
+import { LedgerClientWithBrokerFilter } from "@/components/app/ledger/LedgerClientWithBrokerFilter";
 
 export default function LedgerPage() {
-  return <LedgerClient />;
+ return <LedgerClientWithBrokerFilter />;
 }

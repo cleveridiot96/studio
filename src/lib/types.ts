@@ -162,4 +162,10 @@ export interface Broker extends MasterItem {
   brokerageType?: 'Fixed' | 'Percentage'; // Default brokerage type from master
 }
 
+export interface BrokerData {
+  name: string;
+  commissionRate: number; // Percentage
+}
+}
+
     

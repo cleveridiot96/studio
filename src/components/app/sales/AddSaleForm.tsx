@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogDescription,
   DialogClose,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -22,20 +22,20 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Info, Percent } from "lucide-react"; // Removed Check
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { saleSchema, type SaleFormValues, Sale } from "@/lib/schemas/saleSchema";
-import type { MasterItem, MasterItemType, Purchase } from "@/lib/types";
-import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
-import { useToast } from "@/hooks/use-toast";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { MasterForm } from "@/components/app/masters/MasterForm";
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon, Info, Percent } from 'lucide-react'; // Removed Check
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { saleSchema, type SaleFormValues, Sale } from '@/lib/schemas/saleSchema';
+import type { MasterItem, MasterItemType, Purchase } from '@/lib/types';
+import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { MasterForm } from '@/components/app/masters/MasterForm';
 
 interface AddSaleFormProps {
   isOpen: boolean;
@@ -43,8 +43,8 @@ interface AddSaleFormProps {
   onSubmit: (sale: Sale) => void;
   customers: MasterItem[];
   transporters: MasterItem[];
-  brokers: MasterItem[];
-  inventoryLots: Purchase[]; 
+ brokers: MasterItem[];
+  inventoryLots: Purchase[];
   existingSales: Sale[]; 
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
@@ -58,7 +58,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   transporters,
   brokers,
   inventoryLots,
-  existingSales,
+ existingSales,
   onMasterDataUpdate,
   saleToEdit,
 }) => {
@@ -86,6 +86,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         brokerageType: saleToEdit.brokerageType || undefined,
         brokerageAmount: saleToEdit.brokerageAmount || undefined,
         notes: saleToEdit.notes || "",
+ profit: saleToEdit.profit || 0,
       };
     }
     return {
@@ -104,6 +105,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerageType: undefined,
       brokerageAmount: undefined,
       notes: "",
+ profit: 0,
     };
   }, [saleToEdit]);
 
@@ -111,7 +113,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     resolver: zodResolver(saleSchema(customers, transporters, brokers, inventoryLots, existingSales, saleToEdit?.id)),
     defaultValues: getDefaultValues(),
   });
-  const { control, watch, reset } = methods; // Removed setValue as it's handled by useController in MasterDataCombobox
+  const { control, watch, reset, setValue } = methods; // Removed setValue as it's handled by useController in MasterDataCombobox
 
   React.useEffect(() => {
     reset(getDefaultValues());
@@ -121,9 +123,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const netWeight = watch("netWeight"); // Still watch for manual changes
   const rate = watch("rate");
   const billAmountManual = watch("billAmount");
-  
+
   const selectedBrokerId = watch("brokerId");
   const brokerageType = watch("brokerageType");
+  const selectedBroker = brokers.find(b => b.id === selectedBrokerId);
   const brokerageValue = watch("brokerageAmount") || 0;
 
   const calculatedBillAmount = React.useMemo(() => {
@@ -133,7 +136,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return finalNetWeight * r;
   }, [quantity, netWeight, rate]);
 
-  // Calculate Profit
+  // Calculate Profit and Brokerage
   const finalBillAmountToUse = billAmountManual !== undefined && billAmountManual > 0 ? billAmountManual : calculatedBillAmount;
 
   const selectedLot = inventoryLots.find(lot => lot.lotNumber === watch("lotNumber"));
@@ -142,20 +145,31 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const finalNetWeight = netWeight !== undefined && netWeight > 0 ? netWeight : (quantity || 0) * 50;
     const costOfGoodsSold = finalNetWeight * purchaseRatePerKg;
     return finalBillAmountToUse - costOfGoodsSold;
-  }, [finalBillAmountToUse, quantity, netWeight, purchaseRatePerKg]);  
+  }, [finalBillAmountToUse, quantity, netWeight, purchaseRatePerKg]);
 
-  const calculatedBrokerageCommission = React.useMemo(() => {
-    if (selectedBrokerId && brokerageType && brokerageValue > 0) {
-      if (brokerageType === 'Percentage') {
-        return (finalBillAmountToUse * brokerageValue) / 100;
-      }
-      return brokerageValue; 
+  const calculatedBrokerageCommission = React.useMemo(() => {    if (!selectedBroker) return 0;
+
+    const commissionRate = selectedBroker.commissionRate || 0;
+
+    if (commissionRate > 0) {
+      // Assume brokerage calculation is always based on rate * netWeight, not billAmount
+      const finalNetWeight = netWeight !== undefined && netWeight > 0 ? netWeight : (quantity || 0) * 50;
+      return (finalNetWeight * rate * commissionRate) / 100;
     }
-    return 0;
-  }, [selectedBrokerId, brokerageType, brokerageValue, finalBillAmountToUse]); 
+    return 0; // No commission rate set for broker
+  }, [selectedBroker, quantity, netWeight, rate]);
+
+  // Update form values with calculated profit and brokerage
+  React.useEffect(() => {
+    setValue('profit', calculatedProfit);
+  }, [calculatedProfit, setValue]);
+
+  React.useEffect(() => {
+    setValue('calculatedBrokerageCommission', calculatedBrokerageCommission);
+  }, [calculatedBrokerageCommission, setValue]);
   const totalAmountForCustomer = finalBillAmountToUse;
 
-
+ // Master Form Handlers
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
@@ -163,10 +177,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
-     if (newItem.type === masterFormItemType) {
+ if (newItem.type === masterFormItemType) {
         if (newItem.type === 'Customer') methods.setValue('customerId', newItem.id, { shouldValidate: true });
         if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
-        if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
+ if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
@@ -187,7 +201,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      billNumber: values.billNumber,
+ billNumber: values.billNumber,
       billAmount: values.billAmount, 
       cutBill: values.cutBill,
       customerId: values.customerId as string,
@@ -202,11 +216,12 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerId: values.brokerId,
       brokerName: brokers.find(b => b.id === values.brokerId)?.name,
       brokerageType: values.brokerageType,
-      brokerageAmount: values.brokerageAmount, 
+ brokerageAmount: values.brokerageAmount,
       calculatedBrokerageCommission: calculatedBrokerageCommission,
       notes: values.notes,
       totalAmount: totalAmountForCustomer,
-    };
+ profit: calculatedProfit,
+    }; // Assuming calculatedBrokerageCommission is the actual amount
     onSubmit(saleData);
     setIsSubmitting(false);
     reset(getDefaultValues());
@@ -270,7 +285,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={control} name="lotNumber" render={({ field }) => ( // field used by useController in combobox
                       <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
                       <MasterDataCombobox 
-                        name="lotNumber" 
+                        name="lotNumber"
                         options={inventoryLots.map(p => ({ value: p.lotNumber, label: `${p.lotNumber} (${p.locationName} - Avl: ${p.quantity - (existingSales.filter(s=>s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id).reduce((sum,s)=>sum+s.quantity,0))} bags)` }))} 
                         placeholder="Select Lot" 
                         searchPlaceholder="Search lots..."
@@ -281,7 +296,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     />
                     <FormField control={control} name="customerId" render={({ field }) => (
                       <FormItem><FormLabel>Customer</FormLabel>
-                      <MasterDataCombobox 
+                      <MasterDataCombobox
                         name="customerId" 
                         options={customers.map(c => ({ value: c.id, label: c.name }))} 
                         placeholder="Select Customer"
@@ -308,7 +323,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       />
                   </div>
                 </div>
-              
+
                 {/* Section: Transport & Broker */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Transport &amp; Broker (Optional)</h3>
@@ -316,7 +331,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem><FormLabel>Transporter</FormLabel>
                           <MasterDataCombobox 
-                            name="transporterId" 
+                            name="transporterId"
                             options={transporters.map(t => ({ value: t.id, label: t.name }))} 
                             placeholder="Select Transporter" 
                             searchPlaceholder="Search transporters..."
@@ -333,7 +348,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormField control={control} name="brokerId" render={({ field }) => (
                           <FormItem><FormLabel>Broker</FormLabel>
                           <MasterDataCombobox 
-                            name="brokerId" 
+                            name="brokerId"
                             options={brokers.map(b => ({ value: b.id, label: b.name }))} 
                             placeholder="Select Broker" 
                             searchPlaceholder="Search brokers..."

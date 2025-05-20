@@ -1,6 +1,7 @@
 import DashboardClient from "@/components/app/dashboard/DashboardClient";
 import { Separator } from "@/components/ui/separator";
 import { DashboardTile } from "@/components/DashboardTile";
+// import ProfitAnalysis from "@/components/app/dashboard/ProfitAnalysis"; // Removed
 
 const quickActions = [
  {
@@ -21,7 +22,7 @@ const quickActions = [
     title: "Inventory",
     description: "View and manage stock",
     href: "/inventory",
-    iconName: "Package", 
+    iconName: "Package",
     className: "bg-teal-600 hover:bg-teal-700 text-white",
   },
   {
@@ -36,13 +37,13 @@ const quickActions = [
     description: "Transfer stock between locations",
     href: "/location-transfer",
     iconName: "ArrowRightLeft",
-    className: "bg-cyan-600 hover:bg-cyan-700 text-white", 
+    className: "bg-cyan-600 hover:bg-cyan-700 text-white",
   },
   {
     title: "Payments",
     description: "Record outgoing payments",
     href: "/payments",
-    iconName: "ArrowRightCircle", 
+    iconName: "ArrowRightCircle",
     className: "bg-red-600 hover:bg-red-700 text-white",
   },
   {
@@ -56,37 +57,46 @@ const quickActions = [
     title: "Master Data",
     description: "Manage people & companies",
     href: "/masters",
-    iconName: "Users", 
+    iconName: "Users",
     className: "bg-sky-600 hover:bg-sky-700 text-white",
   },
   {
     title: "Cash Book",
     description: "Track cash transactions",
     href: "/cashbook",
-    iconName: "BookOpen", 
+    iconName: "BookOpen",
     className: "bg-pink-600 hover:bg-pink-700 text-white",
   },
   {
     title: "Party Ledger",
     description: "View party balances",
     href: "/ledger",
-    iconName: "BookUser", 
+    iconName: "BookUser",
     className: "bg-gray-700 hover:bg-gray-800 text-white",
+  },
+  {
+    title: "Profit Analysis",
+    description: "View profit/loss reports",
+    href: "/profit-analysis",
+    iconName: "BarChart3",
+    className: "bg-slate-700 hover:bg-slate-800 text-white",
   },
 ];
 
 export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
-       <div className="text-left"> 
+       <div className="text-left">
         <h1 className="text-3xl font-bold text-foreground">Quick Actions</h1>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> 
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {quickActions.map((action) => (
           <DashboardTile key={action.title} {...action} />
         ))}
       </div>
       <Separator className="my-4"/>
+      {/* <ProfitAnalysis /> Removed */}
+      {/* <Separator className="my-4"/> Removed, DashboardClient will be the next section */}
       <DashboardClient />
     </div>
   );

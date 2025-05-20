@@ -4,8 +4,8 @@ import { Card, CardTitle } from '@/components/ui/card';
 import type { LucideProps } from 'lucide-react';
 import { 
   BarChart, DollarSign, Package, Users, LineChart, TrendingUp, ShoppingCart as DefaultShoppingCartIcon, TrendingDown, HelpCircle as FallbackIcon,
-  ArrowLeftCircle, 
-  ArrowRightCircle, 
+  ArrowLeftCircle, Treasure, // Import Treasure icon
+  ArrowRightCircle, // Import Treasure icon
   BookOpen, 
   BookUser, 
   Users2, 
@@ -39,8 +39,8 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   BookUser, // Used for Ledger tile
   Users2, // Available, Master Data uses Users for simplicity now
   DatabaseBackup,
-  LayoutGrid, // Used for Dashboard tile
-  ArrowRightLeft, // Used for Location Transfer tile
+  LayoutGrid, // Used for Dashboard tile 
+  ArrowRightLeft, // Used for Location Transfer tile // Add Treasure to map
 };
 
 
