@@ -1,7 +1,7 @@
 
 import * as React from "react";
 import { useForm, FormProvider } from "react-hook-form";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+// import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Firebase import removed
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +25,12 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent, Check } from "lucide-react";
+import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { db } from "@/lib/firebase"; // Assuming you have your firebase instance initialized and exported as `db`
+// import { db } from "@/lib/firebase"; // Firebase import removed
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType } from "@/lib/types";
+import type { MasterItem, Purchase, MasterItemType, Broker } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
@@ -43,7 +43,7 @@ interface AddPurchaseFormProps {
   agents: MasterItem[];
   warehouses: MasterItem[]; // Used as Locations
   transporters: MasterItem[];
-  brokers: MasterItem[];
+  brokers: Broker[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   purchaseToEdit?: Purchase | null;
 }
@@ -80,9 +80,9 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
         expenses: purchaseToEdit.expenses || undefined,
         transportRatePerKg: purchaseToEdit.transportRatePerKg || undefined,
         transporterId: purchaseToEdit.transporterId || undefined,
-        brokerId: purchaseToEdit.brokerId || undefined,
-        brokerageType: purchaseToEdit.brokerageType || undefined,
-        brokerageValue: purchaseToEdit.brokerageValue || undefined,
+        // brokerId: purchaseToEdit.brokerId || undefined, // No longer in form
+        // brokerageType: purchaseToEdit.brokerageType || undefined, // No longer in form
+        // brokerageValue: purchaseToEdit.brokerageValue || undefined, // No longer in form
       };
     }
     return {
@@ -97,19 +97,9 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       expenses: undefined,
       transportRatePerKg: undefined,
       transporterId: undefined,
-      // brokerId: undefined, // Keep field to allow setting via automatic master addition
-      locationId: undefined,
-      supplierId: undefined,
-      agentId: undefined,
-      quantity: 0,
-      netWeight: 0,
-      rate: 0,
-      expenses: undefined,
-      transportRatePerKg: undefined,
-      transporterId: undefined,
-        // brokerId: undefined, // Keep field to allow setting via automatic master addition
-        // brokerageType: undefined, // Keep field to allow setting via automatic master addition
-      brokerageValue: undefined,
+      // brokerId: undefined, // No longer in form
+      // brokerageType: undefined, // No longer in form
+      // brokerageValue: undefined, // No longer in form
     };
   }, [purchaseToEdit]);
 
@@ -153,33 +143,26 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   const rate = watch("rate");
   const expenses = watch("expenses") || 0;
   const transportRatePerKgValue = watch("transportRatePerKg") || 0;
-  const grossWeight = (watch("quantity") || 0) * 50; 
+  
+  const bagsForTransportCalc = watch("quantity") || 0;
+  const grossWeightForTransport = bagsForTransportCalc * 50; 
 
   const totalAmount = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
     const r = parseFloat(String(rate || 0));
     const exp = parseFloat(String(expenses || 0));
-    const transportCost = parseFloat(String(transportRatePerKgValue || 0)) * grossWeight;
-  // const brokerage = calculatedBrokerageAmount; // Removed as per previous instruction
-  if (isNaN(nw) || isNaN(r)) return 0;
+    const transportCost = parseFloat(String(transportRatePerKgValue || 0)) * grossWeightForTransport;
+    if (isNaN(nw) || isNaN(r)) return 0;
     return (nw * r) + exp + transportCost;
-  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeight]); // Removed brokerage from dependencies
+  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeightForTransport]);
 
-  const createMasterEntry = async (label: string, type: string) => {
-    const docRef = await addDoc(collection(db, 'masters'), {
-      name: label,
-      type,
-      createdAt: serverTimestamp(),
-    });
-    return { value: docRef.id, label };
-  };
 
   const rateAfterExpensesAndTransport = React.useMemo(() => {
-    const totalPurchaseCost = (parseFloat(String(netWeight || 0)) * parseFloat(String(rate || 0))) + (parseFloat(String(expenses || 0))) + (parseFloat(String(transportRatePerKgValue || 0)) * grossWeight);
+    const totalPurchaseCost = (parseFloat(String(netWeight || 0)) * parseFloat(String(rate || 0))) + (parseFloat(String(expenses || 0))) + (parseFloat(String(transportRatePerKgValue || 0)) * grossWeightForTransport);
     const nw = parseFloat(String(netWeight || 0));
     if (nw <= 0) return 0;
     return totalPurchaseCost / nw;
-  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeight]);
+  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeightForTransport]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -189,13 +172,11 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
-    // Optionally, try to select the new item in the appropriate combobox
     if (newItem.type === masterFormItemType) {
         if (newItem.type === 'Supplier') methods.setValue('supplierId', newItem.id, { shouldValidate: true });
         if (newItem.type === 'Agent') methods.setValue('agentId', newItem.id, { shouldValidate: true });
         if (newItem.type === 'Warehouse') methods.setValue('locationId', newItem.id, { shouldValidate: true });
         if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
-        if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
@@ -219,13 +200,9 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       rate: values.rate,
       expenses: values.expenses,
       transportRatePerKg: values.transportRatePerKg,
+      transportRate: values.transportRatePerKg ? values.transportRatePerKg * grossWeightForTransport : undefined,
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
-      brokerId: values.brokerId,
-      brokerName: values.brokerId ? brokers.find(b => b.id === values.brokerId)?.name : undefined, // Only include if brokerId is present
-      brokerageType: values.brokerageType, // Keep to potentially set from master data later
-      brokerageValue: values.brokerageValue, // Keep to potentially set from master data later
-      calculatedBrokerageAmount: calculatedBrokerageAmount,
       totalAmount: totalAmount,
     };
     onSubmit(purchaseData);
@@ -317,7 +294,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                     <FormField
                       control={control}
                       name="supplierId"
-                      render={({ field }) => (
+                      render={({ field }) => ( 
                         <FormItem>
                           <FormLabel>Supplier</FormLabel>
                           <MasterDataCombobox 
@@ -327,8 +304,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                               searchPlaceholder="Search suppliers..." 
                               notFoundMessage="No supplier found." 
                               addNewLabel="Add New Supplier"
-                              type="Supplier" // Add the type prop
-                              createMasterEntry={createMasterEntry} // Pass the createMasterEntry function
                               onAddNew={() => handleOpenMasterForm("Supplier")}
                           />
                           <FormMessage />
@@ -348,8 +323,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                               searchPlaceholder="Search agents..." 
                               notFoundMessage="No agent found." 
                               addNewLabel="Add New Agent"
-                              type="Agent" // Add the type prop
-                              createMasterEntry={createMasterEntry} // Pass the createMasterEntry function
                               onAddNew={() => handleOpenMasterForm("Agent")}
                           />
                           <FormMessage />
