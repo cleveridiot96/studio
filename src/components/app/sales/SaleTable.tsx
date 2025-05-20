@@ -36,29 +36,30 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
             <TableHead>Bill No.</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Vakkal / Lot No.</TableHead>
-            {/* <TableHead>Item</TableHead> REMOVED */}
             <TableHead className="text-right">Bags</TableHead>
             <TableHead className="text-right">Net Wt.(kg)</TableHead>
             <TableHead className="text-right">Rate (₹/kg)</TableHead>
             <TableHead>Broker</TableHead>
             <TableHead className="text-right">Total (₹)</TableHead>
+            <TableHead className="text-right">Profit (₹)</TableHead>
             <TableHead className="text-center w-[100px]">Actions</TableHead>
-            <TableHead className="text-right">Profit/Loss (₹)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((sale) => (
             <TableRow key={sale.id}>
               <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
-              <TableCell>{sale.billNumber}</TableCell>
+              <TableCell>{sale.billNumber || 'N/A'}</TableCell>
               <TableCell>{sale.customerName || sale.customerId}</TableCell>
               <TableCell>{sale.lotNumber}</TableCell>
-              {/* <TableCell>{sale.itemName}</TableCell> REMOVED */}
               <TableCell className="text-right">{sale.quantity}</TableCell>
               <TableCell className="text-right">{sale.netWeight.toLocaleString()}</TableCell>
               <TableCell className="text-right">{sale.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell>{sale.brokerName || sale.brokerId || 'N/A'}</TableCell>
               <TableCell className="text-right font-semibold">{(sale.billAmount || sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+              <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : ''}`}>
+                {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
+              </TableCell>
               <TableCell className="text-center">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-2 hover:text-primary">
                   <Pencil className="h-4 w-4" />
@@ -76,3 +77,5 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
+
+    

@@ -38,8 +38,8 @@ export interface Purchase {
   transportRatePerKg?: number; // Transport cost per KG
   transporterId?: string;
   transporterName?: string;
-  // Broker fields removed from Purchase as per previous request
-  totalAmount: number; // (netWeight * rate) + expenses + (transportRatePerKg * netWeight)
+  transportRate?: number; // Calculated: transportRatePerKg * (quantity * 50)
+  totalAmount: number; // (netWeight * rate) + expenses + transportRate
   locationId: string;
   locationName?: string;
 }
@@ -66,6 +66,7 @@ export interface Sale {
   calculatedBrokerageCommission?: number; // The actual brokerage commission amount
   notes?: string;
   totalAmount: number; // Final amount for the customer
+  calculatedProfit?: number; // (Sale Price/kg - Purchase Price/kg) * Kgs Sold - transportCost - brokerageCommission
 }
 
 export interface InventoryItem {
@@ -160,3 +161,5 @@ export interface Broker extends MasterItem {
   commission?: number; // Assumed to be percentage for auto-population
   brokerageType?: 'Fixed' | 'Percentage'; // Default brokerage type from master
 }
+
+    
