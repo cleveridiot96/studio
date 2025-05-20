@@ -43,13 +43,20 @@ export function LocationTransferClient() {
   const { toast } = useToast();
   const [hydrated, setHydrated] = React.useState(false);
 
-  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [purchases, setPurchases] // Removed setPurchases as it's read-only here
-    = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
-  const [sales, setSales] // Removed setSales
-    = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
+  // Memoize default empty arrays for useLocalStorageState
+  const initialLocationTransfers = React.useMemo(() => [], []);
+  const initialWarehouses = React.useMemo(() => [], []);
+  const initialTransporters = React.useMemo(() => [], []);
+  const initialPurchases = React.useMemo(() => [], []);
+  const initialSales = React.useMemo(() => [], []);
+
+  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, initialLocationTransfers);
+  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
+  const [purchases, setPurchases] 
+    = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchases);
+  const [sales, setSales] 
+    = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSales);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
