@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, Building } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 import { MasterList } from '@/components/app/masters/MasterList';
@@ -83,9 +83,7 @@ export default function MastersPage() {
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
-    if (type === 'All') {
-      return { data: allMasterItems, setData: () => {} }; 
-    }
+    // No need to pass allMasterItems as a dependency if it's derived from other dependencies of this callback
     switch (type) {
       case 'Customer': return { data: customers, setData: setCustomers };
       case 'Supplier': return { data: suppliers, setData: setSuppliers };
@@ -93,9 +91,10 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
+      case 'All': return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All'
       default: return { data: [], setData: () => {} };
     }
-  }, [allMasterItems, customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses]);
+  }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]); // allMasterItems is included as its reference changes
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { setData } = getMasterDataState(item.type);
@@ -118,7 +117,7 @@ export default function MastersPage() {
         return updated;
       }
       toast({ title: `${item.type} added successfully!` });
-      return [item, ...prev];
+      return [item, ...prev]; // Add new item to the beginning for better UX
     });
     setIsFormOpen(false);
     setEditingItem(null);
@@ -144,10 +143,10 @@ export default function MastersPage() {
     }
   }, [itemToDelete, getMasterDataState, toast]);
 
-  const openFormForNewItem = () => {
+  const openFormForNewItem = useCallback(() => {
     setEditingItem(null); 
     setIsFormOpen(true);
-  };
+  }, []);
 
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "Add New Party/Entity";
@@ -183,29 +182,32 @@ export default function MastersPage() {
             </TabsTrigger>
           ))}
         </TabsList>
-        {TABS_CONFIG.map(tab => (
-          <TabsContent key={tab.value} value={tab.value} className="mt-6">
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MasterList
-                  data={tab.value === "All" ? allMasterItems : getMasterDataState(tab.value).data}
-                  itemType={tab.value}
-                  isAllItemsTab={tab.value === "All"}
-                  onEdit={handleEditItem}
-                  onDelete={handleDeleteItemAttempt}
-                />
-              </CardContent>
-              <CardFooter>
-                <p className="text-xs text-muted-foreground">
-                  Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {tab.value === "All" ? allMasterItems.length : getMasterDataState(tab.value).data.length}
-                </p>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        ))}
+        {TABS_CONFIG.map(tab => {
+          const { data } = getMasterDataState(tab.value);
+          return (
+            <TabsContent key={tab.value} value={tab.value} className="mt-6">
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <MasterList
+                    data={data}
+                    itemType={tab.value}
+                    isAllItemsTab={tab.value === "All"}
+                    onEdit={handleEditItem}
+                    onDelete={handleDeleteItemAttempt}
+                  />
+                </CardContent>
+                <CardFooter>
+                  <p className="text-xs text-muted-foreground">
+                    Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {data.length}
+                  </p>
+                </CardFooter>
+              </Card>
+            </TabsContent>
+          );
+        })}
       </Tabs>
 
       {isFormOpen && (
@@ -237,5 +239,3 @@ export default function MastersPage() {
     </div>
   );
 }
-
-    

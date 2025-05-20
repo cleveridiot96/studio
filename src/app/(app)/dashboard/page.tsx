@@ -78,8 +78,8 @@ const quickActions = [
     title: "Profit Analysis",
     description: "View profit/loss reports",
     href: "/profit-analysis",
-    iconName: "TreasureChest", // Changed icon
-    className: "bg-green-500 hover:bg-green-600 text-white", // Changed background
+    iconName: "Rocket", 
+    className: "bg-green-500 hover:bg-green-600 text-white",
   },
 ];
 
