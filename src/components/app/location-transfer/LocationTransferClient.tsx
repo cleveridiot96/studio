@@ -5,7 +5,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building } from "lucide-react";
+import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +44,6 @@ export function LocationTransferClient() {
   const { toast } = useToast();
   const [hydrated, setHydrated] = React.useState(false);
 
-  // Memoize default empty arrays for useLocalStorageState
   const initialLocationTransfers = React.useMemo(() => [], []);
   const initialWarehouses = React.useMemo(() => [], []);
   const initialTransporters = React.useMemo(() => [], []);
@@ -53,10 +53,8 @@ export function LocationTransferClient() {
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, initialLocationTransfers);
   const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
-  const [purchases, setPurchases] 
-    = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchases);
-  const [sales, setSales] 
-    = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSales);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchases);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSales);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -90,7 +88,6 @@ export function LocationTransferClient() {
     });
 
     sales.forEach(s => {
-      // Find purchase to determine original location if not directly on sale
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
       if (relatedPurchase) {
           const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
@@ -103,10 +100,8 @@ export function LocationTransferClient() {
       }
     });
     
-    // Apply location transfers to adjust stock
     locationTransfers.forEach(transfer => {
         transfer.items.forEach(item => {
-            // Decrement from source warehouse
             const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
             const fromEntry = stockMap.get(fromKey);
             if (fromEntry) {
@@ -115,7 +110,6 @@ export function LocationTransferClient() {
                 stockMap.set(fromKey, fromEntry);
             }
 
-            // Increment in destination warehouse
             const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`;
             let toEntry = stockMap.get(toKey);
             if (!toEntry) {
@@ -132,7 +126,6 @@ export function LocationTransferClient() {
             stockMap.set(toKey, toEntry);
         });
     });
-
 
     return Array.from(stockMap.values()).filter(item => item.currentBags > 0 || item.currentWeight > 0)
         .sort((a,b) => a.locationName.localeCompare(b.locationName) || a.lotNumber.localeCompare(b.lotNumber));
@@ -197,12 +190,20 @@ export function LocationTransferClient() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1 shadow-lg">
-            <CardHeader>
-                <CardTitle className="text-xl text-primary flex items-center"><Building className="mr-2 h-6 w-6"/>Current Stock by Warehouse</CardTitle>
-            </CardHeader>
-            <CardContent>
+      <Card className="shadow-xl">
+        <Tabs defaultValue="stockOverview" className="w-full">
+          <CardHeader className="p-0"> {/* Remove padding for TabsList to fit nicely */}
+            <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none">
+              <TabsTrigger value="stockOverview" className="py-3 text-base">
+                <Boxes className="mr-2 h-5 w-5"/>Stock Overview
+              </TabsTrigger>
+              <TabsTrigger value="transferHistory" className="py-3 text-base">
+                <ListChecks className="mr-2 h-5 w-5"/>Transfer History
+              </TabsTrigger>
+            </TabsList>
+          </CardHeader>
+          <TabsContent value="stockOverview">
+            <CardContent className="pt-6"> {/* Add padding back for content */}
                 <ScrollArea className="h-[400px] border rounded-md">
                     <Table size="sm">
                         <TableHeader>
@@ -225,52 +226,49 @@ export function LocationTransferClient() {
                     </Table>
                 </ScrollArea>
             </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-xl text-primary flex items-center"><ListChecks className="mr-2 h-6 w-6"/>Transfer History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] border rounded-md">
-              <Table size="sm">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>From</TableHead>
-                    <TableHead>To</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {locationTransfers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers recorded yet.</TableCell></TableRow>}
-                  {locationTransfers.map(transfer => (
-                    <TableRow key={transfer.id}>
-                      <TableCell>{format(new Date(transfer.date), "dd-MM-yy")}</TableCell>
-                      <TableCell>{transfer.fromWarehouseName || transfer.fromWarehouseId}</TableCell>
-                      <TableCell>{transfer.toWarehouseName || transfer.toWarehouseId}</TableCell>
-                      <TableCell>{transfer.items.map(i => `${i.lotNumber} (${i.bagsToTransfer} bags)`).join(', ')}</TableCell>
-                      <TableCell className="truncate max-w-xs">{transfer.notes || 'N/A'}</TableCell>
-                      <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditTransfer(transfer)} className="mr-1 hover:text-primary"><PlusCircle className="h-4 w-4" /></Button> {/* Reusing Plus as Edit for now */}
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTransferAttempt(transfer)} className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                      </TableCell>
+          </TabsContent>
+          <TabsContent value="transferHistory">
+            <CardContent className="pt-6"> {/* Add padding back for content */}
+              <ScrollArea className="h-[400px] border rounded-md">
+                <Table size="sm">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>From</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </CardContent>
-           <CardFooter className="flex items-start text-destructive p-3 mt-4 rounded-md border border-destructive/50 bg-destructive/10">
-                <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
-                <p className="text-xs">
-                <strong>Note:</strong> Inventory summary on other pages (Dashboard, Inventory, Stock Report) will reflect these transfers once those modules are updated to process transfer data.
-                </p>
-          </CardFooter>
-        </Card>
-      </div>
+                  </TableHeader>
+                  <TableBody>
+                    {locationTransfers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers recorded yet.</TableCell></TableRow>}
+                    {locationTransfers.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(transfer => (
+                      <TableRow key={transfer.id}>
+                        <TableCell>{format(new Date(transfer.date), "dd-MM-yy")}</TableCell>
+                        <TableCell>{transfer.fromWarehouseName || transfer.fromWarehouseId}</TableCell>
+                        <TableCell>{transfer.toWarehouseName || transfer.toWarehouseId}</TableCell>
+                        <TableCell>{transfer.items.map(i => `${i.lotNumber} (${i.bagsToTransfer} bags)`).join(', ')}</TableCell>
+                        <TableCell className="truncate max-w-xs">{transfer.notes || 'N/A'}</TableCell>
+                        <TableCell className="text-center">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditTransfer(transfer)} className="mr-1 hover:text-primary"><PlusCircle className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteTransferAttempt(transfer)} className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </TabsContent>
+        </Tabs>
+        <CardFooter className="flex items-start text-destructive p-3 mt-4 rounded-md border border-destructive/50 bg-destructive/10">
+            <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
+            <p className="text-xs">
+            <strong>Note:</strong> Inventory summary on other pages (Dashboard, Inventory, Stock Report) will reflect these transfers once those modules are updated to process transfer data.
+            </p>
+        </CardFooter>
+      </Card>
       
 
       {isAddFormOpen && (
