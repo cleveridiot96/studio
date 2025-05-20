@@ -48,7 +48,7 @@ export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber?: string; // Optional
-  billAmount?: number; // Optional override for final bill amount.
+  billAmount?: number; // Optional override for final bill amount. If not provided, totalAmount is used.
   cutBill?: boolean; // Optional
   customerId: string;
   customerName?: string;
@@ -65,8 +65,8 @@ export interface Sale {
   brokerageAmount?: number; // If fixed, this is the amount. If percentage, this is the % value.
   calculatedBrokerageCommission?: number; // The actual brokerage commission amount
   notes?: string;
-  totalAmount: number; // Final amount for the customer
-  calculatedProfit?: number; // (Sale Price/kg - Purchase Price/kg) * Kgs Sold - transportCost - brokerageCommission
+  totalAmount: number; // Final amount for the customer = (billAmount if provided and > 0) OR (netWeight * rate)
+  calculatedProfit?: number; // (totalAmount based on sale rate) - (cost of goods sold for this sale portion) - (transportCost || 0) - (calculatedBrokerageCommission || 0)
 }
 
 export interface InventoryItem {
@@ -166,6 +166,27 @@ export interface BrokerData {
   name: string;
   commissionRate: number; // Percentage
 }
+
+// For Profit Analysis Page
+export interface TransactionalProfitInfo {
+  saleId: string;
+  date: string;
+  billNumber?: string;
+  customerName?: string;
+  lotNumber: string;
+  saleQuantityBags: number;
+  saleNetWeightKg: number;
+  saleRatePerKg: number;
+  saleAmount: number; // (saleNetWeightKg * saleRatePerKg)
+  purchaseCostForSalePortion: number;
+  transportCostOnSale?: number;
+  brokerageOnSale?: number;
+  netProfit: number;
 }
 
-    
+export interface MonthlyProfitInfo {
+  monthYear: string; // e.g., "May 2024"
+  totalProfit: number;
+  totalSalesValue: number;
+  totalCostOfGoods: number;
+}
