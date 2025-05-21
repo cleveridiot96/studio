@@ -47,14 +47,13 @@ export function CashbookClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-    // Set default historical date range only if it hasn't been set
     if (!historicalDateRange) {
       setHistoricalDateRange({
           from: startOfDay(addDays(new Date(), -7)), 
           to: endOfDay(addDays(new Date(), -1)), 
       });
     }
-  }, [hydrated, historicalDateRange]); // Add historicalDateRange to dependency array
+  }, [historicalDateRange]); 
 
   const allTransactions = React.useMemo(() => {
     if (!hydrated) return [];
@@ -76,7 +75,6 @@ export function CashbookClient() {
     return combined.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   }, [payments, receipts, hydrated]);
 
-  // Data for Today's Cashbook
   const todaysData = React.useMemo(() => {
     if (!hydrated) return { date: format(new Date(), "yyyy-MM-dd"), receipts: [], payments: [], openingBalance: 0, closingBalance: 0, totalReceipts: 0, totalPayments: 0 };
     
@@ -108,7 +106,6 @@ export function CashbookClient() {
     };
   }, [allTransactions, hydrated]);
 
-  // Data for Historical Cashbook
   const historicalCashbookData = React.useMemo(() => {
     if (!hydrated || !historicalDateRange?.from || !historicalDateRange?.to) {
         return { dailyEntries: [], overallOpeningBalance: 0, finalClosingBalance: 0, flatTransactions: [] };
@@ -160,7 +157,7 @@ export function CashbookClient() {
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex justify-between items-center no-print">
         <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
-        <Button variant="outline" size="icon" onClick={() => window.print()}>
+        <Button variant="outline" size="icon" onClick={() => window.print()} className="no-print">
             <Printer className="h-5 w-5" />
             <span className="sr-only">Print</span>
         </Button>

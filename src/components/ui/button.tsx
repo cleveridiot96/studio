@@ -42,28 +42,13 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
-
-    const handlePrint = () => {
-      window.print();
-    };
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        {...props}
+        {...props} // This directly passes the onClick from the parent component
       />
     )
-
-  const isPrintButton = props['data-print'];
-
-  return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }), isPrintButton && '@media print:hidden')}
-        ref={ref}
-        onClick={isPrintButton ? handlePrint : props.onClick}
-        {...props}
-      />
-    );
   }
 )
 Button.displayName = "Button"
