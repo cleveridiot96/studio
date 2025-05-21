@@ -39,7 +39,7 @@ const initialPaymentsData: Payment[] = [
 
 export function PaymentsClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); 
+  const { financialYear, isAppHydrating } = useSettings();
 
   const memoizedInitialPayments = React.useMemo(() => initialPaymentsData, []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
@@ -73,7 +73,7 @@ export function PaymentsClient() {
   }, [suppliers, agents, brokers, transporters, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return []; 
+    if (isAppHydrating || !hydrated) return [];
     return payments.filter(payment => payment && payment.date && isDateInFinancialYear(payment.date, financialYear));
   }, [payments, financialYear, isAppHydrating, hydrated]);
 
@@ -88,7 +88,7 @@ export function PaymentsClient() {
     });
     setPaymentToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
-  }, [setPayments, toast, payments]); 
+  }, [setPayments, toast, payments]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -127,7 +127,7 @@ export function PaymentsClient() {
         toast({title: "Info", description: `Master type ${type} not handled here.`})
         break;
     }
-     toast({ title: `${newItem.type} "${newItem.name}" updated/added from Payments.` });
+     // toast({ title: `${newItem.type} "${newItem.name}" updated/added from Payments.` }); // Already toasted in form
   }, [setSuppliers, setAgents, setBrokers, setTransporters, toast]);
 
   const openAddPaymentForm = React.useCallback(() => {
@@ -140,7 +140,7 @@ export function PaymentsClient() {
     setPaymentToEdit(null);
   }, []);
 
-  if (isAppHydrating || !hydrated) { 
+  if (isAppHydrating || !hydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading payments data...</p>

@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Renamed to avoid conflict
+import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -40,7 +40,7 @@ interface AddPaymentFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payment: Payment) => void;
-  parties: MasterItem[]; 
+  parties: MasterItem[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   paymentToEdit?: Payment | null;
 }
@@ -71,7 +71,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     }
     return {
       date: new Date(),
-      partyId: undefined,
+      partyId: undefined, // Default to undefined for placeholder to show
       amount: 0,
       paymentMethod: 'Cash',
       referenceNo: "",
@@ -80,10 +80,10 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   }, [paymentToEdit]);
 
   const methods = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema(parties)), 
+    resolver: zodResolver(paymentSchema(parties)),
     defaultValues: getDefaultValues(),
   });
-  const { control, handleSubmit, reset } = methods;
+  const { control, handleSubmit, reset, getValues } = methods;
 
   React.useEffect(() => {
     if (isOpen) {
@@ -91,20 +91,26 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     }
   }, [isOpen, paymentToEdit, reset, getDefaultValues]);
 
-  const handleOpenMasterForm = (type: MasterItemType = "Supplier") => { 
+  const handleOpenMasterForm = (type: MasterItemType = "Supplier") => {
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type, newItem); 
+    onMasterDataUpdate(newItem.type, newItem);
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
+    // Automatically select the newly added item in the combobox
     methods.setValue('partyId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added and selected.` });
   };
 
   const processSubmit = (values: PaymentFormValues) => {
+    if (!values.partyId || values.amount <= 0) {
+        toast({ title: "Missing Info", description: "Please select a party and enter a valid amount.", variant: "destructive" });
+        setIsSubmitting(false); // Ensure isSubmitting is reset
+        return;
+    }
     setIsSubmitting(true);
     const selectedParty = parties.find(p => p.id === values.partyId);
     if (!selectedParty) {
@@ -116,9 +122,9 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     const paymentData: Payment = {
       id: paymentToEdit?.id || `payment-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      partyId: values.partyId as string, 
+      partyId: values.partyId as string,
       partyName: selectedParty.name,
-      partyType: selectedParty.type, 
+      partyType: selectedParty.type,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       referenceNo: values.referenceNo,
@@ -126,7 +132,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     };
     onSubmit(paymentData);
     setIsSubmitting(false);
-    onClose();
+    onClose(); // This will also trigger the reset in useEffect
   };
 
   if (!isOpen) return null;
@@ -173,18 +179,23 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                 <FormField
                   control={control}
                   name="partyId"
-                  render={({ field }) => ( 
+                  render={({ field }) => (
                     <FormItem>
                       <FormLabel>Party</FormLabel>
                        <MasterDataCombobox
-                        name={field.name} // Pass field.name here
+                        name={field.name} // react-hook-form field name
+                        // value={field.value} // Passed by react-hook-form's field object
+                        // onChange={field.onChange} // Passed by react-hook-form's field object
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
                         addNewLabel="Add New Party"
                         onAddNew={() => {
-                            const currentPartyValue = methods.getValues("partyId");
+                            // Determine default type for MasterForm based on context if possible
+                            // For payments, it's usually Supplier, Agent, Broker, Transporter
+                            // Let's default to 'Supplier' or make it selectable in MasterForm
+                            const currentPartyValue = getValues("partyId");
                             const currentParty = parties.find(p => p.id === currentPartyValue);
                             handleOpenMasterForm(currentParty?.type || 'Supplier');
                         }}
@@ -278,5 +289,8 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     </>
   );
 };
+
+// Removed React.memo for simpler debugging if needed, can be added back.
+// export const AddPaymentForm = React.memo(AddPaymentFormComponent);
 
     
