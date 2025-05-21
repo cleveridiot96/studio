@@ -3,19 +3,27 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Payment, Receipt } from "@/lib/types";
+import type { Payment, Receipt, MasterItem, MasterItemType, Customer, Supplier, Agent, Transporter, Broker } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from "date-fns";
-import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer } from "lucide-react";
+import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { AddPaymentForm } from "@/components/app/payments/AddPaymentForm";
+import { AddReceiptForm } from "@/components/app/receipts/AddReceiptForm";
+import { useToast } from "@/hooks/use-toast";
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
+const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
+const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
+const AGENTS_STORAGE_KEY = 'masterAgents';
+const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 interface CashBookTransaction {
   date: string; // YYYY-MM-DD
@@ -36,14 +44,31 @@ interface DailyCashBookEntry {
 }
 
 export function CashbookClient() {
+  const { toast } = useToast();
   const memoizedInitialPayments = React.useMemo(() => [], []);
   const memoizedInitialReceipts = React.useMemo(() => [], []);
+  const memoizedEmptyMasters = React.useMemo(() => [], []);
 
-  const [payments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
-  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
+  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
   
+  // Master data states for forms
+  const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [suppliers, setSuppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+
   const [historicalDateRange, setHistoricalDateRange] = React.useState<DateRange | undefined>(undefined);
   const [hydrated, setHydrated] = React.useState(false);
+
+  // Form modal states
+  const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
+  const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
+  // paymentToEdit/receiptToEdit will be null for new entries from cashbook
+  const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
+  const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
+
 
   React.useEffect(() => {
     setHydrated(true);
@@ -54,6 +79,26 @@ export function CashbookClient() {
       });
     }
   }, [historicalDateRange]); 
+
+  const allPaymentParties = React.useMemo(() => {
+    if (!hydrated) return [];
+    return [
+      ...suppliers.filter(s => s.type === 'Supplier'),
+      ...agents.filter(a => a.type === 'Agent'),
+      ...transporters.filter(t => t.type === 'Transporter')
+    ].filter(party => party && party.id && party.name && party.type)
+     .sort((a, b) => a.name.localeCompare(b.name));
+  }, [suppliers, agents, transporters, hydrated]);
+
+  const allReceiptParties = React.useMemo(() => {
+    if (!hydrated) return [];
+    return [
+        ...customers.filter(c => c.type === 'Customer'),
+        ...brokers.filter(b => b.type === 'Broker')
+    ].filter(party => party && party.id && party.name && party.type)
+     .sort((a,b) => a.name.localeCompare(b.name));
+  }, [customers, brokers, hydrated]);
+
 
   const allTransactions = React.useMemo(() => {
     if (!hydrated) return [];
@@ -143,6 +188,33 @@ export function CashbookClient() {
     return { dailyEntries, overallOpeningBalance, finalClosingBalance: runningBalance, flatTransactions };
   }, [allTransactions, historicalDateRange, hydrated]);
 
+  const handleAddPaymentFromCashbook = React.useCallback((payment: Payment) => {
+    setPayments(prevPayments => {
+        // Assuming new payment from cashbook always adds, not edits existing ones from here
+        return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
+    });
+    toast({ title: "Success!", description: "Payment added to cashbook and payments." });
+  }, [setPayments, toast]);
+
+  const handleAddReceiptFromCashbook = React.useCallback((receipt: Receipt) => {
+    setReceipts(prevReceipts => {
+        // Assuming new receipt from cashbook always adds
+        return [{ ...receipt, id: receipt.id || `receipt-${Date.now()}` }, ...prevReceipts];
+    });
+    toast({ title: "Success!", description: "Receipt added to cashbook and receipts." });
+  }, [setReceipts, toast]);
+
+  const handleMasterDataUpdateFromCashbook = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
+    switch (type) {
+      case "Supplier":    setSuppliers(prev => [newItem as Supplier, ...prev.filter(i => i.id !== newItem.id)]); break;
+      case "Agent":       setAgents(prev => [newItem as Agent, ...prev.filter(i => i.id !== newItem.id)]); break;
+      case "Transporter": setTransporters(prev => [newItem as Transporter, ...prev.filter(i => i.id !== newItem.id)]); break;
+      case "Customer":    setCustomers(prev => [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)]); break;
+      case "Broker":      setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]); break;
+      default: toast({title: "Info", description: `Master type ${type} not directly handled here.`}); break;
+    }
+  }, [setSuppliers, setAgents, setTransporters, setCustomers, setBrokers, toast]);
+
 
   if (!hydrated) {
     return (
@@ -157,10 +229,18 @@ export function CashbookClient() {
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex justify-between items-center no-print">
         <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
-        <Button variant="outline" size="icon" onClick={() => window.print()} className="no-print">
-            <Printer className="h-5 w-5" />
-            <span className="sr-only">Print</span>
-        </Button>
+        <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setPaymentToEdit(null); setIsAddPaymentFormOpen(true); }}>
+                <PlusCircle className="mr-2 h-4 w-4"/> Add Cash Payment
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setReceiptToEdit(null); setIsAddReceiptFormOpen(true); }}>
+                <PlusCircle className="mr-2 h-4 w-4"/> Add Cash Receipt
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => window.print()} className="no-print">
+                <Printer className="h-5 w-5" />
+                <span className="sr-only">Print</span>
+            </Button>
+        </div>
       </div>
 
       {/* Today's Cashbook Section */}
@@ -265,6 +345,29 @@ export function CashbookClient() {
             </div>
         </CardFooter>
       </Card>
+
+      {isAddPaymentFormOpen && (
+        <AddPaymentForm
+          isOpen={isAddPaymentFormOpen}
+          onClose={() => setIsAddPaymentFormOpen(false)}
+          onSubmit={handleAddPaymentFromCashbook}
+          parties={allPaymentParties}
+          onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
+          paymentToEdit={paymentToEdit} // Will be null for new entries from cashbook
+        />
+      )}
+
+      {isAddReceiptFormOpen && (
+        <AddReceiptForm
+          isOpen={isAddReceiptFormOpen}
+          onClose={() => setIsAddReceiptFormOpen(false)}
+          onSubmit={handleAddReceiptFromCashbook}
+          parties={allReceiptParties}
+          onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
+          receiptToEdit={receiptToEdit} // Will be null for new entries from cashbook
+        />
+      )}
     </div>
   );
 }
+
