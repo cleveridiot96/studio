@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
-import { BookUser, CalendarRange, Printer } from "lucide-react"; // Added Printer
+import { BookUser, CalendarRange, Printer } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSearchParams, useRouter } from "next/navigation"; // Import useSearchParams and useRouter
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -21,6 +22,7 @@ const MASTERS_KEYS = {
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   brokers: 'masterBrokers',
+  warehouses: 'masterWarehouses', // Though warehouses don't have ledgers in this context
 };
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
@@ -30,23 +32,23 @@ const TRANSACTIONS_KEYS = {
 };
 
 interface LedgerTransaction {
-  date: string; // YYYY-MM-DD
-  type: string; // e.g., 'Purchase', 'Sale', 'Payment', 'Receipt', 'Agent Comm.', 'Brokerage Inc.'
-  refNo?: string; // Bill No, Inv No, Lot No etc.
+  date: string; 
+  type: string; 
+  refNo?: string; 
   particulars: string;
   debit?: number;
   credit?: number;
-  relatedDocId: string; // ID of the original purchase/sale/payment/receipt
+  relatedDocId: string; 
   rate?: number;
   netWeight?: number;
-  transactionAmount?: number; // Main amount of the transaction
+  transactionAmount?: number; 
 }
 
 interface LedgerEntryWithBalance extends LedgerTransaction {
   balance: number;
 }
 
-const initialLedgerData = { entries: [], openingBalance: 0, closingBalance: 0 };
+const initialLedgerData = { entries: [] as LedgerEntryWithBalance[], openingBalance: 0, closingBalance: 0 };
 
 export function LedgerClient() {
   const [hydrated, setHydrated] = React.useState(false);
@@ -62,6 +64,8 @@ export function LedgerClient() {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const { financialYear: currentFinancialYearString } = useSettings();
 
+  const searchParams = useSearchParams();
+  const router = useRouter(); // useRouter if you need to update URL without navigation
 
   React.useEffect(() => {
     setHydrated(true);
@@ -92,12 +96,19 @@ export function LedgerClient() {
       loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
       setAllMasters(loadedMasters);
       
+      // Set initial date range
       setDateRange({
           from: startOfDay(subMonths(new Date(), 3)), 
           to: endOfDay(new Date()),
       });
+
+      // Check for partyId in URL and set it
+      const partyIdFromQuery = searchParams.get('partyId');
+      if (partyIdFromQuery && loadedMasters.some(m => m.id === partyIdFromQuery)) {
+        setSelectedPartyId(partyIdFromQuery);
+      }
     }
-  }, [hydrated]);
+  }, [hydrated, searchParams]);
 
 
   const ledgerTransactions = React.useMemo(() => {
@@ -111,55 +122,61 @@ export function LedgerClient() {
     const partyTransactions: LedgerTransaction[] = [];
 
     purchases.forEach(p => {
-      if (p.supplierId === selectedPartyId) {
+      // Supplier Ledger: When goods are purchased from this supplier
+      if (p.supplierId === selectedPartyId && party.type === 'Supplier') {
         partyTransactions.push({ 
           relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, 
-          particulars: `Goods purchased (Lot: ${p.lotNumber}) from ${p.supplierName || p.supplierId}`, 
+          particulars: `Goods purchased (Lot: ${p.lotNumber})`, 
           credit: p.totalAmount,
           rate: p.rate, netWeight: p.netWeight, transactionAmount: p.totalAmount
         });
       }
+      // Agent Ledger: Commission earned by this agent on a purchase
       if (p.agentId === selectedPartyId && party.type === 'Agent') {
         const agentCommission = (p.netWeight * p.rate * (party.commission || 0) / 100);
         if (agentCommission > 0) partyTransactions.push({ 
             relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, 
-            particulars: `Commission on Purchase Lot ${p.lotNumber} (Sup: ${p.supplierName || p.supplierId})`, 
+            particulars: `Comm. on Purchase Lot ${p.lotNumber} (Sup: ${p.supplierName || p.supplierId})`, 
             credit: agentCommission, 
             transactionAmount: agentCommission
         });
       }
-      if (p.transporterId === selectedPartyId && party.type === 'Transporter' && p.transportRate) {
+      // Transporter Ledger: Transport cost for a purchase, if this transporter was used and paid by user
+      if (p.transporterId === selectedPartyId && party.type === 'Transporter' && p.transportRate) { // transportRate is total for purchase here
         partyTransactions.push({ 
             relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber, 
             particulars: `Transport for Purchase Lot ${p.lotNumber}`, 
-            credit: p.transportRate,
+            credit: p.transportRate, // This is a liability for the user if not yet paid
             transactionAmount: p.transportRate
         });
       }
     });
 
     sales.forEach(s => {
+      // Customer Ledger: When goods are sold to this customer
       if (s.customerId === selectedPartyId && party.type === 'Customer') {
         partyTransactions.push({ 
             relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber, 
-            particulars: `Goods sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber}) to ${s.customerName || s.customerId}`, 
+            particulars: `Goods sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber})`, 
             debit: s.totalAmount,
             rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
         });
       }
+      // Broker Ledger: Brokerage earned by this broker on a sale
       if (s.brokerId === selectedPartyId && party.type === 'Broker' && s.calculatedBrokerageCommission) { 
         if (s.calculatedBrokerageCommission > 0) partyTransactions.push({ 
             relatedDocId: s.id, date: s.date, type: 'Brokerage Exp.', refNo: s.billNumber, 
             particulars: `Brokerage on Sale ${s.billNumber || s.id} (Cust: ${s.customerName || s.customerId})`, 
-            credit: s.calculatedBrokerageCommission,
+            credit: s.calculatedBrokerageCommission, // This is a liability for the user
             transactionAmount: s.calculatedBrokerageCommission
         });
       }
+      // Transporter Ledger: Transport cost for a sale, if this transporter was used and paid by user
        if (s.transporterId === selectedPartyId && party.type === 'Transporter' && s.transportCost) { 
         partyTransactions.push({ 
             relatedDocId: s.id, date: s.date, type: 'Transport Exp.', refNo: s.billNumber, 
             particulars: `Transport for Sale ${s.billNumber || s.id} (paid by user)`, 
-            credit: s.transportCost,
+            credit: s.transportCost, // Liability for the user
             transactionAmount: s.transportCost
         });
       }
@@ -170,7 +187,7 @@ export function LedgerClient() {
         partyTransactions.push({ 
             relatedDocId: pm.id, date: pm.date, type: 'Payment', refNo: pm.referenceNo, 
             particulars: `Payment made via ${pm.paymentMethod} ${pm.notes ? '- '+pm.notes : ''}`, 
-            debit: pm.amount,
+            debit: pm.amount, // For Supplier, Agent, Broker, Transporter - this reduces user's liability
             transactionAmount: pm.amount
         });
       }
@@ -181,7 +198,7 @@ export function LedgerClient() {
         partyTransactions.push({ 
             relatedDocId: rc.id, date: rc.date, type: 'Receipt', refNo: rc.referenceNo, 
             particulars: `Receipt via ${rc.paymentMethod} ${rc.notes ? '- '+rc.notes : ''}`, 
-            credit: rc.amount,
+            credit: rc.amount, // For Customer, Broker - this reduces their liability to user
             transactionAmount: rc.amount
         });
       }
@@ -214,26 +231,13 @@ export function LedgerClient() {
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
+    // Optionally, update URL here if desired: router.push(`/ledger?partyId=${value}`, { scroll: false });
   }, []); 
 
-  const customerOptions = React.useMemo(() =>
-    allMasters.filter(m => m.type === 'Customer').map(c => <SelectItem key={`cust-${c.id}`} value={c.id}>{c.name}</SelectItem>),
-    [allMasters]
-  );
-  const supplierOptions = React.useMemo(() =>
-    allMasters.filter(m => m.type === 'Supplier').map(s => <SelectItem key={`supp-${s.id}`} value={s.id}>{s.name}</SelectItem>),
-    [allMasters]
-  );
-  const agentOptions = React.useMemo(() =>
-    allMasters.filter(m => m.type === 'Agent').map(a => <SelectItem key={`agent-${a.id}`} value={a.id}>{a.name}</SelectItem>),
-    [allMasters]
-  );
-  const brokerOptions = React.useMemo(() =>
-    allMasters.filter(m => m.type === 'Broker').map(b => <SelectItem key={`brok-${b.id}`} value={b.id}>{b.name}</SelectItem>),
-    [allMasters]
-  );
-  const transporterOptions = React.useMemo(() =>
-    allMasters.filter(m => m.type === 'Transporter').map(t => <SelectItem key={`trans-${t.id}`} value={t.id}>{t.name}</SelectItem>),
+  const partyOptions = React.useMemo(() =>
+    allMasters
+      .filter(m => ['Customer', 'Supplier', 'Agent', 'Broker', 'Transporter'].includes(m.type)) // Filter for relevant types for ledgers
+      .map(p => ({ label: `${p.name} (${p.type})`, value: p.id })),
     [allMasters]
   );
 
@@ -274,7 +278,7 @@ export function LedgerClient() {
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-bold text-foreground">Party Ledger</h1>
+                  <h1 className="text-3xl font-bold text-foreground">Party Ledger (FY {currentFinancialYearString})</h1>
                    <Button variant="outline" size="icon" onClick={() => window.print()}>
                         <Printer className="h-5 w-5" />
                         <span className="sr-only">Print</span>
@@ -287,11 +291,9 @@ export function LedgerClient() {
                             <SelectValue placeholder="Select Party..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {customerOptions.length > 0 && (<SelectGroup key="customer-group"><SelectLabel>Customers</SelectLabel>{customerOptions}</SelectGroup>)}
-                            {supplierOptions.length > 0 && (<SelectGroup key="supplier-group"><SelectLabel>Suppliers</SelectLabel>{supplierOptions}</SelectGroup>)}
-                            {agentOptions.length > 0 && (<SelectGroup key="agent-group"><SelectLabel>Agents</SelectLabel>{agentOptions}</SelectGroup>)}
-                            {brokerOptions.length > 0 && (<SelectGroup key="broker-group"><SelectLabel>Brokers</SelectLabel>{brokerOptions}</SelectGroup>)}
-                            {transporterOptions.length > 0 && (<SelectGroup key="transporter-group"><SelectLabel>Transporters</SelectLabel>{transporterOptions}</SelectGroup>)}
+                            {partyOptions.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 ) : (
