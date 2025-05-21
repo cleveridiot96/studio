@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Printer } from "lucide-react";
 import type { Purchase } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -34,19 +34,18 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
           <TableRow>
             <TableHead className="w-[100px]">Date</TableHead>
             <TableHead>Vakkal / Lot No.</TableHead>
-            {/* <TableHead>Item Name</TableHead> REMOVED */}
             <TableHead>Location</TableHead>
             <TableHead>Supplier</TableHead>
             <TableHead>Agent</TableHead>
-            <TableHead>Broker</TableHead>
+            {/* Broker column removed as per previous request */}
             <TableHead className="text-right">Bags</TableHead>
             <TableHead className="text-right">Net Wt.(kg)</TableHead>
             <TableHead className="text-right">Rate (₹/kg)</TableHead>
             <TableHead className="text-right">Expenses (₹)</TableHead>
             <TableHead className="text-right">Transport (₹)</TableHead>
-            <TableHead className="text-right">Brokerage (₹)</TableHead>
+            {/* Brokerage column removed */}
             <TableHead className="text-right">Total Val (₹)</TableHead>
-            <TableHead className="text-center w-[100px]">Actions</TableHead>
+            <TableHead className="text-center w-[120px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -54,23 +53,25 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
             <TableRow key={purchase.id}>
               <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
               <TableCell>{purchase.lotNumber}</TableCell>
-              {/* <TableCell>{purchase.itemName}</TableCell> REMOVED */}
               <TableCell>{purchase.locationName || purchase.locationId}</TableCell>
               <TableCell>{purchase.supplierName || purchase.supplierId}</TableCell>
               <TableCell>{purchase.agentName || purchase.agentId || 'N/A'}</TableCell>
-              <TableCell>{purchase.brokerName || purchase.brokerId || 'N/A'}</TableCell>
+              {/* Broker cell removed */}
               <TableCell className="text-right">{purchase.quantity}</TableCell>
               <TableCell className="text-right">{purchase.netWeight.toLocaleString()}</TableCell>
               <TableCell className="text-right">{purchase.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-right">{(purchase.expenses || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-right">{(purchase.transportRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-              <TableCell className="text-right">{(purchase.calculatedBrokerageAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+              {/* Brokerage cell removed */}
               <TableCell className="text-right font-semibold">{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-center">
-                <Button variant="ghost" size="icon" onClick={() => onEdit(purchase)} className="mr-2 hover:text-primary">
+                <Button variant="ghost" size="icon" onClick={() => onEdit(purchase)} className="mr-1 hover:text-primary" title="Edit Purchase">
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => onDelete(purchase.id)} className="hover:text-destructive">
+                <Button variant="ghost" size="icon" onClick={() => window.print()} className="mr-1 hover:text-blue-600" title="Print Chitti">
+                  <Printer className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(purchase.id)} className="hover:text-destructive" title="Delete Purchase">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TableCell>
@@ -84,3 +85,4 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 }
 
 export const PurchaseTable = React.memo(PurchaseTableComponent);
+

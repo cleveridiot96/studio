@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Printer } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -42,7 +42,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
             <TableHead>Broker</TableHead>
             <TableHead className="text-right">Total (₹)</TableHead>
             <TableHead className="text-right">Profit (₹)</TableHead>
-            <TableHead className="text-center w-[100px]">Actions</TableHead>
+            <TableHead className="text-center w-[120px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -61,10 +61,13 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
                 {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
               </TableCell>
               <TableCell className="text-center">
-                <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-2 hover:text-primary">
+                <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-1 hover:text-primary" title="Edit Sale">
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => onDelete(sale.id)} className="hover:text-destructive">
+                <Button variant="ghost" size="icon" onClick={() => window.print()} className="mr-1 hover:text-blue-600" title="Print Chitti">
+                  <Printer className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => onDelete(sale.id)} className="hover:text-destructive" title="Delete Sale">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </TableCell>
