@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, PackageSearch, Building } from "lucide-react"; // PackageSearch might be reused or removed if only for Item
+import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building } from "lucide-react";
 import type { MasterItem, MasterItemType } from "@/lib/types";
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -24,28 +24,30 @@ const typeIconMap: Record<MasterItemType, React.ElementType> = {
   Agent: UserCheck,
   Transporter: UserCog,
   Broker: Handshake,
-  Warehouse: Building, 
-  // Item: PackageSearch, // Item removed
+  Warehouse: Building,
 };
 
 
 interface MasterListProps {
   data: MasterItem[];
-  itemType: MasterItemType | 'All'; 
-  isAllItemsTab?: boolean; 
+  itemType: MasterItemType | 'All';
+  isAllItemsTab?: boolean;
   onEdit: (item: MasterItem) => void;
   onDelete: (item: MasterItem) => void;
 }
 
 export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete }) => {
-  if (data.length === 0) {
+  if (!data || data.length === 0) {
     const typeLabel = itemType === 'All' ? 'parties/entities' : `${itemType.toLowerCase()}s`;
     return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
   }
 
-  // TEMP FIX FOR DUPLICATES
-  const seen = new Set();
-  const uniqueMasters = data.filter((m) => seen.add(m.id) && !seen.has(m.id)); // Add and check if already seen
+  // Corrected de-duplication logic
+  const uniqueMasters = React.useMemo(() => {
+    if (!data) return [];
+    return Array.from(new Map(data.map(item => [item.id, item])).values());
+  }, [data]);
+
 
   const showCommissionColumn = isAllItemsTab || itemType === 'Agent' || itemType === 'Broker';
   const showTypeColumn = isAllItemsTab;
@@ -66,7 +68,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
         <TableBody>
           {uniqueMasters.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
-            const TypeIcon = typeIconMap[item.type] || PackageSearch; // Fallback if needed, though all current types are in map
+            const TypeIcon = typeIconMap[item.type] || Users; // Fallback to Users icon if type not in map
             return (
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">{item.id}</TableCell>
@@ -81,8 +83,8 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                 )}
                 {showCommissionColumn && (
                   <TableCell className="text-right">
-                    {itemHasCommission && item.commission !== undefined 
-                      ? `${item.commission.toLocaleString()}%` 
+                    {itemHasCommission && item.commission !== undefined
+                      ? `${item.commission.toLocaleString()}%`
                       : 'N/A'}
                   </TableCell>
                 )}
@@ -100,7 +102,12 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
         </TableBody>
       </Table>
       <ScrollBar orientation="horizontal" />
-       {data.length === 0 && (
+       {uniqueMasters.length === 0 && data.length > 0 && ( // Show this if uniqueMasters is empty but original data wasn't
+        <div className="flex items-center justify-center h-full text-muted-foreground p-10">
+          No unique items to display after filtering. Check for ID issues.
+        </div>
+      )}
+      {uniqueMasters.length === 0 && data.length === 0 && ( // Original condition for no data at all
         <div className="flex items-center justify-center h-full text-muted-foreground p-10">
           No items to display.
         </div>
