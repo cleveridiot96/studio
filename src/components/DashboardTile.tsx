@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Card, CardTitle } from '@/components/ui/card';
 import type { LucideProps } from 'lucide-react';
 import {
-  BarChart3, // Changed from BarChart for Stock Report, used by Profit Analysis tile now
+  BarChart3,
   DollarSign,
   Package,
   Users,
@@ -20,10 +20,12 @@ import {
   DatabaseBackup,
   LayoutGrid,
   Boxes,
-  FileText, // For Stock Report tile
+  FileText,
   Receipt,
   ArrowRightLeft,
-  Rocket, // For Profit Analysis tile
+  Rocket,
+  FileJson, // Added for Backup tile
+  UploadCloud, // Added for Restore tile
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -51,6 +53,8 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   LayoutGrid,
   ArrowRightLeft,
   Rocket,
+  FileJson, // Added FileJson to map
+  UploadCloud, // Added UploadCloud to map
 };
 
 
