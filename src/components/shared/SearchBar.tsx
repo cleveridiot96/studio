@@ -2,11 +2,12 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { searchData, SearchableItem } from '@/lib/searchEngine'; // SearchableItem type from buildSearchData via searchEngine
+import { searchData, type SearchableItem } from '@/lib/searchEngine'; // SearchableItem type from buildSearchData via searchEngine
 import { Input } from '@/components/ui/input';
 import { Command, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command'; // Using Command for results
 import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns'; // Added import for format
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
