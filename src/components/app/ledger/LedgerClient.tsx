@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
-import { BookUser, CalendarRange, Printer } from "lucide-react"; 
+import { BookUser, CalendarRange, Printer, Download } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -39,9 +41,9 @@ interface LedgerTransaction {
   debit?: number;
   credit?: number;
   relatedDocId: string; 
-  rate?: number; // For Purchase/Sale context
-  netWeight?: number; // For Purchase/Sale context
-  transactionAmount?: number; // Gross amount of original Purchase/Sale or Payment/Receipt
+  rate?: number; 
+  netWeight?: number; 
+  transactionAmount?: number; 
 }
 
 interface LedgerEntryWithBalance extends LedgerTransaction {
@@ -66,6 +68,7 @@ export function LedgerClient() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
+  const ledgerTableRef = React.useRef<HTMLTableElement>(null);
 
   React.useEffect(() => {
     setHydrated(true);
@@ -109,7 +112,7 @@ export function LedgerClient() {
         setSelectedPartyId(partyIdFromQuery);
       }
     }
-  }, [hydrated, currentFinancialYearString, searchParams, dateRange]); // Added dateRange to deps to ensure it's stable
+  }, [hydrated, currentFinancialYearString, searchParams, dateRange]); // Added dateRange here
 
 
   const ledgerTransactions = React.useMemo(() => {
@@ -133,7 +136,7 @@ export function LedgerClient() {
       }
       if (p.agentId === selectedPartyId && party.type === 'Agent') {
         const agentMasterData = allMasters.find(a => a.id === p.agentId && a.type === 'Agent');
-        const agentCommissionAmount = agentMasterData?.commission 
+        const agentCommissionAmount = agentMasterData?.commission && p.netWeight && p.rate
             ? (p.netWeight * p.rate * (agentMasterData.commission / 100)) 
             : 0;
         if (agentCommissionAmount > 0) partyTransactions.push({ 
@@ -148,7 +151,7 @@ export function LedgerClient() {
         partyTransactions.push({ 
             relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber, 
             particulars: `By Transport for Purchase Lot ${p.lotNumber}`, 
-            credit: p.transportRate, // Assuming transportRate is total for purchase
+            credit: p.transportRate,
             transactionAmount: p.transportRate
         });
       }
@@ -242,7 +245,7 @@ export function LedgerClient() {
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
-    const newPath = `/ledger?partyId=${value}`;
+    const newPath = value ? `/ledger?partyId=${value}` : '/ledger'; // Avoid adding ?partyId= if value is empty
     router.push(newPath, { scroll: false });
   }, [router]); 
 
@@ -259,14 +262,6 @@ export function LedgerClient() {
     setDateRange({ from, to });
   };
 
-  const setLastFinancialYearFilter = () => {
-    const [currentFyStartYearStr] = currentFinancialYearString.split('-');
-    const lastFyStartYear = parseInt(currentFyStartYearStr, 10) - 1;
-    const from = new Date(lastFyStartYear, 3, 1); 
-    const to = new Date(lastFyStartYear + 1, 2, 31); 
-    setDateRange({ from: startOfDay(from), to: endOfDay(to) });
-  };
-
   const setCurrentFinancialYearFilter = () => { 
     const [currentFyStartYearStr] = currentFinancialYearString.split('-');
     const currentFyStartYear = parseInt(currentFyStartYearStr, 10);
@@ -275,6 +270,77 @@ export function LedgerClient() {
     setDateRange({ from: startOfDay(from), to });
   };
   
+  const handleDownloadPdf = async () => {
+    const input = ledgerTableRef.current;
+    if (input && selectedPartyDetails) { // Ensure selectedPartyDetails is available
+      const canvas = await html2canvas(input, { scale: 2 }); // Increased scale for better quality
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a5'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const printHeaderSymbolEl = document.createElement('div');
+      const printHeaderSymbolComponent = <PrintHeaderSymbol />;
+      // Temporarily render to get HTML, then remove. This is a bit hacky.
+      const root = document.createElement('div');
+      document.body.appendChild(root);
+      // This part is tricky without a full React render context.
+      // A simpler way is to just add text directly to PDF.
+      
+      let yPos = 10; // Initial y position
+
+      // Add header symbol text
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica", "bold");
+      const shreeText = "|| 卐 SHREE 卐 ||";
+      const shreeTextWidth = pdf.getStringUnitWidth(shreeText) * pdf.getFontSize() / pdf.internal.scaleFactor;
+      pdf.text(shreeText, (pdfWidth - shreeTextWidth) / 2, yPos);
+      yPos += 8;
+
+      // Add Party Name and Ledger Title
+      pdf.setFontSize(14);
+      pdf.setFont("helvetica", "bold");
+      const title = `${selectedPartyDetails.name} (${selectedPartyDetails.type}) - Ledger Account`;
+      const titleWidth = pdf.getStringUnitWidth(title) * pdf.getFontSize() / pdf.internal.scaleFactor;
+      pdf.text(title, (pdfWidth - titleWidth) / 2, yPos);
+      yPos += 6;
+
+      // Add Period
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      const periodText = `Period: ${dateRange?.from ? format(dateRange.from, "dd-MM-yyyy") : 'Start'} to ${dateRange?.to ? format(dateRange.to, "dd-MM-yyyy") : 'End'}`;
+      const periodWidth = pdf.getStringUnitWidth(periodText) * pdf.getFontSize() / pdf.internal.scaleFactor;
+      pdf.text(periodText, (pdfWidth - periodWidth) / 2, yPos);
+      yPos += 8; // Space before table image
+
+      const imgProps= pdf.getImageProperties(imgData);
+      const imgWidth = imgProps.width;
+      const imgHeight = imgProps.height;
+      
+      // Calculate ratio to fit width, leave some margin
+      const ratio = (pdfWidth - 20) / imgWidth; // 10mm margin on each side
+      const finalImgHeight = imgHeight * ratio;
+
+      // Check if image needs to be split or scaled down further if too tall
+      if (yPos + finalImgHeight > pdfHeight -10 ) { // 10mm bottom margin
+          // Potentially add logic for multi-page or further scaling
+          // For now, it might get cut off if too tall
+      }
+      pdf.addImage(imgData, 'PNG', 10, yPos, imgWidth * ratio, finalImgHeight);
+      
+      pdf.save(`Ledger-${selectedPartyDetails?.name || 'Report'}-${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
+    } else {
+        console.error("Ledger table reference or party details not found for PDF generation.");
+    }
+  };
+
+
   if (!hydrated) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -290,13 +356,7 @@ export function LedgerClient() {
       <Card className="shadow-md no-print">
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-bold text-foreground">Party Ledger</h1>
-                   <Button variant="outline" size="icon" onClick={() => window.print()}>
-                        <Printer className="h-5 w-5" />
-                        <span className="sr-only">Print</span>
-                    </Button>
-                </div>
+                <h1 className="text-3xl font-bold text-foreground">Party Ledger</h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                 {partyOptions.length > 0 ? (
                     <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
@@ -310,9 +370,17 @@ export function LedgerClient() {
                         </SelectContent>
                     </Select>
                 ) : (
-                    <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties available. Please add masters.</p>
+                    <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties found. Add Masters.</p>
                 )}
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
+                     <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
+                        <Printer className="h-5 w-5" />
+                        <span className="sr-only">Print</span>
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handleDownloadPdf} title="Download PDF">
+                        <Download className="h-5 w-5" />
+                        <span className="sr-only">Download PDF</span>
+                    </Button>
                 </div>
             </div>
         </CardHeader>
@@ -320,17 +388,16 @@ export function LedgerClient() {
             <div className="flex flex-wrap gap-2 mb-4">
                 <Button variant="outline" size="sm" onClick={() => setDateFilter(3)}><CalendarRange className="mr-2 h-4 w-4" /> Last 3 Months</Button>
                 <Button variant="outline" size="sm" onClick={() => setDateFilter(6)}><CalendarRange className="mr-2 h-4 w-4" /> Last 6 Months</Button>
-                <Button variant="outline" size="sm" onClick={setLastFinancialYearFilter}><CalendarRange className="mr-2 h-4 w-4" /> Last FY</Button>
                 <Button variant="outline" size="sm" onClick={setCurrentFinancialYearFilter}><CalendarRange className="mr-2 h-4 w-4" /> Current FY</Button>
             </div>
         </CardContent>
       </Card>
 
-      {selectedPartyId && selectedPartyDetails ? (
+      {selectedPartyId && selectedPartyDetails && hydrated ? (
         <Card className="shadow-xl print:shadow-none print:border-none">
           <CardHeader className="print:p-0 print:mb-2">
             <div className="print:text-center">
-                <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
+                <PrintHeaderSymbol id="print-header-symbol-ledger" className="hidden print:block text-sm font-semibold mb-1" />
                 <CardTitle className="text-2xl text-primary flex items-center print:justify-center print:text-lg">
                     <BookUser className="mr-3 h-7 w-7 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type}) - Ledger Account
                 </CardTitle>
@@ -343,32 +410,34 @@ export function LedgerClient() {
           <CardContent className="print:p-0">
           <TooltipProvider>
             <ScrollArea className="h-[500px] rounded-md border print:h-auto print:border-none print:shadow-none print:overflow-visible">
-              <Table className="print:text-[9pt]">
+              <Table className="print:text-[9pt]" ref={ledgerTableRef}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[80px] print:w-[50px]">Date</TableHead>
                     <TableHead className="print:w-[35%]">Particulars</TableHead>
                     <TableHead className="print:w-[10%]">Vch Type</TableHead>
-                    <TableHead className="print:w-[10%]">Vch No.</TableHead>
-                    <TableHead className="text-right print:w-[12.5%]">Debit (₹)</TableHead>
-                    <TableHead className="text-right print:w-[12.5%]">Credit (₹)</TableHead>
-                    {/* Hidden for print to match example */}
-                    <TableHead className="text-right no-print">Rate (₹)</TableHead>
-                    <TableHead className="text-right no-print">Net Wt. (kg)</TableHead>
+                    <TableHead className="print:w-[10%]">Ref. No.</TableHead>
+                    <TableHead className="text-right print:w-[12.5%] no-print">Rate (₹)</TableHead>
+                    <TableHead className="text-right print:w-[12.5%] no-print">Net Wt. (kg)</TableHead>
                     <TableHead className="text-right no-print">Trans. Amt. (₹)</TableHead>
+                    <TableHead className="text-right">Debit (₹)</TableHead>
+                    <TableHead className="text-right">Credit (₹)</TableHead>
                     <TableHead className="text-right no-print">Balance (₹)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <TableRow className="print:font-medium">
                     <TableCell colSpan={4} className="print:font-semibold">Opening Balance</TableCell>
+                    <TableCell className="text-right print:font-semibold no-print">{/* Rate */}</TableCell>
+                    <TableCell className="text-right print:font-semibold no-print">{/* Net Wt. */}</TableCell>
+                    <TableCell className="text-right print:font-semibold no-print">{/* Trans. Amt. */}</TableCell>
                     <TableCell className="text-right print:font-semibold">
                         {ledgerTransactions.openingBalance >= 0 ? ledgerTransactions.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                     </TableCell>
                     <TableCell className="text-right print:font-semibold">
                         {ledgerTransactions.openingBalance < 0 ? Math.abs(ledgerTransactions.openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                     </TableCell>
-                    <TableCell colSpan={4} className={`text-right no-print font-semibold ${ledgerTransactions.openingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <TableCell className={`text-right font-semibold no-print ${ledgerTransactions.openingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {Math.abs(ledgerTransactions.openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ledgerTransactions.openingBalance < 0 ? 'Cr' : 'Dr'}
                     </TableCell>
                   </TableRow>
@@ -385,9 +454,6 @@ export function LedgerClient() {
                         </TableCell>
                         <TableCell>{entry.type}</TableCell>
                         <TableCell>{entry.refNo || ''}</TableCell>
-                        <TableCell className="text-right">{entry.debit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || ''}</TableCell>
-                        <TableCell className="text-right">{entry.credit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || ''}</TableCell>
-                        {/* Hidden for print */}
                         <TableCell className="text-right no-print">{entry.rate?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
                         <TableCell className="text-right no-print">{entry.netWeight?.toLocaleString() || '-'}</TableCell>
                         <TableCell className="text-right no-print">
@@ -402,6 +468,8 @@ export function LedgerClient() {
                             </Tooltip>
                           ) : '-'}
                         </TableCell>
+                        <TableCell className="text-right">{entry.debit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || ''}</TableCell>
+                        <TableCell className="text-right">{entry.credit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || ''}</TableCell>
                         <TableCell className={`text-right font-semibold no-print ${entry.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {Math.abs(entry.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {entry.balance < 0 ? 'Cr' : 'Dr'}
                         </TableCell>
@@ -418,26 +486,33 @@ export function LedgerClient() {
                 <TableFooter className="print:text-[9pt]">
                     <TableRow className="font-semibold">
                         <TableCell colSpan={4} className="text-right">Totals for Period:</TableCell>
+                        <TableCell className="no-print">{/* Rate */}</TableCell>
+                        <TableCell className="no-print">{/* Net Wt. */}</TableCell>
+                        <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
                         <TableCell className="text-right border-t border-b border-foreground">
                             {ledgerTransactions.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="text-right border-t border-b border-foreground">
                             {ledgerTransactions.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
-                        <TableCell colSpan={4} className="no-print"></TableCell>
+                        <TableCell className="no-print"></TableCell>
                     </TableRow>
                     <TableRow className="font-semibold text-base">
                         <TableCell colSpan={4} className="text-right">
                             {ledgerTransactions.closingBalance < 0 ? 'By Closing Balance:' : 'To Closing Balance:'}
                         </TableCell>
+                        <TableCell className="no-print">{/* Rate */}</TableCell>
+                        <TableCell className="no-print">{/* Net Wt. */}</TableCell>
+                        <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
                         <TableCell className="text-right border-b-2 border-foreground">
                             {ledgerTransactions.closingBalance >= 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
                         </TableCell>
                         <TableCell className="text-right border-b-2 border-foreground">
                              {ledgerTransactions.closingBalance < 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
                         </TableCell>
-                        <TableCell colSpan={4} className={`text-right no-print ${ledgerTransactions.closingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ledgerTransactions.closingBalance < 0 ? 'Cr' : 'Dr'}
+                        <TableCell colSpan={1} className={`text-right font-semibold no-print ${ledgerTransactions.closingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                           {/* This cell is for the running balance display on screen, not directly part of debit/credit closing balance line for print */}
+                           {Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ledgerTransactions.closingBalance < 0 ? 'Cr' : 'Dr'}
                         </TableCell>
                     </TableRow>
                 </TableFooter>
