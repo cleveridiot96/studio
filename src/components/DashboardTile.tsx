@@ -23,9 +23,9 @@ import {
   FileText,
   Receipt,
   ArrowRightLeft,
-  Rocket,
-  FileJson, // Added for Backup tile
-  UploadCloud, // Added for Restore tile
+  Rocket, // For Profit Analysis
+  FileJson,
+  UploadCloud,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -53,34 +53,53 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   LayoutGrid,
   ArrowRightLeft,
   Rocket,
-  FileJson, // Added FileJson to map
-  UploadCloud, // Added UploadCloud to map
+  FileJson,
+  UploadCloud,
 };
 
 
 interface DashboardTileProps {
   title: string;
   iconName: string;
-  href: string;
+  href?: string; // Make href optional
   description?: string;
   className?: string;
+  onClick?: () => void; // Add onClick prop
 }
 
-const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className }) => {
+const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, onClick }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
-  return (
-    <Link href={href} className="block group h-full">
-      <Card className={cn(
-        "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-        "rounded-xl p-4 flex flex-col items-center text-center justify-center h-full min-h-[150px]",
-        className
-      )}>
-        <Icon className="h-8 w-8 mb-2" />
-        <CardTitle className="text-lg font-semibold mb-1">{title}</CardTitle>
-        {description && <p className="text-sm opacity-90">{description}</p>}
-      </Card>
-    </Link>
+
+  const cardContent = (
+    <Card className={cn(
+      "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
+      "rounded-xl p-4 flex flex-col items-center text-center justify-center h-full min-h-[150px]",
+      className
+    )}>
+      <Icon className="h-8 w-8 mb-2" />
+      <CardTitle className="text-lg font-semibold mb-1">{title}</CardTitle>
+      {description && <p className="text-sm opacity-90">{description}</p>}
+    </Card>
   );
+
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="block group h-full w-full text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
+        {cardContent}
+      </button>
+    );
+  }
+
+  if (href) {
+    return (
+      <Link href={href} className="block group h-full">
+        {cardContent}
+      </Link>
+    );
+  }
+
+  // Fallback if neither onClick nor href is provided (though one should always be)
+  return <div className="block group h-full">{cardContent}</div>;
 }
 
 export const DashboardTile = React.memo(DashboardTileComponent);
