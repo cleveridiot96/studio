@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, FilePlus2 } from "lucide-react";
+import { PlusCircle, FilePlus2, Printer } from "lucide-react"; // Added Printer
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
@@ -63,6 +63,7 @@ const initialSalesData: Sale[] = [
   },
 ];
 
+const PURCHASES_STORAGE_KEY = 'purchasesData'; // Added purchase storage key
 const SALES_STORAGE_KEY = 'salesData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters'; // Shared with Purchases
@@ -86,6 +87,7 @@ export function SalesClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
 
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []); // Added purchases state
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSalesData);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
@@ -103,6 +105,18 @@ export function SalesClient() {
   }, [sales, financialYear]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
+    // Calculate profit before updating state
+    const matchingPurchase = purchases.find(p => p.lotNumber === sale.lotNumber);
+    let calculatedProfit = NaN;
+
+    if (matchingPurchase) {
+      // Simplified profit calculation: Sale Value - Purchase Cost - Transport Cost - Brokerage
+      const saleValue = sale.netWeight * sale.rate;
+      const purchaseCost = matchingPurchase.netWeight * matchingPurchase.rate; // Simplified: Assumes entire lot sold at once or prorated based on initial purchase weight
+      calculatedProfit = saleValue - purchaseCost - (sale.transportCost || 0) - (sale.calculatedBrokerageCommission || 0);
+    }
+    sale.calculatedProfit = calculatedProfit; // Add calculated profit to the sale object
+
     setSales(prevSales => {
       const isEditing = prevSales.some(s => s.id === sale.id);
       if (isEditing) {
@@ -113,7 +127,7 @@ export function SalesClient() {
         return [sale, ...prevSales];
       }
     });
-    setSaleToEdit(null);
+    setSaleToEdit(null); // Clear editing state after submission
   }, [setSales, toast]);
 
   const handleEditSale = React.useCallback((sale: Sale) => {
@@ -174,10 +188,10 @@ export function SalesClient() {
             <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
           </Button>
           <Button variant="outline" size="lg" className="text-base py-3 px-6 shadow-md" onClick={() => toast({title: "Info", description: "Multi-item sale functionality coming soon!"})}>
-            <FilePlus2 className="mr-2 h-5 w-5" /> Add Multi-Item Sale
+ {/* <FilePlus2 className=\"mr-2 h-5 w-5\" /> Add Multi-Item Sale */}
           </Button>
         </div>
-      </div>
+    </div>
 
       <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
       
@@ -190,10 +204,12 @@ export function SalesClient() {
           transporters={transporters}
           brokers={brokers}
           onMasterDataUpdate={handleMasterDataUpdate}
+ purchases={purchases} // Pass purchases data
           saleToEdit={saleToEdit}
         />
       )}
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>

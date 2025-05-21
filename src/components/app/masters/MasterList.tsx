@@ -43,6 +43,10 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
     return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
   }
 
+  // TEMP FIX FOR DUPLICATES
+  const seen = new Set();
+  const uniqueMasters = data.filter((m) => seen.add(m.id) && !seen.has(m.id)); // Add and check if already seen
+
   const showCommissionColumn = isAllItemsTab || itemType === 'Agent' || itemType === 'Broker';
   const showTypeColumn = isAllItemsTab;
 
@@ -60,7 +64,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((item) => {
+          {uniqueMasters.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
             const TypeIcon = typeIconMap[item.type] || PackageSearch; // Fallback if needed, though all current types are in map
             return (

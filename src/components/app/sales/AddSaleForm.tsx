@@ -286,7 +286,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
                       <MasterDataCombobox 
                         name="lotNumber"
-                        options={inventoryLots.map(p => ({ value: p.lotNumber, label: `${p.lotNumber} (${p.locationName} - Avl: ${p.quantity - (existingSales.filter(s=>s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id).reduce((sum,s)=>sum+s.quantity,0))} bags)` }))} 
+                        options={inventoryLots.map(p => {
+                          const availableBags = p.quantity - (existingSales.filter(s=>s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id).reduce((sum,s)=>sum+s.quantity,0));
+                          return {
+                            value: p.lotNumber,
+                            label: `${p.lotNumber} (${p.locationName} - Avl: ${availableBags} bags - Pur. Rate: ₹${p.rate.toFixed(2)})`
+                          };
+                        })}
                         placeholder="Select Lot" 
                         searchPlaceholder="Search lots..."
                         notFoundMessage="Lot not found or out of stock."

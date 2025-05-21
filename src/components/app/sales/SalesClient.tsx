@@ -62,15 +62,14 @@ export function SalesClient() {
   }, [sales, financialYear, hydrated]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
+    const isEditing = sales.some(s => s.id === sale.id);
     setSales(prevSales => {
-      const isEditing = prevSales.some(s => s.id === sale.id);
       if (isEditing) {
-        toast({ title: "Success!", description: "Sale updated successfully." });
         return prevSales.map(s => s.id === sale.id ? sale : s);
       } else {
-        toast({ title: "Success!", description: "Sale added successfully." });
         return [sale, ...prevSales];
       }
+
     });
     setSaleToEdit(null);
   }, [setSales, toast]);

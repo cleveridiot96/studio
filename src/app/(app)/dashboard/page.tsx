@@ -1,6 +1,7 @@
 
 import DashboardClient from "@/components/app/dashboard/DashboardClient";
 import { Separator } from "@/components/ui/separator";
+import BackupRestoreTile from "@/components/BackupRestoreTile";
 import { DashboardTile } from "@/components/DashboardTile";
 
 const quickActions = [
@@ -81,6 +82,15 @@ const quickActions = [
     iconName: "Rocket", 
     className: "bg-green-500 hover:bg-green-600 text-white",
   },
+  {
+    type: 'backup-restore',
+    backupLink: '/backup',
+    restoreLink: '/restore',
+    backupLabel: 'Backup',
+    restoreLabel: 'Restore',
+    backupColor: 'bg-blue-500 hover:bg-blue-600',
+    restoreColor: 'bg-green-500 hover:bg-green-600',
+  },
 ];
 
 export default function DashboardPage() {
@@ -90,9 +100,22 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-foreground">Quick Actions</h1>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {quickActions.map((action) => (
-          <DashboardTile key={action.title} {...action} />
-        ))}
+        {quickActions.map((action) => {
+          if (action.type === 'backup-restore') {
+            return (
+              <BackupRestoreTile
+                key="backup-restore" // Use a unique key for this specific tile
+                backupLink={action.backupLink}
+                restoreLink={action.restoreLink}
+                backupLabel={action.backupLabel}
+                restoreLabel={action.restoreLabel}
+                backupColor={action.backupColor}
+                restoreColor={action.restoreColor}
+              />
+            );
+          }
+          return <DashboardTile key={action.title} {...action} />;
+        })}
       </div>
       <Separator className="my-4"/>
       <DashboardClient />

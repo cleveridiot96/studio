@@ -66,16 +66,17 @@ export function PurchasesClient() {
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     setPurchases(prevPurchases => {
+      // Determine if we are editing or adding before the state update
       const isEditing = prevPurchases.some(p => p.id === purchase.id);
       if (isEditing) {
-        toast({ title: "Success!", description: "Purchase updated successfully." });
         return prevPurchases.map(p => p.id === purchase.id ? purchase : p);
       } else {
-        toast({ title: "Success!", description: "Purchase added successfully." });
         return [purchase, ...prevPurchases];
       }
     });
+    // Call toast after the state update is initiated
     setPurchaseToEdit(null);
+ toast({ title: "Success!", description: purchaseToEdit ? "Purchase updated successfully." : "Purchase added successfully." });
   }, [setPurchases, toast]);
 
   const handleEditPurchase = React.useCallback((purchase: Purchase) => {

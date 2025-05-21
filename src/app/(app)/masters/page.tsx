@@ -67,6 +67,7 @@ export default function MastersPage() {
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
   const [activeTab, setActiveTab] = useState<MasterPageTabKey>(TABS_CONFIG[0].value);
 
+  const [showToast, setShowToast] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<MasterItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -74,7 +75,6 @@ export default function MastersPage() {
   useEffect(() => {
     setHydrated(true);
   }, []);
-
 
   const allMasterItems = useMemo(() => {
     if (!hydrated) return [];
@@ -109,20 +109,23 @@ export default function MastersPage() {
     }
 
     setData(prev => {
+      let updatedData;
+      let toastMessage = '';
       const existingIndex = prev.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
-        const updated = [...prev];
-        updated[existingIndex] = item;
-        toast({ title: `${item.type} updated successfully!` });
-        return updated;
+        updatedData = [...prev];
+        updatedData[existingIndex] = item;
+        toastMessage = `${item.type} updated successfully!`;
+      } else {
+        updatedData = [item, ...prev]; // Add new item to the beginning for better UX
+        toastMessage = `${item.type} added successfully!`;
       }
-      toast({ title: `${item.type} added successfully!` });
-      return [item, ...prev]; // Add new item to the beginning for better UX
+      setIsFormOpen(false);
+      setEditingItem(null);
+      return updatedData;
     });
-    setIsFormOpen(false);
-    setEditingItem(null);
-  }, [getMasterDataState, toast, allMasterItems]);
 
+  }, [getMasterDataState, allMasterItems, toast]);
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
     setIsFormOpen(true);
@@ -163,6 +166,13 @@ export default function MastersPage() {
     );
   }
 
+  // Effect to show toast after state update triggers re-render
+  useEffect(() => {
+    if (showToast) {
+      toast({ title: "Success!", description: "Master saved" }); // Or customize message based on a state variable
+      setShowToast(false); // Reset toast trigger
+    }
+  }, [showToast, toast]);
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
