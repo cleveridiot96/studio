@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Purchase, Sale, Warehouse as MasterWarehouse, Payment, Receipt } from "@/lib/types";
+import type { Purchase, Sale, Warehouse as MasterWarehouse } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, ShoppingBag, Package, BarChart3, TrendingUp, TrendingDown, CalendarDays } from 'lucide-react';
@@ -24,8 +24,8 @@ const initialDashboardWarehouses: MasterWarehouse[] = [
   { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
   { id: "wh-chiplun", name: "Chiplun Warehouse", type: "Warehouse" },
   { id: "wh-sawantwadi", name: "Sawantwadi Warehouse", type: "Warehouse" },
-  { id: "w1", name: "Mumbai Godown (Old)", type: "Warehouse" },
-  { id: "w2", name: "Chiplun Storage (Old)", type: "Warehouse" },
+  { id: "w1", name: "Mumbai Godown (Old)", type: "Warehouse" }, // Kept for compatibility with older dummy data if any
+  { id: "w2", name: "Chiplun Storage (Old)", type: "Warehouse" }, // Kept for compatibility
 ];
 
 interface SummaryData {
@@ -52,11 +52,37 @@ const DashboardClient = () => {
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
   const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
 
-  const [selectedPeriod, setSelectedPeriod] = React.useState<string>("currentFY"); // "currentFY", "all", or "yyyy-MM"
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>("currentFY");
 
   React.useEffect(() => {
     setHydrated(true);
   }, []);
+
+  const getFinancialYearDateRange = (fyString: string): { start: Date; end: Date } | null => {
+    const [startYearStr, endYearStrShort] = fyString.split('-');
+    const startYear = parseInt(startYearStr, 10);
+    
+    if (isNaN(startYear)) return null;
+
+    // Assuming endYearStrShort is like "25" for 2025. Need to reconstruct full end year.
+    // A common way FY is represented e.g. "2024-25" means April 2024 to March 2025.
+    // If endYearStrShort is like "2025", then it's already the full year.
+    const endYear = (endYearStrShort && endYearStrShort.length === 2) ? (Math.floor(startYear / 100) * 100 + parseInt(endYearStrShort, 10)) : parseInt(endYearStrShort, 10);
+
+    if (isNaN(endYear) || endYear !== startYear +1) {
+        // If parsing fails or it's not a typical +1 year, adjust for cases like "2024-2025"
+        const fullEndYear = parseInt(String(startYear +1), 10);
+         return {
+            start: new Date(startYear, 3, 1), // April 1st
+            end: new Date(fullEndYear, 2, 31, 23, 59, 59, 999), // March 31st, end of day
+        };
+    }
+
+    return {
+      start: new Date(startYear, 3, 1), // April 1st
+      end: new Date(endYear, 2, 31, 23, 59, 59, 999), // March 31st, end of day
+    };
+  };
 
   const periodOptions = React.useMemo(() => {
     if (!hydrated) return [];
@@ -64,29 +90,39 @@ const DashboardClient = () => {
       { value: "currentFY", label: `Current FY (${currentFinancialYearString})` },
       { value: "all", label: "All Time" },
     ];
-    const allDates = [...purchases.map(p => parseISO(p.date)), ...sales.map(s => parseISO(s.date))];
-    if (allDates.length === 0) return options;
 
-    const minDate = new Date(Math.min(...allDates.map(date => date.getTime())));
-    const maxDate = new Date(Math.max(...allDates.map(date => date.getTime())));
+    const fyDateRange = getFinancialYearDateRange(currentFinancialYearString);
+    if (!fyDateRange) return options; // Cannot generate month options if FY range is invalid
+
+    const allTransactionDatesInFY = [...purchases, ...sales]
+      .map(t => parseISO(t.date))
+      .filter(date => isWithinInterval(date, { start: fyDateRange.start, end: fyDateRange.end }));
+
+    if (allTransactionDatesInFY.length === 0) return options;
+
+    const minDateInFY = new Date(Math.min(...allTransactionDatesInFY.map(date => date.getTime())));
+    const maxDateInFY = new Date(Math.max(...allTransactionDatesInFY.map(date => date.getTime())));
     
-    const months = eachMonthOfInterval({ start: minDate, end: maxDate });
-    months.reverse().forEach(monthStart => {
-      const monthKey = format(monthStart, "yyyy-MM");
-      options.push({ value: monthKey, label: format(monthStart, "MMMM yyyy") });
-    });
+    // Ensure minDate and maxDate are within the FY bounds if transactions don't span the whole FY
+    const effectiveMinDate = minDateInFY < fyDateRange.start ? fyDateRange.start : minDateInFY;
+    const effectiveMaxDate = maxDateInFY > fyDateRange.end ? fyDateRange.end : maxDateInFY;
+
+
+    if (effectiveMinDate > effectiveMaxDate) return options; // No valid interval for months
+
+    try {
+        const monthsInFY = eachMonthOfInterval({ start: effectiveMinDate, end: effectiveMaxDate });
+        monthsInFY.reverse().forEach(monthStart => {
+        const monthKey = format(monthStart, "yyyy-MM");
+        options.push({ value: monthKey, label: format(monthStart, "MMMM yyyy") });
+        });
+    } catch (error) {
+        console.error("Error generating month options for dashboard:", error);
+        // Fallback to just FY and All Time if interval generation fails
+    }
     return options;
   }, [purchases, sales, hydrated, currentFinancialYearString]);
 
-  const getFinancialYearDateRange = (fyString: string): { start: Date; end: Date } | null => {
-    const [startYearStr] = fyString.split('-');
-    const startYear = parseInt(startYearStr, 10);
-    if (isNaN(startYear)) return null;
-    return {
-      start: new Date(startYear, 3, 1), // April 1st
-      end: new Date(startYear + 1, 2, 31, 23, 59, 59, 999), // March 31st, end of day
-    };
-  };
 
   const filterByPeriod = <T extends { date: string }>(items: T[], period: string): T[] => {
     if (period === "all") return items;
@@ -106,7 +142,7 @@ const DashboardClient = () => {
       endDate = endOfMonth(monthDate);
     }
 
-    if (!startDate || !endDate) return items; // Fallback to all if period parsing fails
+    if (!startDate || !endDate) return items;
 
     return items.filter(item => {
       const itemDate = parseISO(item.date);
@@ -123,7 +159,7 @@ const DashboardClient = () => {
       acc.totalNetWeight += sale.netWeight || 0;
       return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-  }, [sales, selectedPeriod, hydrated, currentFinancialYearString]);
+  }, [sales, selectedPeriod, hydrated, currentFinancialYearString, filterByPeriod]);
 
   const purchaseSummary = React.useMemo<SummaryData>(() => {
     if (!hydrated) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
@@ -134,13 +170,14 @@ const DashboardClient = () => {
       acc.totalNetWeight += purchase.netWeight || 0;
       return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-  }, [purchases, selectedPeriod, hydrated, currentFinancialYearString]);
+  }, [purchases, selectedPeriod, hydrated, currentFinancialYearString, filterByPeriod]);
 
   const stockSummary = React.useMemo<StockSummary>(() => {
     if (!hydrated) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
     
     const inventoryMap = new Map<string, { lotNumber: string, locationId: string, currentBags: number, currentWeight: number }>();
 
+    // Process purchases to add stock
     purchases.forEach(p => {
       const key = `${p.lotNumber}-${p.locationId}`;
       let entry = inventoryMap.get(key) || { lotNumber: p.lotNumber, locationId: p.locationId, currentBags: 0, currentWeight: 0 };
@@ -149,25 +186,28 @@ const DashboardClient = () => {
       inventoryMap.set(key, entry);
     });
 
+    // Process sales to deduct stock
     sales.forEach(s => {
+      // Find the original purchase location for this lot to update correctly
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber); 
       if (relatedPurchase) {
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`; 
         let entry = inventoryMap.get(key);
         if (entry) {
           entry.currentBags -= s.quantity;
-          entry.currentWeight -= s.netWeight;
+          entry.currentWeight -= s.netWeight; // Assuming sale netWeight is accurate deduction
           inventoryMap.set(key, entry);
         }
       }
     });
 
+    // Prepare summaries
     const byLocation: Record<string, { name: string; bags: number; netWeight: number }> = {};
     let totalBags = 0;
     let totalNetWeight = 0;
 
     inventoryMap.forEach(item => {
-      if (item.currentBags > 0) { 
+      if (item.currentBags > 0) { // Only count items with positive stock
         totalBags += item.currentBags;
         totalNetWeight += item.currentWeight;
         const locationName = warehouses.find(w => w.id === item.locationId)?.name || item.locationId;
@@ -273,6 +313,4 @@ const DashboardClient = () => {
 };
 
 export default DashboardClient;
-    
-
     
