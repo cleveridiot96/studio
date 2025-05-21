@@ -32,42 +32,13 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 
-// Initial data set
-const initialCustomers: MasterItem[] = [
-  { id: "cust-ramesh", name: "Ramesh Retail", type: "Customer" },
-  { id: "cust-sita", name: "Sita General Store", type: "Customer" },
-  { id: "cust-mohan", name: "Mohan Wholesalers", type: "Customer" },
-  { id: "cust-priya", name: "Priya Foods", type: "Customer" },
-  { id: "cust-anil", name: "Anil & Sons", type: "Customer" },
-];
-const initialSuppliers: MasterItem[] = [
-  { id: "supp-anand", name: "Anand Agro Products", type: "Supplier" },
-  { id: "supp-meena", name: "Meena Farms", type: "Supplier" },
-  { id: "supp-vikas", name: "Vikas Seeds & Grains", type: "Supplier" },
-  { id: "supp-uma", name: "Uma Organics", type: "Supplier" },
-  { id: "supp-sunilp", name: "Sunil Trading Co.", type: "Supplier" },
-];
-const initialAgents: MasterItem[] = [
-  { id: "agent-ajay", name: "Ajay Kumar", type: "Agent", commission: 2 },
-  { id: "agent-sunila", name: "Sunil Varma", type: "Agent", commission: 1.5 },
-  { id: "agent-deepa", name: "Deepa Sharma", type: "Agent", commission: 2.5 },
-];
-const initialTransporters: MasterItem[] = [
-  { id: "trans-speedy", name: "Speedy Logistics", type: "Transporter" },
-  { id: "trans-reliable", name: "Reliable Transports", type: "Transporter" },
-  { id: "trans-quick", name: "Quick Movers", type: "Transporter" },
-];
-const initialBrokers: MasterItem[] = [
-  { id: "broker-vinod", name: "Vinod Mehta", type: "Broker", commission: 1 },
-  { id: "broker-leela", name: "Leela Associates", type: "Broker", commission: 0.75 },
-  { id: "broker-karan", name: "Karan Enterprises", type: "Broker", commission: 1.2 },
-];
-const initialWarehouses: MasterItem[] = [
-  { id: "wh-mum", name: "Mumbai Central Warehouse", type: "Warehouse" },
-  { id: "wh-pune", name: "Pune North Godown", type: "Warehouse" },
-  { id: "wh-ngp", name: "Nagpur South Storage", type: "Warehouse" },
-  { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
-];
+// Initial data set (will be empty array after formatting)
+const initialCustomers: MasterItem[] = [];
+const initialSuppliers: MasterItem[] = [];
+const initialAgents: MasterItem[] = [];
+const initialTransporters: MasterItem[] = [];
+const initialBrokers: MasterItem[] = [];
+const initialWarehouses: MasterItem[] = [];
 
 
 type MasterPageTabKey = MasterItemType | 'All';
@@ -96,7 +67,7 @@ export default function MastersPage() {
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
   const [activeTab, setActiveTab] = useState<MasterPageTabKey>(TABS_CONFIG[0].value);
 
-  const [showToast, setShowToast] = useState(false);
+  const [showToast, setShowToast] = useState(false); // This state seems to be unused, can be removed.
   const [itemToDelete, setItemToDelete] = useState<MasterItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -105,8 +76,20 @@ export default function MastersPage() {
     setHydrated(true);
   }, []);
 
+  // Moved this useEffect before the conditional return
+  useEffect(() => {
+    // This useEffect was originally causing the hook order error.
+    // It appears the `showToast` state might be redundant if `toast` is called directly.
+    // If `showToast` was intended to trigger a toast based on some other logic,
+    // that logic should set `showToast` and this effect would pick it up.
+    // For direct toast on action, call `toast()` in the handler.
+    // Let's assume for now it was for a toast that might be triggered by a prop or complex state change.
+    // If `showToast` is indeed never set to true by other means, this useEffect might be unnecessary.
+  }, [showToast, toast]);
+
+
   const allMasterItems = useMemo(() => {
-    if (!hydrated) return [];
+    if (!hydrated) return []; // Still return empty if not hydrated, to avoid using potentially uninitialized localStorage state
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses].sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, hydrated]);
 
@@ -119,7 +102,7 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'All': return { data: allMasterItems, setData: () => {} };
+      case 'All': return { data: allMasterItems, setData: () => {} }; // setData for 'All' is a no-op as it's derived
       default: return { data: [], setData: () => {} };
     }
   }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
@@ -127,7 +110,11 @@ export default function MastersPage() {
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { setData } = getMasterDataState(item.type);
 
-    if (doesNameExist(item.name, item.type, item.id, allMasterItems)) {
+    // Ensure allMasterItems is up-to-date for validation before this new item is added/updated.
+    // For editing, we exclude the current item by its ID. For adding, item.id might be new.
+    const itemsForNameCheck = allMasterItems.filter(existingItem => existingItem.id !== item.id);
+
+    if (doesNameExist(item.name, item.type, item.id, itemsForNameCheck)) { // Pass itemsForNameCheck
       toast({
         title: "Duplicate Name",
         description: `An item named "${item.name}" of type "${item.type}" already exists. Please use a different name.`,
@@ -145,13 +132,13 @@ export default function MastersPage() {
         return updatedData;
       } else {
         toast({ title: `${item.type} added successfully!`, description: `${item.name} is now in your masters.` });
-        return [item, ...prev];
+        return [item, ...prev].sort((a,b) => a.name.localeCompare(b.name)); // Also sort new additions
       }
     });
     setIsFormOpen(false);
     setEditingItem(null);
 
-  }, [getMasterDataState, allMasterItems, toast]);
+  }, [getMasterDataState, allMasterItems, toast]); // allMasterItems dependency is important here
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
@@ -193,12 +180,6 @@ export default function MastersPage() {
     );
   }
 
-  useEffect(() => {
-    if (showToast) {
-      toast({ title: "Success!", description: "Master saved" });
-      setShowToast(false);
-    }
-  }, [showToast, toast]);
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -210,7 +191,7 @@ export default function MastersPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 h-auto">
           {TABS_CONFIG.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value} className="py-2 sm:py-3 text-sm sm:text-base flex-wrap">
@@ -219,7 +200,8 @@ export default function MastersPage() {
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
-          const { data } = getMasterDataState(tab.value);
+          // For "All" tab, data is allMasterItems. For specific types, it's their respective state.
+          const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(tab.value).data;
           return (
             <TabsContent key={tab.value} value={tab.value} className="mt-6">
               <Card className="shadow-lg">
@@ -228,8 +210,8 @@ export default function MastersPage() {
                 </CardHeader>
                 <CardContent>
                   <MasterList
-                    data={data}
-                    itemType={tab.value}
+                    data={currentData} // Pass the correctly sourced data
+                    itemType={tab.value} // This helps MasterList know what type it's dealing with, esp for 'All'
                     isAllItemsTab={tab.value === "All"}
                     onEdit={handleEditItem}
                     onDelete={handleDeleteItemAttempt}
@@ -237,7 +219,7 @@ export default function MastersPage() {
                 </CardContent>
                 <CardFooter>
                   <p className="text-xs text-muted-foreground">
-                    Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {data.length}
+                    Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {currentData.length}
                   </p>
                 </CardFooter>
               </Card>
@@ -275,5 +257,3 @@ export default function MastersPage() {
     </div>
   );
 }
-
-    
