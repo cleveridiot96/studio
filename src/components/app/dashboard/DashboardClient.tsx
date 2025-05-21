@@ -6,19 +6,17 @@ import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, Warehouse as MasterWarehouse, Payment, Receipt } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption } from '@/components/ui/table';
-import { DollarSign, ShoppingBag, Package, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DollarSign, ShoppingBag, Package, BarChart3, TrendingUp, TrendingDown, CalendarDays } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, startOfYear, endOfYear } from 'date-fns';
 import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
+import { useSettings } from '@/contexts/SettingsContext';
+import { isDateInFinancialYear } from '@/lib/utils';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
-// const PAYMENTS_STORAGE_KEY = 'paymentsData'; // Not directly used for dashboard summaries, but good to have if expanding
-// const RECEIPTS_STORAGE_KEY = 'receiptsData'; // Not directly used for dashboard summaries
 
-// Fallback initial warehouse data, mirroring masters/page.tsx for consistency
-// This helps if dashboard is visited before masters page populates localStorage.
 const initialDashboardWarehouses: MasterWarehouse[] = [
   { id: "wh-mum", name: "Mumbai Central Warehouse", type: "Warehouse" },
   { id: "wh-pune", name: "Pune North Godown", type: "Warehouse" },
@@ -26,7 +24,6 @@ const initialDashboardWarehouses: MasterWarehouse[] = [
   { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
   { id: "wh-chiplun", name: "Chiplun Warehouse", type: "Warehouse" },
   { id: "wh-sawantwadi", name: "Sawantwadi Warehouse", type: "Warehouse" },
-  // Adding IDs that might have been in older dummy data to ensure names resolve if old data persists
   { id: "w1", name: "Mumbai Godown (Old)", type: "Warehouse" },
   { id: "w2", name: "Chiplun Storage (Old)", type: "Warehouse" },
 ];
@@ -45,41 +42,99 @@ interface StockSummary {
 
 const DashboardClient = () => {
   const [hydrated, setHydrated] = React.useState(false);
+  const { financialYear: currentFinancialYearString } = useSettings();
   
   const memoizedInitialPurchases = React.useMemo(() => [], []);
   const memoizedInitialSales = React.useMemo(() => [], []);
-  // Use the more comprehensive initialDashboardWarehouses for the memoized default
   const memoizedInitialWarehouses = React.useMemo(() => initialDashboardWarehouses, []);
-
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
   const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
 
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>("currentFY"); // "currentFY", "all", or "yyyy-MM"
 
   React.useEffect(() => {
     setHydrated(true);
   }, []);
 
+  const periodOptions = React.useMemo(() => {
+    if (!hydrated) return [];
+    const options: { value: string; label: string }[] = [
+      { value: "currentFY", label: `Current FY (${currentFinancialYearString})` },
+      { value: "all", label: "All Time" },
+    ];
+    const allDates = [...purchases.map(p => parseISO(p.date)), ...sales.map(s => parseISO(s.date))];
+    if (allDates.length === 0) return options;
+
+    const minDate = new Date(Math.min(...allDates.map(date => date.getTime())));
+    const maxDate = new Date(Math.max(...allDates.map(date => date.getTime())));
+    
+    const months = eachMonthOfInterval({ start: minDate, end: maxDate });
+    months.reverse().forEach(monthStart => {
+      const monthKey = format(monthStart, "yyyy-MM");
+      options.push({ value: monthKey, label: format(monthStart, "MMMM yyyy") });
+    });
+    return options;
+  }, [purchases, sales, hydrated, currentFinancialYearString]);
+
+  const getFinancialYearDateRange = (fyString: string): { start: Date; end: Date } | null => {
+    const [startYearStr] = fyString.split('-');
+    const startYear = parseInt(startYearStr, 10);
+    if (isNaN(startYear)) return null;
+    return {
+      start: new Date(startYear, 3, 1), // April 1st
+      end: new Date(startYear + 1, 2, 31, 23, 59, 59, 999), // March 31st, end of day
+    };
+  };
+
+  const filterByPeriod = <T extends { date: string }>(items: T[], period: string): T[] => {
+    if (period === "all") return items;
+    
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    if (period === "currentFY") {
+      const fyRange = getFinancialYearDateRange(currentFinancialYearString);
+      if (fyRange) {
+        startDate = fyRange.start;
+        endDate = fyRange.end;
+      }
+    } else if (period.match(/^\d{4}-\d{2}$/)) { // yyyy-MM format
+      const monthDate = parseISO(period + "-01");
+      startDate = startOfMonth(monthDate);
+      endDate = endOfMonth(monthDate);
+    }
+
+    if (!startDate || !endDate) return items; // Fallback to all if period parsing fails
+
+    return items.filter(item => {
+      const itemDate = parseISO(item.date);
+      return isWithinInterval(itemDate, { start: startDate!, end: endDate! });
+    });
+  };
+  
   const salesSummary = React.useMemo<SummaryData>(() => {
     if (!hydrated) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
-    return sales.reduce((acc, sale) => {
+    const filteredSales = filterByPeriod(sales, selectedPeriod);
+    return filteredSales.reduce((acc, sale) => {
       acc.totalAmount += sale.totalAmount || 0;
       acc.totalBags += sale.quantity || 0;
       acc.totalNetWeight += sale.netWeight || 0;
       return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-  }, [sales, hydrated]);
+  }, [sales, selectedPeriod, hydrated, currentFinancialYearString]);
 
   const purchaseSummary = React.useMemo<SummaryData>(() => {
     if (!hydrated) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
-    return purchases.reduce((acc, purchase) => {
+    const filteredPurchases = filterByPeriod(purchases, selectedPeriod);
+    return filteredPurchases.reduce((acc, purchase) => {
       acc.totalAmount += purchase.totalAmount || 0;
       acc.totalBags += purchase.quantity || 0;
       acc.totalNetWeight += purchase.netWeight || 0;
       return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-  }, [purchases, hydrated]);
+  }, [purchases, selectedPeriod, hydrated, currentFinancialYearString]);
 
   const stockSummary = React.useMemo<StockSummary>(() => {
     if (!hydrated) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
@@ -115,7 +170,6 @@ const DashboardClient = () => {
       if (item.currentBags > 0) { 
         totalBags += item.currentBags;
         totalNetWeight += item.currentWeight;
-        // Use the warehouses state for name resolution
         const locationName = warehouses.find(w => w.id === item.locationId)?.name || item.locationId;
         if (!byLocation[item.locationId]) {
           byLocation[item.locationId] = { name: locationName, bags: 0, netWeight: 0 };
@@ -139,7 +193,24 @@ const DashboardClient = () => {
 
   return (
     <div className='space-y-6'>
-      <h2 className="text-2xl font-semibold text-foreground">Summaries</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold text-foreground">Summaries</h2>
+        <div className="w-auto sm:w-[220px]">
+          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <SelectTrigger className="text-sm">
+              <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
+              <SelectValue placeholder="Select Period" />
+            </SelectTrigger>
+            <SelectContent>
+              {periodOptions.map(option => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <Link href="/sales" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
           <Card className="shadow-md border-green-500/50 bg-green-50 dark:bg-green-900/30 h-full">
@@ -195,7 +266,6 @@ const DashboardClient = () => {
       </div>
       
       <Link href="/profit-analysis" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
-        {/* ProfitSummary component is expected to be self-contained and styled */}
         <ProfitSummary sales={sales} purchases={purchases} />
       </Link>
     </div>
@@ -203,4 +273,6 @@ const DashboardClient = () => {
 };
 
 export default DashboardClient;
+    
+
     
