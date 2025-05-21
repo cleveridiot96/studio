@@ -7,17 +7,18 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
     required_error: "Receipt date is required.",
   }),
   partyId: z.string().min(1, "Party is required.").refine(partyId =>
-    parties.some(p => p.id === partyId), {
-    message: "Selected party does not exist or is not valid for receipts.",
+    parties.some(p => p.id === partyId && (p.type === 'Customer' || p.type === 'Broker')), {
+    message: "Selected party must be a Customer or Broker.",
   }),
-  amount: z.coerce.number().min(0.01, "Amount must be greater than 0."),
+  amount: z.coerce.number().min(0.01, "Amount received must be greater than 0."),
   paymentMethod: z.enum(['Cash', 'Bank', 'UPI'], {
     required_error: "Payment method is required.",
   }),
   referenceNo: z.string().optional(),
   notes: z.string().optional(),
+  relatedSaleIds: z.array(z.string()).optional(), // Optional: for linking to sales
+  cashDiscount: z.coerce.number().nonnegative("Cash discount cannot be negative.").optional().default(0),
 });
 
 export type ReceiptFormValues = z.infer<ReturnType<typeof receiptSchema>>;
 
-    

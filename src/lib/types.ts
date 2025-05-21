@@ -39,7 +39,6 @@ export interface Purchase {
   transporterId?: string;
   transporterName?: string;
   transportRate?: number; // Calculated: transportRatePerKg * (quantity * 50kg assumed per bag or actual weight)
-  // Broker fields removed from Purchase as per previous request
   totalAmount: number; // (netWeight * rate) + expenses + transportRate
   locationId: string;
   locationName?: string;
@@ -53,6 +52,8 @@ export interface Sale {
   cutBill?: boolean; // Optional
   customerId: string;
   customerName?: string;
+  brokerId?: string; // NEW: Link to broker responsible for payment
+  brokerName?: string; // For display
   lotNumber: string; // This is the "Vakkal" from existing inventory
   quantity: number; // Number of Bags
   netWeight: number; // in KG
@@ -60,13 +61,11 @@ export interface Sale {
   transporterId?: string;
   transporterName?: string;
   transportCost?: number; // Fixed transport cost for this sale, affects profit
-  brokerId?: string;
-  brokerName?: string;
-  brokerageType?: 'Fixed' | 'Percentage'; // For broker commission calculation
+  brokerageType?: 'Fixed' | 'Percentage'; // For broker commission calculation paid BY YOU to broker
   brokerageValue?: number; // If fixed, this is the amount. If percentage, this is the % value.
-  calculatedBrokerageCommission?: number; // The actual brokerage commission amount
+  calculatedBrokerageCommission?: number; // The actual brokerage commission amount paid BY YOU to broker
   notes?: string;
-  totalAmount: number; // Final amount for the customer = (billAmount if provided and > 0) OR (netWeight * rate)
+  totalAmount: number; // Final amount due for this sale (from customer or via broker) = (billAmount if provided and > 0) OR (netWeight * rate)
   calculatedProfit?: number; // (totalAmount based on sale rate) - (cost of goods sold for this sale portion) - (transportCost || 0) - (calculatedBrokerageCommission || 0)
 }
 
@@ -96,13 +95,15 @@ export interface Payment {
 export interface Receipt {
   id: string;
   date: string; // ISO string date
-  partyId: string;
+  partyId: string; // This will be brokerId if broker is paying, or customerId if customer pays directly
   partyName?: string; // For display in table
   partyType: MasterItemType; // Customer, Broker
-  amount: number;
+  amount: number; // Actual amount received
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   referenceNo?: string;
   notes?: string;
+  relatedSaleIds?: string[]; // Optional - to tag which invoices this receipt settles
+  cashDiscount?: number; // Optional - amount of discount given at time of receipt
 }
 
 export interface LocationTransferItem {
@@ -137,11 +138,21 @@ export interface CashBookEntry {
 export interface LedgerEntry {
   id:string;
   date: string; // ISO string date
-  description: string;
+  description: string; // This will be our "Particulars"
   debit?: number;
   credit?: number;
-  balance: number;
+  balance: number; // This is the running balance for the ledger view
+  // Added for detailed ledger views, especially for print and context
+  vchType?: string; // E.g., "Sale", "Purchase", "Payment", "Receipt", "Agent Comm.", "Brokerage Exp."
+  refNo?: string; // E.g., Bill No., Lot No., Payment Ref
+  rate?: number; // For sales/purchases
+  netWeight?: number; // For sales/purchases
+  transactionAmount?: number; // Gross amount of underlying transaction
+  customerName?: string; // For broker ledger, to show customer on sale
+  supplierName?: string; // For agent ledger, to show supplier on purchase
+  cashDiscount?: number; // For receipts, esp. from brokers
 }
+
 
 export interface Party {
   id: string;
@@ -192,3 +203,4 @@ export interface MonthlyProfitInfo {
   totalSalesValue: number;
   totalCostOfGoods: number;
 }
+

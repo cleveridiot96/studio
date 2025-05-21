@@ -49,16 +49,14 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  parties,
+  parties, // Should be filtered to Customers and Brokers by parent
   onMasterDataUpdate,
   receiptToEdit
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
-
 
   const getDefaultValues = React.useCallback((): ReceiptFormValues => {
     if (receiptToEdit) {
@@ -69,6 +67,8 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         paymentMethod: receiptToEdit.paymentMethod,
         referenceNo: receiptToEdit.referenceNo || "",
         notes: receiptToEdit.notes || "",
+        cashDiscount: receiptToEdit.cashDiscount || 0,
+        relatedSaleIds: receiptToEdit.relatedSaleIds || [],
       };
     }
     return {
@@ -78,6 +78,8 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       paymentMethod: 'Cash',
       referenceNo: "",
       notes: "",
+      cashDiscount: 0,
+      relatedSaleIds: [],
     };
   }, [receiptToEdit]);
 
@@ -92,14 +94,14 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
     }
   }, [receiptToEdit, isOpen, methods, getDefaultValues]);
 
-  const handleOpenMasterForm = (type: MasterItemType) => {
+  const handleOpenMasterForm = (type: MasterItemType = "Customer") => {
     setMasterFormItemType(type); 
     setIsMasterFormOpen(true);
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
-    if (newItem.type === masterFormItemType) { 
+    if (newItem.type === "Customer" || newItem.type === "Broker") { 
         methods.setValue('partyId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
@@ -109,7 +111,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
 
   const processSubmit = React.useCallback((values: ReceiptFormValues) => {
     if (!values.partyId || values.amount <= 0) {
-      toast({ title: "Missing Info", description: "Please select a party and enter a valid amount.", variant: "destructive" });
+      toast({ title: "Missing Info", description: "Please select a party and enter a valid amount received.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
@@ -126,15 +128,16 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       date: format(values.date, "yyyy-MM-dd"),
       partyId: values.partyId as string,
       partyName: selectedParty.name,
-      partyType: selectedParty.type,
+      partyType: selectedParty.type as MasterItemType,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       referenceNo: values.referenceNo,
       notes: values.notes,
+      cashDiscount: values.cashDiscount || 0, // Ensure cashDiscount is a number
+      relatedSaleIds: values.relatedSaleIds || [],
     };
     onSubmit(receiptData);
     setIsSubmitting(false);
-    // methods.reset(getDefaultValues()); // Reset happens in useEffect on isOpen change
     onClose();
   }, [receiptToEdit, parties, onSubmit, methods, onClose, toast]);
 
@@ -184,9 +187,11 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                   name="partyId"
                   render={({ field }) => ( 
                     <FormItem>
-                      <FormLabel>Party</FormLabel>
+                      <FormLabel>Party (Customer/Broker)</FormLabel>
                       <MasterDataCombobox
                         name={field.name} 
+                        value={field.value}
+                        onChange={field.onChange}
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search customers/brokers..."
@@ -207,8 +212,19 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormLabel>Amount Received (₹)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount received" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={methods.control}
+                  name="cashDiscount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cash Discount (₹, Optional)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" placeholder="e.g., 200" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -246,6 +262,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                     </FormItem>
                   )}
                 />
+                {/* TODO: Add a multi-select for relatedSaleIds in a future iteration */}
                 <FormField
                   control={methods.control}
                   name="notes"

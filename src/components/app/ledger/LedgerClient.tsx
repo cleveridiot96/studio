@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, MasterItemType } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, MasterItemType, LedgerEntry } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,21 +34,8 @@ const TRANSACTIONS_KEYS = {
   receipts: 'receiptsData',
 };
 
-interface LedgerTransaction {
-  date: string;
-  type: string;
-  refNo?: string;
-  particulars: string;
-  debit?: number;
-  credit?: number;
+interface LedgerEntryWithBalance extends LedgerEntry {
   relatedDocId: string;
-  rate?: number;
-  netWeight?: number;
-  transactionAmount?: number;
-}
-
-interface LedgerEntryWithBalance extends LedgerTransaction {
-  balance: number;
 }
 
 const initialLedgerData = { entries: [] as LedgerEntryWithBalance[], openingBalance: 0, closingBalance: 0, totalDebit: 0, totalCredit: 0 };
@@ -56,7 +43,7 @@ const initialLedgerData = { entries: [] as LedgerEntryWithBalance[], openingBala
 export function LedgerClient() {
   const [hydrated, setHydrated] = React.useState(false);
   const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
-
+  
   const memoizedEmptyArray = React.useMemo(() => [], []);
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
@@ -82,13 +69,13 @@ export function LedgerClient() {
         const data = localStorage.getItem(key);
         if (data) {
           try {
-            const parsedDataArray = JSON.parse(data);
+            const parsedDataArray = JSON.parse(data) as MasterItem[];
             if (Array.isArray(parsedDataArray)) {
-              parsedDataArray.forEach(item => {
-                if (item && typeof item === 'object' && item.id && typeof item.id === 'string' && item.name && typeof item.name === 'string' && item.type && typeof item.type === 'string') {
-                  loadedMasters.push(item as MasterItem);
-                }
-              });
+                parsedDataArray.forEach(item => {
+                    if (item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.type === 'string') {
+                        loadedMasters.push(item);
+                    }
+                });
             }
           } catch (e) {
             console.error("Failed to parse master data from localStorage for key:", key, e);
@@ -107,7 +94,7 @@ export function LedgerClient() {
           setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
         }
       }
-
+      
       const partyIdFromQuery = searchParams.get('partyId');
       if (partyIdFromQuery && loadedMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
         setSelectedPartyId(partyIdFromQuery);
@@ -124,13 +111,14 @@ export function LedgerClient() {
     const party = allMasters.find(m => m.id === selectedPartyId);
     if (!party) return initialLedgerData;
 
-    const partyTransactions: LedgerTransaction[] = [];
+    const tempTransactions: LedgerEntry[] = [];
 
+    // Purchases (affect Supplier, Agent, Transporter)
     purchases.forEach(p => {
       if (p.supplierId === selectedPartyId && party.type === 'Supplier') {
-        partyTransactions.push({
-          relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber,
-          particulars: `By Goods Purchased (Lot: ${p.lotNumber})`,
+        tempTransactions.push({
+          id: `pur-${p.id}`, relatedDocId: p.id, date: p.date, vchType: 'Purchase', refNo: p.lotNumber,
+          description: `By Goods Purchased (Lot: ${p.lotNumber})`,
           credit: p.totalAmount,
           rate: p.rate, netWeight: p.netWeight, transactionAmount: p.totalAmount
         });
@@ -140,83 +128,101 @@ export function LedgerClient() {
         const agentCommissionAmount = agentMasterData?.commission && p.netWeight && p.rate
           ? (p.netWeight * p.rate * (agentMasterData.commission / 100))
           : 0;
-        if (agentCommissionAmount > 0) partyTransactions.push({
-          relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber,
-          particulars: `By Comm. on Purchase Lot ${p.lotNumber} (Sup: ${p.supplierName || p.supplierId})`,
+        if (agentCommissionAmount > 0) tempTransactions.push({
+          id: `pur-comm-${p.id}`, relatedDocId: p.id, date: p.date, vchType: 'Agent Comm.', refNo: p.lotNumber,
+          description: `By Comm. on Purchase Lot ${p.lotNumber} (Sup: ${p.supplierName || p.supplierId})`,
           credit: agentCommissionAmount,
           transactionAmount: agentCommissionAmount,
-          rate: p.rate, netWeight: p.netWeight
+          rate: p.rate, netWeight: p.netWeight, supplierName: p.supplierName || p.supplierId,
         });
       }
       if (p.transporterId === selectedPartyId && party.type === 'Transporter' && p.transportRate) {
-        partyTransactions.push({
-          relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber,
-          particulars: `By Transport for Purchase Lot ${p.lotNumber}`,
-          credit: p.transportRate, // Assuming transportRate is the total cost for this transaction
+        tempTransactions.push({
+          id: `pur-trans-${p.id}`, relatedDocId: p.id, date: p.date, vchType: 'Transport Exp.', refNo: p.lotNumber,
+          description: `By Transport for Purchase Lot ${p.lotNumber}`,
+          credit: p.transportRate,
           transactionAmount: p.transportRate
         });
       }
     });
 
+    // Sales (affect Customer, Broker, Transporter)
     sales.forEach(s => {
       if (s.customerId === selectedPartyId && party.type === 'Customer') {
-        partyTransactions.push({
-          relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber,
-          particulars: `To Goods Sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber})`,
+        tempTransactions.push({
+          id: `sale-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale', refNo: s.billNumber || s.id,
+          description: `To Goods Sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber})`,
           debit: s.totalAmount,
           rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
         });
       }
-      if (s.brokerId === selectedPartyId && party.type === 'Broker' && s.calculatedBrokerageCommission) {
-        if (s.calculatedBrokerageCommission > 0) partyTransactions.push({
-          relatedDocId: s.id, date: s.date, type: 'Brokerage Exp.', refNo: s.billNumber,
-          particulars: `By Brokerage on Sale ${s.billNumber || s.id} (Cust: ${s.customerName || s.customerId})`,
-          credit: s.calculatedBrokerageCommission,
-          transactionAmount: s.calculatedBrokerageCommission,
-          rate: s.rate, netWeight: s.netWeight
+      if (s.brokerId === selectedPartyId && party.type === 'Broker') {
+        // Entry for amount due from Broker for this sale
+        tempTransactions.push({
+          id: `sale-via-broker-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale via Broker', refNo: s.billNumber || s.id,
+          description: `To Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
+          debit: s.totalAmount, // Broker owes the full sale amount to you
+          customerName: s.customerName || s.customerId,
+          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
         });
+        // Entry for brokerage expense you owe to the broker for facilitating the sale
+        if (s.calculatedBrokerageCommission && s.calculatedBrokerageCommission > 0) {
+            tempTransactions.push({
+                id: `sale-brokerage-exp-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Brokerage Exp.', refNo: s.billNumber || s.id,
+                description: `By Brokerage on Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
+                credit: s.calculatedBrokerageCommission, // You owe this to the broker
+                customerName: s.customerName || s.customerId,
+                transactionAmount: s.calculatedBrokerageCommission
+            });
+        }
       }
       if (s.transporterId === selectedPartyId && party.type === 'Transporter' && s.transportCost) {
-        partyTransactions.push({
-          relatedDocId: s.id, date: s.date, type: 'Transport Exp.', refNo: s.billNumber,
-          particulars: `By Transport for Sale ${s.billNumber || s.id}`,
+        tempTransactions.push({
+          id: `sale-trans-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Transport Exp.', refNo: s.billNumber || s.id,
+          description: `By Transport for Sale ${s.billNumber || s.id}`,
           credit: s.transportCost,
           transactionAmount: s.transportCost
         });
       }
     });
 
+    // Payments made by You
     payments.forEach(pm => {
       if (pm.partyId === selectedPartyId) {
-        partyTransactions.push({
-          relatedDocId: pm.id, date: pm.date, type: 'Payment', refNo: pm.referenceNo,
-          particulars: `To ${pm.paymentMethod} ${pm.referenceNo ? `(${pm.referenceNo})` : ''} ${pm.notes ? '- ' + pm.notes : ''}`,
+        tempTransactions.push({
+          id: `pm-${pm.id}`, relatedDocId: pm.id, date: pm.date, vchType: 'Payment', refNo: pm.referenceNo,
+          description: `To ${pm.paymentMethod} ${pm.referenceNo ? `(${pm.referenceNo})` : ''} ${pm.notes ? '- ' + pm.notes : ''}`,
           debit: pm.amount,
           transactionAmount: pm.amount
         });
       }
     });
 
+    // Receipts received by You
     receipts.forEach(rc => {
-      if (rc.partyId === selectedPartyId) {
-        partyTransactions.push({
-          relatedDocId: rc.id, date: rc.date, type: 'Receipt', refNo: rc.referenceNo,
-          particulars: `By ${rc.paymentMethod} ${rc.referenceNo ? `(${rc.referenceNo})` : ''} ${rc.notes ? '- ' + rc.notes : ''}`,
-          credit: rc.amount,
-          transactionAmount: rc.amount
+      if (rc.partyId === selectedPartyId) { // partyId on receipt is who paid you (Broker or Customer)
+        tempTransactions.push({
+          id: `rc-${rc.id}`, relatedDocId: rc.id, date: rc.date, vchType: 'Receipt', refNo: rc.referenceNo,
+          description: `By ${rc.paymentMethod} ${rc.referenceNo ? `(${rc.referenceNo})` : ''} ${rc.notes ? '- ' + rc.notes : ''}`,
+          credit: rc.amount, // Amount actually received
+          cashDiscount: rc.cashDiscount || 0,
+          transactionAmount: rc.amount + (rc.cashDiscount || 0), // Total value settled by this receipt (amount received + discount given)
+          // For broker ledger, we need to know which customer sale this receipt is against
+          // This might come from rc.notes or rc.relatedSaleIds if implemented
+          // For now, if partyType is Broker, we don't automatically fill customerName here from receipt itself
         });
       }
     });
 
     let balance = 0;
-    partyTransactions.forEach(t => {
+    tempTransactions.forEach(t => {
       if (parseISO(t.date) < startOfDay(dateRange.from!)) {
         balance += (t.debit || 0) - (t.credit || 0);
       }
     });
     const openingBalanceForPeriod = balance;
 
-    const dateFilteredTransactions = partyTransactions.filter(t => {
+    const dateFilteredTransactions = tempTransactions.filter(t => {
       const transactionDate = parseISO(t.date);
       return isWithinInterval(transactionDate, { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) });
     });
@@ -249,27 +255,6 @@ export function LedgerClient() {
     const newPath = value ? `/ledger?partyId=${value}` : '/ledger';
     router.push(newPath, { scroll: false });
   }, [router]);
-
-  const partyOptions = React.useMemo(() =>
-    allMasters
-      .filter(m => ['Customer', 'Supplier', 'Agent', 'Broker', 'Transporter'].includes(m.type))
-      .map(p => ({ label: `${p.name} (${p.type})`, value: p.id })),
-    [allMasters]
-  );
-
-  const setDateFilter = (months: number) => {
-    const to = endOfDay(new Date());
-    const from = startOfDay(subMonths(to, months));
-    setDateRange({ from, to });
-  };
-
-  const setCurrentFinancialYearFilter = () => {
-    const [currentFyStartYearStr] = currentFinancialYearString.split('-');
-    const currentFyStartYear = parseInt(currentFyStartYearStr, 10);
-    const from = new Date(currentFyStartYear, 3, 1);
-    const to = endOfDay(new Date(currentFyStartYear + 1, 2, 31));
-    setDateRange({ from: startOfDay(from), to });
-  };
   
   const selectedPartyDetails = React.useMemo(() => {
     if (!selectedPartyId || allMasters.length === 0) return undefined;
@@ -284,51 +269,67 @@ export function LedgerClient() {
     }
     const input = ledgerTableRef.current;
     
-    // Temporarily make all content visible for html2canvas
-    const noPrintElements = input.querySelectorAll('.no-print');
-    noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
-    const printOnlyElements = input.querySelectorAll('.print-only-block');
-    printOnlyElements.forEach(el => (el as HTMLElement).style.display = 'block');
+    const noPrintElements = Array.from(input.querySelectorAll('.no-print')) as HTMLElement[];
+    const printOnlyElements = Array.from(input.querySelectorAll('.print-only-block')) as HTMLElement[];
+    
+    noPrintElements.forEach(el => el.style.display = 'none');
+    printOnlyElements.forEach(el => el.style.display = 'table-cell');
 
+    const parentScrollArea = input.closest('.print\\:h-auto');
+    if (parentScrollArea) {
+        (parentScrollArea as HTMLElement).style.height = 'auto';
+        (parentScrollArea as HTMLElement).style.maxHeight = 'none';
+        (parentScrollArea as HTMLElement).style.overflow = 'visible';
+    }
 
     const canvas = await html2canvas(input, { 
       scale: 2,
-      logging: true, 
+      logging: false,
       useCORS: true,
       onclone: (document) => {
-        // Ensure table is fully visible in the cloned document
         const tableInClone = document.querySelector('#ledger-table-to-print');
         if (tableInClone) {
             (tableInClone as HTMLElement).style.height = 'auto';
             (tableInClone as HTMLElement).style.maxHeight = 'none';
             (tableInClone as HTMLElement).style.overflow = 'visible';
         }
+        const clonedPrintOnly = Array.from(document.querySelectorAll('.print-only-block')) as HTMLElement[];
+        clonedPrintOnly.forEach(el => el.style.display = 'table-cell');
+        const clonedNoPrint = Array.from(document.querySelectorAll('.no-print')) as HTMLElement[];
+        clonedNoPrint.forEach(el => el.style.display = 'none');
       }
     });
 
-    // Restore visibility
-    noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
-    printOnlyElements.forEach(el => (el as HTMLElement).style.display = '');
+    noPrintElements.forEach(el => el.style.display = '');
+    printOnlyElements.forEach(el => el.style.display = '');
+     if (parentScrollArea) {
+        (parentScrollArea as HTMLElement).style.height = ''; 
+        (parentScrollArea as HTMLElement).style.maxHeight = ''; 
+        (parentScrollArea as HTMLElement).style.overflow = ''; 
+    }
       
     const imgData = canvas.toDataURL('image/png');
-    
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a5'
-    });
-
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const contentWidth = pdfWidth - 2 * margin;
     
-    let yPos = 10; 
+    let yPos = margin; 
 
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "bold");
-    const shreeText = "|| 卐 SHREE 卐 ||";
-    const shreeTextWidth = pdf.getStringUnitWidth(shreeText) * pdf.getFontSize() / pdf.internal.scaleFactor;
-    pdf.text(shreeText, (pdfWidth - shreeTextWidth) / 2, yPos);
-    yPos += 8;
+    const shreeSymbol = document.getElementById('print-header-symbol-ledger-pdf');
+    if (shreeSymbol) {
+        try {
+            const shreeCanvas = await html2canvas(shreeSymbol, { backgroundColor: null, scale: 2 });
+            const shreeImgData = shreeCanvas.toDataURL('image/png');
+            const shreeImgProps = pdf.getImageProperties(shreeImgData);
+            const shreeRatio = shreeImgProps.width / shreeImgProps.height;
+            const shreePdfHeight = 10; 
+            const shreePdfWidth = shreePdfHeight * shreeRatio;
+            pdf.addImage(shreeImgData, 'PNG', (pdfWidth - shreePdfWidth) / 2, yPos, shreePdfWidth, shreePdfHeight);
+            yPos += shreePdfHeight + 2;
+        } catch(e) { console.error("Error rendering Shree symbol to PDF", e); }
+    }
 
     pdf.setFontSize(14);
     pdf.setFont("helvetica", "bold");
@@ -344,35 +345,37 @@ export function LedgerClient() {
     pdf.text(periodText, (pdfWidth - periodWidth) / 2, yPos);
     yPos += 8; 
 
-    const imgProps= pdf.getImageProperties(imgData);
-    const imgWidth = imgProps.width;
-    const imgHeight = imgProps.height;
+    const imgProps = pdf.getImageProperties(imgData);
+    const ratio = contentWidth / imgProps.width; 
+    const finalImgHeight = imgProps.height * ratio;
     
-    const ratio = (pdfWidth - 20) / imgWidth; 
-    const finalImgHeight = imgHeight * ratio;
-    
-    let currentImgPos = 0;
-    while(currentImgPos < finalImgHeight) {
-        const pageImgHeight = Math.min(finalImgHeight - currentImgPos, pdfHeight - yPos - 10);
+    let currentImgPos = 0; 
+    let pageContentHeight = pdfHeight - yPos - margin; 
+
+    while(currentImgPos < imgProps.height) { 
+        const sourceImgHeightForPage = Math.min(imgProps.height - currentImgPos, pageContentHeight / ratio);
         
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width;
-        tempCanvas.height = (pageImgHeight / ratio) ;
+        tempCanvas.width = imgProps.width; 
+        tempCanvas.height = sourceImgHeightForPage;
         const tempCtx = tempCanvas.getContext('2d');
-        tempCtx?.drawImage(canvas, 0, (currentImgPos / ratio) , canvas.width, (pageImgHeight / ratio) , 0, 0, tempCanvas.width, tempCanvas.height);
+        
+        tempCtx?.drawImage(canvas, 0, currentImgPos, imgProps.width, sourceImgHeightForPage, 0, 0, tempCanvas.width, tempCanvas.height);
         const pageImgData = tempCanvas.toDataURL('image/png');
 
-        pdf.addImage(pageImgData, 'PNG', 10, yPos, imgWidth * ratio, pageImgHeight );
-        currentImgPos += pageImgHeight;
+        pdf.addImage(pageImgData, 'PNG', margin, yPos, contentWidth, sourceImgHeightForPage * ratio);
+        currentImgPos += sourceImgHeightForPage;
 
-        if(currentImgPos < finalImgHeight) {
+        if(currentImgPos < imgProps.height) {
             pdf.addPage();
-            yPos = 10; // Reset yPos for new page
+            yPos = margin; 
+            pageContentHeight = pdfHeight - 2 * margin; 
         }
     }
     
     pdf.save(`Ledger-${selectedPartyDetails?.name || 'Report'}-${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
   };
+
 
   if (!hydrated) {
     return (
@@ -384,21 +387,40 @@ export function LedgerClient() {
 
   return (
     <div className="space-y-6 print-area">
-      
+      <div id="print-header-symbol-ledger-pdf" style={{ display: 'none', textAlign: 'center', fontSize: '12pt', fontWeight: 'bold' }}>
+         || 卐 SHREE 卐 ||
+      </div>
       <Card className="shadow-md no-print">
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-3xl font-bold text-foreground">Party Ledger (FY {currentFinancialYearString})</h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                {partyOptions.length > 0 ? (
+                {allMasters.length > 0 ? (
                     <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
                         <SelectTrigger className="w-full md:w-[280px]">
                             <SelectValue placeholder="Select Party..." />
                         </SelectTrigger>
                         <SelectContent>
-                            {partyOptions.map(opt => (
-                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
+                          <SelectGroup>
+                            <SelectLabel>Customers</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Customer').map(opt => (<SelectItem key={`cust-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                          <SelectGroup>
+                            <SelectLabel>Suppliers</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Supplier').map(opt => (<SelectItem key={`supp-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                           <SelectGroup>
+                            <SelectLabel>Agents</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Agent').map(opt => (<SelectItem key={`agent-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                           <SelectGroup>
+                            <SelectLabel>Brokers</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Broker').map(opt => (<SelectItem key={`brok-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                           <SelectGroup>
+                            <SelectLabel>Transporters</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Transporter').map(opt => (<SelectItem key={`trans-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
                         </SelectContent>
                     </Select>
                 ) : (
@@ -449,9 +471,11 @@ export function LedgerClient() {
                     <TableHead className="print:w-[35%]">Particulars</TableHead>
                     <TableHead className="print:w-[10%]">Vch Type</TableHead>
                     <TableHead className="print:w-[10%]">Ref. No.</TableHead>
-                    <TableHead className="text-right print:w-[12.5%] no-print">Rate (₹)</TableHead>
-                    <TableHead className="text-right print:w-[12.5%] no-print">Net Wt. (kg)</TableHead>
+                    {/* On-screen only columns */}
+                    <TableHead className="text-right no-print">Rate (₹)</TableHead>
+                    <TableHead className="text-right no-print">Net Wt. (kg)</TableHead>
                     <TableHead className="text-right no-print">Trans. Amt. (₹)</TableHead>
+                    {/* Shared columns */}
                     <TableHead className="text-right print:w-[12%]">Debit (₹)</TableHead>
                     <TableHead className="text-right print:w-[12%]">Credit (₹)</TableHead>
                     <TableHead className="text-right no-print">Balance (₹)</TableHead>
@@ -459,10 +483,11 @@ export function LedgerClient() {
                 </TableHeader>
                 <TableBody>
                   <TableRow className="print:font-medium">
-                    <TableCell colSpan={4} className="print:font-semibold print:text-left">Opening Balance</TableCell>
+                    <TableCell colSpan={selectedPartyDetails.type === 'Broker' ? 3 : 4} className="print:col-span-2 print:font-semibold print:text-left">Opening Balance</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Rate */}</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Net Wt. */}</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Trans. Amt. */}</TableCell>
+                     {/* Vch No. for Opening Balance in print view - colspan adjusted */}
                     <TableCell className="text-right print:font-semibold">
                         {ledgerTransactions.openingBalance >= 0 ? ledgerTransactions.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                     </TableCell>
@@ -475,16 +500,16 @@ export function LedgerClient() {
                   </TableRow>
                   {ledgerTransactions.entries.length > 0 ? (
                     ledgerTransactions.entries.map((entry, index) => (
-                      <TableRow key={`${entry.relatedDocId}-${index}-${entry.type}`}>
+                      <TableRow key={`${entry.id}-${index}`}>
                         <TableCell>{format(parseISO(entry.date), "dd-MM-yy")}</TableCell>
                         <TableCell className="max-w-xs truncate print:max-w-none print:whitespace-normal">
                            <Tooltip>
-                            <TooltipTrigger asChild><span className="no-print">{entry.particulars}</span></TooltipTrigger>
-                            <TooltipContent><p>{entry.particulars}</p></TooltipContent>
+                            <TooltipTrigger asChild><span className="no-print">{entry.description}</span></TooltipTrigger>
+                            <TooltipContent><p>{entry.description}</p></TooltipContent>
                            </Tooltip>
-                           <span className="print:block hidden print-only-block">{entry.particulars}</span>
+                           <span className="print:block hidden print-only-block">{entry.description}</span>
                         </TableCell>
-                        <TableCell>{entry.type}</TableCell>
+                        <TableCell>{entry.vchType}</TableCell>
                         <TableCell>{entry.refNo || ''}</TableCell>
                         <TableCell className="text-right no-print">{entry.rate?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
                         <TableCell className="text-right no-print">{entry.netWeight?.toLocaleString() || '-'}</TableCell>
@@ -494,9 +519,7 @@ export function LedgerClient() {
                               <TooltipTrigger asChild>
                                 <span>{entry.transactionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                               </TooltipTrigger>
-                              {entry.refNo && (
-                                <TooltipContent><p>Ref: {entry.refNo}</p></TooltipContent>
-                              )}
+                              {entry.refNo && (<TooltipContent><p>Ref: {entry.refNo}</p></TooltipContent>)}
                             </Tooltip>
                           ) : '-'}
                         </TableCell>
@@ -517,10 +540,11 @@ export function LedgerClient() {
                 </TableBody>
                 <TableFooter className="print:text-[9pt]">
                     <TableRow className="font-semibold">
-                        <TableCell colSpan={4} className="text-right print:text-left">Totals for Period:</TableCell>
+                        <TableCell colSpan={4} className="text-right print:col-span-2 print:text-left">Totals for Period:</TableCell>
                         <TableCell className="no-print">{/* Rate */}</TableCell>
                         <TableCell className="no-print">{/* Net Wt. */}</TableCell>
                         <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
+                         {/* Vch No. for Total in print view - colspan adjusted */}
                         <TableCell className="text-right border-t border-b border-foreground">
                             {ledgerTransactions.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
@@ -530,12 +554,13 @@ export function LedgerClient() {
                         <TableCell className="no-print"></TableCell>
                     </TableRow>
                     <TableRow className="font-semibold text-base">
-                        <TableCell colSpan={4} className="text-right print:text-left">
+                        <TableCell colSpan={4} className="text-right print:col-span-2 print:text-left">
                             {ledgerTransactions.closingBalance < 0 ? 'By Closing Balance:' : 'To Closing Balance:'}
                         </TableCell>
                         <TableCell className="no-print">{/* Rate */}</TableCell>
                         <TableCell className="no-print">{/* Net Wt. */}</TableCell>
                         <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
+                         {/* Vch No. for Closing in print view - colspan adjusted */}
                         <TableCell className="text-right border-b-2 border-foreground">
                             {ledgerTransactions.closingBalance >= 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
                         </TableCell>
@@ -562,7 +587,7 @@ export function LedgerClient() {
           <div className="text-center">
             <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />
             <p className="text-xl text-muted-foreground">
-              {partyOptions.length === 0 && hydrated ? "No parties found. Please add master data first." : "Please select a party to view their ledger."}
+              {allMasters.length === 0 && hydrated ? "No parties found. Please add master data first." : "Please select a party to view their ledger."}
             </p>
           </div>
         </Card>
@@ -571,5 +596,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
-    
