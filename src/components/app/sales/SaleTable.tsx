@@ -27,6 +27,11 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
     return <p className="text-center text-muted-foreground py-8">No sales recorded yet.</p>;
   }
 
+  const handlePrint = () => {
+    console.log('Print Chitti (Sales) clicked');
+    window.print();
+  };
+
   return (
     <ScrollArea className="rounded-md border shadow-sm">
       <Table className="min-w-full whitespace-nowrap">
@@ -64,7 +69,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
                 <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-1 hover:text-primary" title="Edit Sale">
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => window.print()} className="mr-1 hover:text-blue-600" title="Print Chitti">
+                <Button variant="ghost" size="icon" onClick={handlePrint} className="mr-1 hover:text-blue-600" title="Print Chitti">
                   <Printer className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => onDelete(sale.id)} className="hover:text-destructive" title="Delete Sale">
@@ -80,5 +85,3 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
-
-    

@@ -27,6 +27,11 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
     return <p className="text-center text-muted-foreground py-8">No purchases recorded yet.</p>;
   }
 
+  const handlePrint = () => {
+    console.log('Print Chitti (Purchases) clicked');
+    window.print();
+  };
+
   return (
     <ScrollArea className="rounded-md border shadow-sm">
       <Table className="min-w-full whitespace-nowrap">
@@ -37,13 +42,11 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
             <TableHead>Location</TableHead>
             <TableHead>Supplier</TableHead>
             <TableHead>Agent</TableHead>
-            {/* Broker column removed as per previous request */}
             <TableHead className="text-right">Bags</TableHead>
             <TableHead className="text-right">Net Wt.(kg)</TableHead>
             <TableHead className="text-right">Rate (₹/kg)</TableHead>
             <TableHead className="text-right">Expenses (₹)</TableHead>
             <TableHead className="text-right">Transport (₹)</TableHead>
-            {/* Brokerage column removed */}
             <TableHead className="text-right">Total Val (₹)</TableHead>
             <TableHead className="text-center w-[120px]">Actions</TableHead>
           </TableRow>
@@ -56,19 +59,17 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableCell>{purchase.locationName || purchase.locationId}</TableCell>
               <TableCell>{purchase.supplierName || purchase.supplierId}</TableCell>
               <TableCell>{purchase.agentName || purchase.agentId || 'N/A'}</TableCell>
-              {/* Broker cell removed */}
               <TableCell className="text-right">{purchase.quantity}</TableCell>
               <TableCell className="text-right">{purchase.netWeight.toLocaleString()}</TableCell>
               <TableCell className="text-right">{purchase.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-right">{(purchase.expenses || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-right">{(purchase.transportRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-              {/* Brokerage cell removed */}
               <TableCell className="text-right font-semibold">{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
               <TableCell className="text-center">
                 <Button variant="ghost" size="icon" onClick={() => onEdit(purchase)} className="mr-1 hover:text-primary" title="Edit Purchase">
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => window.print()} className="mr-1 hover:text-blue-600" title="Print Chitti">
+                <Button variant="ghost" size="icon" onClick={handlePrint} className="mr-1 hover:text-blue-600" title="Print Chitti">
                   <Printer className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="icon" onClick={() => onDelete(purchase.id)} className="hover:text-destructive" title="Delete Purchase">
@@ -85,4 +86,3 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 }
 
 export const PurchaseTable = React.memo(PurchaseTableComponent);
-
