@@ -7,24 +7,7 @@ import { DatabaseBackup, UploadCloud, FileJson, History, AlertTriangle, Printer 
 import { useToast } from "@/hooks/use-toast";
 import React, { ChangeEvent } from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-
-// Define the keys for data stored in localStorage
-const LOCAL_STORAGE_KEYS = {
-  purchases: 'purchasesData',
-  sales: 'salesData',
-  receipts: 'receiptsData', 
-  payments: 'paymentsData',
-  locationTransfers: 'locationTransfersData', // Added location transfers
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  warehouses: 'masterWarehouses', 
-  brokers: 'masterBrokers',
-  settingsFontSize: 'appFontSize',
-  settingsFinancialYear: 'appFinancialYear',
-};
-const LAST_BACKUP_TIMESTAMP_KEY = 'lastBackupTimestamp';
+import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KEY } from "@/lib/backupRestoreUtils";
 
 export default function BackupPage() {
   const { toast } = useToast();
@@ -37,119 +20,12 @@ export default function BackupPage() {
     return "Not Available Yet";
   };
 
-
-  const handleExportToPortable = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      const backupData: Record<string, any> = {};
-      // Gather all specified LOCAL_STORAGE_KEYS values
-      Object.values(LOCAL_STORAGE_KEYS).forEach(key => {
-        const item = localStorage.getItem(key);
-        if (item !== null) {
-          try {
-            backupData[key] = JSON.parse(item);
-          } catch (e) {
-            // If not JSON, store as is (e.g. plain string for font size or FY)
-             backupData[key] = item;
-          }
-        }
-      });
-      
-      // Also include lastBackupTimestamp itself if it exists
-      if (lastBackupTimestamp) {
-        backupData[LAST_BACKUP_TIMESTAMP_KEY] = lastBackupTimestamp;
-      }
-
-
-      const jsonString = JSON.stringify(backupData, null, 2);
-      const blob = new Blob([jsonString], { type: "application/json" });
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = href;
-      const currentDate = new Date().toISOString().slice(0, 10);
-      link.download = `KKS_Portable_Backup_${currentDate}.json`; // Standardized filename
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(href);
-
-      const now = Date.now();
-      setLastBackupTimestamp(now); // Update last backup time for this action
-
-      toast({
-        title: "Portable Export Successful",
-        description: "Your data has been exported to a portable JSON file.",
-      });
-    } catch (error) {
-      console.error("Portable Export failed:", error);
-      toast({
-        title: "Portable Export Failed",
-        description: "An error occurred while creating the portable JSON backup.",
-        variant: "destructive",
-      });
-    }
+  const handleExportClick = () => {
+    exportDataToPortableFile({ toast, setLastBackupTimestamp, lastBackupTimestampFromState: lastBackupTimestamp });
   };
 
-  const handleRestore = (event: ChangeEvent<HTMLInputElement>) => {
-    if (typeof window === 'undefined') return;
-    const file = event.target.files?.[0];
-    if (!file) {
-      toast({ title: "No file selected", description: "Please select a backup file to restore.", variant: "destructive" });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const jsonString = e.target?.result as string;
-        const restoredData = JSON.parse(jsonString);
-
-        let restoreSuccess = false;
-        for (const keyInBackup in restoredData) {
-          // Check if the key from the backup file matches any of our defined LOCAL_STORAGE_KEYS values or the timestamp key
-          const appKeyMatch = Object.values(LOCAL_STORAGE_KEYS).find(k => k === keyInBackup);
-          
-          if (appKeyMatch || keyInBackup === LAST_BACKUP_TIMESTAMP_KEY ) {
-             const targetKey = keyInBackup; 
-             if (typeof restoredData[targetKey] === 'string') {
-                localStorage.setItem(targetKey, restoredData[targetKey]);
-             } else {
-                localStorage.setItem(targetKey, JSON.stringify(restoredData[targetKey]));
-             }
-            restoreSuccess = true;
-            // If restoring the lastBackupTimestamp, update the state as well
-            if (targetKey === LAST_BACKUP_TIMESTAMP_KEY && typeof restoredData[targetKey] === 'number') {
-                setLastBackupTimestamp(restoredData[targetKey]);
-            }
-          }
-        }
-        
-        if(restoreSuccess){
-          toast({
-            title: "Restore Successful",
-            description: "Data has been restored from the backup file. Please refresh the application.",
-          });
-          setTimeout(() => window.location.reload(), 1500);
-        } else {
-            toast({
-            title: "Restore Failed",
-            description: "The backup file does not seem to contain valid application data for the defined keys.",
-            variant: "destructive",
-          });
-        }
-
-      } catch (error) {
-        console.error("Restore failed:", error);
-        toast({
-          title: "Restore Failed",
-          description: "The selected file is not a valid backup file or is corrupted.",
-          variant: "destructive",
-        });
-      } finally {
-        if(event.target) event.target.value = "";
-      }
-    };
-    reader.readAsText(file);
+  const handleRestoreChange = (event: ChangeEvent<HTMLInputElement>) => {
+    restoreDataFromFile(event, { toast, setLastBackupTimestamp });
   };
 
   return (
@@ -162,7 +38,6 @@ export default function BackupPage() {
         </Button>
       </div>
 
-
       <Card className="shadow-xl border-2 border-primary/20">
         <CardHeader className="items-center">
           <DatabaseBackup className="w-16 h-16 text-primary mb-4" />
@@ -171,7 +46,7 @@ export default function BackupPage() {
         <CardContent className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
-              onClick={handleExportToPortable}
+              onClick={handleExportClick}
               className="w-full text-lg py-6 bg-green-600 hover:bg-green-700 text-white"
               variant="default"
               size="lg"
@@ -192,7 +67,7 @@ export default function BackupPage() {
                   type="file"
                   id="restore-file-input"
                   accept=".json"
-                  onChange={handleRestore}
+                  onChange={handleRestoreChange}
                   className="hidden"
                 />
               </label>
