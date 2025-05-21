@@ -14,9 +14,22 @@ import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
-const PAYMENTS_STORAGE_KEY = 'paymentsData';
-const RECEIPTS_STORAGE_KEY = 'receiptsData';
+// const PAYMENTS_STORAGE_KEY = 'paymentsData'; // Not directly used for dashboard summaries, but good to have if expanding
+// const RECEIPTS_STORAGE_KEY = 'receiptsData'; // Not directly used for dashboard summaries
 
+// Fallback initial warehouse data, mirroring masters/page.tsx for consistency
+// This helps if dashboard is visited before masters page populates localStorage.
+const initialDashboardWarehouses: MasterWarehouse[] = [
+  { id: "wh-mum", name: "Mumbai Central Warehouse", type: "Warehouse" },
+  { id: "wh-pune", name: "Pune North Godown", type: "Warehouse" },
+  { id: "wh-ngp", name: "Nagpur South Storage", type: "Warehouse" },
+  { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
+  { id: "wh-chiplun", name: "Chiplun Warehouse", type: "Warehouse" },
+  { id: "wh-sawantwadi", name: "Sawantwadi Warehouse", type: "Warehouse" },
+  // Adding IDs that might have been in older dummy data to ensure names resolve if old data persists
+  { id: "w1", name: "Mumbai Godown (Old)", type: "Warehouse" },
+  { id: "w2", name: "Chiplun Storage (Old)", type: "Warehouse" },
+];
 
 interface SummaryData {
   totalAmount: number;
@@ -35,7 +48,8 @@ const DashboardClient = () => {
   
   const memoizedInitialPurchases = React.useMemo(() => [], []);
   const memoizedInitialSales = React.useMemo(() => [], []);
-  const memoizedInitialWarehouses = React.useMemo(() => [], []);
+  // Use the more comprehensive initialDashboardWarehouses for the memoized default
+  const memoizedInitialWarehouses = React.useMemo(() => initialDashboardWarehouses, []);
 
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
@@ -83,12 +97,11 @@ const DashboardClient = () => {
     sales.forEach(s => {
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber); 
       if (relatedPurchase) {
-        const key = `${s.lotNumber}-${relatedPurchase.locationId}`; // Use purchase location for stock deduction
+        const key = `${s.lotNumber}-${relatedPurchase.locationId}`; 
         let entry = inventoryMap.get(key);
         if (entry) {
           entry.currentBags -= s.quantity;
           entry.currentWeight -= s.netWeight;
-          // No negative stock enforcement here, just calculation.
           inventoryMap.set(key, entry);
         }
       }
@@ -102,6 +115,7 @@ const DashboardClient = () => {
       if (item.currentBags > 0) { 
         totalBags += item.currentBags;
         totalNetWeight += item.currentWeight;
+        // Use the warehouses state for name resolution
         const locationName = warehouses.find(w => w.id === item.locationId)?.name || item.locationId;
         if (!byLocation[item.locationId]) {
           byLocation[item.locationId] = { name: locationName, bags: 0, netWeight: 0 };
@@ -166,11 +180,12 @@ const DashboardClient = () => {
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stockSummary.totalBags.toLocaleString()} Bags</div>
               <p className="text-xs text-muted-foreground">Total: {stockSummary.totalNetWeight.toLocaleString()} kg</p>
+              {Object.keys(stockSummary.byLocation).length > 0 && <hr className="my-2 border-yellow-500/30" />}
               <div className="mt-2 space-y-1 text-xs">
                   {Object.values(stockSummary.byLocation).map(loc => (
                       <div key={loc.name} className="flex justify-between">
-                          <span>{loc.name}:</span>
-                          <span className='font-medium'>{loc.bags.toLocaleString()} Bags ({loc.netWeight.toLocaleString()} kg)</span>
+                          <span className="text-yellow-700 dark:text-yellow-300">{loc.name}:</span>
+                          <span className='font-medium text-yellow-600 dark:text-yellow-400'>{loc.bags.toLocaleString()} Bags ({loc.netWeight.toLocaleString()} kg)</span>
                       </div>
                   ))}
               </div>
@@ -180,6 +195,7 @@ const DashboardClient = () => {
       </div>
       
       <Link href="/profit-analysis" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
+        {/* ProfitSummary component is expected to be self-contained and styled */}
         <ProfitSummary sales={sales} purchases={purchases} />
       </Link>
     </div>
