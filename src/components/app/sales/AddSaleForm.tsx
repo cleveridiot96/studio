@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CalendarIcon, Info, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema'; // Sale type import removed, already in types
+import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema';
 import type { MasterItem, MasterItemType, Purchase, Sale, Broker } from '@/lib/types';
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 import { useToast } from '@/hooks/use-toast';
@@ -43,9 +43,9 @@ interface AddSaleFormProps {
   onSubmit: (sale: Sale) => void;
   customers: MasterItem[];
   transporters: MasterItem[];
-  brokers: Broker[]; // Changed to Broker[] for specific commissionRate access
-  inventoryLots: Purchase[];
-  existingSales: Sale[]; 
+  brokers: Broker[];
+  inventoryLots: Purchase[]; // Available lots to sell from
+  existingSales: Sale[]; // To calculate remaining stock accurately
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
 }
@@ -57,7 +57,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
   customers,
   transporters,
   brokers,
-  inventoryLots,
+  inventoryLots, // These are effectively purchases with stock info
   existingSales,
   onMasterDataUpdate,
   saleToEdit,
@@ -69,6 +69,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
   const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(false);
+
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
@@ -89,7 +90,6 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
         brokerageValue: saleToEdit.brokerageValue || undefined,
         notes: saleToEdit.notes || "",
         calculatedBrokerageCommission: saleToEdit.calculatedBrokerageCommission || 0,
-        // profit field is not part of form values, it's calculated
       };
     }
     return {
@@ -116,13 +116,14 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     resolver: zodResolver(saleSchema(customers, transporters, brokers, inventoryLots, existingSales, saleToEdit?.id)),
     defaultValues: getDefaultValues(),
   });
-  const { control, watch, reset, setValue, formState: { dirtyFields } } = methods;
+  const { control, watch, reset, setValue, handleSubmit, formState: { errors, dirtyFields } } = methods;
+
 
   React.useEffect(() => {
     if(isOpen){
       reset(getDefaultValues());
       setNetWeightManuallySet(!!saleToEdit?.netWeight);
-      setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue);
+      setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue); // Track if brokerage was manually set
     }
   }, [saleToEdit, isOpen, reset, getDefaultValues]);
 
@@ -135,7 +136,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue"); // This is the direct input value for fixed or percentage rate
   
-  // Auto-calculate Net Weight if not manually set
+  // Auto-calculate Net Weight if not manually set and quantity changes
   React.useEffect(() => {
     if (typeof quantity === 'number' && quantity > 0 && !netWeightManuallySet && !dirtyFields.netWeight) {
       setValue("netWeight", quantity * 50, { shouldValidate: true });
@@ -150,16 +151,17 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
 
   const finalBillAmountToUse = billAmountManual !== undefined && billAmountManual > 0 ? billAmountManual : calculatedBillAmount;
 
-  // Auto-populate brokerage from master
+  // Auto-populate brokerage from master if broker is selected and brokerage not manually set
   React.useEffect(() => {
     if (selectedBrokerId && !brokerageValueManuallySet && !dirtyFields.brokerageType && !dirtyFields.brokerageValue) {
       const brokerDetails = brokers.find(b => b.id === selectedBrokerId);
-      if (brokerDetails && brokerDetails.commission !== undefined) {
+      if (brokerDetails && brokerDetails.commission !== undefined) { // Assuming commission on master is percentage
         setValue("brokerageType", "Percentage", { shouldValidate: true });
         setValue("brokerageValue", brokerDetails.commission, { shouldValidate: true });
       }
     }
   }, [selectedBrokerId, brokers, setValue, dirtyFields.brokerageType, dirtyFields.brokerageValue, brokerageValueManuallySet]);
+
 
   const calculatedBrokerageCommission = React.useMemo(() => {
     if (!selectedBrokerId || brokerageValue === undefined) return 0;
@@ -190,11 +192,12 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
      setValue('calculatedBrokerageCommission', calculatedBrokerageCommission);
   },[calculatedBrokerageCommission, setValue]);
 
+
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
-
+  
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
     if (newItem.type === masterFormItemType) {
@@ -214,6 +217,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     }
     setIsSubmitting(true);
     const selectedCustomer = customers.find(c => c.id === values.customerId);
+    const selectedBroker = brokers.find(b => b.id === values.brokerId);
     
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,
@@ -231,13 +235,13 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
       transportCost: values.transportCost,
       brokerId: values.brokerId,
-      brokerName: brokers.find(b => b.id === values.brokerId)?.name,
+      brokerName: selectedBroker?.name,
       brokerageType: values.brokerageType,
-      brokerageValue: values.brokerageValue, // Store the input value (rate or fixed amount)
-      calculatedBrokerageCommission: calculatedBrokerageCommission, // Store the calculated commission
+      brokerageValue: values.brokerageValue,
+      calculatedBrokerageCommission: calculatedBrokerageCommission,
       notes: values.notes,
-      totalAmount: finalBillAmountToUse, // This is the final amount for the customer
-      calculatedProfit: calculatedProfit, // Store the calculated profit
+      totalAmount: finalBillAmountToUse,
+      calculatedProfit: calculatedProfit,
     };
     onSubmit(saleData);
     setIsSubmitting(false);
@@ -300,8 +304,10 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={control} name="lotNumber" render={({ field }) => (
                       <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
-                      <MasterDataCombobox 
+                      <MasterDataCombobox
                         name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
                         options={inventoryLots.map(p => {
                           const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
                           const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
@@ -311,7 +317,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                             label: `${p.lotNumber} (${p.locationName || p.locationId} - Avl: ${availableBags} bags)`
                           };
                         }).filter(opt => opt.label.includes("Avl: ") ? parseInt(opt.label.substring(opt.label.indexOf("Avl: ") + 5).split(" ")[0]) > 0 : true)}
-                        placeholder="Select Lot" 
+                        placeholder="Select Lot"
                         searchPlaceholder="Search lots..."
                         notFoundMessage="Lot not found or out of stock."
                       />
@@ -320,8 +326,10 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                     <FormField control={control} name="customerId" render={({ field }) => (
                       <FormItem><FormLabel>Customer</FormLabel>
                       <MasterDataCombobox
-                        name={field.name} 
-                        options={customers.map(c => ({ value: c.id, label: c.name }))} 
+                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={customers.map(c => ({ value: c.id, label: c.name }))}
                         placeholder="Select Customer"
                         searchPlaceholder="Search customers..."
                         notFoundMessage="Customer not found."
@@ -334,20 +342,24 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                       <FormField control={control} name="quantity" render={({ field }) => (
                           <FormItem><FormLabel>No. of Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="e.g., 50" {...field} value={field.value || ''} 
+                          <FormControl><Input type="number" placeholder="e.g., 50" {...field} value={field.value || ''}
                             onChange={e => {
-                              field.onChange(parseFloat(e.target.value) || 0);
-                            }} 
+                              const val = parseFloat(e.target.value) || 0;
+                              field.onChange(val);
+                              if (!dirtyFields.netWeight && !netWeightManuallySet) { // Only auto-calc if netWeight not manually set
+                                setValue("netWeight", val * 50, { shouldValidate: true });
+                              }
+                            }}
                           /></FormControl><FormMessage /></FormItem>)}
                       />
                      <FormField control={control} name="netWeight" render={({ field }) => (
                           <FormItem><FormLabel>Net Weight (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 2500" {...field} value={field.value || ''} 
+                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 2500" {...field} value={field.value || ''}
                             onChange={e => {
                               field.onChange(parseFloat(e.target.value) || 0);
                               setNetWeightManuallySet(true);
                             }}
-                            onFocus={() => setNetWeightManuallySet(true)}
+                            onFocus={() => setNetWeightManuallySet(true)} // Also set flag on focus to prevent override
                           /></FormControl><FormMessage /></FormItem>)}
                       />
                       <FormField control={control} name="rate" render={({ field }) => (
@@ -363,10 +375,12 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                       <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem><FormLabel>Transporter</FormLabel>
-                          <MasterDataCombobox 
+                          <MasterDataCombobox
                             name={field.name}
-                            options={transporters.map(t => ({ value: t.id, label: t.name }))} 
-                            placeholder="Select Transporter" 
+                            value={field.value}
+                            onChange={field.onChange}
+                            options={transporters.map(t => ({ value: t.id, label: t.name }))}
+                            placeholder="Select Transporter"
                             searchPlaceholder="Search transporters..."
                             notFoundMessage="Transporter not found."
                             addNewLabel="Add New Transporter"
@@ -380,10 +394,23 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                       />
                       <FormField control={control} name="brokerId" render={({ field }) => (
                           <FormItem><FormLabel>Broker</FormLabel>
-                          <MasterDataCombobox 
+                          <MasterDataCombobox
                             name={field.name}
-                            options={brokers.map(b => ({ value: b.id, label: b.name }))} 
-                            placeholder="Select Broker" 
+                            value={field.value}
+                            onChange={(val) => {
+                                field.onChange(val);
+                                setBrokerageValueManuallySet(false); // Reset manual flag when broker changes
+                                const brokerDetails = brokers.find(b => b.id === val);
+                                if (brokerDetails && brokerDetails.commission !== undefined) {
+                                    setValue("brokerageType", "Percentage", { shouldValidate: true });
+                                    setValue("brokerageValue", brokerDetails.commission, { shouldValidate: true });
+                                } else {
+                                    setValue("brokerageType", undefined); // Clear if no commission on master
+                                    setValue("brokerageValue", undefined);
+                                }
+                            }}
+                            options={brokers.map(b => ({ value: b.id, label: b.name }))}
+                            placeholder="Select Broker"
                             searchPlaceholder="Search brokers..."
                             notFoundMessage="Broker not found."
                             addNewLabel="Add New Broker"
@@ -402,10 +429,10 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                           <FormField control={control} name="brokerageValue" render={({ field }) => (
                               <FormItem><FormLabel>Brokerage Value</FormLabel>
                               <div className="relative">
-                                  <FormControl><Input 
-                                    type="number" step="0.01" placeholder="Value" {...field} 
-                                    value={field.value ?? ''} 
-                                    onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setBrokerageValueManuallySet(true); }} 
+                                  <FormControl><Input
+                                    type="number" step="0.01" placeholder="Value" {...field}
+                                    value={field.value ?? ''}
+                                    onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setBrokerageValueManuallySet(true); }}
                                     onFocus={() => setBrokerageValueManuallySet(true)}
                                     disabled={!selectedBrokerId || !brokerageType} className={brokerageType === 'Percentage' ? "pr-8" : ""}/></FormControl>
                                   {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
@@ -436,7 +463,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                   </div>
                   {calculatedBrokerageCommission > 0 && (
                       <p className="text-sm text-muted-foreground pl-7">
-                          Calculated Brokerage: <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          Calculated Brokerage Expense: <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </p>
                   )}
                    <div className="flex items-center justify-between">
