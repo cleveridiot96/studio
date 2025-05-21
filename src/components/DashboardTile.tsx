@@ -2,20 +2,28 @@
 import Link from 'next/link';
 import { Card, CardTitle } from '@/components/ui/card';
 import type { LucideProps } from 'lucide-react';
-import { 
-  BarChart, DollarSign, Package, Users, LineChart, TrendingUp, ShoppingCart as DefaultShoppingCartIcon, TrendingDown, HelpCircle as FallbackIcon,
-  ArrowLeftCircle, 
-  ArrowRightCircle, 
-  BookOpen, 
-  BookUser, 
-  Users2, 
-  DatabaseBackup, 
-  LayoutGrid, 
-  Boxes, 
-  FileText, 
-  Receipt, 
+import {
+  BarChart3, // Changed from BarChart for Stock Report, used by Profit Analysis tile now
+  DollarSign,
+  Package,
+  Users,
+  LineChart,
+  TrendingUp,
+  ShoppingCart as DefaultShoppingCartIcon,
+  TrendingDown,
+  HelpCircle as FallbackIcon,
+  ArrowLeftCircle,
+  ArrowRightCircle,
+  BookOpen,
+  BookUser,
+  Users2,
+  DatabaseBackup,
+  LayoutGrid,
+  Boxes,
+  FileText, // For Stock Report tile
+  Receipt,
   ArrowRightLeft,
-  Rocket, // Added Rocket icon
+  Rocket, // For Profit Analysis tile
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -23,35 +31,35 @@ import React from 'react';
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<LucideProps>> = {
-  BarChart, 
-  DollarSign, 
-  Package, 
-  Users, 
-  LineChart, 
-  TrendingUp, 
+  BarChart3,
+  DollarSign,
+  Package,
+  Users,
+  LineChart,
+  TrendingUp,
   ShoppingCart: DefaultShoppingCartIcon,
-  TrendingDown, 
-  Receipt, 
-  Boxes, 
-  FileText, 
-  ArrowRightCircle, 
-  ArrowLeftCircle, 
-  BookOpen, 
-  BookUser, 
-  Users2, 
+  TrendingDown,
+  Receipt,
+  Boxes,
+  FileText,
+  ArrowRightCircle,
+  ArrowLeftCircle,
+  BookOpen,
+  BookUser,
+  Users2,
   DatabaseBackup,
-  LayoutGrid,  
+  LayoutGrid,
   ArrowRightLeft,
-  Rocket, // Added Rocket icon
+  Rocket,
 };
 
 
 interface DashboardTileProps {
   title: string;
-  iconName: string; 
+  iconName: string;
   href: string;
   description?: string;
-  className?: string; 
+  className?: string;
 }
 
 const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className }) => {
@@ -60,11 +68,11 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
     <Link href={href} className="block group h-full">
       <Card className={cn(
         "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-        "rounded-xl p-6 flex flex-col items-center text-center justify-center h-full min-h-[180px]", 
-        className 
+        "rounded-xl p-4 flex flex-col items-center text-center justify-center h-full min-h-[150px]",
+        className
       )}>
-        <Icon className="h-10 w-10 mb-3" /> 
-        <CardTitle className="text-xl font-semibold mb-1">{title}</CardTitle> 
+        <Icon className="h-8 w-8 mb-2" />
+        <CardTitle className="text-lg font-semibold mb-1">{title}</CardTitle>
         {description && <p className="text-sm opacity-90">{description}</p>}
       </Card>
     </Link>

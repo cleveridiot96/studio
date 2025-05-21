@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
-import { CloudUpload, CloudDownload } from 'lucide-react';
+import { UploadCloud, FileJson as ExportIcon } from 'lucide-react'; // Changed CloudDownload to FileJson
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
@@ -11,8 +11,8 @@ import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KE
 interface BackupRestoreTileProps {
   backupLink: string; // Still used if direct navigation to full page is desired as a fallback
   restoreLink: string; // Still used if direct navigation to full page is desired as a fallback
-  backupColor: string; 
-  restoreColor: string; 
+  backupColor: string;
+  restoreColor: string;
   backupLabel: string;
   restoreLabel: string;
 }
@@ -45,26 +45,26 @@ const BackupRestoreTile: React.FC<BackupRestoreTileProps> = ({
       <button
         onClick={handleBackupClick}
         className={cn(
-          "flex-1 flex flex-col items-center justify-center p-4 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white",
+          "flex-1 flex flex-col items-center justify-center p-3 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white",
           backupColor,
-          backupColor.replace('-600', '-700').replace('-500', '-600')
+          backupColor.replace('-600', '-700').replace('-500', '-600') // Darken on hover
         )}
       >
-        <CloudDownload className="h-10 w-10 mb-2" /> {/* Changed icon to CloudDownload for export */}
-        <span className="text-lg font-semibold text-center">{backupLabel}</span>
+        <ExportIcon className="h-8 w-8 mb-1" /> {/* Changed icon */}
+        <span className="text-base font-semibold text-center">{backupLabel}</span>
       </button>
 
       {/* Restore Half */}
       <button
         onClick={handleRestoreClick}
         className={cn(
-          "flex-1 flex flex-col items-center justify-center p-4 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white",
+          "flex-1 flex flex-col items-center justify-center p-3 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white",
           restoreColor,
-          restoreColor.replace('-600', '-700').replace('-500', '-600')
+          restoreColor.replace('-600', '-700').replace('-500', '-600') // Darken on hover
         )}
       >
-        <CloudUpload className="h-10 w-10 mb-2" />
-        <span className="text-lg font-semibold text-center">{restoreLabel}</span>
+        <UploadCloud className="h-8 w-8 mb-1" />
+        <span className="text-base font-semibold text-center">{restoreLabel}</span>
       </button>
       <input
         type="file"
