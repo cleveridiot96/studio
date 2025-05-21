@@ -1,7 +1,8 @@
 
+"use client";
+
 import * as React from "react";
 import { useForm, FormProvider } from "react-hook-form";
-// import { collection, addDoc, serverTimestamp } from "firebase/firestore"; // Firebase import removed
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,13 +25,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Select, SelectContent, SelectItem, SelectTrigger, SelectValue removed as not used here
 import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-// import { db } from "@/lib/firebase"; // Firebase import removed
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType, Broker } from "@/lib/types";
+import type { MasterItem, Purchase, MasterItemType, Broker } from "@/lib/types"; // Broker removed
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
@@ -41,14 +41,14 @@ interface AddPurchaseFormProps {
   onSubmit: (purchase: Purchase) => void;
   suppliers: MasterItem[];
   agents: MasterItem[];
-  warehouses: MasterItem[]; // Used as Locations
+  warehouses: MasterItem[]; 
   transporters: MasterItem[];
-  brokers: Broker[];
+  // brokers: Broker[]; // brokers prop removed
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   purchaseToEdit?: Purchase | null;
 }
 
-const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
+export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -56,7 +56,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   agents,
   warehouses,
   transporters,
-  brokers,
+  // brokers, // brokers prop removed
   onMasterDataUpdate,
   purchaseToEdit,
 }) => {
@@ -65,6 +65,10 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [lotNumberManuallySet, setLotNumberManuallySet] = React.useState(false);
+  const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
+  const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
+
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -80,9 +84,6 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
         expenses: purchaseToEdit.expenses || undefined,
         transportRatePerKg: purchaseToEdit.transportRatePerKg || undefined,
         transporterId: purchaseToEdit.transporterId || undefined,
-        // brokerId: purchaseToEdit.brokerId || undefined, // No longer in form
-        // brokerageType: purchaseToEdit.brokerageType || undefined, // No longer in form
-        // brokerageValue: purchaseToEdit.brokerageValue || undefined, // No longer in form
       };
     }
     return {
@@ -97,21 +98,22 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       expenses: undefined,
       transportRatePerKg: undefined,
       transporterId: undefined,
-      // brokerId: undefined, // No longer in form
-      // brokerageType: undefined, // No longer in form
-      // brokerageValue: undefined, // No longer in form
     };
   }, [purchaseToEdit]);
 
   const methods = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, brokers)),
+    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters)), // brokers removed from schema call
     defaultValues: getDefaultValues(),
   });
-  const { control, watch, setValue, formState, reset } = methods;
-
+  const { control, watch, setValue, handleSubmit, reset, formState: { errors, dirtyFields } } = methods;
 
   React.useEffect(() => {
-    reset(getDefaultValues());
+    if (isOpen) {
+      reset(getDefaultValues());
+      setLotNumberManuallySet(!!purchaseToEdit?.lotNumber);
+      setQuantityManuallySet(!!purchaseToEdit?.quantity);
+      setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
+    }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
 
@@ -119,24 +121,25 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   const quantityValue = watch("quantity");
 
   React.useEffect(() => {
-    if (lotNumberValue && !formState.dirtyFields.quantity) {
+    if (lotNumberValue && !lotNumberManuallySet && !dirtyFields.quantity) {
       const match = lotNumberValue.match(/[/\-. ](\d+)$/);
       if (match && match[1]) {
         const bags = parseInt(match[1], 10);
-        if (!isNaN(bags)) {
+        if (!isNaN(bags) && bags > 0) {
           setValue("quantity", bags, { shouldValidate: true });
+          if (!netWeightManuallySet && !dirtyFields.netWeight) {
+             setValue("netWeight", bags * 50, { shouldValidate: true });
+          }
         }
       }
     }
-  }, [lotNumberValue, setValue, formState.dirtyFields.quantity]);
+  }, [lotNumberValue, setValue, dirtyFields.quantity, dirtyFields.netWeight, lotNumberManuallySet, netWeightManuallySet]);
 
   React.useEffect(() => {
-    if (typeof quantityValue === 'number' && quantityValue > 0 && !formState.dirtyFields.netWeight) {
+    if (typeof quantityValue === 'number' && quantityValue > 0 && !quantityManuallySet && !dirtyFields.netWeight && !netWeightManuallySet) {
       setValue("netWeight", quantityValue * 50, { shouldValidate: true });
-    } else if (typeof quantityValue === 'number' && quantityValue === 0 && !formState.dirtyFields.netWeight) {
-      setValue("netWeight", 0, { shouldValidate: true });
     }
-  }, [quantityValue, setValue, formState.dirtyFields.netWeight]);
+  }, [quantityValue, setValue, dirtyFields.netWeight, quantityManuallySet, netWeightManuallySet]);
 
 
   const netWeight = watch("netWeight");
@@ -144,8 +147,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
   const expenses = watch("expenses") || 0;
   const transportRatePerKgValue = watch("transportRatePerKg") || 0;
   
-  const bagsForTransportCalc = watch("quantity") || 0;
-  const grossWeightForTransport = bagsForTransportCalc * 50; 
+  const grossWeightForTransport = (watch("quantity") || 0) * 50; 
 
   const totalAmount = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
@@ -185,6 +187,12 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
+    const finalGrossWeight = (values.quantity || 0) * 50; // Recalculate to ensure it uses form values
+    const finalTransportRate = values.transportRatePerKg ? values.transportRatePerKg * finalGrossWeight : undefined;
+    const finalTotalAmount = (parseFloat(String(values.netWeight || 0)) * parseFloat(String(values.rate || 0))) + 
+                             (parseFloat(String(values.expenses || 0))) + 
+                             (finalTransportRate || 0);
+
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
@@ -200,14 +208,13 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       rate: values.rate,
       expenses: values.expenses,
       transportRatePerKg: values.transportRatePerKg,
-      transportRate: values.transportRatePerKg ? values.transportRatePerKg * grossWeightForTransport : undefined,
+      transportRate: finalTransportRate,
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
-      totalAmount: totalAmount,
+      totalAmount: finalTotalAmount,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
-    reset(getDefaultValues());
     onClose();
   };
 
@@ -215,7 +222,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) { reset(getDefaultValues()); onClose(); } }}>
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{purchaseToEdit ? 'Edit Purchase' : 'Add New Purchase'}</DialogTitle>
@@ -223,7 +230,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
           </DialogHeader>
           <FormProvider {...methods}>
             <Form {...methods}> 
-              <form onSubmit={methods.handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+              <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                 {/* Section: Basic Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Basic Details</h3>
@@ -260,7 +267,11 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Vakkal / Lot Number</FormLabel>
-                          <FormControl><Input placeholder="e.g., AB/6 or BU-5" {...field} /></FormControl>
+                          <FormControl><Input 
+                            placeholder="e.g., AB/6 or BU-5" 
+                            {...field} 
+                            onFocus={() => setLotNumberManuallySet(true)}
+                          /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -272,7 +283,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                         <FormItem>
                           <FormLabel>Location (Warehouse)</FormLabel>
                           <MasterDataCombobox
-                            name="locationId"
+                            name={field.name}
                             options={warehouses.filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
                             placeholder="Select Location"
                             searchPlaceholder="Search locations..."
@@ -298,7 +309,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                         <FormItem>
                           <FormLabel>Supplier</FormLabel>
                           <MasterDataCombobox 
-                              name="supplierId"
+                              name={field.name}
                               options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
                               placeholder="Select Supplier" 
                               searchPlaceholder="Search suppliers..." 
@@ -317,7 +328,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                         <FormItem>
                           <FormLabel>Agent (Optional)</FormLabel>
                           <MasterDataCombobox 
-                              name="agentId"
+                              name={field.name}
                               options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
                               placeholder="Select Agent" 
                               searchPlaceholder="Search agents..." 
@@ -342,7 +353,14 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Number of Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="e.g., 100" {...field} value={field.value || ''} onChange={e => { field.onChange(parseFloat(e.target.value) || 0); }} /></FormControl>
+                          <FormControl><Input 
+                            type="number" 
+                            placeholder="e.g., 100" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={e => { field.onChange(parseFloat(e.target.value) || 0); setQuantityManuallySet(true); }} 
+                            onFocus={() => setQuantityManuallySet(true)}
+                          /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -353,7 +371,15 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Net Weight (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 5000" {...field} value={field.value || ''} onChange={e => { field.onChange(parseFloat(e.target.value) || 0); }} /></FormControl>
+                          <FormControl><Input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="e.g., 5000" 
+                            {...field} 
+                            value={field.value || ''} 
+                            onChange={e => { field.onChange(parseFloat(e.target.value) || 0); setNetWeightManuallySet(true);}} 
+                            onFocus={() => setNetWeightManuallySet(true)}
+                          /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -405,7 +431,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                           <FormItem>
                           <FormLabel>Transporter (Optional)</FormLabel>
                           <MasterDataCombobox 
-                              name="transporterId"
+                              name={field.name}
                               options={transporters.filter(t => t.type === "Transporter").map(t => ({ value: t.id, label: t.name }))}
                               placeholder="Select Transporter" 
                               searchPlaceholder="Search transporters..." 
@@ -419,6 +445,8 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
                       />
                   </div>
                 </div>
+
+                {/* Broker section removed */}
 
                 {/* Calculated Summary */}
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
@@ -439,7 +467,7 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
 
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>
-                      <Button type="button" variant="outline" onClick={() => { reset(getDefaultValues()); onClose();}}>
+                      <Button type="button" variant="outline" onClick={onClose}>
                       Cancel
                       </Button>
                   </DialogClose>
@@ -466,5 +494,4 @@ const AddPurchaseFormComponent: React.FC<AddPurchaseFormProps> = ({
       )}
     </>
   );
-}
-export const AddPurchaseForm = React.memo(AddPurchaseFormComponent);
+};

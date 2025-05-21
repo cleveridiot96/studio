@@ -1,7 +1,9 @@
 
+"use client";
+
 import * as React from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandItem, CommandGroup } from "cmdk";
+import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
@@ -20,7 +22,6 @@ interface MasterDataComboboxProps {
   notFoundMessage?: string;
   addNewLabel?: string;
   onAddNew?: () => void;
-  isLot?: boolean; // Add a prop to indicate if it's a lot combobox
   disabled?: boolean;
 }
 
@@ -32,29 +33,25 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   notFoundMessage = "No match found.",
   addNewLabel = "Add New",
   onAddNew,
-  isLot = false, // Default to false
   disabled,
 }) => {
-  const { control, setValue } = useFormContext();
-  const { field } = useController({ name, control }); // field.onChange can be used
+  const { control } = useFormContext();
+  const { field } = useController({ name, control });
+
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
-  
-  // Filter for Mumbai if it's a lot combobox, then apply search filter
-  const filteredOptions = React.useMemo(() => {
-    const locationFilteredOptions = isLot ? options.filter((option: any) => option.location === 'Mumbai') : options;
-    return locationFilteredOptions.filter((option) =>
+
+  const filteredOptions = React.useMemo(() =>
+    options.filter((option) =>
       option.label.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [options, search, isLot]);
+    ), [options, search]);
 
   const selectedLabel = options.find((opt) => opt.value === field.value)?.label;
-  const currentValueFromForm = field.value;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          onBlur={() => setOpen(false)}
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -68,53 +65,76 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command shouldFilter={false}>
+      <PopoverContent
+        className="z-[9999] w-[--radix-popover-trigger-width] p-0"
+        align="start"
+        sideOffset={4}
+      >
+        <Command shouldFilter={false} className="max-h-[300px]">
           <CommandInput
-            autoFocus
             placeholder={searchPlaceholder}
             value={search}
             onValueChange={setSearch}
+            autoFocus
           />
-          <CommandList>
-            {filteredOptions.length === 0 && search.length > 0 && !onAddNew ? (
+          <CommandList className="max-h-[calc(300px-theme(spacing.12))]">
+            {filteredOptions.length === 0 && search.length > 0 ? (
               <CommandEmpty>
                 {notFoundMessage}
+                {onAddNew && (
+                   <div
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onAddNew?.();
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className="cursor-pointer select-none px-2 py-1.5 rounded-sm hover:bg-accent focus:bg-accent active:bg-accent transition-all flex items-center"
+                    role="button"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                  </div>
+                )}
               </CommandEmpty>
             ) : (
-              <CommandGroup>
+              <>
                 {filteredOptions.map((option) => (
-                  <CommandItem // Apply the onMouseDown handler here
+                  <div
                     key={option.value}
-                    value={option.value} // Use value for command filtering
                     onMouseDown={(e) => {
-                      e.preventDefault(); // Prevent the default mouse down action
-                      setValue(name, option.value, { shouldValidate: true });
+                      e.preventDefault();
+                      field.onChange(option.value);
                       setOpen(false);
-                      setSearch(""); // clear search after selection
+                      setSearch("");
                     }}
+                    className={cn(
+                      "cursor-pointer select-none px-2 py-1.5 rounded-sm hover:bg-accent focus:bg-accent active:bg-accent transition-all flex items-center text-sm",
+                      field.value === option.value && "font-semibold"
+                    )}
+                    role="option"
+                    aria-selected={field.value === option.value}
                   >
                     <Check
-                      className={cn("mr-2 h-4 w-4", currentValueFromForm === option.value ? "opacity-100" : "opacity-0")}
+                      className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
                     />
                     {option.label}
-                  </CommandItem>
+                  </div>
                 ))}
-              </CommandGroup>
-            )}
-            {/* "Add New" option at the bottom of the list, if onAddNew is provided */}
-            {onAddNew && (
-              <CommandItem
-                key="add-new-action"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onAddNew?.();
-                  setOpen(false);
-                  setSearch("");
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-              </CommandItem>
+                {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
+                  <div
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onAddNew?.();
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className="cursor-pointer select-none px-2 py-1.5 rounded-sm hover:bg-accent focus:bg-accent active:bg-accent transition-all flex items-center text-sm mt-1 border-t"
+                    role="button"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                  </div>
+                )}
+              </>
             )}
           </CommandList>
         </Command>

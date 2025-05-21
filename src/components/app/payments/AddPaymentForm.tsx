@@ -71,7 +71,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     }
     return {
       date: new Date(),
-      partyId: undefined, // Default to undefined for placeholder to show
+      partyId: undefined, 
       amount: 0,
       paymentMethod: 'Cash',
       referenceNo: "",
@@ -89,7 +89,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     if (isOpen) {
       reset(getDefaultValues());
     }
-  }, [isOpen, paymentToEdit, reset, getDefaultValues]);
+  }, [isOpen, reset, getDefaultValues]);
 
   const handleOpenMasterForm = (type: MasterItemType = "Supplier") => {
     setMasterFormItemType(type);
@@ -100,7 +100,6 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     onMasterDataUpdate(newItem.type, newItem);
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
-    // Automatically select the newly added item in the combobox
     methods.setValue('partyId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added and selected.` });
   };
@@ -108,7 +107,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   const processSubmit = (values: PaymentFormValues) => {
     if (!values.partyId || values.amount <= 0) {
         toast({ title: "Missing Info", description: "Please select a party and enter a valid amount.", variant: "destructive" });
-        setIsSubmitting(false); // Ensure isSubmitting is reset
+        setIsSubmitting(false); 
         return;
     }
     setIsSubmitting(true);
@@ -132,14 +131,14 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     };
     onSubmit(paymentData);
     setIsSubmitting(false);
-    onClose(); // This will also trigger the reset in useEffect
+    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>
@@ -183,18 +182,13 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                     <FormItem>
                       <FormLabel>Party</FormLabel>
                        <MasterDataCombobox
-                        name={field.name} // react-hook-form field name
-                        // value={field.value} // Passed by react-hook-form's field object
-                        // onChange={field.onChange} // Passed by react-hook-form's field object
+                        name={field.name}
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
                         addNewLabel="Add New Party"
                         onAddNew={() => {
-                            // Determine default type for MasterForm based on context if possible
-                            // For payments, it's usually Supplier, Agent, Broker, Transporter
-                            // Let's default to 'Supplier' or make it selectable in MasterForm
                             const currentPartyValue = getValues("partyId");
                             const currentParty = parties.find(p => p.id === currentPartyValue);
                             handleOpenMasterForm(currentParty?.type || 'Supplier');
@@ -289,8 +283,3 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     </>
   );
 };
-
-// Removed React.memo for simpler debugging if needed, can be added back.
-// export const AddPaymentForm = React.memo(AddPaymentFormComponent);
-
-    

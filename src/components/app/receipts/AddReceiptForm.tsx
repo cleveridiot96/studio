@@ -45,7 +45,7 @@ interface AddReceiptFormProps {
   receiptToEdit?: Receipt | null;
 }
 
-const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
+export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
@@ -87,7 +87,9 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
   });
 
   React.useEffect(() => {
-    methods.reset(getDefaultValues());
+    if(isOpen) {
+      methods.reset(getDefaultValues());
+    }
   }, [receiptToEdit, isOpen, methods, getDefaultValues]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -97,7 +99,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
-    if (newItem.type === masterFormItemType) { // Check if the added type matches the context
+    if (newItem.type === masterFormItemType) { 
         methods.setValue('partyId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
@@ -106,6 +108,11 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
   };
 
   const processSubmit = React.useCallback((values: ReceiptFormValues) => {
+    if (!values.partyId || values.amount <= 0) {
+      toast({ title: "Missing Info", description: "Please select a party and enter a valid amount.", variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
     setIsSubmitting(true);
     const selectedParty = parties.find(p => p.id === values.partyId);
     if (!selectedParty) {
@@ -127,15 +134,15 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
     };
     onSubmit(receiptData);
     setIsSubmitting(false);
-    methods.reset(getDefaultValues());
+    // methods.reset(getDefaultValues()); // Reset happens in useEffect on isOpen change
     onClose();
-  }, [receiptToEdit, parties, onSubmit, methods, getDefaultValues, onClose, toast]);
+  }, [receiptToEdit, parties, onSubmit, methods, onClose, toast]);
 
   if (!isOpen) return null;
 
   return (
     <>
-      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) { methods.reset(getDefaultValues()); onClose(); } }}>
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{receiptToEdit ? 'Edit Receipt' : 'Add New Receipt'}</DialogTitle>
@@ -179,13 +186,17 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
                     <FormItem>
                       <FormLabel>Party</FormLabel>
                       <MasterDataCombobox
-                        name="partyId" 
+                        name={field.name} 
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search customers/brokers..."
                         notFoundMessage="No party found."
                         addNewLabel="Add New Party"
-                        onAddNew={() => handleOpenMasterForm('Customer')} // Default to 'Customer', MasterForm can allow change
+                        onAddNew={() => {
+                            const currentPartyValue = methods.getValues("partyId");
+                            const currentParty = parties.find(p => p.id === currentPartyValue);
+                            handleOpenMasterForm(currentParty?.type || 'Customer');
+                        }}
                       />
                       <FormMessage />
                     </FormItem>
@@ -248,7 +259,7 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
                 />
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>
-                      <Button type="button" variant="outline" onClick={() => { methods.reset(getDefaultValues()); onClose();}}>
+                      <Button type="button" variant="outline" onClick={() => { onClose();}}>
                       Cancel
                     </Button>
                   </DialogClose>
@@ -275,6 +286,4 @@ const AddReceiptFormComponent: React.FC<AddReceiptFormProps> = ({
       )}
     </>
   );
-}
-
-export const AddReceiptForm = React.memo(AddReceiptFormComponent);
+};
