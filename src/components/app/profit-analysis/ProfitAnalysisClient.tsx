@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, DollarSign, BarChart3, CalendarDays } from "lucide-react";
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfYear, endOfYear } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfYear, endOfDay } from "date-fns";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ export function ProfitAnalysisClient() {
     if (!isNaN(startYear)) {
       return {
         from: new Date(startYear, 3, 1), // April 1st
-        to: new Date(startYear + 1, 2, 31) // March 31st
+        to: endOfDay(new Date(startYear + 1, 2, 31)) // March 31st
       };
     }
     return undefined; // Fallback if FY string is invalid
@@ -93,6 +93,7 @@ export function ProfitAnalysisClient() {
 
     const monthlySummary: MonthlyProfitInfo[] = Object.entries(monthlyAgg)
       .map(([key, value]) => ({
+        monthKey: key,
         monthYear: format(parseISO(key + "-01"), "MMMM yyyy"),
         ...value,
       }))
@@ -110,10 +111,10 @@ export function ProfitAnalysisClient() {
   const setDateFilter = (type: "thisMonth" | "lastMonth" | "currentFY" | "allTime") => {
     const today = new Date();
     if (type === "thisMonth") {
-      setDateRange({ from: startOfMonth(today), to: endOfMonth(today) });
+      setDateRange({ from: startOfMonth(today), to: endOfDay(endOfMonth(today)) });
     } else if (type === "lastMonth") {
       const lastMonthStart = startOfMonth(subMonths(today, 1));
-      const lastMonthEnd = endOfMonth(subMonths(today, 1));
+      const lastMonthEnd = endOfDay(endOfMonth(subMonths(today, 1)));
       setDateRange({ from: lastMonthStart, to: lastMonthEnd });
     } else if (type === "currentFY") {
         const [startYearStr] = currentFinancialYearString.split('-');
