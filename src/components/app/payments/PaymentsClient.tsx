@@ -30,11 +30,11 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
 const initialPaymentsData: Payment[] = [
-  { id: "pay-1", date: "2024-05-03", partyId: "supp-anand", partyName: "Anand Agro Products", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", referenceNo: "CHK1001", notes: "Advance for LOT-A" },
-  { id: "pay-2", date: "2024-05-08", partyId: "agent-ajay", partyName: "Ajay Kumar", partyType: "Agent", amount: 2200, paymentMethod: "Cash", notes: "Commission for LOT-A" },
-  { id: "pay-3", date: "2024-05-12", partyId: "trans-speedy", partyName: "Speedy Logistics", partyType: "Transporter", amount: 2500, paymentMethod: "UPI", referenceNo: "upi123", notes: "Transport for LOT-A" },
-  { id: "pay-4", date: "2024-05-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-001" },
-  { id: "pay-5", date: "2024-05-20", partyId: "supp-meena", partyName: "Meena Farms", partyType: "Supplier", amount: 60000, paymentMethod: "Bank", referenceNo: "NEFT5678", notes: "Payment for LOT-B" },
+  { id: "pay-fy2526-1", date: "2025-05-03", partyId: "supp-anand", partyName: "Anand Agro Products", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", referenceNo: "CHKFY2526-001", notes: "Advance for LOT-A FY2526" },
+  { id: "pay-fy2526-2", date: "2025-05-08", partyId: "agent-ajay", partyName: "Ajay Kumar", partyType: "Agent", amount: 2200, paymentMethod: "Cash", notes: "Commission for LOT-A FY2526" },
+  { id: "pay-fy2425-1", date: "2024-08-12", partyId: "trans-reliable", partyName: "Reliable Transports", partyType: "Transporter", amount: 2500, paymentMethod: "UPI", referenceNo: "upiFY2425-123", notes: "Transport for LOT-X FY2425" },
+  { id: "pay-fy2526-3", date: "2025-07-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-FY2526-001" },
+  { id: "pay-fy2526-4", date: "2025-09-20", partyId: "supp-meena", partyName: "Meena Farms", partyType: "Supplier", amount: 60000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-5678", notes: "Payment for LOT-D FY2526" },
 ];
 
 export function PaymentsClient() {
@@ -84,7 +84,7 @@ export function PaymentsClient() {
     });
     setPaymentToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
-  }, [setPayments, toast, payments]); // Added payments to dependency for isEditing
+  }, [setPayments, toast, payments]); 
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -147,9 +147,7 @@ export function PaymentsClient() {
   return (
     <div className="space-y-6 print-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Payments (FY {financialYear})</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Payments (FY {financialYear})</h1>
         <div className="flex gap-2">
             <Button onClick={openAddPaymentForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Payment
@@ -193,5 +191,3 @@ export function PaymentsClient() {
     </div>
   );
 }
-
-    

@@ -34,20 +34,20 @@ const SALES_STORAGE_KEY = 'salesData';
 
 const initialLocationTransfers: LocationTransfer[] = [
   {
-    id: "lt-1", date: "2024-05-20", fromWarehouseId: "wh-mum", fromWarehouseName: "Mumbai Central Warehouse", toWarehouseId: "wh-pune", toWarehouseName: "Pune North Godown",
+    id: "lt-fy2526-1", date: "2025-05-20", fromWarehouseId: "wh-mum", fromWarehouseName: "Mumbai Central Warehouse", toWarehouseId: "wh-pune", toWarehouseName: "Pune North Godown",
     transporterId: "trans-quick", transporterName: "Quick Movers",
     items: [
-      { lotNumber: "LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 }, // 10 bags * 50kg/bag
-      { lotNumber: "LOT-D/120", bagsToTransfer: 20, netWeightToTransfer: 1000 },
+      { lotNumber: "FY2526-LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 }, 
+      { lotNumber: "FY2526-LOT-D/120", bagsToTransfer: 20, netWeightToTransfer: 1000 },
     ],
-    notes: "Transferring partial stock of LOT-A and LOT-D to Pune."
+    notes: "Transferring partial stock for FY2526."
   },
   {
-    id: "lt-2", date: "2024-05-22", fromWarehouseId: "wh-pune", fromWarehouseName: "Pune North Godown", toWarehouseId: "wh-ngp", toWarehouseName: "Nagpur South Storage",
+    id: "lt-fy2425-1", date: "2024-08-22", fromWarehouseId: "wh-pune", fromWarehouseName: "Pune North Godown", toWarehouseId: "wh-ngp", toWarehouseName: "Nagpur South Storage",
     items: [
-      { lotNumber: "LOT-B/50", bagsToTransfer: 15, netWeightToTransfer: 750 },
+      { lotNumber: "FY2425-LOT-X/90", bagsToTransfer: 15, netWeightToTransfer: 750 },
     ],
-    notes: "Moving LOT-B stock to Nagpur."
+    notes: "Moving LOT-X stock to Nagpur for FY2425."
   },
 ];
 
@@ -62,12 +62,19 @@ interface AggregatedStockItem {
 export function LocationTransferClient() {
   const { toast } = useToast();
   const [hydrated, setHydrated] = React.useState(false);
+  
+  const memoizedInitialLocationTransfers = React.useMemo(() => initialLocationTransfers, []);
+  const memoizedInitialWarehouses = React.useMemo(() => [], []);
+  const memoizedInitialTransporters = React.useMemo(() => [], []);
+  const memoizedInitialPurchases = React.useMemo(() => [], []);
+  const memoizedInitialSales = React.useMemo(() => [], []);
 
-  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, initialLocationTransfers);
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
+
+  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
+  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialTransporters);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -192,11 +199,9 @@ export function LocationTransferClient() {
   return (
     <div className="space-y-8 print-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center">
+        <h1 className="text-3xl font-bold text-foreground flex items-center">
             <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers
-          </h1>
-        </div>
+        </h1>
         <div className="flex items-center gap-2">
             <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className="text-base py-3 px-6 shadow-md">
                 <PlusCircle className="mr-2 h-5 w-5" /> New Transfer
@@ -323,5 +328,3 @@ export function LocationTransferClient() {
     </div>
   );
 }
-
-    

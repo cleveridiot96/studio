@@ -28,11 +28,9 @@ const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 const initialReceiptsData: Receipt[] = [
-  { id: "rec-1", date: "2024-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFT123", notes: "Part payment for INV-001" },
-  { id: "rec-2", date: "2024-05-14", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-002" },
-  { id: "rec-3", date: "2024-05-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-003 (user paid broker, now broker settles)" },
-  { id: "rec-4", date: "2024-05-22", partyId: "cust-mohan", partyName: "Mohan Wholesalers", partyType: "Customer", amount: 60000, paymentMethod: "Bank", referenceNo: "RTGS456", notes: "Advance for INV-003" },
-  { id: "rec-5", date: "2024-05-25", partyId: "cust-priya", partyName: "Priya Foods", partyType: "Customer", amount: 87500, paymentMethod: "Cash", notes: "Payment for INV-004" },
+  { id: "rec-fy2526-1", date: "2025-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-123", notes: "Part payment for INV-FY2526-001" },
+  { id: "rec-fy2526-2", date: "2025-06-22", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-FY2526-002" },
+  { id: "rec-fy2425-1", date: "2024-09-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-FY2425-001" },
 ];
 
 export function ReceiptsClient() {
@@ -78,7 +76,7 @@ export function ReceiptsClient() {
     });
     setReceiptToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
-  }, [setReceipts, toast, receipts]); // Added receipts to dependency for isEditing
+  }, [setReceipts, toast, receipts]); 
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);
@@ -135,9 +133,7 @@ export function ReceiptsClient() {
   return (
     <div className="space-y-6 print-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Receipts (FY {financialYear})</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Receipts (FY {financialYear})</h1>
          <div className="flex gap-2">
             <Button onClick={openAddReceiptForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Receipt
@@ -181,5 +177,3 @@ export function ReceiptsClient() {
     </div>
   );
 }
-
-    

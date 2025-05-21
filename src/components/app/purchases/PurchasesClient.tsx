@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, FilePlus2, Printer } from "lucide-react";
+import { PlusCircle, Printer } from "lucide-react";
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, Broker } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
@@ -25,29 +25,29 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
 const initialPurchasesData: Purchase[] = [
   {
-    id: "purchase-1", date: "2024-05-01", lotNumber: "LOT-A/100", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
+    id: "purchase-fy2526-1", date: "2025-05-01", lotNumber: "FY2526-LOT-A/100", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
     quantity: 100, netWeight: 5000, rate: 22, expenses: 500, transportRatePerKg: 0.5, transporterId: "trans-speedy", transporterName: "Speedy Logistics",
     totalAmount: (5000 * 22) + 500 + (0.5 * 5000), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
   {
-    id: "purchase-2", date: "2024-05-05", lotNumber: "LOT-B/50", supplierId: "supp-meena", supplierName: "Meena Farms",
+    id: "purchase-fy2526-2", date: "2025-06-15", lotNumber: "FY2526-LOT-B/50", supplierId: "supp-meena", supplierName: "Meena Farms",
     quantity: 50, netWeight: 2500, rate: 25, expenses: 200,
     totalAmount: (2500 * 25) + 200, locationId: "wh-pune", locationName: "Pune North Godown"
   },
   {
-    id: "purchase-3", date: "2024-05-10", lotNumber: "LOT-C/75", supplierId: "supp-vikas", supplierName: "Vikas Seeds & Grains", agentId: "agent-sunila", agentName: "Sunil Varma",
+    id: "purchase-fy2526-3", date: "2025-07-10", lotNumber: "FY2526-LOT-C/75", supplierId: "supp-vikas", supplierName: "Vikas Seeds & Grains", agentId: "agent-sunila", agentName: "Sunil Varma",
     quantity: 75, netWeight: 3750, rate: 20,
     totalAmount: (3750 * 20), locationId: "wh-ngp", locationName: "Nagpur South Storage"
   },
   {
-    id: "purchase-4", date: "2024-05-12", lotNumber: "LOT-D/120", supplierId: "supp-uma", supplierName: "Uma Organics",
-    quantity: 120, netWeight: 6000, rate: 28, expenses: 700, transportRatePerKg: 0.4, transporterId: "trans-reliable", transporterName: "Reliable Transports",
-    totalAmount: (6000 * 28) + 700 + (0.4*6000), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
+    id: "purchase-fy2425-1", date: "2024-08-01", lotNumber: "FY2425-LOT-X/90", supplierId: "supp-uma", supplierName: "Uma Organics",
+    quantity: 90, netWeight: 4500, rate: 28, expenses: 700, transportRatePerKg: 0.4, transporterId: "trans-reliable", transporterName: "Reliable Transports",
+    totalAmount: (4500 * 28) + 700 + (0.4*4500), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
   {
-    id: "purchase-5", date: "2024-05-15", lotNumber: "LOT-E/80", supplierId: "supp-sunilp", supplierName: "Sunil Trading Co.", agentId: "agent-ajay", agentName: "Ajay Kumar",
-    quantity: 80, netWeight: 4000, rate: 23.5,
-    totalAmount: (4000 * 23.5), locationId: "wh-pune", locationName: "Pune North Godown"
+    id: "purchase-fy2526-4", date: "2025-09-05", lotNumber: "FY2526-LOT-D/120", supplierId: "supp-sunilp", supplierName: "Sunil Trading Co.", agentId: "agent-ajay", agentName: "Ajay Kumar",
+    quantity: 120, netWeight: 6000, rate: 23.5,
+    totalAmount: (6000 * 23.5), locationId: "wh-pune", locationName: "Pune North Godown"
   },
 ];
 
@@ -57,19 +57,18 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers'; // Though not used in purchase form, kept for consistency if needed elsewhere
+const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
 
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchasesData);
-  // Load master data using the keys defined in masters/page.tsx for consistency
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []); // Kept for AddPurchaseForm prop, though not used in form
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []);
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
@@ -92,7 +91,7 @@ export function PurchasesClient() {
     });
     setPurchaseToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Purchase updated successfully." : "Purchase added successfully." });
-  }, [setPurchases, toast, purchases]); // Added purchases to dependency array for isEditing
+  }, [setPurchases, toast, purchases]);
 
   const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);
@@ -148,9 +147,7 @@ export function PurchasesClient() {
   return (
     <div className="space-y-6 print-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Purchases (FY {financialYear})</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Purchases (FY {financialYear})</h1>
         <div className="flex gap-2">
           <Button onClick={openAddPurchaseForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Purchase
@@ -173,7 +170,7 @@ export function PurchasesClient() {
           agents={agents}
           warehouses={warehouses}
           transporters={transporters}
-          brokers={brokers}
+          // brokers prop removed as per earlier request
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />
@@ -198,5 +195,3 @@ export function PurchasesClient() {
     </div>
   );
 }
-
-    
