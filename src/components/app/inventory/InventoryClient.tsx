@@ -3,13 +3,13 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Purchase, Sale, MasterItem, Warehouse } from "@/lib/types";
+import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Archive, Boxes } from "lucide-react";
+import { AlertTriangle, Archive, Boxes, Printer } from "lucide-react"; // Added Printer
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +26,8 @@ import {
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+
 
 interface AggregatedInventoryItem {
   lotNumber: string;
@@ -35,6 +37,10 @@ interface AggregatedInventoryItem {
   totalPurchasedWeight: number;
   totalSoldBags: number;
   totalSoldWeight: number;
+  totalTransferredOutBags: number;
+  totalTransferredOutWeight: number;
+  totalTransferredInBags: number;
+  totalTransferredInWeight: number;
   currentBags: number;
   currentWeight: number;
   purchaseDate?: string; // To show latest purchase date for the lot
@@ -45,10 +51,14 @@ export function InventoryClient() {
   const memoizedInitialPurchases = React.useMemo(() => [], []);
   const memoizedInitialSales = React.useMemo(() => [], []);
   const memoizedInitialWarehouses = React.useMemo(() => [], []);
+  const memoizedInitialLocationTransfers = React.useMemo(() => [], []);
+
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
   const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
+
   const { toast } = useToast();
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
@@ -71,6 +81,10 @@ export function InventoryClient() {
           totalPurchasedWeight: 0,
           totalSoldBags: 0,
           totalSoldWeight: 0,
+          totalTransferredOutBags: 0,
+          totalTransferredOutWeight: 0,
+          totalTransferredInBags: 0,
+          totalTransferredInWeight: 0,
           currentBags: 0,
           currentWeight: 0,
           purchaseDate: p.date,
@@ -94,29 +108,78 @@ export function InventoryClient() {
         if (entry) {
           entry.totalSoldBags += s.quantity;
           entry.totalSoldWeight += s.netWeight;
+        } else {
+          // This case implies a sale from a lot/location not in purchases, or data inconsistency.
+          // For robust accounting, this shouldn't happen if data entry is correct.
+          // We could create a negative entry here if needed, but usually, sales should match to existing stock.
         }
       }
     });
 
+    locationTransfers.forEach(transfer => {
+      transfer.items.forEach(item => {
+        // Deduct from 'fromWarehouse'
+        const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
+        let fromEntry = inventoryMap.get(fromKey);
+        if (fromEntry) {
+          fromEntry.totalTransferredOutBags += item.bagsToTransfer;
+          fromEntry.totalTransferredOutWeight += item.netWeightToTransfer;
+        } else {
+          // This implies transferring from a lot/location that doesn't exist or wasn't purchased into. Handle as needed.
+          // Could create a temporary entry if strict accounting for all movements is needed.
+        }
+
+        // Add to 'toWarehouse'
+        const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`;
+        let toEntry = inventoryMap.get(toKey);
+        if (!toEntry) { // If the lot doesn't exist at the destination, create its record
+          const sourcePurchase = purchases.find(p => p.lotNumber === item.lotNumber);
+          toEntry = {
+            lotNumber: item.lotNumber,
+            locationId: transfer.toWarehouseId,
+            locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
+            totalPurchasedBags: 0, // Not a purchase for this location, but transfer-in
+            totalPurchasedWeight: 0,
+            totalSoldBags: 0,
+            totalSoldWeight: 0,
+            totalTransferredOutBags: 0,
+            totalTransferredOutWeight: 0,
+            totalTransferredInBags: 0,
+            totalTransferredInWeight: 0,
+            currentBags: 0,
+            currentWeight: 0,
+            purchaseDate: sourcePurchase?.date, // Inherit original purchase date
+            purchaseRate: sourcePurchase?.rate, // Inherit original purchase rate
+          };
+          inventoryMap.set(toKey, toEntry); // Add to map if new
+        }
+        toEntry.totalTransferredInBags += item.bagsToTransfer;
+        toEntry.totalTransferredInWeight += item.netWeightToTransfer;
+      });
+    });
+
+
     const result: AggregatedInventoryItem[] = [];
     inventoryMap.forEach(item => {
-      item.currentBags = item.totalPurchasedBags - item.totalSoldBags;
-      item.currentWeight = item.totalPurchasedWeight - item.totalSoldWeight;
-      // Removed toast call from here
+      item.currentBags = item.totalPurchasedBags + item.totalTransferredInBags - item.totalSoldBags - item.totalTransferredOutBags;
+      item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight - item.totalSoldWeight - item.totalTransferredOutWeight;
+      
       if (item.currentBags <= 0 && item.totalPurchasedBags > 0) {
         result.push(item);
       } else if (item.currentBags > 0) {
         result.push(item);
+      } else if (item.totalTransferredInBags > 0 && item.currentBags <=0) { // Also show transferred in items that are now zero stock
+        result.push(item);
       }
     });
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [purchases, sales, warehouses]);
+  }, [purchases, sales, warehouses, locationTransfers]);
 
   React.useEffect(() => {
     const newNotified = new Set(notifiedLowStock);
     aggregatedInventory.forEach(item => {
       const itemKey = `${item.lotNumber}-${item.locationId}`;
-      if (item.currentBags <= 5 && item.currentBags > 0 && item.totalPurchasedBags > 0 && !notifiedLowStock.has(itemKey)) {
+      if (item.currentBags <= 5 && item.currentBags > 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey)) {
         toast({
           title: "Low Stock Alert",
           description: `Lot "${item.lotNumber}" at ${item.locationName} has only ${item.currentBags} bags remaining.`,
@@ -124,14 +187,20 @@ export function InventoryClient() {
           duration: 7000,
         });
         newNotified.add(itemKey);
+      } else if (item.currentBags <= 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey + "-zero")) {
+         toast({
+          title: "Zero Stock: Archive Option",
+          description: `Lot "${item.lotNumber}" at ${item.locationName} has zero bags. Consider archiving.`,
+          variant: "default",
+          duration: 7000,
+        });
+        newNotified.add(itemKey + "-zero");
       }
     });
     if (newNotified.size !== notifiedLowStock.size) {
-        // setNotifiedLowStock(newNotified); // This could cause a loop if not careful.
-        // For now, let's rely on the check `!notifiedLowStock.has(itemKey)`
-        // A more robust solution might involve clearing notifiedLowStock periodically or based on user action.
+        setNotifiedLowStock(newNotified);
     }
-  }, [aggregatedInventory, toast, notifiedLowStock]);
+  }, [aggregatedInventory, toast, notifiedLowStock, setNotifiedLowStock]);
 
 
   const inventoryByWarehouse = React.useMemo(() => {
@@ -160,15 +229,10 @@ export function InventoryClient() {
 
   const confirmArchiveItem = () => {
     if (itemToArchive) {
-      // In a real app, you'd filter this item out of the purchases/sales or mark it archived
-      // For this demo, we'll just show a toast.
       toast({
         title: "Lot Archived (Conceptual)",
         description: `Lot "${itemToArchive.lotNumber}" at ${itemToArchive.locationName} would be moved to archives.`,
       });
-      // Conceptually, remove/filter itemToArchive from display data here
-      // e.g. by updating `purchases` and `sales` state in localStorage and triggering a re-fetch/re-calculation.
-      // This part is complex as it involves mutating the source data.
       setItemToArchive(null);
       setShowArchiveConfirm(false);
     }
@@ -178,15 +242,19 @@ export function InventoryClient() {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
         </div>
+        <Button variant="outline" size="icon" onClick={() => window.print()}>
+            <Printer className="h-5 w-5" />
+            <span className="sr-only">Print</span>
+        </Button>
       </div>
 
       <Tabs defaultValue="summary" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 h-auto">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 h-auto no-print">
           <TabsTrigger value="summary" className="py-2 sm:py-3 text-sm sm:text-base">
             <Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> All Stock Summary
           </TabsTrigger>
@@ -255,7 +323,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
     return <p className="text-center text-muted-foreground py-8">No inventory items to display for this selection.</p>;
   }
   return (
-    <ScrollArea className="h-[400px] rounded-md border">
+    <ScrollArea className="h-[400px] rounded-md border print:h-auto print:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
@@ -265,7 +333,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
             <TableHead className="text-right">Current Weight (kg)</TableHead>
             <TableHead>Last Purchase</TableHead>
             <TableHead className="text-right">Last Rate (₹/kg)</TableHead>
-            <TableHead className="text-center">Actions</TableHead>
+            <TableHead className="text-center no-print">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -277,7 +345,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
               <TableCell className="text-right">{item.currentWeight.toLocaleString()}</TableCell>
               <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
               <TableCell className="text-right">{item.purchaseRate ? item.purchaseRate.toFixed(2) : 'N/A'}</TableCell>
-              <TableCell className="text-center">
+              <TableCell className="text-center no-print">
                 {item.currentBags <= 0 && (
                   <Button variant="outline" size="sm" onClick={() => onArchive(item)} title="Archive this zero-stock lot">
                     <Archive className="h-4 w-4 mr-1" /> Archive
@@ -294,6 +362,3 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
     </ScrollArea>
   );
 };
-
-
-    

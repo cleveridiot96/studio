@@ -4,7 +4,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, FilePlus2 } from "lucide-react";
+import { PlusCircle, FilePlus2, Printer } from "lucide-react"; // Added Printer
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, Broker } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
@@ -131,19 +131,22 @@ export function PurchasesClient() {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Purchases (FY {financialYear})</h1>
-          {/* <p className="text-lg text-muted-foreground">Add and manage your purchase records for FY {financialYear}.</p> */}
         </div>
         <div className="flex gap-2">
           <Button onClick={openAddPurchaseForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Purchase
           </Button>
-          <Button variant="outline" size="lg" className="text-base py-3 px-6 shadow-md" onClick={() => toast({title: "Info", description: "Multi-item purchase functionality coming soon!"})}>
-            <FilePlus2 className="mr-2 h-5 w-5" /> Add Multi-Item Purchase
+          <Button variant="outline" size="icon" onClick={() => window.print()}>
+            <Printer className="h-5 w-5" />
+            <span className="sr-only">Print</span>
           </Button>
+          {/* <Button variant="outline" size="lg" className="text-base py-3 px-6 shadow-md" onClick={() => toast({title: "Info", description: "Multi-item purchase functionality coming soon!"})}>
+            <FilePlus2 className="mr-2 h-5 w-5" /> Add Multi-Item Purchase
+          </Button> */}
         </div>
       </div>
 
@@ -158,7 +161,7 @@ export function PurchasesClient() {
           agents={agents}
           warehouses={warehouses} // Locations
           transporters={transporters}
-          brokers={brokers}
+          brokers={brokers} // Kept for now, AddPurchaseForm will ignore if not used
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />

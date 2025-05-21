@@ -127,3 +127,52 @@
   .btn-lg { @apply px-6 py-3 text-lg; } 
   .input-lg { @apply px-4 py-3 text-lg; } 
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 10pt !important; /* Adjust print font size */
+  }
+  /* Hide elements not meant for printing */
+  .print\\:hidden, .no-print, header, nav, footer, aside, [data-sidebar="sidebar"], [data-sidebar="trigger"] {
+    display: none !important;
+  }
+  /* Ensure main content takes full width */
+  .print-area, .print\\:w-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .print\\:block {
+    display: block !important;
+  }
+  .print\\:text-black {
+    color: black !important;
+  }
+  /* Specific overrides for tables to ensure they print well */
+  table, th, td {
+    border: 1px solid #ccc !important; /* Ensure borders are visible */
+    font-size: 9pt !important;
+  }
+  th {
+    background-color: #f2f2f2 !important; /* Light grey for table headers */
+    -webkit-print-color-adjust: exact !important; /* Ensure background colors print */
+    print-color-adjust: exact !important;
+  }
+  /* Ensure cards and other containers don't have excessive padding or shadows in print */
+  .card, .card-content, .card-header, .card-footer {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+    padding: 0.5rem !important; /* Reduce padding for print */
+  }
+  /* Remove scroll areas in print */
+  .print\\:overflow-visible {
+     overflow: visible !important;
+     height: auto !important;
+     max-height: none !important;
+  }
+}

@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatabaseBackup, UploadCloud, FileJson, History, AlertTriangle } from "lucide-react";
+import { DatabaseBackup, UploadCloud, FileJson, History, AlertTriangle, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import React, { ChangeEvent } from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -153,10 +153,15 @@ export default function BackupPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-2xl mx-auto">
-      <div className="text-center">
+    <div className="space-y-8 max-w-2xl mx-auto print-area">
+      <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-foreground">Data Backup & Restore</h1>
+        <Button onClick={() => window.print()} variant="outline" size="icon" className="no-print">
+            <Printer className="h-5 w-5" />
+            <span className="sr-only">Print this page</span>
+        </Button>
       </div>
+
 
       <Card className="shadow-xl border-2 border-primary/20">
         <CardHeader className="items-center">

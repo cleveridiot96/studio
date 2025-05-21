@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react"; // Removed FilePlus2
+import { PlusCircle, Printer } from "lucide-react"; // Removed FilePlus2, Added Printer
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
@@ -69,7 +69,6 @@ export function SalesClient() {
         return prevSales.map(s => s.id === sale.id ? sale : s);
       } else {
         toast({ title: "Success!", description: "Sale added successfully." });
-        // TODO: Add inventory deduction logic here based on sale.lotNumber, sale.quantity, sale.netWeight
         return [sale, ...prevSales];
       }
     });
@@ -89,7 +88,6 @@ export function SalesClient() {
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
       setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
-      // TODO: Add inventory restitution logic here if sale is deleted
       toast({ title: "Success!", description: "Sale deleted successfully." });
       setSaleToDeleteId(null);
       setShowDeleteConfirm(false);
@@ -133,8 +131,8 @@ export function SalesClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Sales (FY {financialYear})</h1>
         </div>
@@ -142,7 +140,10 @@ export function SalesClient() {
           <Button onClick={openAddSaleForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
           </Button>
-          {/* Multi-Item Sale Button removed as requested */}
+          <Button variant="outline" size="icon" onClick={() => window.print()}>
+            <Printer className="h-5 w-5" />
+            <span className="sr-only">Print</span>
+          </Button>
         </div>
       </div>
 
@@ -156,8 +157,8 @@ export function SalesClient() {
           customers={customers}
           transporters={transporters}
           brokers={brokers}
-          inventoryLots={inventorySource} // Pass purchases as inventory source
-          existingSales={sales} // Pass existing sales for stock calculation
+          inventoryLots={inventorySource} 
+          existingSales={sales} 
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />

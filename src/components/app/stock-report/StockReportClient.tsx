@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Purchase, Sale, MasterItem } from "@/lib/types";
+import type { Purchase, Sale, MasterItem, LocationTransfer } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,9 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { addDays, format } from "date-fns";
+import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingDown as StockReportIcon, SlidersHorizontal, TrendingUp } from "lucide-react"; // Import TrendingUp
+import { TrendingUp, SlidersHorizontal, Printer } from "lucide-react"; // Changed to TrendingUp, Added Printer
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
@@ -23,6 +23,8 @@ import {
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+
 
 interface StockReportItem {
   lotNumber: string;
@@ -36,6 +38,8 @@ interface StockReportItem {
   soldBags: number;
   soldWeight: number;
   soldValue: number; 
+  transferredOutBags: number;
+  transferredInBags: number;
   remainingBags: number;
   remainingWeight: number;
   avgSaleRate?: number;
@@ -47,10 +51,14 @@ export function StockReportClient() {
   const memoizedInitialPurchases = React.useMemo(() => [], []);
   const memoizedInitialSales = React.useMemo(() => [], []);
   const memoizedInitialWarehouses = React.useMemo(() => [], []);
+  const memoizedInitialLocationTransfers = React.useMemo(() => [], []);
+
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
+
 
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [lotNumberFilter, setLotNumberFilter] = React.useState<string>("");
@@ -60,8 +68,8 @@ export function StockReportClient() {
   React.useEffect(() => {
     setHydrated(true);
     setDateRange({
-        from: addDays(new Date(), -30),
-        to: new Date(),
+        from: startOfDay(addDays(new Date(), -90)), // Default to last 90 days
+        to: endOfDay(new Date()),
     });
   }, []);
 
@@ -69,16 +77,29 @@ export function StockReportClient() {
     if (!hydrated) return [];
     const reportItemsMap = new Map<string, StockReportItem>();
 
-    const filteredPurchases = purchases.filter(p => {
-      if (!dateRange?.from || !dateRange?.to) return true;
-      const purchaseDate = new Date(p.date);
-      return purchaseDate >= dateRange.from && 
-             purchaseDate <= dateRange.to &&
-             (!lotNumberFilter || p.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) &&
-             (!locationFilter || p.locationId === locationFilter);
+    const dateFilteredPurchases = purchases.filter(p => {
+      if (!dateRange?.from) return true; // No date filter if range not set
+      const purchaseDate = parseISO(p.date);
+      return isWithinInterval(purchaseDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
+    });
+    
+    const dateFilteredSales = sales.filter(s => {
+      if (!dateRange?.from) return true;
+      const saleDate = parseISO(s.date);
+      return isWithinInterval(saleDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
     });
 
-    filteredPurchases.forEach(p => {
+    const dateFilteredLocationTransfers = locationTransfers.filter(lt => {
+        if (!dateRange?.from) return true;
+        const transferDate = parseISO(lt.date);
+        return isWithinInterval(transferDate, {start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
+    });
+
+
+    dateFilteredPurchases.forEach(p => {
+      if (lotNumberFilter && !p.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
+      if (locationFilter && p.locationId !== locationFilter) return;
+
       const key = `${p.lotNumber}-${p.locationId}`; 
       let item = reportItemsMap.get(key);
       if (!item) {
@@ -94,6 +115,8 @@ export function StockReportClient() {
           soldBags: 0,
           soldWeight: 0,
           soldValue: 0,
+          transferredOutBags: 0,
+          transferredInBags: 0,
           remainingBags: 0,
           remainingWeight: 0,
         };
@@ -108,19 +131,15 @@ export function StockReportClient() {
       reportItemsMap.set(key, item);
     });
 
-    const filteredSales = sales.filter(s => {
-        if (!dateRange?.from || !dateRange?.to) return true;
-        const saleDate = new Date(s.date);
-        return saleDate >= dateRange.from && 
-               saleDate <= dateRange.to &&
-               (!lotNumberFilter || s.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase()));
-    });
-
-    filteredSales.forEach(s => {
+    dateFilteredSales.forEach(s => {
+      if (lotNumberFilter && !s.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
+      
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber && (!locationFilter || p.locationId === locationFilter));
-      if (relatedPurchase) {
+      if (relatedPurchase) { // Sale should be associated with an original purchase location
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
         let item = reportItemsMap.get(key);
+        // If sale is for a lot/location not in filtered purchases, it might not be on the map yet.
+        // For stock report, we only consider sales against lots that appear in the purchases within the filter.
         if (item) { 
           item.soldBags += s.quantity;
           item.soldWeight += s.netWeight;
@@ -129,20 +148,75 @@ export function StockReportClient() {
       }
     });
 
-    const result: StockReportItem[] = [];
-    reportItemsMap.forEach(item => {
-      item.remainingBags = item.purchaseBags - item.soldBags;
-      item.remainingWeight = item.purchaseWeight - item.soldWeight;
-      item.avgSaleRate = item.soldWeight > 0 ? item.soldValue / item.soldWeight : 0;
-      if (item.purchaseDate) {
-        item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
-      }
-      item.turnoverRate = item.purchaseBags > 0 ? (item.soldBags / item.purchaseBags) * 100 : 0;
-      result.push(item);
+    dateFilteredLocationTransfers.forEach(lt => {
+        lt.items.forEach(transferItem => {
+            if (lotNumberFilter && !transferItem.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
+
+            // Affect 'from' location
+            if (!locationFilter || lt.fromWarehouseId === locationFilter) {
+                const fromKey = `${transferItem.lotNumber}-${lt.fromWarehouseId}`;
+                let fromItem = reportItemsMap.get(fromKey);
+                if (fromItem) { // Only adjust if the item exists (i.e., was purchased/transferred into this location)
+                    fromItem.transferredOutBags += transferItem.bagsToTransfer;
+                }
+            }
+
+            // Affect 'to' location
+            if (!locationFilter || lt.toWarehouseId === locationFilter) {
+                const toKey = `${transferItem.lotNumber}-${lt.toWarehouseId}`;
+                let toItem = reportItemsMap.get(toKey);
+                if (!toItem) { // If lot doesn't exist at destination, create a basic entry for it if it matches lot filter
+                    const sourcePurchase = purchases.find(p => p.lotNumber === transferItem.lotNumber); // Get original purchase details
+                     toItem = {
+                        lotNumber: transferItem.lotNumber,
+                        locationId: lt.toWarehouseId,
+                        locationName: warehouses.find(w => w.id === lt.toWarehouseId)?.name || lt.toWarehouseId,
+                        purchaseDate: sourcePurchase?.date, // Potentially original purchase date
+                        purchaseBags: 0, // Not a direct purchase here
+                        purchaseWeight: 0,
+                        purchaseRate: sourcePurchase?.rate || 0, // Use original rate for valuation
+                        purchaseValue: 0,
+                        soldBags: 0,
+                        soldWeight: 0,
+                        soldValue: 0,
+                        transferredOutBags: 0,
+                        transferredInBags: 0, // This will be updated next
+                        remainingBags: 0,
+                        remainingWeight: 0,
+                    };
+                    reportItemsMap.set(toKey, toItem);
+                }
+                toItem.transferredInBags += transferItem.bagsToTransfer;
+            }
+        });
     });
 
-    return result.sort((a,b) => (a.purchaseDate && b.purchaseDate) ? new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime() : 0);
-  }, [purchases, sales, warehouses, dateRange, lotNumberFilter, locationFilter, hydrated]);
+
+    const result: StockReportItem[] = [];
+    reportItemsMap.forEach(item => {
+      item.remainingBags = item.purchaseBags + item.transferredInBags - item.soldBags - item.transferredOutBags;
+      // Note: Weight calculation would ideally use actual transferred weights.
+      // For simplicity, if netWeightToTransfer was stored per transfer item, that would be more accurate.
+      // Assuming transferred weight mirrors purchase/sale weight proportions for now.
+      const avgWeightPerBag = item.purchaseBags > 0 ? item.purchaseWeight / item.purchaseBags : 50; // Default if no purchase bags
+      item.remainingWeight = item.remainingBags * avgWeightPerBag;
+
+
+      item.avgSaleRate = item.soldWeight > 0 ? item.soldValue / item.soldWeight : 0;
+      if (item.purchaseDate) {
+        item.daysInStock = Math.floor((new Date().getTime() - parseISO(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
+      }
+      const totalInitialBags = item.purchaseBags + item.transferredInBags;
+      item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
+      
+      // Only include if it was purchased or transferred into the location, and matches filters.
+      if(totalInitialBags > 0) {
+        result.push(item);
+      }
+    });
+
+    return result.sort((a,b) => (a.purchaseDate && b.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
+  }, [purchases, sales, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, hydrated]);
   
   if (!hydrated) {
     return (
@@ -153,60 +227,66 @@ export function StockReportClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
         </div>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="lg">
-              <SlidersHorizontal className="mr-2 h-5 w-5" /> Filters
+        <div className="flex items-center gap-2">
+            <Sheet>
+            <SheetTrigger asChild>
+                <Button variant="outline" size="lg">
+                <SlidersHorizontal className="mr-2 h-5 w-5" /> Filters
+                </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[350px] sm:w-[450px]">
+                <SheetHeader>
+                <SheetTitle>Filter Stock Report</SheetTitle>
+                <SheetDescription>
+                    Refine the report by date, lot number, or location.
+                </SheetDescription>
+                </SheetHeader>
+                <div className="grid gap-6 py-6">
+                <div className="space-y-2">
+                    <label htmlFor="date-range" className="text-sm font-medium">Date Range</label>
+                    <DatePickerWithRange date={dateRange} onDateChange={setDateRange} id="date-range" />
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="lot-filter" className="text-sm font-medium">Vakkal / Lot Number</label>
+                    <Input 
+                    id="lot-filter"
+                    placeholder="Enter Lot Number" 
+                    value={lotNumberFilter} 
+                    onChange={(e) => setLotNumberFilter(e.target.value)} 
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label htmlFor="location-filter" className="text-sm font-medium">Location (Warehouse)</label>
+                    <Select value={locationFilter} onValueChange={setLocationFilter}>
+                    <SelectTrigger id="location-filter">
+                        <SelectValue placeholder="All Locations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="">All Locations</SelectItem>
+                        {warehouses.map(wh => (
+                        <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                    </Select>
+                </div>
+                </div>
+                <SheetFooter>
+                <SheetClose asChild>
+                    <Button>Apply Filters</Button>
+                </SheetClose>
+                </SheetFooter>
+            </SheetContent>
+            </Sheet>
+            <Button variant="outline" size="icon" onClick={() => window.print()}>
+                <Printer className="h-5 w-5" />
+                <span className="sr-only">Print</span>
             </Button>
-          </SheetTrigger>
-          <SheetContent className="w-[350px] sm:w-[450px]">
-            <SheetHeader>
-              <SheetTitle>Filter Stock Report</SheetTitle>
-              <SheetDescription>
-                Refine the report by date, lot number, or location.
-              </SheetDescription>
-            </SheetHeader>
-            <div className="grid gap-6 py-6">
-              <div className="space-y-2">
-                <label htmlFor="date-range" className="text-sm font-medium">Date Range</label>
-                <DatePickerWithRange date={dateRange} onDateChange={setDateRange} id="date-range" />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="lot-filter" className="text-sm font-medium">Vakkal / Lot Number</label>
-                <Input 
-                  id="lot-filter"
-                  placeholder="Enter Lot Number" 
-                  value={lotNumberFilter} 
-                  onChange={(e) => setLotNumberFilter(e.target.value)} 
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="location-filter" className="text-sm font-medium">Location (Warehouse)</label>
-                <Select value={locationFilter} onValueChange={setLocationFilter}>
-                  <SelectTrigger id="location-filter">
-                    <SelectValue placeholder="All Locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All Locations</SelectItem>
-                    {warehouses.map(wh => (
-                      <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <SheetFooter>
-              <SheetClose asChild>
-                <Button>Apply Filters</Button>
-              </SheetClose>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
+        </div>
       </div>
 
       <Card className="shadow-xl">
@@ -216,7 +296,7 @@ export function StockReportClient() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[500px] rounded-md border">
+          <ScrollArea className="h-[500px] rounded-md border print:h-auto print:overflow-visible">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -224,8 +304,10 @@ export function StockReportClient() {
                   <TableHead>Location</TableHead>
                   <TableHead>Purchase Date</TableHead>
                   <TableHead className="text-right">Purch. Bags</TableHead>
+                  <TableHead className="text-right">Trnf. In Bags</TableHead>
                   <TableHead className="text-right">Purch. Rate (₹)</TableHead>
                   <TableHead className="text-right">Sold Bags</TableHead>
+                  <TableHead className="text-right">Trnf. Out Bags</TableHead>
                   <TableHead className="text-right">Avg. Sale Rate (₹)</TableHead>
                   <TableHead className="text-right">Rem. Bags</TableHead>
                   <TableHead className="text-right">Rem. Wt (kg)</TableHead>
@@ -235,7 +317,7 @@ export function StockReportClient() {
               <TableBody>
                 {processedReportData.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground h-32">
+                    <TableCell colSpan={12} className="text-center text-muted-foreground h-32">
                       No data available for the selected filters.
                     </TableCell>
                   </TableRow>
@@ -244,20 +326,22 @@ export function StockReportClient() {
                   <TableRow key={`${item.lotNumber}-${item.locationId}`}>
                     <TableCell className="font-semibold">{item.lotNumber}</TableCell>
                     <TableCell>{item.locationName}</TableCell>
-                    <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell>{item.purchaseDate ? format(parseISO(item.purchaseDate), "dd-MM-yy") : 'N/A'}</TableCell>
                     <TableCell className="text-right">{item.purchaseBags.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.transferredInBags.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{item.purchaseRate.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{item.soldBags.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.transferredOutBags.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{item.avgSaleRate?.toFixed(2) || 'N/A'}</TableCell>
                     <TableCell className="text-right font-bold">{item.remainingBags.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{item.remainingWeight.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.remainingWeight.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
                     <TableCell className="text-center">
-                      {item.remainingBags <= 0 && item.purchaseBags > 0 ? (
-                        <Badge variant="destructive">Sold Out</Badge>
+                      {item.remainingBags <= 0 ? (
+                        <Badge variant="destructive">Sold Out / Transferred</Badge>
                       ) : (item.turnoverRate || 0) >= 75 ? (
-                        <Badge className="bg-green-500 hover:bg-green-600 text-white"><StockReportIcon className="h-3 w-3 mr-1 transform rotate-180"/> Fast Moving</Badge>
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast Moving</Badge>
                       ) : (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (
-                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><StockReportIcon className="h-3 w-3 mr-1"/> Slow / Aging</Badge>
+                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingUp className="h-3 w-3 mr-1 transform rotate-180"/> Slow / Aging</Badge>
                       ) : (
                         <Badge variant="secondary">In Stock</Badge>
                       )}
@@ -272,4 +356,3 @@ export function StockReportClient() {
     </div>
   );
 }
-

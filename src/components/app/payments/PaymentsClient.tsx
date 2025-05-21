@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Printer } from "lucide-react"; // Added Printer
 import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Broker, Transporter } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
@@ -109,8 +109,6 @@ export function PaymentsClient() {
   }, [paymentToDeleteId, setPayments, toast]);
   
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    // This function might be called if a new party is added from the AddPaymentForm
-    // It should update the corresponding master list
     switch (type) {
       case "Supplier":
         setSuppliers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
@@ -150,15 +148,20 @@ export function PaymentsClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Payments (FY {financialYear})</h1>
-          {/* <p className="text-lg text-muted-foreground">Track payments made for FY {financialYear}.</p> */}
         </div>
-        <Button onClick={openAddPaymentForm} size="lg" className="text-base py-3 px-6 shadow-md">
-          <PlusCircle className="mr-2 h-5 w-5" /> Add Payment
-        </Button>
+        <div className="flex gap-2">
+            <Button onClick={openAddPaymentForm} size="lg" className="text-base py-3 px-6 shadow-md">
+            <PlusCircle className="mr-2 h-5 w-5" /> Add Payment
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => window.print()}>
+                <Printer className="h-5 w-5" />
+                <span className="sr-only">Print</span>
+            </Button>
+        </div>
       </div>
 
       <PaymentTable data={filteredPayments} onEdit={handleEditPayment} onDelete={handleDeletePaymentAttempt} />

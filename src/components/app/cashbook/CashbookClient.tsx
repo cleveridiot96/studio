@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from "date-fns";
-import { BookOpen, TrendingUp, TrendingDown, CalendarDays } from "lucide-react";
+import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer } from "lucide-react"; // Added Printer
+import { Button } from "@/components/ui/button"; // Added Button import
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
@@ -135,7 +136,7 @@ export function CashbookClient() {
             ...dayEntry.receipts.map(r => ({ ...r, entryDate: dayEntry.date})),
             ...dayEntry.payments.map(p => ({ ...p, entryDate: dayEntry.date}))
         ]
-    ).sort((a,b) => parseISO(a.entryDate).getTime() - parseISO(b.entryDate).getTime() || (a.type === 'Receipt' ? -1 : 1));
+    ).sort((a,b) => parseISO(a.entryDate).getTime() - parseISO(b.entryDate).getTime() || (a.type === 'Receipt' ? -1 : 1) );
 
 
     return { dailyEntries, overallOpeningBalance, finalClosingBalance: runningBalance, flatTransactions };
@@ -151,7 +152,15 @@ export function CashbookClient() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 print-area">
+      <div className="flex justify-between items-center no-print">
+        {/* This div is empty for now, can add title if needed, but main titles are in cards */}
+        <Button variant="outline" size="icon" onClick={() => window.print()}>
+            <Printer className="h-5 w-5" />
+            <span className="sr-only">Print</span>
+        </Button>
+      </div>
+
       {/* Today's Cashbook Section */}
       <Card className="shadow-xl border-primary/30">
         <CardHeader>
@@ -206,7 +215,7 @@ export function CashbookClient() {
       <Card className="shadow-xl">
         <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <CardTitle className="text-2xl text-primary flex items-center"><BookOpen className="mr-3 h-7 w-7"/>Historical Cash Transactions</CardTitle>
-          <DatePickerWithRange date={historicalDateRange} onDateChange={setHistoricalDateRange} className="max-w-sm w-full md:w-auto" />
+          <DatePickerWithRange date={historicalDateRange} onDateChange={setHistoricalDateRange} className="max-w-sm w-full md:w-auto no-print" />
         </CardHeader>
         <CardContent>
           <div className="mb-4 p-3 border rounded-md bg-muted/50">
@@ -215,7 +224,7 @@ export function CashbookClient() {
                 <span>{historicalCashbookData?.overallOpeningBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
-          <ScrollArea className="h-[50vh] rounded-md border">
+          <ScrollArea className="h-[50vh] rounded-md border print:h-auto print:overflow-visible">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -257,4 +266,3 @@ export function CashbookClient() {
     </div>
   );
 }
-

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Printer } from "lucide-react"; // Added Printer
 import type { Receipt, MasterItem, MasterItemType, Customer, Broker } from "@/lib/types";
 import { ReceiptTable } from "./ReceiptTable";
 import { AddReceiptForm } from "./AddReceiptForm";
@@ -133,15 +133,20 @@ export function ReceiptsClient() {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Receipts (FY {financialYear})</h1>
-          {/* <p className="text-lg text-muted-foreground">Manage incoming payments for FY {financialYear}.</p> */}
         </div>
-        <Button onClick={openAddReceiptForm} size="lg" className="text-base py-3 px-6 shadow-md">
-          <PlusCircle className="mr-2 h-5 w-5" /> Add Receipt
-        </Button>
+         <div className="flex gap-2">
+            <Button onClick={openAddReceiptForm} size="lg" className="text-base py-3 px-6 shadow-md">
+            <PlusCircle className="mr-2 h-5 w-5" /> Add Receipt
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => window.print()}>
+                <Printer className="h-5 w-5" />
+                <span className="sr-only">Print</span>
+            </Button>
+        </div>
       </div>
 
       <ReceiptTable data={filteredReceipts} onEdit={handleEditReceipt} onDelete={handleDeleteReceiptAttempt} />
