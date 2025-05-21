@@ -5,7 +5,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes, Printer } from "lucide-react";
+import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes, Printer, Trash2 } from "lucide-react"; // Added Printer, Trash2
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Storage Keys
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -40,14 +41,14 @@ const initialLocationTransfers: LocationTransfer[] = [
       { lotNumber: "FY2526-LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 }, 
       { lotNumber: "FY2526-LOT-D/120", bagsToTransfer: 20, netWeightToTransfer: 1000 },
     ],
-    notes: "Transferring partial stock for FY2526."
+    notes: "Transferring partial stock for FY2526 to manage regional demand."
   },
   {
     id: "lt-fy2425-1", date: "2024-08-22", fromWarehouseId: "wh-pune", fromWarehouseName: "Pune North Godown", toWarehouseId: "wh-ngp", toWarehouseName: "Nagpur South Storage",
     items: [
       { lotNumber: "FY2425-LOT-X/90", bagsToTransfer: 15, netWeightToTransfer: 750 },
     ],
-    notes: "Moving LOT-X stock to Nagpur for FY2425."
+    notes: "Moving LOT-X stock to Nagpur for FY2425 distribution strategy."
   },
 ];
 
@@ -214,6 +215,7 @@ export function LocationTransferClient() {
       </div>
 
       <Card className="shadow-xl">
+      <TooltipProvider>
         <Tabs defaultValue="stockOverview" className="w-full">
           <CardHeader className="p-0">
             <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none">
@@ -240,8 +242,18 @@ export function LocationTransferClient() {
                             {aggregatedStock.length === 0 && <TableRow><TableCell colSpan={3} className="text-center h-24">No stock available.</TableCell></TableRow>}
                             {aggregatedStock.map(item => (
                                 <TableRow key={`${item.locationId}-${item.lotNumber}`}>
-                                    <TableCell>{item.locationName}</TableCell>
-                                    <TableCell>{item.lotNumber}</TableCell>
+                                    <TableCell>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName}</span></TooltipTrigger>
+                                        <TooltipContent><p>{item.locationName}</p></TooltipContent>
+                                      </Tooltip>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger>
+                                        <TooltipContent><p>{item.lotNumber}</p></TooltipContent>
+                                      </Tooltip>
+                                    </TableCell>
                                     <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
@@ -269,10 +281,40 @@ export function LocationTransferClient() {
                     {locationTransfers.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(transfer => (
                       <TableRow key={transfer.id}>
                         <TableCell>{format(new Date(transfer.date), "dd-MM-yy")}</TableCell>
-                        <TableCell>{transfer.fromWarehouseName || transfer.fromWarehouseId}</TableCell>
-                        <TableCell>{transfer.toWarehouseName || transfer.toWarehouseId}</TableCell>
-                        <TableCell>{transfer.items.map(i => `${i.lotNumber} (${i.bagsToTransfer} bags)`).join(', ')}</TableCell>
-                        <TableCell className="truncate max-w-xs">{transfer.notes || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger>
+                            <TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger>
+                            <TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="truncate max-w-[200px] inline-block">
+                                {transfer.items.map(i => `${i.lotNumber} (${i.bagsToTransfer} bags)`).join(', ')}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <ul className="list-disc pl-4">
+                                {transfer.items.map(i => <li key={i.lotNumber}>{`${i.lotNumber} (${i.bagsToTransfer} bags, ${i.netWeightToTransfer}kg)`}</li>)}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell className="truncate max-w-xs">
+                          {transfer.notes ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild><span>{transfer.notes}</span></TooltipTrigger>
+                              <TooltipContent><p>{transfer.notes}</p></TooltipContent>
+                            </Tooltip>
+                          ) : 'N/A'}
+                        </TableCell>
                         <TableCell className="text-center">
                           <Button variant="ghost" size="icon" onClick={() => handleEditTransfer(transfer)} className="mr-1 hover:text-primary"><PlusCircle className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteTransferAttempt(transfer)} className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
@@ -285,6 +327,7 @@ export function LocationTransferClient() {
             </CardContent>
           </TabsContent>
         </Tabs>
+        </TooltipProvider>
         <CardFooter className="flex items-start text-destructive p-3 mt-4 rounded-md border border-destructive/50 bg-destructive/10">
             <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
             <p className="text-xs">
@@ -301,7 +344,7 @@ export function LocationTransferClient() {
           onSubmit={handleAddOrUpdateTransfer}
           warehouses={warehouses}
           transporters={transporters}
-          purchases={purchases}
+          purchases={purchases} 
           onMasterDataUpdate={handleMasterDataUpdate}
           transferToEdit={transferToEdit}
         />
@@ -328,3 +371,4 @@ export function LocationTransferClient() {
     </div>
   );
 }
+

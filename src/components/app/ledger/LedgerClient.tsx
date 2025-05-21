@@ -14,7 +14,7 @@ import { BookUser, CalendarRange, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useSearchParams, useRouter } from "next/navigation"; // Import useSearchParams and useRouter
+import { useSearchParams, useRouter } from "next/navigation";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -22,7 +22,7 @@ const MASTERS_KEYS = {
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   brokers: 'masterBrokers',
-  warehouses: 'masterWarehouses', // Though warehouses don't have ledgers in this context
+  warehouses: 'masterWarehouses',
 };
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
@@ -65,7 +65,7 @@ export function LedgerClient() {
   const { financialYear: currentFinancialYearString } = useSettings();
 
   const searchParams = useSearchParams();
-  const router = useRouter(); // useRouter if you need to update URL without navigation
+  const router = useRouter();
 
   React.useEffect(() => {
     setHydrated(true);
@@ -96,13 +96,11 @@ export function LedgerClient() {
       loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
       setAllMasters(loadedMasters);
       
-      // Set initial date range
       setDateRange({
           from: startOfDay(subMonths(new Date(), 3)), 
           to: endOfDay(new Date()),
       });
 
-      // Check for partyId in URL and set it
       const partyIdFromQuery = searchParams.get('partyId');
       if (partyIdFromQuery && loadedMasters.some(m => m.id === partyIdFromQuery)) {
         setSelectedPartyId(partyIdFromQuery);
@@ -122,7 +120,6 @@ export function LedgerClient() {
     const partyTransactions: LedgerTransaction[] = [];
 
     purchases.forEach(p => {
-      // Supplier Ledger: When goods are purchased from this supplier
       if (p.supplierId === selectedPartyId && party.type === 'Supplier') {
         partyTransactions.push({ 
           relatedDocId: p.id, date: p.date, type: 'Purchase', refNo: p.lotNumber, 
@@ -131,29 +128,30 @@ export function LedgerClient() {
           rate: p.rate, netWeight: p.netWeight, transactionAmount: p.totalAmount
         });
       }
-      // Agent Ledger: Commission earned by this agent on a purchase
       if (p.agentId === selectedPartyId && party.type === 'Agent') {
-        const agentCommission = (p.netWeight * p.rate * (party.commission || 0) / 100);
-        if (agentCommission > 0) partyTransactions.push({ 
+        const agentMasterData = allMasters.find(a => a.id === p.agentId && a.type === 'Agent');
+        const agentCommissionAmount = agentMasterData?.commission 
+            ? (p.netWeight * p.rate * (agentMasterData.commission / 100)) 
+            : 0;
+        if (agentCommissionAmount > 0) partyTransactions.push({ 
             relatedDocId: p.id, date: p.date, type: 'Agent Comm.', refNo: p.lotNumber, 
             particulars: `Comm. on Purchase Lot ${p.lotNumber} (Sup: ${p.supplierName || p.supplierId})`, 
-            credit: agentCommission, 
-            transactionAmount: agentCommission
+            credit: agentCommissionAmount, 
+            transactionAmount: agentCommissionAmount,
+            rate: p.rate, netWeight: p.netWeight 
         });
       }
-      // Transporter Ledger: Transport cost for a purchase, if this transporter was used and paid by user
-      if (p.transporterId === selectedPartyId && party.type === 'Transporter' && p.transportRate) { // transportRate is total for purchase here
+      if (p.transporterId === selectedPartyId && party.type === 'Transporter' && p.transportRate) {
         partyTransactions.push({ 
             relatedDocId: p.id, date: p.date, type: 'Transport Exp.', refNo: p.lotNumber, 
             particulars: `Transport for Purchase Lot ${p.lotNumber}`, 
-            credit: p.transportRate, // This is a liability for the user if not yet paid
+            credit: p.transportRate,
             transactionAmount: p.transportRate
         });
       }
     });
 
     sales.forEach(s => {
-      // Customer Ledger: When goods are sold to this customer
       if (s.customerId === selectedPartyId && party.type === 'Customer') {
         partyTransactions.push({ 
             relatedDocId: s.id, date: s.date, type: 'Sale', refNo: s.billNumber, 
@@ -162,21 +160,20 @@ export function LedgerClient() {
             rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
         });
       }
-      // Broker Ledger: Brokerage earned by this broker on a sale
       if (s.brokerId === selectedPartyId && party.type === 'Broker' && s.calculatedBrokerageCommission) { 
         if (s.calculatedBrokerageCommission > 0) partyTransactions.push({ 
             relatedDocId: s.id, date: s.date, type: 'Brokerage Exp.', refNo: s.billNumber, 
             particulars: `Brokerage on Sale ${s.billNumber || s.id} (Cust: ${s.customerName || s.customerId})`, 
-            credit: s.calculatedBrokerageCommission, // This is a liability for the user
-            transactionAmount: s.calculatedBrokerageCommission
+            credit: s.calculatedBrokerageCommission,
+            transactionAmount: s.calculatedBrokerageCommission,
+            rate: s.rate, netWeight: s.netWeight
         });
       }
-      // Transporter Ledger: Transport cost for a sale, if this transporter was used and paid by user
        if (s.transporterId === selectedPartyId && party.type === 'Transporter' && s.transportCost) { 
         partyTransactions.push({ 
             relatedDocId: s.id, date: s.date, type: 'Transport Exp.', refNo: s.billNumber, 
             particulars: `Transport for Sale ${s.billNumber || s.id} (paid by user)`, 
-            credit: s.transportCost, // Liability for the user
+            credit: s.transportCost,
             transactionAmount: s.transportCost
         });
       }
@@ -187,7 +184,7 @@ export function LedgerClient() {
         partyTransactions.push({ 
             relatedDocId: pm.id, date: pm.date, type: 'Payment', refNo: pm.referenceNo, 
             particulars: `Payment made via ${pm.paymentMethod} ${pm.notes ? '- '+pm.notes : ''}`, 
-            debit: pm.amount, // For Supplier, Agent, Broker, Transporter - this reduces user's liability
+            debit: pm.amount,
             transactionAmount: pm.amount
         });
       }
@@ -198,7 +195,7 @@ export function LedgerClient() {
         partyTransactions.push({ 
             relatedDocId: rc.id, date: rc.date, type: 'Receipt', refNo: rc.referenceNo, 
             particulars: `Receipt via ${rc.paymentMethod} ${rc.notes ? '- '+rc.notes : ''}`, 
-            credit: rc.amount, // For Customer, Broker - this reduces their liability to user
+            credit: rc.amount,
             transactionAmount: rc.amount
         });
       }
@@ -231,12 +228,11 @@ export function LedgerClient() {
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
-    // Optionally, update URL here if desired: router.push(`/ledger?partyId=${value}`, { scroll: false });
   }, []); 
 
   const partyOptions = React.useMemo(() =>
     allMasters
-      .filter(m => ['Customer', 'Supplier', 'Agent', 'Broker', 'Transporter'].includes(m.type)) // Filter for relevant types for ledgers
+      .filter(m => ['Customer', 'Supplier', 'Agent', 'Broker', 'Transporter'].includes(m.type))
       .map(p => ({ label: `${p.name} (${p.type})`, value: p.id })),
     [allMasters]
   );
@@ -313,7 +309,6 @@ export function LedgerClient() {
         </CardContent>
       </Card>
 
-
       {selectedPartyId && selectedPartyDetails ? (
         <Card className="shadow-xl">
           <CardHeader>
@@ -347,7 +342,16 @@ export function LedgerClient() {
                     ledgerTransactions.entries.map((entry, index) => (
                       <TableRow key={`${entry.relatedDocId}-${index}-${entry.type}`}>
                         <TableCell>{format(parseISO(entry.date), "dd-MM-yy")}</TableCell>
-                        <TableCell className="max-w-xs truncate">{entry.particulars}</TableCell>
+                        <TableCell className="max-w-xs truncate">
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span>{entry.particulars}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{entry.particulars}</p>
+                            </TooltipContent>
+                           </Tooltip>
+                        </TableCell>
                         <TableCell>{entry.type}</TableCell>
                         <TableCell>{entry.refNo || 'N/A'}</TableCell>
                         <TableCell className="text-right">{entry.rate?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
@@ -409,3 +413,4 @@ export function LedgerClient() {
     </div>
   );
 }
+

@@ -15,6 +15,7 @@ import { Pencil, Trash2, Printer } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface SaleTableProps {
   data: Sale[];
@@ -33,55 +34,73 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
   };
 
   return (
-    <ScrollArea className="rounded-md border shadow-sm">
-      <Table className="min-w-full whitespace-nowrap">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">Date</TableHead>
-            <TableHead>Bill No.</TableHead>
-            <TableHead>Customer</TableHead>
-            <TableHead>Vakkal / Lot No.</TableHead>
-            <TableHead className="text-right">Bags</TableHead>
-            <TableHead className="text-right">Net Wt.(kg)</TableHead>
-            <TableHead className="text-right">Rate (₹/kg)</TableHead>
-            <TableHead>Broker</TableHead>
-            <TableHead className="text-right">Total (₹)</TableHead>
-            <TableHead className="text-right">Profit (₹)</TableHead>
-            <TableHead className="text-center w-[120px]">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((sale) => (
-            <TableRow key={sale.id}>
-              <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
-              <TableCell>{sale.billNumber || 'N/A'}</TableCell>
-              <TableCell>{sale.customerName || sale.customerId}</TableCell>
-              <TableCell>{sale.lotNumber}</TableCell>
-              <TableCell className="text-right">{sale.quantity}</TableCell>
-              <TableCell className="text-right">{sale.netWeight.toLocaleString()}</TableCell>
-              <TableCell className="text-right">{sale.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-              <TableCell>{sale.brokerName || sale.brokerId || 'N/A'}</TableCell>
-              <TableCell className="text-right font-semibold">{(sale.billAmount || sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-              <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : ''}`}>
-                {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
-              </TableCell>
-              <TableCell className="text-center">
-                <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-1 hover:text-primary" title="Edit Sale">
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handlePrint} className="mr-1 hover:text-blue-600" title="Print Chitti">
-                  <Printer className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => onDelete(sale.id)} className="hover:text-destructive" title="Delete Sale">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TableCell>
+    <TooltipProvider>
+      <ScrollArea className="rounded-md border shadow-sm">
+        <Table className="min-w-full whitespace-nowrap">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">Date</TableHead>
+              <TableHead>Bill No.</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Vakkal / Lot No.</TableHead>
+              <TableHead className="text-right">Bags</TableHead>
+              <TableHead className="text-right">Net Wt.(kg)</TableHead>
+              <TableHead className="text-right">Rate (₹/kg)</TableHead>
+              <TableHead>Broker</TableHead>
+              <TableHead className="text-right">Total (₹)</TableHead>
+              <TableHead className="text-right">Profit (₹)</TableHead>
+              <TableHead className="text-center w-[120px]">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+          </TableHeader>
+          <TableBody>
+            {data.map((sale) => (
+              <TableRow key={sale.id}>
+                <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.billNumber || 'N/A'}</span></TooltipTrigger>
+                    <TooltipContent><p>{sale.billNumber || 'N/A'}</p></TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{sale.customerName || sale.customerId}</span></TooltipTrigger>
+                    <TooltipContent><p>{sale.customerName || sale.customerId}</p></TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>{sale.lotNumber}</TableCell>
+                <TableCell className="text-right">{sale.quantity}</TableCell>
+                <TableCell className="text-right">{sale.netWeight.toLocaleString()}</TableCell>
+                <TableCell className="text-right">{sale.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell>
+                  <Tooltip>
+                    <TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.brokerName || sale.brokerId || 'N/A'}</span></TooltipTrigger>
+                    <TooltipContent><p>{sale.brokerName || sale.brokerId || 'N/A'}</p></TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell className="text-right font-semibold">{(sale.billAmount || sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : ''}`}>
+                  {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
+                </TableCell>
+                <TableCell className="text-center">
+                  <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-1 hover:text-primary" title="Edit Sale">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handlePrint} className="mr-1 hover:text-blue-600" title="Print Chitti">
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete(sale.id)} className="hover:text-destructive" title="Delete Sale">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </TooltipProvider>
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
+
