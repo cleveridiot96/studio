@@ -81,11 +81,13 @@ export default function MastersPage() {
   const [hydrated, setHydrated] = useState(false);
   
   useEffect(() => {
+    // This effect runs once on mount to signal client-side hydration is complete.
     setHydrated(true);
   }, []);
 
   const allMasterItems = useMemo(() => {
     if (!hydrated) return []; 
+    // This combines all master lists. If a list (e.g., suppliers) is empty, nothing from it will be added.
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses].sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, hydrated]);
 
@@ -98,13 +100,16 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'All': return { data: allMasterItems, setData: () => {} }; 
+      case 'All': return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All'
       default: return { data: [], setData: () => {} };
     }
   }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { setData } = getMasterDataState(item.type);
+    // Use allMasterItems for name checking to ensure uniqueness across all types if needed,
+    // or filter based on current item's type if names can be duplicated across types.
+    // For this implementation, we check against all items.
     const itemsForNameCheck = allMasterItems.filter(existingItem => existingItem.id !== item.id);
 
     if (doesNameExist(item.name, item.type, item.id, itemsForNameCheck)) {
@@ -179,14 +184,6 @@ export default function MastersPage() {
     const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
     return `Add New ${singularLabel || 'Party/Entity'}`;
   }, [activeTab]);
-
-  // Moved this useEffect before the conditional return to comply with Rules of Hooks
-  // This effect was previously related to `showToast` which has been removed.
-  // It can be removed entirely if no other logic depends on it.
-  // For now, leaving an empty effect as a placeholder if other logic was intended here.
-  useEffect(() => {
-    // Placeholder for any effects that need to run after hydration and before render logic.
-  }, [toast]);
 
 
   if (!hydrated) {
@@ -273,5 +270,6 @@ export default function MastersPage() {
     </div>
   );
 }
+    
 
     
