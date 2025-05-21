@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer } from "lucide-react"; // Added Printer
+import { PlusCircle, Printer } from "lucide-react";
 import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Broker, Transporter } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
@@ -29,28 +29,27 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
-// Initial Data (empty for payments, masters will be loaded)
-const initialPaymentsData: Payment[] = [];
-
-// Placeholder initial master data (will be overridden by localStorage if available)
-const initialSuppliers: Supplier[] = [];
-const initialAgents: Agent[] = [];
-const initialBrokers: Broker[] = [];
-const initialTransporters: Transporter[] = [];
+const initialPaymentsData: Payment[] = [
+  { id: "pay-1", date: "2024-05-03", partyId: "supp-anand", partyName: "Anand Agro Products", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", referenceNo: "CHK1001", notes: "Advance for LOT-A" },
+  { id: "pay-2", date: "2024-05-08", partyId: "agent-ajay", partyName: "Ajay Kumar", partyType: "Agent", amount: 2200, paymentMethod: "Cash", notes: "Commission for LOT-A" },
+  { id: "pay-3", date: "2024-05-12", partyId: "trans-speedy", partyName: "Speedy Logistics", partyType: "Transporter", amount: 2500, paymentMethod: "UPI", referenceNo: "upi123", notes: "Transport for LOT-A" },
+  { id: "pay-4", date: "2024-05-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-001" },
+  { id: "pay-5", date: "2024-05-20", partyId: "supp-meena", partyName: "Meena Farms", partyType: "Supplier", amount: 60000, paymentMethod: "Bank", referenceNo: "NEFT5678", notes: "Payment for LOT-B" },
+];
 
 export function PaymentsClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
 
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, initialPaymentsData);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, initialSuppliers);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, initialAgents);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, initialBrokers);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
-  
+
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = React.useState<string | null>(null);
   const [hydrated, setHydrated] = React.useState(false);
@@ -59,13 +58,12 @@ export function PaymentsClient() {
     setHydrated(true);
   }, []);
 
-
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];
     return [
-      ...suppliers, 
-      ...agents, 
-      ...brokers, 
+      ...suppliers,
+      ...agents,
+      ...brokers,
       ...transporters
     ].filter(party => ['Supplier', 'Agent', 'Broker', 'Transporter'].includes(party.type));
   }, [suppliers, agents, brokers, transporters, hydrated]);
@@ -76,18 +74,17 @@ export function PaymentsClient() {
   }, [payments, financialYear, hydrated]);
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
+    const isEditing = payments.some(p => p.id === payment.id);
     setPayments(prevPayments => {
-      const isEditing = prevPayments.some(p => p.id === payment.id);
       if (isEditing) {
-        toast({ title: "Success!", description: "Payment updated successfully." });
         return prevPayments.map(p => p.id === payment.id ? payment : p);
       } else {
-        toast({ title: "Success!", description: "Payment added successfully." });
         return [payment, ...prevPayments];
       }
     });
     setPaymentToEdit(null);
-  }, [setPayments, toast]);
+    toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
+  }, [setPayments, toast, payments]); // Added payments to dependency for isEditing
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -107,7 +104,7 @@ export function PaymentsClient() {
       setShowDeleteConfirm(false);
     }
   }, [paymentToDeleteId, setPayments, toast]);
-  
+
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     switch (type) {
       case "Supplier":
@@ -130,7 +127,7 @@ export function PaymentsClient() {
   }, [setSuppliers, setAgents, setBrokers, setTransporters, toast]);
 
   const openAddPaymentForm = React.useCallback(() => {
-    setPaymentToEdit(null); 
+    setPaymentToEdit(null);
     setIsAddPaymentFormOpen(true);
   }, []);
 
@@ -176,7 +173,7 @@ export function PaymentsClient() {
           paymentToEdit={paymentToEdit}
         />
       )}
-      
+
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -196,3 +193,5 @@ export function PaymentsClient() {
     </div>
   );
 }
+
+    

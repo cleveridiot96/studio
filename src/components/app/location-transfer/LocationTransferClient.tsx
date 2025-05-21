@@ -5,7 +5,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes } from "lucide-react";
+import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes, Printer } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,25 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 
+const initialLocationTransfers: LocationTransfer[] = [
+  {
+    id: "lt-1", date: "2024-05-20", fromWarehouseId: "wh-mum", fromWarehouseName: "Mumbai Central Warehouse", toWarehouseId: "wh-pune", toWarehouseName: "Pune North Godown",
+    transporterId: "trans-quick", transporterName: "Quick Movers",
+    items: [
+      { lotNumber: "LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 }, // 10 bags * 50kg/bag
+      { lotNumber: "LOT-D/120", bagsToTransfer: 20, netWeightToTransfer: 1000 },
+    ],
+    notes: "Transferring partial stock of LOT-A and LOT-D to Pune."
+  },
+  {
+    id: "lt-2", date: "2024-05-22", fromWarehouseId: "wh-pune", fromWarehouseName: "Pune North Godown", toWarehouseId: "wh-ngp", toWarehouseName: "Nagpur South Storage",
+    items: [
+      { lotNumber: "LOT-B/50", bagsToTransfer: 15, netWeightToTransfer: 750 },
+    ],
+    notes: "Moving LOT-B stock to Nagpur."
+  },
+];
+
 interface AggregatedStockItem {
   lotNumber: string;
   locationId: string;
@@ -44,17 +63,11 @@ export function LocationTransferClient() {
   const { toast } = useToast();
   const [hydrated, setHydrated] = React.useState(false);
 
-  const initialLocationTransfers = React.useMemo(() => [], []);
-  const initialWarehouses = React.useMemo(() => [], []);
-  const initialTransporters = React.useMemo(() => [], []);
-  const initialPurchases = React.useMemo(() => [], []);
-  const initialSales = React.useMemo(() => [], []);
-
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, initialLocationTransfers);
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchases);
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSales);
+  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -68,7 +81,7 @@ export function LocationTransferClient() {
 
   const aggregatedStock = React.useMemo(() => {
     if (!hydrated) return [];
-    const stockMap = new Map<string, AggregatedStockItem>(); // Key: lotNumber-locationId
+    const stockMap = new Map<string, AggregatedStockItem>();
 
     purchases.forEach(p => {
       const key = `${p.lotNumber}-${p.locationId}`;
@@ -99,7 +112,7 @@ export function LocationTransferClient() {
           }
       }
     });
-    
+
     locationTransfers.forEach(transfer => {
         transfer.items.forEach(item => {
             const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
@@ -133,16 +146,15 @@ export function LocationTransferClient() {
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
+    const isEditing = locationTransfers.some(t => t.id === transfer.id);
     setLocationTransfers(prev => {
-      const isEditing = prev.some(t => t.id === transfer.id);
       if (isEditing) {
-        toast({ title: "Transfer Updated", description: "Location transfer details saved." });
         return prev.map(t => (t.id === transfer.id ? transfer : t));
       } else {
-        toast({ title: "Transfer Created", description: "New location transfer recorded successfully." });
         return [transfer, ...prev];
       }
     });
+    toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
     setTransferToEdit(null);
   };
 
@@ -164,7 +176,7 @@ export function LocationTransferClient() {
       setShowDeleteConfirm(false);
     }
   };
-  
+
   const handleMasterDataUpdate = (type: "Warehouse" | "Transporter", newItem: MasterItem) => {
     if (type === "Warehouse") {
       setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)]);
@@ -178,21 +190,27 @@ export function LocationTransferClient() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-8 print-area">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center">
             <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers
           </h1>
         </div>
-        <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className="text-base py-3 px-6 shadow-md">
-          <PlusCircle className="mr-2 h-5 w-5" /> New Transfer
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className="text-base py-3 px-6 shadow-md">
+                <PlusCircle className="mr-2 h-5 w-5" /> New Transfer
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => window.print()}>
+                <Printer className="h-5 w-5" />
+                <span className="sr-only">Print</span>
+            </Button>
+        </div>
       </div>
 
       <Card className="shadow-xl">
         <Tabs defaultValue="stockOverview" className="w-full">
-          <CardHeader className="p-0"> {/* Remove padding for TabsList to fit nicely */}
+          <CardHeader className="p-0">
             <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none">
               <TabsTrigger value="stockOverview" className="py-3 text-base">
                 <Boxes className="mr-2 h-5 w-5"/>Stock Overview
@@ -203,7 +221,7 @@ export function LocationTransferClient() {
             </TabsList>
           </CardHeader>
           <TabsContent value="stockOverview">
-            <CardContent className="pt-6"> {/* Add padding back for content */}
+            <CardContent className="pt-6">
                 <ScrollArea className="h-[400px] border rounded-md">
                     <Table size="sm">
                         <TableHeader>
@@ -228,7 +246,7 @@ export function LocationTransferClient() {
             </CardContent>
           </TabsContent>
           <TabsContent value="transferHistory">
-            <CardContent className="pt-6"> {/* Add padding back for content */}
+            <CardContent className="pt-6">
               <ScrollArea className="h-[400px] border rounded-md">
                 <Table size="sm">
                   <TableHeader>
@@ -269,7 +287,7 @@ export function LocationTransferClient() {
             </p>
         </CardFooter>
       </Card>
-      
+
 
       {isAddFormOpen && (
         <AddLocationTransferForm
@@ -305,3 +323,5 @@ export function LocationTransferClient() {
     </div>
   );
 }
+
+    

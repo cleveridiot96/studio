@@ -32,13 +32,42 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 
-// Initial data set to empty arrays
-const initialCustomers: MasterItem[] = [];
-const initialSuppliers: MasterItem[] = [];
-const initialAgents: MasterItem[] = [];
-const initialTransporters: MasterItem[] = [];
-const initialBrokers: MasterItem[] = [];
-const initialWarehouses: MasterItem[] = [];
+// Initial data set
+const initialCustomers: MasterItem[] = [
+  { id: "cust-ramesh", name: "Ramesh Retail", type: "Customer" },
+  { id: "cust-sita", name: "Sita General Store", type: "Customer" },
+  { id: "cust-mohan", name: "Mohan Wholesalers", type: "Customer" },
+  { id: "cust-priya", name: "Priya Foods", type: "Customer" },
+  { id: "cust-anil", name: "Anil & Sons", type: "Customer" },
+];
+const initialSuppliers: MasterItem[] = [
+  { id: "supp-anand", name: "Anand Agro Products", type: "Supplier" },
+  { id: "supp-meena", name: "Meena Farms", type: "Supplier" },
+  { id: "supp-vikas", name: "Vikas Seeds & Grains", type: "Supplier" },
+  { id: "supp-uma", name: "Uma Organics", type: "Supplier" },
+  { id: "supp-sunilp", name: "Sunil Trading Co.", type: "Supplier" },
+];
+const initialAgents: MasterItem[] = [
+  { id: "agent-ajay", name: "Ajay Kumar", type: "Agent", commission: 2 },
+  { id: "agent-sunila", name: "Sunil Varma", type: "Agent", commission: 1.5 },
+  { id: "agent-deepa", name: "Deepa Sharma", type: "Agent", commission: 2.5 },
+];
+const initialTransporters: MasterItem[] = [
+  { id: "trans-speedy", name: "Speedy Logistics", type: "Transporter" },
+  { id: "trans-reliable", name: "Reliable Transports", type: "Transporter" },
+  { id: "trans-quick", name: "Quick Movers", type: "Transporter" },
+];
+const initialBrokers: MasterItem[] = [
+  { id: "broker-vinod", name: "Vinod Mehta", type: "Broker", commission: 1 },
+  { id: "broker-leela", name: "Leela Associates", type: "Broker", commission: 0.75 },
+  { id: "broker-karan", name: "Karan Enterprises", type: "Broker", commission: 1.2 },
+];
+const initialWarehouses: MasterItem[] = [
+  { id: "wh-mum", name: "Mumbai Central Warehouse", type: "Warehouse" },
+  { id: "wh-pune", name: "Pune North Godown", type: "Warehouse" },
+  { id: "wh-ngp", name: "Nagpur South Storage", type: "Warehouse" },
+  { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
+];
 
 
 type MasterPageTabKey = MasterItemType | 'All';
@@ -83,7 +112,6 @@ export default function MastersPage() {
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
-    // No need to pass allMasterItems as a dependency if it's derived from other dependencies of this callback
     switch (type) {
       case 'Customer': return { data: customers, setData: setCustomers };
       case 'Supplier': return { data: suppliers, setData: setSuppliers };
@@ -91,10 +119,10 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'All': return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All'
+      case 'All': return { data: allMasterItems, setData: () => {} };
       default: return { data: [], setData: () => {} };
     }
-  }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]); // allMasterItems is included as its reference changes
+  }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { setData } = getMasterDataState(item.type);
@@ -109,23 +137,22 @@ export default function MastersPage() {
     }
 
     setData(prev => {
-      let updatedData;
-      let toastMessage = '';
       const existingIndex = prev.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
-        updatedData = [...prev];
+        const updatedData = [...prev];
         updatedData[existingIndex] = item;
-        toastMessage = `${item.type} updated successfully!`;
+        toast({ title: `${item.type} updated successfully!`, description: `Details for ${item.name} saved.` });
+        return updatedData;
       } else {
-        updatedData = [item, ...prev]; // Add new item to the beginning for better UX
-        toastMessage = `${item.type} added successfully!`;
+        toast({ title: `${item.type} added successfully!`, description: `${item.name} is now in your masters.` });
+        return [item, ...prev];
       }
-      setIsFormOpen(false);
-      setEditingItem(null);
-      return updatedData;
     });
+    setIsFormOpen(false);
+    setEditingItem(null);
 
   }, [getMasterDataState, allMasterItems, toast]);
+
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
     setIsFormOpen(true);
@@ -140,14 +167,14 @@ export default function MastersPage() {
     if (itemToDelete) {
       const { setData } = getMasterDataState(itemToDelete.type);
       setData(prev => prev.filter(i => i.id !== itemToDelete.id));
-      toast({ title: `${itemToDelete.type} deleted.`, variant: 'destructive' });
+      toast({ title: `${itemToDelete.type} deleted.`, description: `${itemToDelete.name} has been removed.`, variant: 'destructive' });
       setItemToDelete(null);
       setShowDeleteConfirm(false);
     }
   }, [itemToDelete, getMasterDataState, toast]);
 
   const openFormForNewItem = useCallback(() => {
-    setEditingItem(null); 
+    setEditingItem(null);
     setIsFormOpen(true);
   }, []);
 
@@ -166,11 +193,10 @@ export default function MastersPage() {
     );
   }
 
-  // Effect to show toast after state update triggers re-render
   useEffect(() => {
     if (showToast) {
-      toast({ title: "Success!", description: "Master saved" }); // Or customize message based on a state variable
-      setShowToast(false); // Reset toast trigger
+      toast({ title: "Success!", description: "Master saved" });
+      setShowToast(false);
     }
   }, [showToast, toast]);
   return (
@@ -249,3 +275,5 @@ export default function MastersPage() {
     </div>
   );
 }
+
+    

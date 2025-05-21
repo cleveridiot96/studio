@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer } from "lucide-react"; // Added Printer
+import { PlusCircle, Printer } from "lucide-react";
 import type { Receipt, MasterItem, MasterItemType, Customer, Broker } from "@/lib/types";
 import { ReceiptTable } from "./ReceiptTable";
 import { AddReceiptForm } from "./AddReceiptForm";
@@ -27,23 +27,25 @@ const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
-// Initial Data (empty for receipts, masters will be loaded)
-const initialReceiptsData: Receipt[] = [];
-const initialCustomers: Customer[] = [];
-const initialBrokers: Broker[] = [];
-
+const initialReceiptsData: Receipt[] = [
+  { id: "rec-1", date: "2024-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFT123", notes: "Part payment for INV-001" },
+  { id: "rec-2", date: "2024-05-14", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-002" },
+  { id: "rec-3", date: "2024-05-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-003 (user paid broker, now broker settles)" },
+  { id: "rec-4", date: "2024-05-22", partyId: "cust-mohan", partyName: "Mohan Wholesalers", partyType: "Customer", amount: 60000, paymentMethod: "Bank", referenceNo: "RTGS456", notes: "Advance for INV-003" },
+  { id: "rec-5", date: "2024-05-25", partyId: "cust-priya", partyName: "Priya Foods", partyType: "Customer", amount: 87500, paymentMethod: "Cash", notes: "Payment for INV-004" },
+];
 
 export function ReceiptsClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
 
   const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, initialReceiptsData);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, initialBrokers);
-  
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
-  
+
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [receiptToDeleteId, setReceiptToDeleteId] = React.useState<string | null>(null);
   const [hydrated, setHydrated] = React.useState(false);
@@ -55,7 +57,7 @@ export function ReceiptsClient() {
   const allReceiptParties = React.useMemo(() => {
     if (!hydrated) return [];
     return [
-        ...customers, 
+        ...customers,
         ...brokers
     ].filter(party => ['Customer', 'Broker'].includes(party.type));
   }, [customers, brokers, hydrated]);
@@ -66,18 +68,17 @@ export function ReceiptsClient() {
   }, [receipts, financialYear, hydrated]);
 
   const handleAddOrUpdateReceipt = React.useCallback((receipt: Receipt) => {
+    const isEditing = receipts.some(r => r.id === receipt.id);
     setReceipts(prevReceipts => {
-      const isEditing = prevReceipts.some(r => r.id === receipt.id);
       if (isEditing) {
-        toast({ title: "Success!", description: "Receipt updated successfully." });
         return prevReceipts.map(r => r.id === receipt.id ? receipt : r);
       } else {
-        toast({ title: "Success!", description: "Receipt added successfully." });
         return [receipt, ...prevReceipts];
       }
     });
     setReceiptToEdit(null);
-  }, [setReceipts, toast]);
+    toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
+  }, [setReceipts, toast, receipts]); // Added receipts to dependency for isEditing
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);
@@ -114,7 +115,7 @@ export function ReceiptsClient() {
   }, [setCustomers, setBrokers, toast]);
 
   const openAddReceiptForm = React.useCallback(() => {
-    setReceiptToEdit(null); 
+    setReceiptToEdit(null);
     setIsAddReceiptFormOpen(true);
   }, []);
 
@@ -130,7 +131,6 @@ export function ReceiptsClient() {
         </div>
     );
   }
-
 
   return (
     <div className="space-y-6 print-area">
@@ -161,7 +161,7 @@ export function ReceiptsClient() {
           receiptToEdit={receiptToEdit}
         />
       )}
-      
+
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -181,3 +181,5 @@ export function ReceiptsClient() {
     </div>
   );
 }
+
+    

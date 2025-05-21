@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer } from "lucide-react"; // Removed FilePlus2, Added Printer
+import { PlusCircle, Printer } from "lucide-react";
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
@@ -22,18 +22,40 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
-// Initial Data set to empty arrays
-const initialSalesData: Sale[] = [];
-const initialCustomers: Customer[] = [];
-const initialTransporters: Transporter[] = [];
-const initialBrokers: Broker[] = [];
-const initialInventorySource: Purchase[] = []; // Purchases will act as inventory source
+const initialSalesData: Sale[] = [
+  {
+    id: "sale-1", date: "2024-05-10", billNumber: "INV-001", customerId: "cust-ramesh", customerName: "Ramesh Retail", lotNumber: "LOT-A/100",
+    quantity: 20, netWeight: 1000, rate: 28, totalAmount: 1000 * 28, calculatedProfit: (1000 * 28) - (1000 * 22), // Assuming LOT-A bought at 22
+    transporterId: "trans-speedy", transporterName: "Speedy Logistics", transportCost: 200,
+    brokerId: "broker-vinod", brokerName: "Vinod Mehta", brokerageType: "Percentage", brokerageValue: 1, calculatedBrokerageCommission: (1000*28)*0.01,
+    notes: "Urgent delivery to Ramesh Retail"
+  },
+  {
+    id: "sale-2", date: "2024-05-12", billNumber: "INV-002", customerId: "cust-sita", customerName: "Sita General Store", lotNumber: "LOT-B/50",
+    quantity: 30, netWeight: 1500, rate: 30, totalAmount: 1500 * 30, calculatedProfit: (1500 * 30) - (1500 * 25), // Assuming LOT-B bought at 25
+    notes: "Standard delivery"
+  },
+  {
+    id: "sale-3", date: "2024-05-15", billNumber: "INV-003", customerId: "cust-mohan", customerName: "Mohan Wholesalers", lotNumber: "LOT-A/100",
+    quantity: 50, netWeight: 2500, rate: 27.5, totalAmount: 2500 * 27.5, calculatedProfit: (2500 * 27.5) - (2500 * 22),
+    brokerId: "broker-leela", brokerName: "Leela Associates", brokerageType: "Fixed", brokerageValue: 300, calculatedBrokerageCommission: 300,
+  },
+  {
+    id: "sale-4", date: "2024-05-18", billNumber: "INV-004", customerId: "cust-priya", customerName: "Priya Foods", lotNumber: "LOT-C/75",
+    quantity: 70, netWeight: 3500, rate: 25, totalAmount: 3500 * 25, calculatedProfit: (3500 * 25) - (3500 * 20), // Assuming LOT-C bought at 20
+    transportCost: 150,
+  },
+  {
+    id: "sale-5", date: "2024-05-20", billNumber: "INV-005", customerId: "cust-anil", customerName: "Anil & Sons", lotNumber: "LOT-D/120",
+    quantity: 100, netWeight: 5000, rate: 32, totalAmount: 5000 * 32, calculatedProfit: (5000 * 32) - (5000 * 28), // Assuming LOT-D bought at 28
+  }
+];
 
 const SALES_STORAGE_KEY = 'salesData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
-const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory source
+const PURCHASES_STORAGE_KEY = 'purchasesData';
 
 export function SalesClient() {
   const { toast } = useToast();
@@ -41,17 +63,17 @@ export function SalesClient() {
   const [hydrated, setHydrated] = React.useState(false);
 
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSalesData);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, initialBrokers);
-  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialInventorySource);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []);
+  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
-  
+
   React.useEffect(() => {
     setHydrated(true);
   }, []);
@@ -69,10 +91,10 @@ export function SalesClient() {
       } else {
         return [sale, ...prevSales];
       }
-
     });
     setSaleToEdit(null);
-  }, [setSales, toast]);
+    toast({ title: "Success!", description: isEditing ? "Sale updated successfully." : "Sale added successfully." });
+  }, [setSales, toast, sales]); // Added sales to dependency for isEditing check
 
   const handleEditSale = React.useCallback((sale: Sale) => {
     setSaleToEdit(sale);
@@ -112,7 +134,7 @@ export function SalesClient() {
   }, [setCustomers, setTransporters, setBrokers, toast]);
 
   const openAddSaleForm = React.useCallback(() => {
-    setSaleToEdit(null); 
+    setSaleToEdit(null);
     setIsAddSaleFormOpen(true);
   }, []);
 
@@ -147,7 +169,7 @@ export function SalesClient() {
       </div>
 
       <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
-      
+
       {isAddSaleFormOpen && (
         <AddSaleForm
           isOpen={isAddSaleFormOpen}
@@ -156,8 +178,8 @@ export function SalesClient() {
           customers={customers}
           transporters={transporters}
           brokers={brokers}
-          inventoryLots={inventorySource} 
-          existingSales={sales} 
+          inventoryLots={inventorySource}
+          existingSales={sales}
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />
@@ -182,3 +204,5 @@ export function SalesClient() {
     </div>
   );
 }
+
+    
