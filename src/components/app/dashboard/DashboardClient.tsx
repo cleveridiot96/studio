@@ -7,11 +7,10 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, Warehouse as MasterWarehouse } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, ShoppingBag, Package, BarChart3, TrendingUp, TrendingDown, CalendarDays, Rocket } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, CalendarDays } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, startOfYear, endOfDay, subMonths } from 'date-fns';
 import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
 import { useSettings } from '@/contexts/SettingsContext';
-import { isDateInFinancialYear } from '@/lib/utils';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -41,11 +40,11 @@ interface StockSummary {
 }
 
 const getFinancialYearDateRange = (fyString: string): { start: Date; end: Date } | null => {
+    if (!fyString || typeof fyString !== 'string') return null;
     const [startYearStr] = fyString.split('-');
     const startYear = parseInt(startYearStr, 10);
     if (isNaN(startYear)) return null;
     
-    // FY is April of startYear to March of startYear + 1
     return {
       start: new Date(startYear, 3, 1), // April 1st
       end: endOfDay(new Date(startYear + 1, 2, 31)), // March 31st, end of day
@@ -65,11 +64,34 @@ const DashboardClient = () => {
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
   const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
 
-  const [selectedPeriod, setSelectedPeriod] = React.useState<string>("currentFY");
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>(() => format(new Date(), "yyyy-MM")); // Default to current month
 
   React.useEffect(() => {
     setHydrated(true);
   }, []);
+  
+  // Update default selected period if financial year changes and current selection is outside new FY
+  React.useEffect(() => {
+    if (hydrated && currentFinancialYearString) {
+        const fyRange = getFinancialYearDateRange(currentFinancialYearString);
+        if (fyRange && selectedPeriod !== "all" && selectedPeriod !== "currentFY") {
+            try {
+                const selectedMonthDate = parseISO(`${selectedPeriod}-01`);
+                 if (!isWithinInterval(selectedMonthDate, { start: fyRange.start, end: fyRange.end })) {
+                    setSelectedPeriod(format(new Date(), "yyyy-MM")); // Default to current month if outside
+                 }
+            } catch (e) {
+                // If selectedPeriod is not a valid yyyy-MM, default it
+                setSelectedPeriod(format(new Date(), "yyyy-MM"));
+            }
+        } else if (selectedPeriod === "all" || selectedPeriod === "currentFY") {
+            // Keep as is
+        } else {
+             setSelectedPeriod(format(new Date(), "yyyy-MM")); // Fallback
+        }
+    }
+  }, [currentFinancialYearString, hydrated, selectedPeriod]);
+
 
   const periodOptions = React.useMemo(() => {
     if (!hydrated) return [];
@@ -82,15 +104,21 @@ const DashboardClient = () => {
     if (fyDateRange) {
         try {
             const monthsInFY = eachMonthOfInterval({ start: fyDateRange.start, end: fyDateRange.end });
-            monthsInFY.forEach(monthStart => { // Iterate chronologically
-            const monthKey = format(monthStart, "yyyy-MM");
-            options.push({ value: monthKey, label: format(monthStart, "MMMM yyyy") });
+            monthsInFY.forEach(monthStart => {
+                const monthKey = format(monthStart, "yyyy-MM");
+                options.push({ value: monthKey, label: format(monthStart, "MMMM yyyy") });
             });
         } catch (error) {
             console.error("Error generating month options for dashboard based on FY:", error);
         }
     }
-    return options;
+    return options.sort((a, b) => { // Sort options: Current FY, All Time, then months reverse chronologically
+        if (a.value === "currentFY") return -1;
+        if (b.value === "currentFY") return 1;
+        if (a.value === "all") return -1;
+        if (b.value === "all") return 1;
+        return b.value.localeCompare(a.value); // Sort months yyyy-MM descending
+    });
   }, [hydrated, currentFinancialYearString]);
 
 
@@ -108,9 +136,14 @@ const DashboardClient = () => {
         endDate = fyRange.end;
       }
     } else if (period.match(/^\d{4}-\d{2}$/)) { // yyyy-MM format for specific month
-      const monthDate = parseISO(period + "-01");
-      startDate = startOfMonth(monthDate);
-      endDate = endOfDay(endOfMonth(monthDate));
+      try {
+        const monthDate = parseISO(period + "-01");
+        startDate = startOfMonth(monthDate);
+        endDate = endOfDay(endOfMonth(monthDate));
+      } catch (e) {
+        console.warn("Invalid month format for filtering:", period);
+        return items; // Return all if month format is invalid
+      }
     }
 
     if (!startDate || !endDate) return items; // Fallback to all items if dates are invalid
@@ -120,7 +153,7 @@ const DashboardClient = () => {
         const itemDate = parseISO(item.date);
         return isWithinInterval(itemDate, { start: startDate!, end: endDate! });
       } catch (e) {
-        console.warn("Invalid date in item for filtering:", item.date);
+        // console.warn("Invalid date in item for filtering:", item.date);
         return false;
       }
     });
@@ -203,6 +236,8 @@ const DashboardClient = () => {
     );
   }
 
+  const currentSelectionLabel = periodOptions.find(opt => opt.value === selectedPeriod)?.label || `Select Period`;
+
   return (
     <div className='space-y-6'>
       <div className="flex justify-between items-center">
@@ -211,7 +246,9 @@ const DashboardClient = () => {
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
             <SelectTrigger className="text-sm">
               <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
-              <SelectValue placeholder="Select Period" />
+              <SelectValue placeholder="Select Period">
+                 {currentSelectionLabel}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {periodOptions.map(option => (
