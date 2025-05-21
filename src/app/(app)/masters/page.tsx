@@ -55,41 +55,37 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
 
 export default function MastersPage() {
   const { toast } = useToast();
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, initialCustomers);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, initialSuppliers);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, initialAgents);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, initialTransporters);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, initialBrokers);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, initialWarehouses);
+  
+  const memoizedInitialCustomers = useMemo(() => initialCustomers, []);
+  const memoizedInitialSuppliers = useMemo(() => initialSuppliers, []);
+  const memoizedInitialAgents = useMemo(() => initialAgents, []);
+  const memoizedInitialTransporters = useMemo(() => initialTransporters, []);
+  const memoizedInitialBrokers = useMemo(() => initialBrokers, []);
+  const memoizedInitialWarehouses = useMemo(() => initialWarehouses, []);
+
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedInitialCustomers);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedInitialSuppliers);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedInitialAgents);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialTransporters);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedInitialBrokers);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
 
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
   const [activeTab, setActiveTab] = useState<MasterPageTabKey>(TABS_CONFIG[0].value);
 
-  const [showToast, setShowToast] = useState(false); // This state seems to be unused, can be removed.
   const [itemToDelete, setItemToDelete] = useState<MasterItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [hydrated, setHydrated] = useState(false);
+  
   useEffect(() => {
     setHydrated(true);
   }, []);
 
-  // Moved this useEffect before the conditional return
-  useEffect(() => {
-    // This useEffect was originally causing the hook order error.
-    // It appears the `showToast` state might be redundant if `toast` is called directly.
-    // If `showToast` was intended to trigger a toast based on some other logic,
-    // that logic should set `showToast` and this effect would pick it up.
-    // For direct toast on action, call `toast()` in the handler.
-    // Let's assume for now it was for a toast that might be triggered by a prop or complex state change.
-    // If `showToast` is indeed never set to true by other means, this useEffect might be unnecessary.
-  }, [showToast, toast]);
-
-
   const allMasterItems = useMemo(() => {
-    if (!hydrated) return []; // Still return empty if not hydrated, to avoid using potentially uninitialized localStorage state
+    if (!hydrated) return []; 
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses].sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, hydrated]);
 
@@ -102,19 +98,16 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'All': return { data: allMasterItems, setData: () => {} }; // setData for 'All' is a no-op as it's derived
+      case 'All': return { data: allMasterItems, setData: () => {} }; 
       default: return { data: [], setData: () => {} };
     }
   }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { setData } = getMasterDataState(item.type);
-
-    // Ensure allMasterItems is up-to-date for validation before this new item is added/updated.
-    // For editing, we exclude the current item by its ID. For adding, item.id might be new.
     const itemsForNameCheck = allMasterItems.filter(existingItem => existingItem.id !== item.id);
 
-    if (doesNameExist(item.name, item.type, item.id, itemsForNameCheck)) { // Pass itemsForNameCheck
+    if (doesNameExist(item.name, item.type, item.id, itemsForNameCheck)) {
       toast({
         title: "Duplicate Name",
         description: `An item named "${item.name}" of type "${item.type}" already exists. Please use a different name.`,
@@ -123,22 +116,32 @@ export default function MastersPage() {
       return;
     }
 
+    let toastMessage = "";
+    let toastDescription = "";
+
     setData(prev => {
       const existingIndex = prev.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
         const updatedData = [...prev];
         updatedData[existingIndex] = item;
-        toast({ title: `${item.type} updated successfully!`, description: `Details for ${item.name} saved.` });
+        toastMessage = `${item.type} updated successfully!`;
+        toastDescription = `Details for ${item.name} saved.`;
         return updatedData;
       } else {
-        toast({ title: `${item.type} added successfully!`, description: `${item.name} is now in your masters.` });
-        return [item, ...prev].sort((a,b) => a.name.localeCompare(b.name)); // Also sort new additions
+        toastMessage = `${item.type} added successfully!`;
+        toastDescription = `${item.name} is now in your masters.`;
+        return [item, ...prev].sort((a,b) => a.name.localeCompare(b.name));
       }
     });
+
+    if (toastMessage) {
+      toast({ title: toastMessage, description: toastDescription });
+    }
+
     setIsFormOpen(false);
     setEditingItem(null);
 
-  }, [getMasterDataState, allMasterItems, toast]); // allMasterItems dependency is important here
+  }, [getMasterDataState, allMasterItems, toast]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
@@ -152,9 +155,14 @@ export default function MastersPage() {
 
   const confirmDeleteItem = useCallback(() => {
     if (itemToDelete) {
-      const { setData } = getMasterDataState(itemToDelete.type);
+      const itemType = itemToDelete.type;
+      const itemName = itemToDelete.name;
+      const { setData } = getMasterDataState(itemType);
+      
       setData(prev => prev.filter(i => i.id !== itemToDelete.id));
-      toast({ title: `${itemToDelete.type} deleted.`, description: `${itemToDelete.name} has been removed.`, variant: 'destructive' });
+      
+      toast({ title: `${itemType} deleted.`, description: `${itemName} has been removed.`, variant: 'destructive' });
+      
       setItemToDelete(null);
       setShowDeleteConfirm(false);
     }
@@ -171,6 +179,15 @@ export default function MastersPage() {
     const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
     return `Add New ${singularLabel || 'Party/Entity'}`;
   }, [activeTab]);
+
+  // Moved this useEffect before the conditional return to comply with Rules of Hooks
+  // This effect was previously related to `showToast` which has been removed.
+  // It can be removed entirely if no other logic depends on it.
+  // For now, leaving an empty effect as a placeholder if other logic was intended here.
+  useEffect(() => {
+    // Placeholder for any effects that need to run after hydration and before render logic.
+  }, [toast]);
+
 
   if (!hydrated) {
     return (
@@ -200,7 +217,6 @@ export default function MastersPage() {
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
-          // For "All" tab, data is allMasterItems. For specific types, it's their respective state.
           const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(tab.value).data;
           return (
             <TabsContent key={tab.value} value={tab.value} className="mt-6">
@@ -210,8 +226,8 @@ export default function MastersPage() {
                 </CardHeader>
                 <CardContent>
                   <MasterList
-                    data={currentData} // Pass the correctly sourced data
-                    itemType={tab.value} // This helps MasterList know what type it's dealing with, esp for 'All'
+                    data={currentData} 
+                    itemType={tab.value} 
                     isAllItemsTab={tab.value === "All"}
                     onEdit={handleEditItem}
                     onDelete={handleDeleteItemAttempt}
@@ -257,3 +273,5 @@ export default function MastersPage() {
     </div>
   );
 }
+
+    
