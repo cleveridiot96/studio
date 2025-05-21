@@ -26,14 +26,17 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
+// Brokers are no longer relevant for payments as per new instructions
+// const BROKERS_STORAGE_KEY = 'masterBrokers'; 
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
+// Updated initial payments data to reflect typical payment parties
 const initialPaymentsData: Payment[] = [
   { id: "pay-fy2526-1", date: "2025-05-03", partyId: "supp-anand", partyName: "Anand Agro Products", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", referenceNo: "CHKFY2526-001", notes: "Advance for LOT-A FY2526" },
   { id: "pay-fy2526-2", date: "2025-05-08", partyId: "agent-ajay", partyName: "Ajay Kumar", partyType: "Agent", amount: 2200, paymentMethod: "Cash", notes: "Commission for LOT-A FY2526" },
   { id: "pay-fy2425-1", date: "2024-08-12", partyId: "trans-reliable", partyName: "Reliable Transports", partyType: "Transporter", amount: 2500, paymentMethod: "UPI", referenceNo: "upiFY2425-123", notes: "Transport for LOT-X FY2425" },
-  { id: "pay-fy2526-3", date: "2025-07-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-FY2526-001" },
+  // Removed broker payment example as brokers are typically paid from sales proceeds or receipts
+  // { id: "pay-fy2526-3", date: "2025-07-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-FY2526-001" },
   { id: "pay-fy2526-4", date: "2025-09-20", partyId: "supp-meena", partyName: "Meena Farms", partyType: "Supplier", amount: 60000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-5678", notes: "Payment for LOT-D FY2526" },
 ];
 
@@ -47,7 +50,8 @@ export function PaymentsClient() {
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  // Brokers are not included in parties eligible for direct payment in this context
+  // const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
@@ -63,14 +67,14 @@ export function PaymentsClient() {
 
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];
+    // Combine only Suppliers, Agents, and Transporters for the payment form's party dropdown
     return [
-      ...suppliers,
-      ...agents,
-      ...brokers,
-      ...transporters
-    ].filter(party => party && party.id && party.name && party.type && ['Supplier', 'Agent', 'Broker', 'Transporter'].includes(party.type))
+      ...suppliers.filter(s => s.type === 'Supplier'),
+      ...agents.filter(a => a.type === 'Agent'),
+      ...transporters.filter(t => t.type === 'Transporter')
+    ].filter(party => party && party.id && party.name && party.type) // Basic validation
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, brokers, transporters, hydrated]);
+  }, [suppliers, agents, transporters, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -117,18 +121,18 @@ export function PaymentsClient() {
       case "Agent":
         setAgents(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
-      case "Broker":
-        setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
+      // Brokers are not directly paid through this form typically
+      // case "Broker":
+      //   setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+      //   break;
       case "Transporter":
         setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       default:
-        toast({title: "Info", description: `Master type ${type} not handled here.`})
+        toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
         break;
     }
-     // toast({ title: `${newItem.type} "${newItem.name}" updated/added from Payments.` }); // Already toasted in form
-  }, [setSuppliers, setAgents, setBrokers, setTransporters, toast]);
+  }, [setSuppliers, setAgents, setTransporters, toast]);
 
   const openAddPaymentForm = React.useCallback(() => {
     setPaymentToEdit(null);
@@ -171,7 +175,7 @@ export function PaymentsClient() {
           isOpen={isAddPaymentFormOpen}
           onClose={closeAddPaymentForm}
           onSubmit={handleAddOrUpdatePayment}
-          parties={allPaymentParties}
+          parties={allPaymentParties} // Pass the filtered list
           onMasterDataUpdate={handleMasterDataUpdate}
           paymentToEdit={paymentToEdit}
         />
@@ -196,5 +200,3 @@ export function PaymentsClient() {
     </div>
   );
 }
-
-    
