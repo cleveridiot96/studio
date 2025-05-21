@@ -1,3 +1,4 @@
+
 // src/components/dashboard/ProfitSummary.tsx
 
 import React from "react";
@@ -64,7 +65,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
     };
   });
 
-  const totalProfit = summary.reduce((acc, item) => acc + item.profit, 0);
+  const totalProfit = profitSummary.reduce((acc, item) => acc + item.profit, 0);
 
   return (
     <div className="bg-white rounded-xl p-4 shadow-md mt-4">
@@ -85,7 +86,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
             <tr key={i}>
               <td className="p-2">{row.date}</td>
               <td className="p-2">₹{row.purchaseRate}</td>
-              <td className="p-2">₹{row.saleRate}</td>
+              <td className="p-2">₹{row.rate}</td>
               <td className="p-2">{row.netWeight} kg</td>
               <td className={`p-2 font-medium ${row.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
                 ₹{row.profit.toFixed(2)}
