@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Renamed to avoid conflict
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -40,7 +40,7 @@ interface AddPaymentFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payment: Payment) => void;
-  parties: MasterItem[]; // Combined list of Supplier, Agent, Broker, Transporter
+  parties: MasterItem[]; 
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   paymentToEdit?: Payment | null;
 }
@@ -71,7 +71,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     }
     return {
       date: new Date(),
-      partyId: undefined, // Important: react-hook-form prefers undefined for unselected controlled components
+      partyId: undefined,
       amount: 0,
       paymentMethod: 'Cash',
       referenceNo: "",
@@ -80,32 +80,31 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   }, [paymentToEdit]);
 
   const methods = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema(parties)), // Pass parties for validation
+    resolver: zodResolver(paymentSchema(parties)), 
     defaultValues: getDefaultValues(),
   });
+  const { control, handleSubmit, reset } = methods;
 
   React.useEffect(() => {
-    // Reset form when dialog opens/closes or when paymentToEdit changes
     if (isOpen) {
-      methods.reset(getDefaultValues());
+      reset(getDefaultValues());
     }
-  }, [isOpen, paymentToEdit, methods, getDefaultValues]);
+  }, [isOpen, paymentToEdit, reset, getDefaultValues]);
 
-  const handleOpenMasterForm = (type: MasterItemType = "Supplier") => { // Default to supplier or make it smarter
+  const handleOpenMasterForm = (type: MasterItemType = "Supplier") => { 
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type, newItem); // Update the main list in PaymentsClient
+    onMasterDataUpdate(newItem.type, newItem); 
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
-    // Attempt to set the newly added party in the combobox
     methods.setValue('partyId', newItem.id, { shouldValidate: true });
     toast({ title: `${newItem.type} "${newItem.name}" added and selected.` });
   };
 
-  const processSubmit = React.useCallback((values: PaymentFormValues) => {
+  const processSubmit = (values: PaymentFormValues) => {
     setIsSubmitting(true);
     const selectedParty = parties.find(p => p.id === values.partyId);
     if (!selectedParty) {
@@ -115,11 +114,11 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     }
 
     const paymentData: Payment = {
-      id: paymentToEdit ? paymentToEdit.id : `payment-${Date.now()}`,
+      id: paymentToEdit?.id || `payment-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      partyId: values.partyId as string, // partyId is validated to be a string by schema
+      partyId: values.partyId as string, 
       partyName: selectedParty.name,
-      partyType: selectedParty.type, // Ensure partyType is captured
+      partyType: selectedParty.type, 
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       referenceNo: values.referenceNo,
@@ -127,22 +126,15 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     };
     onSubmit(paymentData);
     setIsSubmitting(false);
-    // methods.reset(getDefaultValues()); // Reset after successful submission
-    onClose(); // Close the dialog
-  }, [paymentToEdit, parties, onSubmit, methods, onClose, toast]);
-
-  const handleCloseDialog = () => {
-    // methods.reset(getDefaultValues()); // Reset form on cancel as well
     onClose();
   };
-
 
   if (!isOpen) return null;
 
   return (
     <>
-      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) handleCloseDialog(); }}>
-        <DialogContent className="sm:max-w-lg" style={{ zIndex: 160 }}> {/* Ensure dialog is above others if needed */}
+      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>
             <DialogDescription>
@@ -151,9 +143,9 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
           </DialogHeader>
           <FormProvider {...methods}>
             <Form {...methods}>
-              <form onSubmit={methods.handleSubmit(processSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-3">
+              <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-3">
                 <FormField
-                  control={methods.control}
+                  control={control}
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
@@ -179,20 +171,19 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                   )}
                 />
                 <FormField
-                  control={methods.control}
+                  control={control}
                   name="partyId"
                   render={({ field }) => ( 
                     <FormItem>
                       <FormLabel>Party</FormLabel>
                        <MasterDataCombobox
-                        name="partyId" // This name is used by useController inside MasterDataCombobox
+                        name={field.name} // Pass field.name here
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
                         addNewLabel="Add New Party"
                         onAddNew={() => {
-                            // Infer type based on selection or default
                             const currentPartyValue = methods.getValues("partyId");
                             const currentParty = parties.find(p => p.id === currentPartyValue);
                             handleOpenMasterForm(currentParty?.type || 'Supplier');
@@ -203,7 +194,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                   )}
                 />
                 <FormField
-                  control={methods.control}
+                  control={control}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
@@ -214,12 +205,12 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                   )}
                 />
                 <FormField
-                  control={methods.control}
+                  control={control}
                   name="paymentMethod"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Method</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || 'Cash'}>
+                      <ShadSelect onValueChange={field.onChange} value={field.value || 'Cash'}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select payment method" />
@@ -230,13 +221,13 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                           <SelectItem value="Bank">Bank</SelectItem>
                           <SelectItem value="UPI">UPI</SelectItem>
                         </SelectContent>
-                      </Select>
+                      </ShadSelect>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
-                  control={methods.control}
+                  control={control}
                   name="referenceNo"
                   render={({ field }) => (
                     <FormItem>
@@ -247,7 +238,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                   )}
                 />
                 <FormField
-                  control={methods.control}
+                  control={control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
@@ -259,7 +250,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                 />
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>
-                    <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                    <Button type="button" variant="outline" onClick={onClose}>
                       Cancel
                     </Button>
                   </DialogClose>
@@ -288,4 +279,4 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   );
 };
 
-// export const AddPaymentForm = React.memo(AddPaymentFormComponent); // Memoization removed for directness during debug
+    

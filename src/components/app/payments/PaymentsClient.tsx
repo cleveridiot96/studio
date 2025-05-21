@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Broker, Transporter } from "@/lib/types";
+import type { Payment, MasterItem, MasterItemType } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -39,38 +39,42 @@ const initialPaymentsData: Payment[] = [
 
 export function PaymentsClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
+  const { financialYear, isAppHydrating } = useSettings(); 
 
-  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, initialPaymentsData);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const memoizedInitialPayments = React.useMemo(() => initialPaymentsData, []);
+  const memoizedEmptyMasters = React.useMemo(() => [], []);
+
+  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = React.useState<string | null>(null);
-  const [hydrated, setHydrated] = React.useState(false); // Local hydrated state
+  const [hydrated, setHydrated] = React.useState(false);
 
-   React.useEffect(() => {
+  React.useEffect(() => {
     setHydrated(true);
   }, []);
 
   const allPaymentParties = React.useMemo(() => {
-    if (!hydrated) return []; // Wait for local hydration
+    if (!hydrated) return [];
     return [
       ...suppliers,
       ...agents,
       ...brokers,
       ...transporters
-    ].filter(party => ['Supplier', 'Agent', 'Broker', 'Transporter'].includes(party.type));
+    ].filter(party => party && party.id && party.name && party.type && ['Supplier', 'Agent', 'Broker', 'Transporter'].includes(party.type))
+     .sort((a, b) => a.name.localeCompare(b.name));
   }, [suppliers, agents, brokers, transporters, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return []; // Wait for global and local hydration
-    return payments.filter(payment => isDateInFinancialYear(payment.date, financialYear));
+    if (isAppHydrating || !hydrated) return []; 
+    return payments.filter(payment => payment && payment.date && isDateInFinancialYear(payment.date, financialYear));
   }, [payments, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
@@ -79,7 +83,7 @@ export function PaymentsClient() {
       if (isEditing) {
         return prevPayments.map(p => p.id === payment.id ? payment : p);
       } else {
-        return [payment, ...prevPayments];
+        return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
       }
     });
     setPaymentToEdit(null);
@@ -136,7 +140,7 @@ export function PaymentsClient() {
     setPaymentToEdit(null);
   }, []);
 
-  if (isAppHydrating || !hydrated) { // Check both hydration flags
+  if (isAppHydrating || !hydrated) { 
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading payments data...</p>
@@ -192,3 +196,5 @@ export function PaymentsClient() {
     </div>
   );
 }
+
+    
