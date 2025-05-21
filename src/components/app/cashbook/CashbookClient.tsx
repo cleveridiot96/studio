@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from "date-fns";
-import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer } from "lucide-react"; // Added Printer
-import { Button } from "@/components/ui/button"; // Added Button import
+import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
@@ -46,11 +47,14 @@ export function CashbookClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-    setHistoricalDateRange({
-        from: startOfDay(addDays(new Date(), -7)), // Default for historical view
-        to: endOfDay(addDays(new Date(), -1)), // Default up to yesterday
-    });
-  }, []);
+    // Set default historical date range only if it hasn't been set
+    if (!historicalDateRange) {
+      setHistoricalDateRange({
+          from: startOfDay(addDays(new Date(), -7)), 
+          to: endOfDay(addDays(new Date(), -1)), 
+      });
+    }
+  }, [hydrated, historicalDateRange]); // Add historicalDateRange to dependency array
 
   const allTransactions = React.useMemo(() => {
     if (!hydrated) return [];
@@ -153,8 +157,9 @@ export function CashbookClient() {
 
   return (
     <div className="space-y-8 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex justify-between items-center no-print">
-        {/* This div is empty for now, can add title if needed, but main titles are in cards */}
+        <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
         <Button variant="outline" size="icon" onClick={() => window.print()}>
             <Printer className="h-5 w-5" />
             <span className="sr-only">Print</span>

@@ -13,12 +13,13 @@ import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, SlidersHorizontal, Printer } from "lucide-react"; // Changed to TrendingUp, Added Printer
+import { TrendingUp, SlidersHorizontal, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose,
 } from "@/components/ui/sheet";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -67,18 +68,21 @@ export function StockReportClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-    setDateRange({
-        from: startOfDay(addDays(new Date(), -90)), // Default to last 90 days
-        to: endOfDay(new Date()),
-    });
-  }, []);
+    // Set default date range only if it hasn't been set
+    if (!dateRange) {
+        setDateRange({
+            from: startOfDay(addDays(new Date(), -90)), 
+            to: endOfDay(new Date()),
+        });
+    }
+  }, [hydrated, dateRange]); // Add dateRange to dependency array
 
   const processedReportData = React.useMemo(() => {
     if (!hydrated) return [];
     const reportItemsMap = new Map<string, StockReportItem>();
 
     const dateFilteredPurchases = purchases.filter(p => {
-      if (!dateRange?.from) return true; // No date filter if range not set
+      if (!dateRange?.from) return true; 
       const purchaseDate = parseISO(p.date);
       return isWithinInterval(purchaseDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
     });
@@ -135,11 +139,9 @@ export function StockReportClient() {
       if (lotNumberFilter && !s.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
       
       const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber && (!locationFilter || p.locationId === locationFilter));
-      if (relatedPurchase) { // Sale should be associated with an original purchase location
+      if (relatedPurchase) { 
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
         let item = reportItemsMap.get(key);
-        // If sale is for a lot/location not in filtered purchases, it might not be on the map yet.
-        // For stock report, we only consider sales against lots that appear in the purchases within the filter.
         if (item) { 
           item.soldBags += s.quantity;
           item.soldWeight += s.netWeight;
@@ -152,35 +154,33 @@ export function StockReportClient() {
         lt.items.forEach(transferItem => {
             if (lotNumberFilter && !transferItem.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
 
-            // Affect 'from' location
             if (!locationFilter || lt.fromWarehouseId === locationFilter) {
                 const fromKey = `${transferItem.lotNumber}-${lt.fromWarehouseId}`;
                 let fromItem = reportItemsMap.get(fromKey);
-                if (fromItem) { // Only adjust if the item exists (i.e., was purchased/transferred into this location)
+                if (fromItem) { 
                     fromItem.transferredOutBags += transferItem.bagsToTransfer;
                 }
             }
 
-            // Affect 'to' location
             if (!locationFilter || lt.toWarehouseId === locationFilter) {
                 const toKey = `${transferItem.lotNumber}-${lt.toWarehouseId}`;
                 let toItem = reportItemsMap.get(toKey);
-                if (!toItem) { // If lot doesn't exist at destination, create a basic entry for it if it matches lot filter
-                    const sourcePurchase = purchases.find(p => p.lotNumber === transferItem.lotNumber); // Get original purchase details
+                if (!toItem) { 
+                    const sourcePurchase = purchases.find(p => p.lotNumber === transferItem.lotNumber);
                      toItem = {
                         lotNumber: transferItem.lotNumber,
                         locationId: lt.toWarehouseId,
                         locationName: warehouses.find(w => w.id === lt.toWarehouseId)?.name || lt.toWarehouseId,
-                        purchaseDate: sourcePurchase?.date, // Potentially original purchase date
-                        purchaseBags: 0, // Not a direct purchase here
+                        purchaseDate: sourcePurchase?.date, 
+                        purchaseBags: 0, 
                         purchaseWeight: 0,
-                        purchaseRate: sourcePurchase?.rate || 0, // Use original rate for valuation
+                        purchaseRate: sourcePurchase?.rate || 0, 
                         purchaseValue: 0,
                         soldBags: 0,
                         soldWeight: 0,
                         soldValue: 0,
                         transferredOutBags: 0,
-                        transferredInBags: 0, // This will be updated next
+                        transferredInBags: 0, 
                         remainingBags: 0,
                         remainingWeight: 0,
                     };
@@ -195,10 +195,8 @@ export function StockReportClient() {
     const result: StockReportItem[] = [];
     reportItemsMap.forEach(item => {
       item.remainingBags = item.purchaseBags + item.transferredInBags - item.soldBags - item.transferredOutBags;
-      // Note: Weight calculation would ideally use actual transferred weights.
-      // For simplicity, if netWeightToTransfer was stored per transfer item, that would be more accurate.
-      // Assuming transferred weight mirrors purchase/sale weight proportions for now.
-      const avgWeightPerBag = item.purchaseBags > 0 ? item.purchaseWeight / item.purchaseBags : 50; // Default if no purchase bags
+      
+      const avgWeightPerBag = item.purchaseBags > 0 ? item.purchaseWeight / item.purchaseBags : 50; 
       item.remainingWeight = item.remainingBags * avgWeightPerBag;
 
 
@@ -209,7 +207,6 @@ export function StockReportClient() {
       const totalInitialBags = item.purchaseBags + item.transferredInBags;
       item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
       
-      // Only include if it was purchased or transferred into the location, and matches filters.
       if(totalInitialBags > 0) {
         result.push(item);
       }
@@ -228,10 +225,9 @@ export function StockReportClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
         <div className="flex items-center gap-2">
             <Sheet>
             <SheetTrigger asChild>

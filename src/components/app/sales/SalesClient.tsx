@@ -21,23 +21,33 @@ import {
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 const initialSalesData: Sale[] = [
   {
     id: "sale-fy2526-1", date: "2025-05-10", billNumber: "INV-FY2526-001", customerId: "cust-ramesh", customerName: "Ramesh Retail", lotNumber: "FY2526-LOT-A/100",
-    quantity: 20, netWeight: 1000, rate: 28, totalAmount: 1000 * 28, calculatedProfit: (1000 * 28) - (1000 * 22), 
+    quantity: 20, netWeight: 1000, rate: 28, 
+    billAmount: 1000 * 28, // Example bill amount
+    totalAmount: 1000 * 28, // Assuming billAmount is the totalAmount for customer if not overridden
+    calculatedProfit: (1000 * 28) - (1000 * 22), 
     transporterId: "trans-speedy", transporterName: "Speedy Logistics", transportCost: 200,
     brokerId: "broker-vinod", brokerName: "Vinod Mehta", brokerageType: "Percentage", brokerageValue: 1, calculatedBrokerageCommission: (1000*28)*0.01,
     notes: "Urgent delivery to Ramesh Retail for FY2526"
   },
   {
     id: "sale-fy2526-2", date: "2025-06-20", billNumber: "INV-FY2526-002", customerId: "cust-sita", customerName: "Sita General Store", lotNumber: "FY2526-LOT-B/50",
-    quantity: 30, netWeight: 1500, rate: 30, totalAmount: 1500 * 30, calculatedProfit: (1500 * 30) - (1500 * 25), 
+    quantity: 30, netWeight: 1500, rate: 30, 
+    billAmount: 1500 * 30,
+    totalAmount: 1500 * 30, 
+    calculatedProfit: (1500 * 30) - (1500 * 25), 
     notes: "Standard delivery for FY2526"
   },
   {
     id: "sale-fy2425-1", date: "2024-09-15", billNumber: "INV-FY2425-001", customerId: "cust-mohan", customerName: "Mohan Wholesalers", lotNumber: "FY2425-LOT-X/90",
-    quantity: 50, netWeight: 2500, rate: 32, totalAmount: 2500 * 32, calculatedProfit: (2500 * 32) - (2500 * 28),
+    quantity: 50, netWeight: 2500, rate: 32, 
+    billAmount: 2500 * 32,
+    totalAmount: 2500 * 32, 
+    calculatedProfit: (2500 * 32) - (2500 * 28),
     brokerId: "broker-leela", brokerName: "Leela Associates", brokerageType: "Fixed", brokerageValue: 300, calculatedBrokerageCommission: 300,
   },
 ];
@@ -50,8 +60,8 @@ const PURCHASES_STORAGE_KEY = 'purchasesData';
 
 export function SalesClient() {
   const { toast } = useToast();
-  const { financialYear } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
+  const { financialYear, isAppHydrating } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false); // Local hydration for component specific data
 
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, initialSalesData);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
@@ -70,9 +80,9 @@ export function SalesClient() {
   }, []);
 
   const filteredSales = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
     return sales.filter(sale => isDateInFinancialYear(sale.date, financialYear));
-  }, [sales, financialYear, hydrated]);
+  }, [sales, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     const isEditing = sales.some(s => s.id === sale.id);
@@ -134,7 +144,7 @@ export function SalesClient() {
     setSaleToEdit(null);
   }, []);
 
-  if (!hydrated) {
+  if (isAppHydrating || !hydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading sales data...</p>
@@ -144,13 +154,13 @@ export function SalesClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground">Sales (FY {financialYear})</h1>
         <div className="flex gap-2">
           <Button onClick={openAddSaleForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
           </Button>
-          {/* Removed "Add Multi-Item Sale" button */}
           <Button variant="outline" size="icon" onClick={() => window.print()}>
             <Printer className="h-5 w-5" />
             <span className="sr-only">Print</span>
@@ -168,7 +178,7 @@ export function SalesClient() {
           customers={customers}
           transporters={transporters}
           brokers={brokers}
-          inventoryLots={inventorySource} // Pass purchases data as inventory lots
+          inventoryLots={inventorySource} 
           existingSales={sales}
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}

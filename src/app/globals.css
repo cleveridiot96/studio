@@ -50,9 +50,6 @@
     --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
     --sidebar-border: 225 47% 20%;
     --sidebar-ring: 45 100% 50%;
-
-    /* Base font size variable controlled by FontEnhancer */
-    /* font-size: 16px; is now handled by SettingsContext on the html element */
   }
 
   .dark {
@@ -102,43 +99,43 @@
 
 @layer base {
   * {
-    @apply border-border box-border; /* Added box-sizing: border-box; */
+    @apply border-border box-border;
   }
   html, body {
     height: 100%; 
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Prevent scroll bleed at the very top level */
+    overflow: hidden; 
   }
   body {
     @apply bg-background text-foreground;
-    overflow-y: auto; /* Allow body to scroll if needed */
-    overscroll-behavior: contain; /* Prevent scrolling parent when at edge */
-    /* font-size is now set dynamically via JS on the <html> element by SettingsContext. */
+    overflow-y: auto; 
+    overscroll-behavior: contain; 
   }
-  /* Ensure h tags have larger default sizes if needed, using relative units */
   h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; } 
   h2 { @apply text-2xl font-semibold md:text-3xl lg:text-4xl; }
   h3 { @apply text-xl font-semibold md:text-2xl lg:text-3xl; }
   h4 { @apply text-lg font-semibold md:text-xl lg:text-2xl; }
 
-  /* Increase default button padding and input sizes for tactile feel, adjust based on base font size */
   .btn-lg { @apply px-6 py-3 text-lg; } 
   .input-lg { @apply px-4 py-3 text-lg; } 
 }
 
 @media print {
+  @page {
+    size: A5 portrait;
+    margin: 10mm;
+  }
+
   body {
     background: white !important;
     color: black !important;
-    font-size: 10pt !important; /* Adjust print font size */
+    font-size: 10pt !important;
   }
-  /* Hide elements not meant for printing */
   .print\:hidden, .no-print, header, nav, footer, aside, [data-sidebar="sidebar"], [data-sidebar="trigger"] {
     display: none !important;
   }
-  /* Ensure main content takes full width */
   .print-area, .print\:w-full {
     width: 100% !important;
     max-width: 100% !important;
@@ -153,27 +150,23 @@
   .print\:text-black {
     color: black !important;
   }
-  /* Specific overrides for tables to ensure they print well */
   table, th, td {
-    border: 1px solid #ccc !important; /* Ensure borders are visible */
+    border: 1px solid #ccc !important;
     font-size: 9pt !important;
   }
   th {
-    background-color: #f2f2f2 !important; /* Light grey for table headers */
-    -webkit-print-color-adjust: exact !important; /* Ensure background colors print */
+    background-color: #f2f2f2 !important;
+    -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  /* Ensure cards and other containers don't have excessive padding or shadows in print */
   .card, .card-content, .card-header, .card-footer {
     box-shadow: none !important;
     border: 1px solid #eee !important;
-    padding: 0.5rem !important; /* Reduce padding for print */
+    padding: 0.5rem !important;
   }
-  /* Remove scroll areas in print */
   .print\:overflow-visible {
      overflow: visible !important;
      height: auto !important;
      max-height: none !important;
   }
 }
-

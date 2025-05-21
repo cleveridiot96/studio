@@ -21,8 +21,8 @@ import {
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
-// Storage Keys
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
@@ -39,7 +39,7 @@ const initialPaymentsData: Payment[] = [
 
 export function PaymentsClient() {
   const { toast } = useToast();
-  const { financialYear } = useSettings();
+  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
 
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, initialPaymentsData);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
@@ -52,14 +52,14 @@ export function PaymentsClient() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = React.useState<string | null>(null);
-  const [hydrated, setHydrated] = React.useState(false);
+  const [hydrated, setHydrated] = React.useState(false); // Local hydrated state
 
    React.useEffect(() => {
     setHydrated(true);
   }, []);
 
   const allPaymentParties = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (!hydrated) return []; // Wait for local hydration
     return [
       ...suppliers,
       ...agents,
@@ -69,9 +69,9 @@ export function PaymentsClient() {
   }, [suppliers, agents, brokers, transporters, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating || !hydrated) return []; // Wait for global and local hydration
     return payments.filter(payment => isDateInFinancialYear(payment.date, financialYear));
-  }, [payments, financialYear, hydrated]);
+  }, [payments, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
     const isEditing = payments.some(p => p.id === payment.id);
@@ -136,7 +136,7 @@ export function PaymentsClient() {
     setPaymentToEdit(null);
   }, []);
 
-  if (!hydrated) {
+  if (isAppHydrating || !hydrated) { // Check both hydration flags
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading payments data...</p>
@@ -146,6 +146,7 @@ export function PaymentsClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground">Payments (FY {financialYear})</h1>
         <div className="flex gap-2">

@@ -21,8 +21,8 @@ import {
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
-// Storage Keys
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
@@ -35,7 +35,8 @@ const initialReceiptsData: Receipt[] = [
 
 export function ReceiptsClient() {
   const { toast } = useToast();
-  const { financialYear } = useSettings();
+  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
+  const [hydrated, setHydrated] = React.useState(false); // Local hydration
 
   const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, initialReceiptsData);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
@@ -46,7 +47,6 @@ export function ReceiptsClient() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [receiptToDeleteId, setReceiptToDeleteId] = React.useState<string | null>(null);
-  const [hydrated, setHydrated] = React.useState(false);
 
   React.useEffect(() => {
     setHydrated(true);
@@ -61,9 +61,9 @@ export function ReceiptsClient() {
   }, [customers, brokers, hydrated]);
 
   const filteredReceipts = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
     return receipts.filter(receipt => isDateInFinancialYear(receipt.date, financialYear));
-  }, [receipts, financialYear, hydrated]);
+  }, [receipts, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdateReceipt = React.useCallback((receipt: Receipt) => {
     const isEditing = receipts.some(r => r.id === receipt.id);
@@ -122,7 +122,7 @@ export function ReceiptsClient() {
     setReceiptToEdit(null);
   }, []);
 
-  if (!hydrated) {
+  if (isAppHydrating || !hydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading receipts data...</p>
@@ -132,6 +132,7 @@ export function ReceiptsClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground">Receipts (FY {financialYear})</h1>
          <div className="flex gap-2">

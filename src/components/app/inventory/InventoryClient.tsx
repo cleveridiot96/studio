@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Archive, Boxes, Printer } from "lucide-react"; // Added Printer
+import { AlertTriangle, Archive, Boxes, Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -43,8 +44,8 @@ interface AggregatedInventoryItem {
   totalTransferredInWeight: number;
   currentBags: number;
   currentWeight: number;
-  purchaseDate?: string; // To show latest purchase date for the lot
-  purchaseRate?: number; // To show latest purchase rate
+  purchaseDate?: string; 
+  purchaseRate?: number; 
 }
 
 export function InventoryClient() {
@@ -108,37 +109,28 @@ export function InventoryClient() {
         if (entry) {
           entry.totalSoldBags += s.quantity;
           entry.totalSoldWeight += s.netWeight;
-        } else {
-          // This case implies a sale from a lot/location not in purchases, or data inconsistency.
-          // For robust accounting, this shouldn't happen if data entry is correct.
-          // We could create a negative entry here if needed, but usually, sales should match to existing stock.
         }
       }
     });
 
     locationTransfers.forEach(transfer => {
       transfer.items.forEach(item => {
-        // Deduct from 'fromWarehouse'
         const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
         let fromEntry = inventoryMap.get(fromKey);
         if (fromEntry) {
           fromEntry.totalTransferredOutBags += item.bagsToTransfer;
           fromEntry.totalTransferredOutWeight += item.netWeightToTransfer;
-        } else {
-          // This implies transferring from a lot/location that doesn't exist or wasn't purchased into. Handle as needed.
-          // Could create a temporary entry if strict accounting for all movements is needed.
         }
 
-        // Add to 'toWarehouse'
         const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
-        if (!toEntry) { // If the lot doesn't exist at the destination, create its record
+        if (!toEntry) { 
           const sourcePurchase = purchases.find(p => p.lotNumber === item.lotNumber);
           toEntry = {
             lotNumber: item.lotNumber,
             locationId: transfer.toWarehouseId,
             locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
-            totalPurchasedBags: 0, // Not a purchase for this location, but transfer-in
+            totalPurchasedBags: 0, 
             totalPurchasedWeight: 0,
             totalSoldBags: 0,
             totalSoldWeight: 0,
@@ -148,10 +140,10 @@ export function InventoryClient() {
             totalTransferredInWeight: 0,
             currentBags: 0,
             currentWeight: 0,
-            purchaseDate: sourcePurchase?.date, // Inherit original purchase date
-            purchaseRate: sourcePurchase?.rate, // Inherit original purchase rate
+            purchaseDate: sourcePurchase?.date, 
+            purchaseRate: sourcePurchase?.rate, 
           };
-          inventoryMap.set(toKey, toEntry); // Add to map if new
+          inventoryMap.set(toKey, toEntry); 
         }
         toEntry.totalTransferredInBags += item.bagsToTransfer;
         toEntry.totalTransferredInWeight += item.netWeightToTransfer;
@@ -168,7 +160,7 @@ export function InventoryClient() {
         result.push(item);
       } else if (item.currentBags > 0) {
         result.push(item);
-      } else if (item.totalTransferredInBags > 0 && item.currentBags <=0) { // Also show transferred in items that are now zero stock
+      } else if (item.totalTransferredInBags > 0 && item.currentBags <=0) { 
         result.push(item);
       }
     });
@@ -243,10 +235,9 @@ export function InventoryClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
-        </div>
+        <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
         <Button variant="outline" size="icon" onClick={() => window.print()}>
             <Printer className="h-5 w-5" />
             <span className="sr-only">Print</span>

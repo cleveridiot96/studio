@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSearchParams, useRouter } from "next/navigation";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -96,17 +97,20 @@ export function LedgerClient() {
       loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
       setAllMasters(loadedMasters);
       
-      setDateRange({
-          from: startOfDay(subMonths(new Date(), 3)), 
-          to: endOfDay(new Date()),
-      });
+      // Set default date range only if it hasn't been set yet
+      if (!dateRange) {
+        setDateRange({
+            from: startOfDay(subMonths(new Date(), 3)), 
+            to: endOfDay(new Date()),
+        });
+      }
 
       const partyIdFromQuery = searchParams.get('partyId');
       if (partyIdFromQuery && loadedMasters.some(m => m.id === partyIdFromQuery)) {
         setSelectedPartyId(partyIdFromQuery);
       }
     }
-  }, [hydrated, searchParams]);
+  }, [hydrated, searchParams, dateRange]); // Added dateRange to deps to prevent resetting on filter change
 
 
   const ledgerTransactions = React.useMemo(() => {
@@ -270,6 +274,7 @@ export function LedgerClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <Card className="shadow-md no-print">
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -413,4 +418,3 @@ export function LedgerClient() {
     </div>
   );
 }
-

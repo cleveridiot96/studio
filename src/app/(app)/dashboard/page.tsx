@@ -1,5 +1,5 @@
 
-"use client"; // Make this a client component to handle client-side actions
+"use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
 import DashboardClient from "@/components/app/dashboard/DashboardClient";
@@ -8,6 +8,7 @@ import { DashboardTile } from "@/components/DashboardTile";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KEY } from "@/lib/backupRestoreUtils";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol'; // Import the new component
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -52,7 +53,7 @@ export default function DashboardPage() {
       title: "Stock Report",
       description: "Real-time stock analysis",
       href: "/stock-report",
-      iconName: "FileText", // Changed from TrendingDown to FileText
+      iconName: "FileText",
       className: "bg-orange-600 hover:bg-orange-700 text-white",
     },
     {
@@ -100,29 +101,30 @@ export default function DashboardPage() {
     {
       title: "Profit Analysis",
       description: "View profit/loss reports",
-      href: "/profit-analysis", // Links to the dedicated page
-      iconName: "Rocket", // Changed from BarChart3 to Rocket
-      className: "bg-green-500 hover:bg-green-600 text-white", // Bright green
+      href: "/profit-analysis",
+      iconName: "Rocket",
+      className: "bg-green-500 hover:bg-green-600 text-white",
     },
     {
       title: "Backup Data",
       description: "Save your application data",
       iconName: "FileJson",
-      className: "bg-sky-500 hover:bg-sky-600 text-white", // New color: Sky blue
-      action: handleExportClick, // Direct action
+      className: "bg-sky-500 hover:bg-sky-600 text-white",
+      action: handleExportClick,
     },
     {
       title: "Restore Data",
       description: "Load data from a backup file",
       iconName: "UploadCloud",
-      className: "bg-emerald-500 hover:bg-emerald-600 text-white", // New color: Emerald green
-      action: handleRestoreTriggerClick, // Direct action
+      className: "bg-emerald-500 hover:bg-emerald-600 text-white",
+      action: handleRestoreTriggerClick,
     },
   ];
 
   return (
     <div className="flex flex-col gap-8">
-       <div className="text-left">
+      <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" /> {/* Added here */}
+      <div className="text-left">
         <h1 className="text-3xl font-bold text-foreground">Quick Actions</h1>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

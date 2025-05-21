@@ -1,5 +1,4 @@
 
-// @ts-nocheck
 "use client";
 
 import * as React from "react";
@@ -22,11 +21,13 @@ import {
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 const initialPurchasesData: Purchase[] = [
   {
     id: "purchase-fy2526-1", date: "2025-05-01", lotNumber: "FY2526-LOT-A/100", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
     quantity: 100, netWeight: 5000, rate: 22, expenses: 500, transportRatePerKg: 0.5, transporterId: "trans-speedy", transporterName: "Speedy Logistics",
+    transportRate: (0.5 * 5000), // Calculated total transport cost
     totalAmount: (5000 * 22) + 500 + (0.5 * 5000), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
   {
@@ -42,6 +43,7 @@ const initialPurchasesData: Purchase[] = [
   {
     id: "purchase-fy2425-1", date: "2024-08-01", lotNumber: "FY2425-LOT-X/90", supplierId: "supp-uma", supplierName: "Uma Organics",
     quantity: 90, netWeight: 4500, rate: 28, expenses: 700, transportRatePerKg: 0.4, transporterId: "trans-reliable", transporterName: "Reliable Transports",
+    transportRate: (0.4 * 4500),
     totalAmount: (4500 * 28) + 700 + (0.4*4500), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
   {
@@ -51,25 +53,22 @@ const initialPurchasesData: Purchase[] = [
   },
 ];
 
-// Keys for localStorage - ensure these match where master data is stored
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 export function PurchasesClient() {
   const { toast } = useToast();
-  const { financialYear } = useSettings();
+  const { financialYear, isAppHydrating } = useSettings();
 
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, initialPurchasesData);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []);
-
+  
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
 
@@ -77,8 +76,9 @@ export function PurchasesClient() {
   const [purchaseToDeleteId, setPurchaseToDeleteId] = React.useState<string | null>(null);
 
   const filteredPurchases = React.useMemo(() => {
+    if (isAppHydrating) return []; // Don't filter until settings are hydrated
     return purchases.filter(purchase => isDateInFinancialYear(purchase.date, financialYear));
-  }, [purchases, financialYear]);
+  }, [purchases, financialYear, isAppHydrating]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     const isEditing = purchases.some(p => p.id === purchase.id);
@@ -126,13 +126,10 @@ export function PurchasesClient() {
       case "Transporter":
         setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
-      case "Broker":
-         setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]);
-         break;
       default:
         break;
     }
-  }, [setSuppliers, setAgents, setWarehouses, setTransporters, setBrokers]);
+  }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
 
   const openAddPurchaseForm = React.useCallback(() => {
     setPurchaseToEdit(null);
@@ -144,8 +141,13 @@ export function PurchasesClient() {
     setPurchaseToEdit(null);
   }, []);
 
+  if (isAppHydrating) {
+    return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading purchases data...</p></div>;
+  }
+
   return (
     <div className="space-y-6 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground">Purchases (FY {financialYear})</h1>
         <div className="flex gap-2">
@@ -170,7 +172,6 @@ export function PurchasesClient() {
           agents={agents}
           warehouses={warehouses}
           transporters={transporters}
-          // brokers prop removed as per earlier request
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />
