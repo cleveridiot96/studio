@@ -1,8 +1,8 @@
 
-// src/components/dashboard/ProfitSummary.tsx
+"use client";
 
 import React, { useMemo, useState } from "react";
-import type { Sale, Purchase } from "@/lib/types";
+import type { Sale, Purchase, MonthlyProfitInfo as MonthlyProfitInfoType } from "@/lib/types";
 import { format, parseISO, startOfMonth } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -13,14 +13,14 @@ interface ProfitSummaryProps {
 }
 
 export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>("all"); // "all" for "All Months"
+  const [selectedMonth, setSelectedMonth] = useState<string>("all"); 
 
   const getPurchaseDetails = (lotNumber: string = ""): { rate: number; supplierName?: string; agentName?: string } => {
     const purchase = purchases.find(p =>
       p.lotNumber?.toLowerCase().trim() === lotNumber?.toLowerCase().trim()
     );
     if (!purchase) {
-      // console.warn(`⚠️ No purchase found for lot: "${lotNumber}" in ProfitSummary`);
+      console.warn(`⚠️ No purchase found for lot: "${lotNumber}" in ProfitSummary`);
       return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
     }
     return {
@@ -35,7 +35,6 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
     return sales.map((sale) => {
       const { rate: purchaseRate, supplierName, agentName } = getPurchaseDetails(sale.lotNumber);
       
-      // Use pre-calculated profit if available, otherwise calculate
       const profit = sale.calculatedProfit !== undefined 
         ? sale.calculatedProfit 
         : (sale.rate * sale.netWeight) - (purchaseRate * sale.netWeight) - (sale.transportCost || 0) - (sale.calculatedBrokerageCommission || 0);
@@ -61,9 +60,9 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
     allProfitTransactions.forEach(tx => {
       months.add(format(startOfMonth(parseISO(tx.date)), "yyyy-MM"));
     });
-    return Array.from(months).sort().reverse().map(month => ({
-      value: month,
-      label: format(parseISO(month + "-01"), "MMMM yyyy")
+    return Array.from(months).sort().reverse().map(monthKey => ({
+      value: monthKey, // "yyyy-MM"
+      label: format(parseISO(monthKey + "-01"), "MMMM yyyy")
     }));
   }, [allProfitTransactions]);
 
@@ -75,30 +74,36 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
   const totalProfitForSelectedPeriod = filteredProfitTransactions.reduce((acc, item) => acc + (item.profit || 0), 0);
 
   const monthlyProfitsDataForSelectedPeriod = useMemo(() => {
-    const monthlyAgg: Record<string, number> = {}; 
+    const monthlyAgg: Record<string, { totalProfit: number; totalSalesValue: number; totalCostOfGoods: number }> = {}; 
     const sourceTransactions = selectedMonth === "all" ? allProfitTransactions : filteredProfitTransactions;
 
     sourceTransactions.forEach(item => {
       const monthKey = format(startOfMonth(parseISO(item.date)), "yyyy-MM");
       if (!monthlyAgg[monthKey]) {
-        monthlyAgg[monthKey] = 0;
+        monthlyAgg[monthKey] = { totalProfit: 0, totalSalesValue: 0, totalCostOfGoods: 0 };
       }
-      monthlyAgg[monthKey] += item.profit || 0;
+      monthlyAgg[monthKey].totalProfit += item.profit || 0;
+      // For simplicity, totalSalesValue & totalCostOfGoods are aggregated on all transactions for the month,
+      // even if a single transaction is filtered.
+      // This part might need refinement if a single month view is strictly for THAT month's values only.
+      monthlyAgg[monthKey].totalSalesValue += (item.saleRate * item.netWeight);
+      monthlyAgg[monthKey].totalCostOfGoods += (item.purchaseRate * item.netWeight);
     });
 
-    const summary = Object.entries(monthlyAgg)
-      .map(([key, profit]) => ({
+    const summary: MonthlyProfitInfoType[] = Object.entries(monthlyAgg)
+      .map(([key, value]) => ({
+        monthKey: key, // "yyyy-MM"
         monthYear: format(parseISO(key + "-01"), "MMMM yyyy"),
-        totalProfit: profit,
+        totalProfit: value.totalProfit,
+        totalSalesValue: value.totalSalesValue,
+        totalCostOfGoods: value.totalCostOfGoods,
       }))
       .sort((a, b) => {
-        const dateA = parseISO(a.monthYear.split(" ")[1] + "-" + (new Date(Date.parse(a.monthYear.split(" ")[0] +" 1, 2000")).getMonth()+1).toString().padStart(2, '0') + "-01");
-        const dateB = parseISO(b.monthYear.split(" ")[1] + "-" + (new Date(Date.parse(b.monthYear.split(" ")[0] +" 1, 2000")).getMonth()+1).toString().padStart(2, '0') + "-01");
-        return dateB.getTime() - dateA.getTime(); 
+        return parseISO(b.monthKey + "-01").getTime() - parseISO(a.monthKey + "-01").getTime();
       });
     
     if (selectedMonth !== "all" && summary.length > 0) {
-        return summary.filter(s => format(parseISO(s.monthYear), "yyyy-MM") === selectedMonth);
+        return summary.filter(s => s.monthKey === selectedMonth);
     }
     return summary;
   }, [allProfitTransactions, filteredProfitTransactions, selectedMonth]);
@@ -171,7 +176,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
                 )}
             </div>
 
-          {selectedMonth === "all" && monthlyProfitsDataForSelectedPeriod.length > 0 && (
+          {monthlyProfitsDataForSelectedPeriod.length > 0 && (
             <div>
                 <h3 className="text-xl font-semibold mb-3 text-foreground">Month-wise Profit Summary</h3>
                 <div className="overflow-x-auto max-h-[300px] rounded-md border">
@@ -184,7 +189,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales, purchases }
                     </thead>
                     <tbody>
                         {monthlyProfitsDataForSelectedPeriod.map((monthData) => (
-                        <tr key={monthData.monthYear} className="border-b hover:bg-muted/30">
+                        <tr key={monthData.monthKey} className="border-b hover:bg-muted/30">
                             <td className="p-2 border">{monthData.monthYear}</td>
                             <td className={`p-2 border text-right font-medium ${monthData.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
                             {monthData.totalProfit.toFixed(2)}

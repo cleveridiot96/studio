@@ -38,7 +38,8 @@ export interface Purchase {
   transportRatePerKg?: number; // Transport cost per KG
   transporterId?: string;
   transporterName?: string;
-  transportRate?: number; // Calculated: transportRatePerKg * (quantity * 50)
+  transportRate?: number; // Calculated: transportRatePerKg * (quantity * 50kg assumed per bag or actual weight)
+  // Broker fields removed from Purchase as per previous request
   totalAmount: number; // (netWeight * rate) + expenses + transportRate
   locationId: string;
   locationName?: string;
@@ -62,7 +63,7 @@ export interface Sale {
   brokerId?: string;
   brokerName?: string;
   brokerageType?: 'Fixed' | 'Percentage'; // For broker commission calculation
-  brokerageAmount?: number; // If fixed, this is the amount. If percentage, this is the % value.
+  brokerageValue?: number; // If fixed, this is the amount. If percentage, this is the % value.
   calculatedBrokerageCommission?: number; // The actual brokerage commission amount
   notes?: string;
   totalAmount: number; // Final amount for the customer = (billAmount if provided and > 0) OR (netWeight * rate)
@@ -185,6 +186,7 @@ export interface TransactionalProfitInfo {
 }
 
 export interface MonthlyProfitInfo {
+  monthKey: string; // "yyyy-MM"
   monthYear: string; // e.g., "May 2024"
   totalProfit: number;
   totalSalesValue: number;
