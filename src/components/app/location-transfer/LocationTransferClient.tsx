@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSettings } from "@/contexts/SettingsContext"; // Import useSettings
+import { isDateInFinancialYear } from "@/lib/utils"; // Import isDateInFinancialYear
 
 // Storage Keys
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -62,20 +64,18 @@ interface AggregatedStockItem {
 
 export function LocationTransferClient() {
   const { toast } = useToast();
-  const [hydrated, setHydrated] = React.useState(false);
+  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
   
   const memoizedInitialLocationTransfers = React.useMemo(() => initialLocationTransfers, []);
-  const memoizedInitialWarehouses = React.useMemo(() => [], []);
-  const memoizedInitialTransporters = React.useMemo(() => [], []);
-  const memoizedInitialPurchases = React.useMemo(() => [], []);
-  const memoizedInitialSales = React.useMemo(() => [], []);
+  const memoizedEmptyMasters = React.useMemo(() => [], []);
+  const memoizedEmptyTransactions = React.useMemo(() => [], []);
 
 
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialTransporters);
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
+  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyTransactions);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyTransactions);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -83,15 +83,18 @@ export function LocationTransferClient() {
   const [itemToDelete, setItemToDelete] = React.useState<LocationTransfer | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
+  const filteredLocationTransfers = React.useMemo(() => {
+    if (isAppHydrating) return [];
+    return locationTransfers.filter(transfer => transfer && transfer.date && isDateInFinancialYear(transfer.date, financialYear));
+  }, [locationTransfers, financialYear, isAppHydrating]);
 
   const aggregatedStock = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return [];
     const stockMap = new Map<string, AggregatedStockItem>();
 
-    purchases.forEach(p => {
+    // Filter purchases by financial year
+    const fyPurchases = purchases.filter(p => p && p.date && isDateInFinancialYear(p.date, financialYear));
+    fyPurchases.forEach(p => {
       const key = `${p.lotNumber}-${p.locationId}`;
       let entry = stockMap.get(key);
       if (!entry) {
@@ -108,8 +111,10 @@ export function LocationTransferClient() {
       stockMap.set(key, entry);
     });
 
-    sales.forEach(s => {
-      const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
+    // Filter sales by financial year
+    const fySales = sales.filter(s => s && s.date && isDateInFinancialYear(s.date, financialYear));
+    fySales.forEach(s => {
+      const relatedPurchase = fyPurchases.find(p => p.lotNumber === s.lotNumber); // Ensure related purchase is also in current FY
       if (relatedPurchase) {
           const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
           const entry = stockMap.get(key);
@@ -121,7 +126,8 @@ export function LocationTransferClient() {
       }
     });
 
-    locationTransfers.forEach(transfer => {
+    // Filter location transfers by financial year
+    filteredLocationTransfers.forEach(transfer => { // Use already filtered transfers
         transfer.items.forEach(item => {
             const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
             const fromEntry = stockMap.get(fromKey);
@@ -150,7 +156,7 @@ export function LocationTransferClient() {
 
     return Array.from(stockMap.values()).filter(item => item.currentBags > 0 || item.currentWeight > 0)
         .sort((a,b) => a.locationName.localeCompare(b.locationName) || a.lotNumber.localeCompare(b.lotNumber));
-  }, [purchases, sales, locationTransfers, warehouses, hydrated]);
+  }, [purchases, sales, filteredLocationTransfers, warehouses, financialYear, isAppHydrating]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
@@ -159,7 +165,7 @@ export function LocationTransferClient() {
       if (isEditing) {
         return prev.map(t => (t.id === transfer.id ? transfer : t));
       } else {
-        return [transfer, ...prev];
+        return [{...transfer, id: transfer.id || `lt-${Date.now()}`}, ...prev];
       }
     });
     toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
@@ -193,7 +199,7 @@ export function LocationTransferClient() {
     }
   };
 
-  if (!hydrated) {
+  if (isAppHydrating) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading location transfer data...</p></div>;
   }
 
@@ -201,7 +207,7 @@ export function LocationTransferClient() {
     <div className="space-y-8 print-area">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground flex items-center">
-            <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers
+            <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers (FY {financialYear})
         </h1>
         <div className="flex items-center gap-2">
             <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className="text-base py-3 px-6 shadow-md">
@@ -217,7 +223,7 @@ export function LocationTransferClient() {
       <Card className="shadow-xl">
       <TooltipProvider>
         <Tabs defaultValue="stockOverview" className="w-full">
-          <CardHeader className="p-0">
+          <CardHeader className="p-0 no-print">
             <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none">
               <TabsTrigger value="stockOverview" className="py-3 text-base">
                 <Boxes className="mr-2 h-5 w-5"/>Stock Overview
@@ -236,10 +242,11 @@ export function LocationTransferClient() {
                                 <TableHead>Warehouse</TableHead>
                                 <TableHead>Vakkal/Lot</TableHead>
                                 <TableHead className="text-right">Bags</TableHead>
+                                <TableHead className="text-right">Weight (kg)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {aggregatedStock.length === 0 && <TableRow><TableCell colSpan={3} className="text-center h-24">No stock available.</TableCell></TableRow>}
+                            {aggregatedStock.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No stock available for FY {financialYear}.</TableCell></TableRow>}
                             {aggregatedStock.map(item => (
                                 <TableRow key={`${item.locationId}-${item.lotNumber}`}>
                                     <TableCell>
@@ -255,6 +262,7 @@ export function LocationTransferClient() {
                                       </Tooltip>
                                     </TableCell>
                                     <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right font-medium">{item.currentWeight.toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -273,12 +281,12 @@ export function LocationTransferClient() {
                       <TableHead>To</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead>Notes</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
+                      <TableHead className="text-center no-print">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {locationTransfers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers recorded yet.</TableCell></TableRow>}
-                    {locationTransfers.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(transfer => (
+                    {filteredLocationTransfers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers recorded for FY {financialYear}.</TableCell></TableRow>}
+                    {filteredLocationTransfers.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(transfer => (
                       <TableRow key={transfer.id}>
                         <TableCell>{format(new Date(transfer.date), "dd-MM-yy")}</TableCell>
                         <TableCell>
@@ -302,7 +310,7 @@ export function LocationTransferClient() {
                             </TooltipTrigger>
                             <TooltipContent>
                               <ul className="list-disc pl-4">
-                                {transfer.items.map(i => <li key={i.lotNumber}>{`${i.lotNumber} (${i.bagsToTransfer} bags, ${i.netWeightToTransfer}kg)`}</li>)}
+                                {transfer.items.map(i => <li key={i.lotNumber}>{`${i.lotNumber} (${i.bagsToTransfer} bags, ${i.netWeightToTransfer.toLocaleString()}kg)`}</li>)}
                               </ul>
                             </TooltipContent>
                           </Tooltip>
@@ -315,7 +323,7 @@ export function LocationTransferClient() {
                             </Tooltip>
                           ) : 'N/A'}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center no-print">
                           <Button variant="ghost" size="icon" onClick={() => handleEditTransfer(transfer)} className="mr-1 hover:text-primary"><PlusCircle className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteTransferAttempt(transfer)} className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
@@ -328,10 +336,10 @@ export function LocationTransferClient() {
           </TabsContent>
         </Tabs>
         </TooltipProvider>
-        <CardFooter className="flex items-start text-destructive p-3 mt-4 rounded-md border border-destructive/50 bg-destructive/10">
+        <CardFooter className="flex items-start text-destructive p-3 mt-4 rounded-md border border-destructive/50 bg-destructive/10 no-print">
             <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
             <p className="text-xs">
-            <strong>Note:</strong> Inventory summary on other pages (Dashboard, Inventory, Stock Report) will reflect these transfers once those modules are updated to process transfer data.
+            <strong>Note:</strong> Ensure all relevant transactions (Purchases, Sales) are up-to-date for the current financial year for accurate stock overview.
             </p>
         </CardFooter>
       </Card>
@@ -371,4 +379,3 @@ export function LocationTransferClient() {
     </div>
   );
 }
-

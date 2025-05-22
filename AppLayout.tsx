@@ -1,4 +1,3 @@
-
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
@@ -7,7 +6,7 @@ import Link from "next/link";
 import { Menu, Home, Settings as SettingsIcon } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
-import { SettingsProvider, useSettings } from "@/contexts/SettingsContext"; 
+import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FontEnhancer } from "@/components/layout/FontEnhancer";
@@ -15,7 +14,7 @@ import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
 import React, { useEffect } from "react";
-import SearchBar from '@/components/shared/SearchBar'; // Import SearchBar
+import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
@@ -24,14 +23,14 @@ import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } f
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
-  receipts: 'receiptsData', 
+  receipts: 'receiptsData',
   payments: 'paymentsData',
   locationTransfers: 'locationTransfersData',
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
   transporters: 'masterTransporters',
-  warehouses: 'masterWarehouses', 
+  warehouses: 'masterWarehouses',
   brokers: 'masterBrokers',
 };
 
@@ -44,7 +43,7 @@ function AppHeaderContent() {
           <Home className="h-6 w-6 text-foreground" />
         </Button>
       </Link>
-      <SearchBar /> {/* Add SearchBar here */}
+      <SearchBar />
       <FinancialYearToggle />
       <Popover>
         <PopoverTrigger asChild>
@@ -76,7 +75,7 @@ function LoadingBar() {
   };
 
   if (!isMounted) {
-    return null; 
+    return null;
   }
   return <BarContent />;
 }
@@ -84,7 +83,7 @@ function LoadingBar() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
-  
+
   useEffect(() => {
     setIsAppLayoutMounted(true);
     // Initialize search engine on client mount
@@ -95,25 +94,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         const payments = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.payments) || '[]') as Payment[];
         const receipts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.receipts) || '[]') as Receipt[];
         const locationTransfers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.locationTransfers) || '[]') as LocationTransfer[];
-        
+
         const masterCustomers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.customers) || '[]') as MasterItem[];
         const masterSuppliers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.suppliers) || '[]') as MasterItem[];
         const masterAgents = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.agents) || '[]') as MasterItem[];
         const masterTransporters = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.transporters) || '[]') as MasterItem[];
         const masterWarehouses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.warehouses) || '[]') as MasterItem[];
         const masterBrokers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.brokers) || '[]') as MasterItem[];
-        
+
         const allMasters = [
-          ...masterCustomers, ...masterSuppliers, ...masterAgents, 
+          ...masterCustomers, ...masterSuppliers, ...masterAgents,
           ...masterTransporters, ...masterWarehouses, ...masterBrokers
         ];
 
-        const searchDataset = buildSearchData({ 
-          sales, purchases, payments, receipts, masters: allMasters, locationTransfers 
+        const searchDataset = buildSearchData({
+          sales, purchases, payments, receipts, masters: allMasters, locationTransfers
         });
         initSearchEngine(searchDataset);
       } catch (error) {
         console.error("Error initializing search engine:", error);
+        // Handle the error appropriately, e.g., display a message to the user
+        // or load with empty data sets.
       }
     }
   }, []);
@@ -152,11 +153,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Menu className="h-7 w-7 text-foreground" />
                 </SidebarTrigger>
               </div>
-              <div className="flex items-center gap-2 flex-1 justify-center"> {/* Flex-1 and justify-center for SearchBar */}
+              <div className="flex items-center gap-2 flex-1 justify-center">
                 {isAppLayoutMounted && <AppHeaderContent />}
               </div>
             </header>
-            {isAppLayoutMounted && <LoadingBar />} 
+            {isAppLayoutMounted && <LoadingBar />}
             <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
               {children}
             </SidebarInset>

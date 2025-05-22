@@ -13,13 +13,15 @@ import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, SlidersHorizontal, Printer } from "lucide-react";
+import { SlidersHorizontal, Printer, TrendingUp, TrendingDown } from "lucide-react"; // Replaced StockReportIcon with actual icons
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose,
 } from "@/components/ui/sheet";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { useSettings } from "@/contexts/SettingsContext"; // Import useSettings
+import { isDateInFinancialYear } from "@/lib/utils"; // Import isDateInFinancialYear
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -49,55 +51,49 @@ interface StockReportItem {
 }
 
 export function StockReportClient() {
-  const memoizedInitialPurchases = React.useMemo(() => [], []);
-  const memoizedInitialSales = React.useMemo(() => [], []);
-  const memoizedInitialWarehouses = React.useMemo(() => [], []);
-  const memoizedInitialLocationTransfers = React.useMemo(() => [], []);
+  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
+  
+  const memoizedEmptyTransactions = React.useMemo(() => [], []);
+  const memoizedEmptyMasters = React.useMemo(() => [], []);
 
 
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
-  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyTransactions);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyTransactions);
+  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyTransactions);
 
 
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [lotNumberFilter, setLotNumberFilter] = React.useState<string>("");
   const [locationFilter, setLocationFilter] = React.useState<string>(""); 
-  const [hydrated, setHydrated] = React.useState(false);
-
+  
   React.useEffect(() => {
-    setHydrated(true);
-    // Set default date range only if it hasn't been set
-    if (!dateRange) {
+    if (!dateRange && !isAppHydrating) { // Only set default if not already set and context is hydrated
         setDateRange({
             from: startOfDay(addDays(new Date(), -90)), 
             to: endOfDay(new Date()),
         });
     }
-  }, [hydrated, dateRange]); // Add dateRange to dependency array
+  }, [isAppHydrating, dateRange]); 
 
   const processedReportData = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return []; // Wait for context hydration
     const reportItemsMap = new Map<string, StockReportItem>();
 
-    const dateFilteredPurchases = purchases.filter(p => {
-      if (!dateRange?.from) return true; 
-      const purchaseDate = parseISO(p.date);
-      return isWithinInterval(purchaseDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
-    });
+    // Filter transactions by selected date range AND financial year
+    const filterByDateAndFY = <T extends { date: string }>(items: T[]): T[] => {
+      return items.filter(item => {
+        if (!item || !item.date) return false;
+        if (!isDateInFinancialYear(item.date, financialYear)) return false;
+        if (!dateRange?.from) return true; // No date range filter means all within FY
+        const itemDate = parseISO(item.date);
+        return isWithinInterval(itemDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
+      });
+    };
     
-    const dateFilteredSales = sales.filter(s => {
-      if (!dateRange?.from) return true;
-      const saleDate = parseISO(s.date);
-      return isWithinInterval(saleDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
-    });
-
-    const dateFilteredLocationTransfers = locationTransfers.filter(lt => {
-        if (!dateRange?.from) return true;
-        const transferDate = parseISO(lt.date);
-        return isWithinInterval(transferDate, {start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
-    });
+    const dateFilteredPurchases = filterByDateAndFY(purchases);
+    const dateFilteredSales = filterByDateAndFY(sales);
+    const dateFilteredLocationTransfers = filterByDateAndFY(locationTransfers);
 
 
     dateFilteredPurchases.forEach(p => {
@@ -207,15 +203,15 @@ export function StockReportClient() {
       const totalInitialBags = item.purchaseBags + item.transferredInBags;
       item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
       
-      if(totalInitialBags > 0) {
+      if(totalInitialBags > 0) { // Only push items that had some stock to begin with
         result.push(item);
       }
     });
 
     return result.sort((a,b) => (a.purchaseDate && b.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
-  }, [purchases, sales, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, hydrated]);
+  }, [purchases, sales, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, financialYear, isAppHydrating]);
   
-  if (!hydrated) {
+  if (isAppHydrating) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
         <p className="text-lg text-muted-foreground">Loading stock report data...</p>
@@ -227,7 +223,7 @@ export function StockReportClient() {
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
+        <h1 className="text-3xl font-bold text-foreground">Stock Report (FY {financialYear})</h1>
         <div className="flex items-center gap-2">
             <Sheet>
             <SheetTrigger asChild>
@@ -337,7 +333,7 @@ export function StockReportClient() {
                       ) : (item.turnoverRate || 0) >= 75 ? (
                         <Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast Moving</Badge>
                       ) : (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (
-                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingUp className="h-3 w-3 mr-1 transform rotate-180"/> Slow / Aging</Badge>
+                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1"/> Slow / Aging</Badge>
                       ) : (
                         <Badge variant="secondary">In Stock</Badge>
                       )}

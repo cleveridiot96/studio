@@ -35,12 +35,14 @@ const initialReceiptsData: Receipt[] = [
 
 export function ReceiptsClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
-  const [hydrated, setHydrated] = React.useState(false); // Local hydration
+  const { financialYear, isAppHydrating } = useSettings(); 
 
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, initialReceiptsData);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+  const memoizedInitialReceipts = React.useMemo(() => initialReceiptsData, []);
+  const memoizedEmptyMasters = React.useMemo(() => [], []);
+
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
+  const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
@@ -48,22 +50,18 @@ export function ReceiptsClient() {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [receiptToDeleteId, setReceiptToDeleteId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
-
   const allReceiptParties = React.useMemo(() => {
-    if (!hydrated) return [];
     return [
-        ...customers,
-        ...brokers
-    ].filter(party => ['Customer', 'Broker'].includes(party.type));
-  }, [customers, brokers, hydrated]);
+        ...customers.filter(c => c.type === 'Customer'),
+        ...brokers.filter(b => b.type === 'Broker')
+    ].filter(party => party && party.id && party.name && party.type)
+     .sort((a,b) => a.name.localeCompare(b.name));
+  }, [customers, brokers]);
 
   const filteredReceipts = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
-    return receipts.filter(receipt => isDateInFinancialYear(receipt.date, financialYear));
-  }, [receipts, financialYear, isAppHydrating, hydrated]);
+    if (isAppHydrating) return [];
+    return receipts.filter(receipt => receipt && receipt.date && isDateInFinancialYear(receipt.date, financialYear));
+  }, [receipts, financialYear, isAppHydrating]);
 
   const handleAddOrUpdateReceipt = React.useCallback((receipt: Receipt) => {
     const isEditing = receipts.some(r => r.id === receipt.id);
@@ -71,7 +69,7 @@ export function ReceiptsClient() {
       if (isEditing) {
         return prevReceipts.map(r => r.id === receipt.id ? receipt : r);
       } else {
-        return [receipt, ...prevReceipts];
+        return [{...receipt, id: receipt.id || `receipt-${Date.now()}`}, ...prevReceipts];
       }
     });
     setReceiptToEdit(null);
@@ -100,16 +98,15 @@ export function ReceiptsClient() {
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     switch (type) {
       case "Customer":
-        setCustomers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+        setCustomers(prev => [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       case "Broker":
-        setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+        setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       default:
         toast({title: "Info", description: `Master type ${type} not handled here.`})
         break;
     }
-    toast({ title: `${newItem.type} "${newItem.name}" updated/added from Receipts.` });
   }, [setCustomers, setBrokers, toast]);
 
   const openAddReceiptForm = React.useCallback(() => {
@@ -122,7 +119,7 @@ export function ReceiptsClient() {
     setReceiptToEdit(null);
   }, []);
 
-  if (isAppHydrating || !hydrated) {
+  if (isAppHydrating) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading receipts data...</p>

@@ -16,6 +16,8 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { AddPaymentForm } from "@/components/app/payments/AddPaymentForm";
 import { AddReceiptForm } from "@/components/app/receipts/AddReceiptForm";
 import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/contexts/SettingsContext"; // Import useSettings
+import { isDateInFinancialYear } from "@/lib/utils"; // Import isDateInFinancialYear
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
@@ -45,14 +47,14 @@ interface DailyCashBookEntry {
 
 export function CashbookClient() {
   const { toast } = useToast();
-  const memoizedInitialPayments = React.useMemo(() => [], []);
-  const memoizedInitialReceipts = React.useMemo(() => [], []);
+  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
+
+  const memoizedEmptyTransactions = React.useMemo(() => [], []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
 
-  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
+  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedEmptyTransactions);
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedEmptyTransactions);
   
-  // Master data states for forms
   const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
   const [suppliers, setSuppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
@@ -60,81 +62,79 @@ export function CashbookClient() {
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [historicalDateRange, setHistoricalDateRange] = React.useState<DateRange | undefined>(undefined);
-  const [hydrated, setHydrated] = React.useState(false);
-
-  // Form modal states
+  
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
-  // paymentToEdit/receiptToEdit will be null for new entries from cashbook
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
 
 
   React.useEffect(() => {
-    setHydrated(true);
-    if (!historicalDateRange) {
+    if (!historicalDateRange && !isAppHydrating) { // Only set default if not already set and context is hydrated
       setHistoricalDateRange({
           from: startOfDay(addDays(new Date(), -7)), 
           to: endOfDay(addDays(new Date(), -1)), 
       });
     }
-  }, [historicalDateRange]); 
+  }, [isAppHydrating, historicalDateRange]); 
 
   const allPaymentParties = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return [];
     return [
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
       ...transporters.filter(t => t.type === 'Transporter')
     ].filter(party => party && party.id && party.name && party.type)
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters, hydrated]);
+  }, [suppliers, agents, transporters, isAppHydrating]);
 
   const allReceiptParties = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return [];
     return [
         ...customers.filter(c => c.type === 'Customer'),
         ...brokers.filter(b => b.type === 'Broker')
     ].filter(party => party && party.id && party.name && party.type)
      .sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, brokers, hydrated]);
+  }, [customers, brokers, isAppHydrating]);
 
 
-  const allTransactions = React.useMemo(() => {
-    if (!hydrated) return [];
+  const allTransactionsForFY = React.useMemo(() => {
+    if (isAppHydrating) return [];
     const combined: CashBookTransaction[] = [];
-    receipts.forEach(r => combined.push({
-      id: `rec-${r.id}`,
-      date: r.date,
-      type: 'Receipt',
-      particulars: `From ${r.partyName || r.partyId} (${r.partyType}) ${r.referenceNo ? `- Ref: ${r.referenceNo}` : ''}`,
-      amount: r.amount
-    }));
-    payments.forEach(p => combined.push({
-      id: `pay-${p.id}`,
-      date: p.date,
-      type: 'Payment',
-      particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${p.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`,
-      amount: p.amount
-    }));
+    receipts.filter(r => r && r.date && isDateInFinancialYear(r.date, financialYear))
+            .forEach(r => combined.push({
+                id: `rec-${r.id}`,
+                date: r.date,
+                type: 'Receipt',
+                particulars: `From ${r.partyName || r.partyId} (${r.partyType}) ${r.referenceNo ? `- Ref: ${r.referenceNo}` : ''}`,
+                amount: r.amount
+            }));
+    payments.filter(p => p && p.date && isDateInFinancialYear(p.date, financialYear))
+            .forEach(p => combined.push({
+                id: `pay-${p.id}`,
+                date: p.date,
+                type: 'Payment',
+                particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${p.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`,
+                amount: p.amount
+            }));
     return combined.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [payments, receipts, hydrated]);
+  }, [payments, receipts, financialYear, isAppHydrating]);
 
   const todaysData = React.useMemo(() => {
-    if (!hydrated) return { date: format(new Date(), "yyyy-MM-dd"), receipts: [], payments: [], openingBalance: 0, closingBalance: 0, totalReceipts: 0, totalPayments: 0 };
+    if (isAppHydrating) return { date: format(new Date(), "yyyy-MM-dd"), receipts: [], payments: [], openingBalance: 0, closingBalance: 0, totalReceipts: 0, totalPayments: 0 };
     
     const todayDateObj = startOfDay(new Date());
     const todayDateStr = format(todayDateObj, "yyyy-MM-dd");
 
     let openingBalanceForToday = 0;
-    allTransactions.forEach(t => {
+    allTransactionsForFY.forEach(t => {
       if (parseISO(t.date) < todayDateObj) {
         openingBalanceForToday += (t.type === 'Receipt' ? t.amount : -t.amount);
       }
     });
 
-    const todaysReceipts = allTransactions.filter(t => t.date === todayDateStr && t.type === 'Receipt');
-    const todaysPayments = allTransactions.filter(t => t.date === todayDateStr && t.type === 'Payment');
+    const todaysReceipts = allTransactionsForFY.filter(t => t.date === todayDateStr && t.type === 'Receipt');
+    const todaysPayments = allTransactionsForFY.filter(t => t.date === todayDateStr && t.type === 'Payment');
     
     const totalTodaysReceipts = todaysReceipts.reduce((sum, r) => sum + r.amount, 0);
     const totalTodaysPayments = todaysPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -149,17 +149,17 @@ export function CashbookClient() {
       totalReceipts: totalTodaysReceipts,
       totalPayments: totalTodaysPayments,
     };
-  }, [allTransactions, hydrated]);
+  }, [allTransactionsForFY, isAppHydrating]);
 
   const historicalCashbookData = React.useMemo(() => {
-    if (!hydrated || !historicalDateRange?.from || !historicalDateRange?.to) {
+    if (isAppHydrating || !historicalDateRange?.from || !historicalDateRange?.to) {
         return { dailyEntries: [], overallOpeningBalance: 0, finalClosingBalance: 0, flatTransactions: [] };
     }
 
     const days = eachDayOfInterval({ start: historicalDateRange.from, end: historicalDateRange.to });
     let runningBalance = 0;
 
-    allTransactions.forEach(t => {
+    allTransactionsForFY.forEach(t => {
       if (parseISO(t.date) < startOfDay(historicalDateRange.from!)) {
         runningBalance += (t.type === 'Receipt' ? t.amount : -t.amount);
       }
@@ -169,8 +169,8 @@ export function CashbookClient() {
     const dailyEntries: DailyCashBookEntry[] = days.map(day => {
       const dayStr = format(day, "yyyy-MM-dd");
       const openingBalanceForDay = runningBalance;
-      const dayReceipts = allTransactions.filter(t => t.date === dayStr && t.type === 'Receipt');
-      const dayPayments = allTransactions.filter(t => t.date === dayStr && t.type === 'Payment');
+      const dayReceipts = allTransactionsForFY.filter(t => t.date === dayStr && t.type === 'Receipt');
+      const dayPayments = allTransactionsForFY.filter(t => t.date === dayStr && t.type === 'Payment');
       const totalDayReceipts = dayReceipts.reduce((sum, r) => sum + r.amount, 0);
       const totalDayPayments = dayPayments.reduce((sum, p) => sum + p.amount, 0);
       runningBalance += totalDayReceipts - totalDayPayments;
@@ -186,11 +186,10 @@ export function CashbookClient() {
 
 
     return { dailyEntries, overallOpeningBalance, finalClosingBalance: runningBalance, flatTransactions };
-  }, [allTransactions, historicalDateRange, hydrated]);
+  }, [allTransactionsForFY, historicalDateRange, isAppHydrating]);
 
   const handleAddPaymentFromCashbook = React.useCallback((payment: Payment) => {
     setPayments(prevPayments => {
-        // Assuming new payment from cashbook always adds, not edits existing ones from here
         return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
     });
     toast({ title: "Success!", description: "Payment added to cashbook and payments." });
@@ -198,7 +197,6 @@ export function CashbookClient() {
 
   const handleAddReceiptFromCashbook = React.useCallback((receipt: Receipt) => {
     setReceipts(prevReceipts => {
-        // Assuming new receipt from cashbook always adds
         return [{ ...receipt, id: receipt.id || `receipt-${Date.now()}` }, ...prevReceipts];
     });
     toast({ title: "Success!", description: "Receipt added to cashbook and receipts." });
@@ -216,7 +214,7 @@ export function CashbookClient() {
   }, [setSuppliers, setAgents, setTransporters, setCustomers, setBrokers, toast]);
 
 
-  if (!hydrated) {
+  if (isAppHydrating) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
         <p className="text-lg text-muted-foreground">Loading cashbook data...</p>
@@ -228,7 +226,7 @@ export function CashbookClient() {
     <div className="space-y-8 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex justify-between items-center no-print">
-        <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
+        <h1 className="text-3xl font-bold text-foreground">Cash Book (FY {financialYear})</h1>
         <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => { setPaymentToEdit(null); setIsAddPaymentFormOpen(true); }}>
                 <PlusCircle className="mr-2 h-4 w-4"/> Add Cash Payment
@@ -353,7 +351,7 @@ export function CashbookClient() {
           onSubmit={handleAddPaymentFromCashbook}
           parties={allPaymentParties}
           onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
-          paymentToEdit={paymentToEdit} // Will be null for new entries from cashbook
+          paymentToEdit={paymentToEdit} 
         />
       )}
 
@@ -364,10 +362,9 @@ export function CashbookClient() {
           onSubmit={handleAddReceiptFromCashbook}
           parties={allReceiptParties}
           onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
-          receiptToEdit={receiptToEdit} // Will be null for new entries from cashbook
+          receiptToEdit={receiptToEdit} 
         />
       )}
     </div>
   );
 }
-
