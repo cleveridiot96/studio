@@ -32,60 +32,53 @@ const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory lots
 
 export function SalesClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); // Hook from SettingsContext
+  const { financialYear, isAppHydrating } = useSettings();
 
-  // useState for managing local UI state
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
-  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false); // For ensuring client-side only logic runs after mount
+  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false);
 
-  // Memoized empty array for stable default value to useLocalStorageState
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
-  // useLocalStorageState hooks for persistent data
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
   const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
 
-  // useEffect to set hydration flag after component mounts on client
   React.useEffect(() => {
     setIsSalesClientHydrated(true);
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
 
-  // useMemo for derived data (filtered sales)
-  // This recalculates only when its dependencies (sales, financialYear, isAppHydrating, isSalesClientHydrated) change.
   const filteredSales = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
     return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
   }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
 
-  // useCallback for memoizing event handlers to prevent unnecessary re-renders of child components
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
-    const isEditing = sales.some(s => s.id === sale.id);
     setSales(prevSales => {
+      const isEditing = prevSales.some(s => s.id === sale.id);
       if (isEditing) {
         return prevSales.map(s => s.id === sale.id ? sale : s);
       } else {
         return [{...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
       }
     });
-    setSaleToEdit(null); // Reset editing state
-    toast({ title: "Success!", description: isEditing ? "Sale updated successfully." : "Sale added successfully." });
-  }, [sales, setSales, toast]); // Dependencies for this callback
+    setSaleToEdit(null);
+    toast({ title: "Success!", description: sales.some(s => s.id === sale.id) ? "Sale updated successfully." : "Sale added successfully." });
+  }, [setSales, toast, sales]); // Added sales to dependency array for isEditing check
 
   const handleEditSale = React.useCallback((sale: Sale) => {
     setSaleToEdit(sale);
     setIsAddSaleFormOpen(true);
-  }, []); // No dependencies, this function's identity is stable
+  }, []);
 
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => {
     setSaleToDeleteId(saleId);
     setShowDeleteConfirm(true);
-  }, []); // No dependencies
+  }, []);
 
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
@@ -94,15 +87,12 @@ export function SalesClient() {
       setSaleToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  }, [saleToDeleteId, setSales, toast]); // Dependencies
+  }, [saleToDeleteId, setSales, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    let updated = false;
     switch (type) {
         case "Customer":
             setCustomers(prev => {
-                updated = true;
-                // Ensure no duplicates and sort
                 const newSet = new Map(prev.map(item => [item.id, item]));
                 newSet.set(newItem.id, newItem);
                 return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -110,7 +100,6 @@ export function SalesClient() {
             break;
         case "Transporter":
             setTransporters(prev => {
-                updated = true;
                 const newSet = new Map(prev.map(item => [item.id, item]));
                 newSet.set(newItem.id, newItem);
                 return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -118,32 +107,27 @@ export function SalesClient() {
             break;
         case "Broker":
             setBrokers(prev => {
-                updated = true;
                 const newSet = new Map(prev.map(item => [item.id, item]));
-                newSet.set(newItem.id, newItem as Broker); // Ensure correct type
+                newSet.set(newItem.id, newItem as Broker);
                 return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
             });
             break;
         default:
-            toast({title: "Info", description: `Master type ${type} not handled here for sales.`})
+            // toast({title: "Info", description: `Master type ${type} not handled here for sales.`}) // Already toasted in form
             break;
     }
-    if (updated) {
-        toast({ title: `${newItem.type} "${newItem.name}" added/updated from Sales.` });
-    }
-  }, [setCustomers, setTransporters, setBrokers, toast]); // Dependencies
+  }, [setCustomers, setTransporters, setBrokers]);
 
   const openAddSaleForm = React.useCallback(() => {
-    setSaleToEdit(null); 
+    setSaleToEdit(null);
     setIsAddSaleFormOpen(true);
-  }, []); // No dependencies
+  }, []);
 
   const closeAddSaleForm = React.useCallback(() => {
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
-  }, []); // No dependencies
+  }, []);
 
-  // Conditional rendering based on hydration state
   if (isAppHydrating || !isSalesClientHydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -170,17 +154,17 @@ export function SalesClient() {
 
       <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
       
-      {/* AddSaleForm is rendered conditionally */}
-      {isAddSaleFormOpen && (
+      {/* AddSaleForm is rendered conditionally and only when client is hydrated */}
+      {isSalesClientHydrated && isAddSaleFormOpen && (
         <AddSaleForm
-          isOpen={isAddSaleFormOpen}
+          isOpen={isAddSaleFormOpen} // Technically, this could just be `true` now
           onClose={closeAddSaleForm}
           onSubmit={handleAddOrUpdateSale}
           customers={customers as Customer[]}
           transporters={transporters as Transporter[]}
           brokers={brokers}
           inventoryLots={inventorySource} 
-          existingSales={sales} // Pass existing sales for stock validation
+          existingSales={sales}
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />
@@ -207,5 +191,3 @@ export function SalesClient() {
     </div>
   );
 }
-
-    
