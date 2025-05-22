@@ -103,26 +103,32 @@ export function PurchasesClient() {
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating) return []; 
-    return purchases.filter(purchase => isDateInFinancialYear(purchase.date, financialYear));
+    return purchases.filter(purchase => purchase && purchase.date && isDateInFinancialYear(purchase.date, financialYear));
   }, [purchases, financialYear, isAppHydrating]);
 
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     const isEditing = purchases.some(p => p.id === purchase.id);
-    // Recalculate just in case, ensuring all derived fields are fresh
     const processedPurchase = calculatePurchaseEntry(purchase as any); 
+    let successMessage = "";
+    let successDescription = "";
 
     setPurchases(prevPurchases => {
       if (isEditing) {
-        toast({ title: "Success!", description: "Purchase updated successfully." });
+        successMessage = "Success!";
+        successDescription = "Purchase updated successfully.";
         return prevPurchases.map(p => p.id === processedPurchase.id ? processedPurchase : p);
       } else {
-        toast({ title: "Success!", description: "Purchase added successfully." });
+        successMessage = "Success!";
+        successDescription = "Purchase added successfully.";
         return [processedPurchase, ...prevPurchases];
       }
     });
     setPurchaseToEdit(null);
-  }, [setPurchases, toast, purchases]);
+    if (successMessage) {
+      toast({ title: successMessage, description: successDescription });
+    }
+  }, [setPurchases, purchases, toast]);
 
   const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);
@@ -144,23 +150,39 @@ export function PurchasesClient() {
   }, [purchaseToDeleteId, setPurchases, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
+    let updated = false;
     switch (type) {
       case "Supplier":
-        setSuppliers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+        setSuppliers(prev => {
+            updated = true;
+            return [newItem, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       case "Agent":
-        setAgents(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+        setAgents(prev => {
+            updated = true;
+            return [newItem, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       case "Warehouse": // Location
-        setWarehouses(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+        setWarehouses(prev => {
+            updated = true;
+            return [newItem, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       case "Transporter":
-        setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+        setTransporters(prev => {
+            updated = true;
+            return [newItem, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       default:
         break;
     }
-  }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
+    if(updated) {
+        toast({ title: `${newItem.type} "${newItem.name}" added/updated.` });
+    }
+  }, [setSuppliers, setAgents, setWarehouses, setTransporters, toast]);
   
   const openAddPurchaseForm = React.useCallback(() => {
     setPurchaseToEdit(null); 
@@ -179,24 +201,22 @@ export function PurchasesClient() {
   React.useEffect(() => {
     if (purchaseForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
-        const elementToCapture = chittiContainerRef.current;
+        const elementToCapture = chittiContainerRef.current?.firstChild as HTMLElement | null;
   
-        if (!elementToCapture || !elementToCapture.hasChildNodes()) {
+        if (!elementToCapture) {
           toast({ title: "Error Generating PDF", description: "Chitti content not ready or found. Please try again.", variant: "destructive", duration: 5000 });
-          console.error("PDF Generation: Chitti container is empty or ref is not attached properly:", elementToCapture);
+          console.error("PDF Generation: Chitti content element not found:", chittiContainerRef.current);
           setPurchaseForPdf(null);
           return;
         }
-  
-        console.log("PDF Generation: Attempting to capture element:", elementToCapture);
   
         try {
           const canvas = await html2canvas(elementToCapture, { 
             scale: 2,
             useCORS: true, 
-            logging: false, // Enable for debugging html2canvas if issues persist
-            width: elementToCapture.offsetWidth || 550, // Provide a fallback width
-            height: elementToCapture.offsetHeight || 780, // Provide a fallback height
+            logging: false, 
+            width: elementToCapture.offsetWidth || 550, 
+            height: elementToCapture.offsetHeight || 780, 
             windowWidth: elementToCapture.scrollWidth,
             windowHeight: elementToCapture.scrollHeight,
           });
@@ -205,11 +225,13 @@ export function PurchasesClient() {
           const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'px',
+            // A5-ish in pixels at 96DPI: 559px x 794px. html2canvas scale affects this.
+            // We want the canvas dimensions as the PDF page size
             format: [canvas.width, canvas.height] 
           });
 
           pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-          const timestamp = new Date().getTime(); // For unique filenames
+          const timestamp = new Date().getTime(); 
           pdf.save(`Purchase-Chitti-${purchaseForPdf.lotNumber.replace(/[\/\s.]/g, '_')}-${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Chitti for ${purchaseForPdf.lotNumber} downloaded.` });
         } catch (err) {
@@ -220,7 +242,7 @@ export function PurchasesClient() {
         }
       };
   
-      const timer = setTimeout(generatePdf, 250); // Slightly increased delay
+      const timer = setTimeout(generatePdf, 300); // Ensure DOM has updated
       return () => clearTimeout(timer);
     }
   }, [purchaseForPdf, toast]);
@@ -267,8 +289,7 @@ export function PurchasesClient() {
         />
       )}
       
-      {/* Hidden container for rendering Chitti for PDF generation */}
-      <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white', padding: '1px' }}> {/* Ensure some padding if border needed for capture */}
+      <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white', padding: '1px' }}>
           {purchaseForPdf && <PurchaseChittiPrint purchase={purchaseForPdf} />}
       </div>
 
