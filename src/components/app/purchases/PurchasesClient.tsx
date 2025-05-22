@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, Broker } from "@/lib/types";
+import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { useToast } from "@/hooks/use-toast";
@@ -23,35 +23,76 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
-const initialPurchasesData: Purchase[] = [
+// Helper function to calculate initial data with effective rates
+const calculateInitialPurchaseData = (data: Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number }[]): Purchase[] => {
+  return data.map(p => {
+    const transportRatePerKg = p.transportRatePerKg || 0;
+    const quantity = p.quantity || 0;
+    const assumedGrossWeightForTransport = quantity * 50; // Assuming 50kg per bag for transport cost calculation
+    const transportRate = transportRatePerKg * assumedGrossWeightForTransport;
+    
+    const totalAmount = (p.netWeight * p.rate) + (p.expenses || 0) + transportRate;
+    const effectiveRate = p.netWeight > 0 ? totalAmount / p.netWeight : 0;
+
+    return {
+      ...p,
+      transportRate,
+      totalAmount,
+      effectiveRate,
+    };
+  });
+};
+
+const rawInitialPurchases = [
   {
     id: "purchase-fy2526-1", date: "2025-05-01", lotNumber: "FY2526-LOT-A/100", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
     quantity: 100, netWeight: 5000, rate: 22, expenses: 500, transportRatePerKg: 0.5, transporterId: "trans-speedy", transporterName: "Speedy Logistics",
-    transportRate: (0.5 * 5000), // Calculated total transport cost
-    totalAmount: (5000 * 22) + 500 + (0.5 * 5000), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
+    locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
   {
     id: "purchase-fy2526-2", date: "2025-06-15", lotNumber: "FY2526-LOT-B/50", supplierId: "supp-meena", supplierName: "Meena Farms",
-    quantity: 50, netWeight: 2500, rate: 25, expenses: 200,
-    totalAmount: (2500 * 25) + 200, locationId: "wh-pune", locationName: "Pune North Godown"
+    quantity: 50, netWeight: 2500, rate: 25, expenses: 200, transportRatePerKg: 0, // No transport
+    locationId: "wh-pune", locationName: "Pune North Godown"
   },
   {
     id: "purchase-fy2526-3", date: "2025-07-10", lotNumber: "FY2526-LOT-C/75", supplierId: "supp-vikas", supplierName: "Vikas Seeds & Grains", agentId: "agent-sunila", agentName: "Sunil Varma",
-    quantity: 75, netWeight: 3750, rate: 20,
-    totalAmount: (3750 * 20), locationId: "wh-ngp", locationName: "Nagpur South Storage"
+    quantity: 75, netWeight: 3750, rate: 20, expenses: 0, transportRatePerKg: 0, // No transport
+    locationId: "wh-ngp", locationName: "Nagpur South Storage"
   },
   {
     id: "purchase-fy2425-1", date: "2024-08-01", lotNumber: "FY2425-LOT-X/90", supplierId: "supp-uma", supplierName: "Uma Organics",
     quantity: 90, netWeight: 4500, rate: 28, expenses: 700, transportRatePerKg: 0.4, transporterId: "trans-reliable", transporterName: "Reliable Transports",
-    transportRate: (0.4 * 4500),
-    totalAmount: (4500 * 28) + 700 + (0.4*4500), locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
+    locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
   {
     id: "purchase-fy2526-4", date: "2025-09-05", lotNumber: "FY2526-LOT-D/120", supplierId: "supp-sunilp", supplierName: "Sunil Trading Co.", agentId: "agent-ajay", agentName: "Ajay Kumar",
-    quantity: 120, netWeight: 6000, rate: 23.5,
-    totalAmount: (6000 * 23.5), locationId: "wh-pune", locationName: "Pune North Godown"
+    quantity: 120, netWeight: 6000, rate: 23.5, expenses: 0, transportRatePerKg: 0.1, // Small transport cost
+    transporterId: "trans-reliable", transporterName: "Reliable Transports",
+    locationId: "wh-pune", locationName: "Pune North Godown"
+  },
+   // Example from original data for AR Agent Supplier
+  {
+    id: "purchase-1", // Original ID
+    date: "2025-05-01", // Assuming FY 2025-2026 for visibility
+    lotNumber: "AB/6", 
+    locationId: "w1", // Needs to match a warehouse from masters
+    locationName: "Mumbai Godown",
+    supplierId: "s1", // Needs to match a supplier from masters
+    supplierName: "AR Agent Supplier",
+    agentId: "a1", // Needs to match an agent from masters
+    agentName: "AR Agent",
+    quantity: 6, 
+    netWeight: 300, 
+    rate: 320, 
+    expenses: 1000,
+    transportRatePerKg: (2000 / (6*50)), // Original total transport was 2000 for 6 bags
+    transporterId: "t1", // Needs to match a transporter
+    transporterName: "Speedy Logistics",
   },
 ];
+
+const initialPurchasesData: Purchase[] = calculateInitialPurchaseData(rawInitialPurchases);
+
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
@@ -76,7 +117,7 @@ export function PurchasesClient() {
   const [purchaseToDeleteId, setPurchaseToDeleteId] = React.useState<string | null>(null);
 
   const filteredPurchases = React.useMemo(() => {
-    if (isAppHydrating) return []; // Don't filter until settings are hydrated
+    if (isAppHydrating) return []; 
     return purchases.filter(purchase => isDateInFinancialYear(purchase.date, financialYear));
   }, [purchases, financialYear, isAppHydrating]);
 
@@ -86,7 +127,9 @@ export function PurchasesClient() {
       if (isEditing) {
         return prevPurchases.map(p => p.id === purchase.id ? purchase : p);
       } else {
-        return [purchase, ...prevPurchases];
+        // Ensure a unique ID for new purchases if one isn't already provided
+        const newPurchase = { ...purchase, id: purchase.id || `purchase-${Date.now()}` };
+        return [newPurchase, ...prevPurchases];
       }
     });
     setPurchaseToEdit(null);
@@ -168,10 +211,10 @@ export function PurchasesClient() {
           isOpen={isAddPurchaseFormOpen}
           onClose={closeAddPurchaseForm}
           onSubmit={handleAddOrUpdatePurchase}
-          suppliers={suppliers}
-          agents={agents}
-          warehouses={warehouses}
-          transporters={transporters}
+          suppliers={suppliers as Supplier[]}
+          agents={agents as Agent[]}
+          warehouses={warehouses as Warehouse[]}
+          transporters={transporters as Transporter[]}
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />
@@ -196,3 +239,5 @@ export function PurchasesClient() {
     </div>
   );
 }
+
+    
