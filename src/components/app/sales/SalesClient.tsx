@@ -4,156 +4,148 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase } from "@/lib/types"; // Ensure MasterItemType is imported if used by onMasterDataUpdate
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { useToast } from "@/hooks/use-toast";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
-// Constants for localStorage keys
-const SALES_STORAGE_KEY = 'salesData';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory lots
+const SALES_STORAGE_KEY = "salesData";
+const CUSTOMERS_STORAGE_KEY = "masterCustomers";
+const TRANSPORTERS_STORAGE_KEY = "masterTransporters";
+const BROKERS_STORAGE_KEY = "masterBrokers";
+const PURCHASES_STORAGE_KEY = "purchasesData"; // Used for inventoryLots
 
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
 
-  const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
-  const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
-  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false);
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [editingSale, setEditingSale] = React.useState<Sale | null>(null);
+  const [deleteId, setDeleteId] = React.useState<string | null>(null);
+  
+  // This local hydrated state can be useful if SalesClient has its own async data loading
+  // that needs to complete before rendering, separate from isAppHydrating.
+  // For now, primarily relying on isAppHydrating for context-based data readiness.
+  const [isSalesClientDataReady, setIsSalesClientDataReady] = React.useState(false);
+
 
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
+  const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
-  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [inventoryLots, setInventoryLots] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
 
   React.useEffect(() => {
-    setIsSalesClientHydrated(true);
+    // This signals that the component has mounted and useLocalStorageState has had a chance to load initial values.
+    setIsSalesClientDataReady(true);
   }, []);
+
 
   const filteredSales = React.useMemo(() => {
-    if (isAppHydrating || !isSalesClientHydrated) return [];
-    return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
-  }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
+    if (isAppHydrating || !isSalesClientDataReady) return []; // Wait for both global settings and local data
+    return sales.filter(s => s && s.date && isDateInFinancialYear(s.date, financialYear));
+  }, [sales, financialYear, isAppHydrating, isSalesClientDataReady]);
 
-  const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
-    setSales(prevSales => {
-      const isEditing = prevSales.some(s => s.id === sale.id);
-      // Toast should be called after state update or based on logic not directly inside updater
-      // For simplicity, calling it before, but in complex scenarios, consider useEffect
-      toast({
-        title: "Success!",
-        description: isEditing ? "Sale updated successfully." : "Sale added successfully."
-      });
+  const handleAddOrUpdate = React.useCallback((newSale: Sale) => {
+    setSales(prev => {
+      const isEditing = prev.some(s => s.id === newSale.id);
       if (isEditing) {
-        return prevSales.map(s => s.id === sale.id ? sale : s);
-      } else {
-        return [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
+        return prev.map(s => (s.id === newSale.id ? newSale : s));
       }
+      return [{ ...newSale, id: newSale.id || `sale-${Date.now()}` }, ...prev];
     });
-    setIsAddSaleFormOpen(false);
-    setSaleToEdit(null);
-  }, [setSales, toast]);
 
-  const handleEditSale = React.useCallback((sale: Sale) => {
-    setSaleToEdit(sale);
-    setIsAddSaleFormOpen(true);
+    toast({ title: "Success", description: editingSale ? "Sale updated." : "Sale added." });
+    setEditingSale(null); // Reset editingSale after submission
+    setIsFormOpen(false);  // Close form
+  }, [setSales, toast, editingSale]); // Added editingSale to dependencies
+
+  const handleEdit = React.useCallback((sale: Sale) => {
+    setEditingSale(sale);
+    setIsFormOpen(true);
   }, []);
 
-  const handleDeleteSaleAttempt = React.useCallback((saleId: string) => {
-    setSaleToDeleteId(saleId);
-    setShowDeleteConfirm(true);
+  const handleDeleteAttempt = React.useCallback((id: string) => { // Renamed from handleDelete to avoid conflict
+    setDeleteId(id);
   }, []);
 
-  const confirmDeleteSale = React.useCallback(() => {
-    if (saleToDeleteId) {
-      setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
-      toast({ title: "Success!", description: "Sale deleted successfully.", variant: "destructive" });
-      setSaleToDeleteId(null);
-      setShowDeleteConfirm(false);
+  const confirmDelete = React.useCallback(() => {
+    if (deleteId) {
+      setSales(prev => prev.filter(s => s.id !== deleteId));
+      toast({ title: "Deleted", description: "Sale record removed.", variant: "destructive" });
+      setDeleteId(null);
     }
-  }, [saleToDeleteId, setSales, toast]);
+  }, [deleteId, setSales, toast]);
 
+  const closeForm = React.useCallback(() => {
+    setEditingSale(null);
+    setIsFormOpen(false);
+  }, []);
+
+  const openForm = React.useCallback(() => { // Renamed from openAddSaleForm to avoid conflict
+    setEditingSale(null);
+    setIsFormOpen(true);
+  }, []);
+
+  // Placeholder for onMasterDataUpdate, assuming it's used by AddSaleForm
+  // You'll need to define the actual master data setters (setCustomers, setBrokers, etc.) if they are used here.
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    let updated = false;
-    const masterSetters = {
-      Customer: setCustomers,
-      Transporter: setTransporters,
-      Broker: setBrokers,
-    };
+    // Example: if type === 'Customer', call setCustomers(...)
+    // This needs to be implemented based on how AddSaleForm calls it.
+    // For now, just a log and toast.
+    console.log("Master data update triggered from SalesClient:", type, newItem);
+    toast({title: "Info", description: `Master data update for ${type} received.`});
 
-    const setter = masterSetters[type as keyof typeof masterSetters];
-
-    if (setter) {
-      setter(prev => {
-        updated = true;
-        const newSet = new Map(prev.map(item => [item.id, item]));
-        newSet.set(newItem.id, newItem as any); // Cast as any if type narrowing is complex
-        return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
+    // Actual update logic would be:
+    if (type === 'Customer') {
+      setCustomers(prev => {
+        const existing = prev.find(c => c.id === newItem.id);
+        if (existing) return prev.map(c => c.id === newItem.id ? newItem as Customer : c);
+        return [...prev, newItem as Customer].sort((a,b) => a.name.localeCompare(b.name));
       });
-    } else {
-        toast({title: "Info", description: `Master type ${type} not handled here for sales.`});
+    } else if (type === 'Broker') {
+      setBrokers(prev => {
+        const existing = prev.find(b => b.id === newItem.id);
+        if (existing) return prev.map(b => b.id === newItem.id ? newItem as Broker : b);
+        return [...prev, newItem as Broker].sort((a,b) => a.name.localeCompare(b.name));
+      });
+    } else if (type === 'Transporter') {
+        setTransporters(prev => {
+            const existing = prev.find(t => t.id === newItem.id);
+            if (existing) return prev.map(t => t.id === newItem.id ? newItem as Transporter : t);
+            return [...prev, newItem as Transporter].sort((a,b) => a.name.localeCompare(b.name));
+        });
     }
 
-    if (updated) {
-        toast({ title: `${newItem.type} "${newItem.name}" added/updated from Sales.` });
-    }
-  }, [setCustomers, setTransporters, setBrokers, toast]);
+  }, [setCustomers, setBrokers, setTransporters, toast]);
 
-  const openAddSaleForm = React.useCallback(() => {
-    setSaleToEdit(null);
-    setIsAddSaleFormOpen(true);
-  }, []);
 
-  const closeAddSaleForm = React.useCallback(() => {
-    setIsAddSaleFormOpen(false);
-    setSaleToEdit(null);
-  }, []);
-
-  if (isAppHydrating || !isSalesClientHydrated) {
+  if (isAppHydrating || !isSalesClientDataReady) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
-        <p className="text-lg text-muted-foreground">Loading sales data...</p>
+        <p className="text-lg text-muted-foreground">Loading sales...</p>
       </div>
     );
   }
 
-  // Temporarily commenting out render guard for syntax debugging
-  // const renderCount = React.useRef(0);
-  // renderCount.current += 1;
-  // if (renderCount.current > 50) {
-  //   console.error('SalesClient: Render loop detected - breaking cycle');
-  //   return <div className="p-4 text-destructive">Render loop blocked in SalesClient - please check console.</div>;
-  // }
-
   return (
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground">Sales (FY {financialYear})</h1>
         <div className="flex gap-2">
-          <Button onClick={openAddSaleForm} size="lg" className="text-base py-3 px-6 shadow-md">
+          <Button onClick={openForm} size="lg" className="text-base py-3 px-6 shadow-md">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
           </Button>
           <Button variant="outline" size="icon" onClick={() => window.print()}>
@@ -163,41 +155,37 @@ export function SalesClient() {
         </div>
       </div>
 
-      <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
-      
-      {isSalesClientHydrated && (
+      <SaleTable data={filteredSales} onEdit={handleEdit} onDelete={handleDeleteAttempt} />
+
+      {isFormOpen && (
         <AddSaleForm
-          key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'}
-          isOpen={isAddSaleFormOpen}
-          onClose={closeAddSaleForm}
-          onSubmit={handleAddOrUpdateSale}
+          key={editingSale ? `edit-${editingSale.id}` : 'add-new-sale'} // Key for re-mounting
+          isOpen={isFormOpen} // Use isFormOpen directly
+          onClose={closeForm}
+          onSubmit={handleAddOrUpdate}
           customers={customers as Customer[]}
-          transporters={transporters as Transporter[]}
           brokers={brokers}
-          inventoryLots={inventorySource} 
+          transporters={transporters as Transporter[]}
+          inventoryLots={inventoryLots}
           existingSales={sales}
-          onMasterDataUpdate={handleMasterDataUpdate}
-          saleToEdit={saleToEdit}
+          onMasterDataUpdate={handleMasterDataUpdate} // Ensure AddSaleForm uses this
+          saleToEdit={editingSale}
         />
       )}
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={!!deleteId} onOpenChange={(val) => !val && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the sale
-              record.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete the sale.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSaleToDeleteId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteSale} className="bg-destructive hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => setDeleteId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 }
+
