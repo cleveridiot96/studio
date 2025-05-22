@@ -49,12 +49,12 @@ export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber?: string; // Optional
-  billAmount?: number; // Optional override for final bill amount. If not provided, totalAmount is used.
+  manualBillAmount?: number; // Optional override for the final bill amount if cutBill is true
   cutBill?: boolean; // Optional
   customerId: string;
   customerName?: string;
-  brokerId?: string; 
-  brokerName?: string; 
+  brokerId?: string;
+  brokerName?: string;
   lotNumber: string; // This is the "Vakkal" from existing inventory
   quantity: number; // Number of Bags
   netWeight: number; // in KG
@@ -62,12 +62,13 @@ export interface Sale {
   transporterId?: string;
   transporterName?: string;
   transportCost?: number; // Fixed transport cost for this sale, affects profit
-  brokerageType?: 'Fixed' | 'Percentage'; 
-  brokerageValue?: number; 
-  calculatedBrokerageCommission?: number; 
+  brokerageType?: 'Fixed' | 'Percentage';
+  brokerageValue?: number;
+  calculatedBrokerageCommission?: number;
   notes?: string;
-  totalAmount: number; 
-  calculatedProfit?: number; 
+  totalAmount: number; // Final amount customer is liable for: (manualBillAmount if cutBill and provided) OR (netWeight * rate)
+  calculatedSaleValueBeforeCut?: number; // Stores (netWeight * rate) for reference if cutBill is used
+  calculatedProfit?: number;
 }
 
 export interface InventoryItem {
@@ -110,7 +111,7 @@ export interface Receipt {
 export interface LocationTransferItem {
   lotNumber: string;
   bagsToTransfer: number;
-  netWeightToTransfer: number; // Calculated based on bags or average weight
+  netWeightToTransfer: number;
 }
 
 export interface LocationTransfer {
@@ -143,14 +144,15 @@ export interface LedgerEntry {
   debit?: number;
   credit?: number;
   balance: number; // This is the running balance for the ledger view
-  vchType?: string; 
-  refNo?: string; 
-  rate?: number; 
-  netWeight?: number; 
-  transactionAmount?: number; 
-  customerName?: string; 
-  supplierName?: string; 
-  cashDiscount?: number; 
+  vchType?: string;
+  refNo?: string;
+  rate?: number;
+  netWeight?: number;
+  transactionAmount?: number;
+  customerName?: string;
+  supplierName?: string;
+  cashDiscount?: number;
+  relatedDocId: string; // To link back to original Sale/Purchase/Payment/Receipt ID
 }
 
 
@@ -170,13 +172,7 @@ export interface Transporter extends MasterItem {}
 export interface Warehouse extends MasterItem {} // Represents a Location
 export interface Customer extends MasterItem {}
 export interface Broker extends MasterItem {
-  commission?: number; 
-  brokerageType?: 'Fixed' | 'Percentage'; 
-}
-
-export interface BrokerData {
-  name: string;
-  commissionRate: number; // Percentage
+  commission?: number;
 }
 
 // For Profit Analysis Page
@@ -189,7 +185,7 @@ export interface TransactionalProfitInfo {
   saleQuantityBags: number;
   saleNetWeightKg: number;
   saleRatePerKg: number;
-  saleAmount: number; 
+  saleAmount: number;
   purchaseCostForSalePortion: number;
   transportCostOnSale?: number;
   brokerageOnSale?: number;
@@ -197,11 +193,9 @@ export interface TransactionalProfitInfo {
 }
 
 export interface MonthlyProfitInfo {
-  monthKey: string;
-  monthYear: string; 
+  monthKey: string; // "yyyy-MM"
+  monthYear: string; // "MMMM yyyy"
   totalProfit: number;
   totalSalesValue: number;
   totalCostOfGoods: number;
 }
-
-

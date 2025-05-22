@@ -11,7 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Printer } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Pencil, Trash2, Printer, Download } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -21,15 +28,16 @@ interface SaleTableProps {
   data: Sale[];
   onEdit: (sale: Sale) => void;
   onDelete: (saleId: string) => void;
+  onDownloadPdf?: (sale: Sale) => void; // Added for specific PDF download
 }
 
-const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }) => {
+const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
   if (data.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No sales recorded yet.</p>;
   }
 
-  const handlePrint = () => {
-    console.log('Print Chitti (Sales) clicked');
+  const handleGenericPrint = () => {
+    console.log('Generic Print (Sales Table) clicked');
     window.print();
   };
 
@@ -49,7 +57,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
               <TableHead>Broker</TableHead>
               <TableHead className="text-right">Total (₹)</TableHead>
               <TableHead className="text-right">Profit (₹)</TableHead>
-              <TableHead className="text-center w-[120px]">Actions</TableHead>
+              <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -78,20 +86,39 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
                     <TooltipContent><p>{sale.brokerName || sale.brokerId || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
-                <TableCell className="text-right font-semibold">{(sale.billAmount || sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : ''}`}>
+                <TableCell className="text-right font-semibold">{(sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
                   {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
                 </TableCell>
                 <TableCell className="text-center">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(sale)} className="mr-1 hover:text-primary" title="Edit Sale">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={handlePrint} className="mr-1 hover:text-blue-600" title="Print Chitti">
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(sale.id)} className="hover:text-destructive" title="Delete Sale">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                   <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(sale)}>
+                          <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleGenericPrint}>
+                          <Printer className="mr-2 h-4 w-4" /> Print Page
+                        </DropdownMenuItem>
+                        {onDownloadPdf && (
+                          <DropdownMenuItem onClick={() => onDownloadPdf(sale)}>
+                            <Download className="mr-2 h-4 w-4" /> Download Chitti (PDF)
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => onDelete(sale.id)}
+                          className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -103,4 +130,3 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete }
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
-

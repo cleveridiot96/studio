@@ -1,32 +1,36 @@
 
 import { z } from 'zod';
-import type { MasterItem, Purchase } from '@/lib/types';
+import type { MasterItem, Purchase, Sale } from '@/lib/types';
 
-// Helper to calculate available stock for a lot (sum of purchases minus sum of sales for that lot)
-// This is a simplified version. A more robust solution would query aggregated inventory.
-const getLotAvailableStock = (lotNumber: string, allPurchases: Purchase[], allSales: Sale[]): { availableBags: number; availableWeight: number, purchaseRate: number } => {
+// Helper to calculate available stock for a lot
+const getLotAvailableStock = (
+  lotNumber: string,
+  allPurchases: Purchase[],
+  allSales: Sale[],
+  currentSaleId?: string // To exclude the current sale being edited from stock calculation
+): { availableBags: number; availableWeight: number, purchaseRate: number } => {
   let purchasedBags = 0;
   let purchasedWeight = 0;
-  let firstPurchaseRate = 0; // To store the rate of the first purchase of this lot for profit calc
+  let firstPurchaseRate = 0;
 
   allPurchases.forEach(p => {
     if (p.lotNumber === lotNumber) {
       purchasedBags += p.quantity;
       purchasedWeight += p.netWeight;
-      if (firstPurchaseRate === 0) firstPurchaseRate = p.rate; // Assuming simple FIFO for cost basis
+      if (firstPurchaseRate === 0) firstPurchaseRate = p.rate;
     }
   });
 
   let soldBags = 0;
   let soldWeight = 0;
   allSales.forEach(s => {
-    if (s.lotNumber === lotNumber) {
+    if (s.id !== currentSaleId && s.lotNumber === lotNumber) { // Exclude current sale if editing
       soldBags += s.quantity;
       soldWeight += s.netWeight;
     }
   });
-  return { 
-    availableBags: purchasedBags - soldBags, 
+  return {
+    availableBags: purchasedBags - soldBags,
     availableWeight: purchasedWeight - soldWeight,
     purchaseRate: firstPurchaseRate
   };
@@ -34,17 +38,18 @@ const getLotAvailableStock = (lotNumber: string, allPurchases: Purchase[], allSa
 
 
 export const saleSchema = (
-    customers: MasterItem[], 
-    transporters: MasterItem[], 
-    brokers: MasterItem[], 
-    inventoryLots: Purchase[], // Source of lot numbers and their original details
-    existingSales: Sale[] // Needed to calculate current available stock for a lot
+    customers: MasterItem[],
+    transporters: MasterItem[],
+    brokers: MasterItem[],
+    inventoryLots: Purchase[],
+    existingSales: Sale[],
+    currentSaleIdToEdit?: string
 ) => z.object({
   date: z.date({
     required_error: "Sale date is required.",
   }),
   billNumber: z.string().optional(),
-  billAmount: z.coerce.number().optional(), 
+  manualBillAmount: z.coerce.number().optional(),
   cutBill: z.boolean().optional().default(false),
   customerId: z.string().min(1, "Customer is required.").refine((customerId) => customers.some((c) => c.id === customerId && c.type === 'Customer'), {
     message: "Customer does not exist or is not of type Customer.",
@@ -63,46 +68,47 @@ export const saleSchema = (
     message: "Broker does not exist or is not of type Broker.",
   }),
   brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
-  brokerageAmount: z.coerce.number().optional().default(0), // This is the value (e.g. 2 for 2% or 500 for fixed)
+  brokerageValue: z.coerce.number().optional(), // No default(0) here, allow undefined to trigger auto-population from master
   notes: z.string().optional(),
+  calculatedBrokerageCommission: z.coerce.number().optional(), // Not directly part of form input, but can be stored.
 }).refine(data => {
-    if (data.brokerId && (!data.brokerageType || data.brokerageAmount === undefined || data.brokerageAmount < 0 )) {
+    if (data.brokerId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0 )) {
       return false;
     }
     return true;
   }, {
     message: "Brokerage type and a valid brokerage value (non-negative) are required if a broker is selected.",
-    path: ["brokerageAmount"],
+    path: ["brokerageValue"],
   }).refine(data => {
-    if (data.brokerageType && (data.brokerageAmount === undefined || data.brokerageAmount < 0)) {
+    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue < 0)) {
         return false;
     }
     return true;
   }, {
     message: "Brokerage value is required and must be non-negative if brokerage type is selected.",
-    path: ["brokerageAmount"],
+    path: ["brokerageValue"],
   }).refine(data => {
     if (data.lotNumber) {
-        const { availableBags, availableWeight } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales);
+        const { availableBags, availableWeight } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales, currentSaleIdToEdit);
         if (data.quantity > availableBags) {
-            return false; 
+            return false;
         }
         if (data.netWeight > availableWeight) {
-            return false; 
+            return false;
         }
     }
     return true;
-  }, (data) => { 
+  }, (data) => {
     let message = "Invalid quantity or weight for the selected lot.";
     let path: ("quantity" | "netWeight" | "lotNumber")[] = ["lotNumber"];
 
     if (data.lotNumber) {
-        const { availableBags, availableWeight } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales);
+        const { availableBags, availableWeight } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales, currentSaleIdToEdit);
         if (data.quantity > availableBags) {
-            message = `Bags cannot exceed available stock for lot ${data.lotNumber} (Available: ${availableBags}).`;
+            message = `Bags (${data.quantity}) exceed available stock for lot ${data.lotNumber} (Available: ${availableBags}).`;
             path = ["quantity"];
         } else if (data.netWeight > availableWeight) {
-            message = `Net weight cannot exceed available stock for lot ${data.lotNumber} (Available: ${availableWeight}kg).`;
+            message = `Net weight (${data.netWeight}kg) cannot exceed available stock for lot ${data.lotNumber} (Available: ${availableWeight}kg).`;
             path = ["netWeight"];
         }
     }
@@ -110,6 +116,3 @@ export const saleSchema = (
 });
 
 export type SaleFormValues = z.infer<ReturnType<typeof saleSchema>>;
-
-// Re-export Sale type for convenience if needed elsewhere, though it's usually in types.ts
-export type { Sale } from '@/lib/types';

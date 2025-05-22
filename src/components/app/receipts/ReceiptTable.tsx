@@ -11,7 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Pencil, Trash2, Printer } from "lucide-react";
 import type { Receipt } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -39,10 +46,11 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
               <TableHead>Party Name</TableHead>
               <TableHead>Party Type</TableHead>
               <TableHead className="text-right">Amount (₹)</TableHead>
+              <TableHead className="text-right">Discount (₹)</TableHead>
               <TableHead>Method</TableHead>
               <TableHead>Reference No.</TableHead>
               <TableHead>Notes</TableHead>
-              <TableHead className="text-center w-[100px]">Actions</TableHead>
+              <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -52,6 +60,7 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
                 <TableCell>{receipt.partyName || receipt.partyId}</TableCell>
                 <TableCell><Badge variant="secondary">{receipt.partyType}</Badge></TableCell>
                 <TableCell className="text-right font-semibold">{receipt.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className="text-right">{receipt.cashDiscount?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                 <TableCell>{receipt.paymentMethod}</TableCell>
                 <TableCell>{receipt.referenceNo || 'N/A'}</TableCell>
                 <TableCell className="truncate max-w-xs">
@@ -69,12 +78,29 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
                   )}
                 </TableCell>
                 <TableCell className="text-center">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(receipt)} className="mr-2 hover:text-primary">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(receipt.id)} className="hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(receipt)}>
+                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => window.print()}>
+                        <Printer className="mr-2 h-4 w-4" /> Print Page
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onDelete(receipt.id)}
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -87,5 +113,3 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
 }
 
 export const ReceiptTable = React.memo(ReceiptTableComponent);
-
-    
