@@ -23,66 +23,47 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
+// Constants for localStorage keys
 const SALES_STORAGE_KEY = 'salesData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory lots
 
-const initialSalesData: Sale[] = [
-  {
-    id: "sale-fy2526-1", date: "2025-05-10", billNumber: "INV-FY2526-001", customerId: "cust-ramesh", customerName: "Ramesh Retail", lotNumber: "FY2526-LOT-A/100",
-    quantity: 20, netWeight: 1000, rate: 28,
-    totalAmount: 1000 * 28,
-    calculatedProfit: (1000 * 28) - (1000 * 22) - 200 - ((1000*28)*0.01), // Sale - Purchase - Transport - Brokerage
-    transporterId: "trans-speedy", transporterName: "Speedy Logistics", transportCost: 200,
-    brokerId: "broker-vinod", brokerName: "Vinod Mehta", brokerageType: "Percentage", brokerageValue: 1, calculatedBrokerageCommission: (1000*28)*0.01,
-    notes: "Urgent delivery to Ramesh Retail for FY2526"
-  },
-  {
-    id: "sale-fy2526-2", date: "2025-06-20", billNumber: "INV-FY2526-002", customerId: "cust-sita", customerName: "Sita General Store", lotNumber: "FY2526-LOT-B/50",
-    quantity: 30, netWeight: 1500, rate: 30,
-    totalAmount: 1500 * 30,
-    calculatedProfit: (1500 * 30) - (1500 * 25),
-    notes: "Standard delivery for FY2526"
-  },
-  {
-    id: "sale-fy2425-1", date: "2024-09-15", billNumber: "INV-FY2425-001", customerId: "cust-mohan", customerName: "Mohan Wholesalers", lotNumber: "FY2425-LOT-X/90",
-    quantity: 50, netWeight: 2500, rate: 32,
-    totalAmount: 2500 * 32,
-    calculatedProfit: (2500 * 32) - (2500 * 28) - 0 - 300, // Sale - Purchase - Transport - Brokerage
-    brokerId: "broker-leela", brokerName: "Leela Associates", brokerageType: "Fixed", brokerageValue: 300, calculatedBrokerageCommission: 300,
-  },
-];
-
 export function SalesClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings();
-  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false);
+  const { financialYear, isAppHydrating } = useSettings(); // Hook from SettingsContext
 
+  // useState for managing local UI state
+  const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
+  const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
+  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false); // For ensuring client-side only logic runs after mount
+
+  // Memoized empty array for stable default value to useLocalStorageState
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
+  // useLocalStorageState hooks for persistent data
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
-  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray); // Renamed to avoid confusion
+  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
 
-  const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
-  const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
-
+  // useEffect to set hydration flag after component mounts on client
   React.useEffect(() => {
     setIsSalesClientHydrated(true);
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
+  // useMemo for derived data (filtered sales)
+  // This recalculates only when its dependencies (sales, financialYear, isAppHydrating, isSalesClientHydrated) change.
   const filteredSales = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
     return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
   }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
 
+  // useCallback for memoizing event handlers to prevent unnecessary re-renders of child components
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     const isEditing = sales.some(s => s.id === sale.id);
     setSales(prevSales => {
@@ -92,19 +73,19 @@ export function SalesClient() {
         return [{...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
       }
     });
-    setSaleToEdit(null);
+    setSaleToEdit(null); // Reset editing state
     toast({ title: "Success!", description: isEditing ? "Sale updated successfully." : "Sale added successfully." });
-  }, [sales, setSales, toast]);
+  }, [sales, setSales, toast]); // Dependencies for this callback
 
   const handleEditSale = React.useCallback((sale: Sale) => {
     setSaleToEdit(sale);
     setIsAddSaleFormOpen(true);
-  }, []);
+  }, []); // No dependencies, this function's identity is stable
 
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => {
     setSaleToDeleteId(saleId);
     setShowDeleteConfirm(true);
-  }, []);
+  }, []); // No dependencies
 
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
@@ -113,7 +94,7 @@ export function SalesClient() {
       setSaleToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  }, [saleToDeleteId, setSales, toast]);
+  }, [saleToDeleteId, setSales, toast]); // Dependencies
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     let updated = false;
@@ -121,40 +102,48 @@ export function SalesClient() {
         case "Customer":
             setCustomers(prev => {
                 updated = true;
-                return [newItem, ...prev.filter(i => i.id !== newItem.id)];
+                // Ensure no duplicates and sort
+                const newSet = new Map(prev.map(item => [item.id, item]));
+                newSet.set(newItem.id, newItem);
+                return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
             });
             break;
         case "Transporter":
             setTransporters(prev => {
                 updated = true;
-                return [newItem, ...prev.filter(i => i.id !== newItem.id)];
+                const newSet = new Map(prev.map(item => [item.id, item]));
+                newSet.set(newItem.id, newItem);
+                return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
             });
             break;
         case "Broker":
             setBrokers(prev => {
                 updated = true;
-                return [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)];
+                const newSet = new Map(prev.map(item => [item.id, item]));
+                newSet.set(newItem.id, newItem as Broker); // Ensure correct type
+                return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
             });
             break;
         default:
-            toast({title: "Info", description: `Master type ${type} not handled here.`})
+            toast({title: "Info", description: `Master type ${type} not handled here for sales.`})
             break;
     }
     if (updated) {
         toast({ title: `${newItem.type} "${newItem.name}" added/updated from Sales.` });
     }
-  }, [setCustomers, setTransporters, setBrokers, toast]);
+  }, [setCustomers, setTransporters, setBrokers, toast]); // Dependencies
 
   const openAddSaleForm = React.useCallback(() => {
-    setSaleToEdit(null);
+    setSaleToEdit(null); 
     setIsAddSaleFormOpen(true);
-  }, []);
+  }, []); // No dependencies
 
   const closeAddSaleForm = React.useCallback(() => {
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
-  }, []);
+  }, []); // No dependencies
 
+  // Conditional rendering based on hydration state
   if (isAppHydrating || !isSalesClientHydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -180,7 +169,8 @@ export function SalesClient() {
       </div>
 
       <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
-
+      
+      {/* AddSaleForm is rendered conditionally */}
       {isAddSaleFormOpen && (
         <AddSaleForm
           isOpen={isAddSaleFormOpen}
@@ -189,19 +179,21 @@ export function SalesClient() {
           customers={customers as Customer[]}
           transporters={transporters as Transporter[]}
           brokers={brokers}
-          inventoryLots={inventorySource} // Corrected prop name
-          existingSales={sales}
+          inventoryLots={inventorySource} 
+          existingSales={sales} // Pass existing sales for stock validation
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />
       )}
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the sale record.
+              This action cannot be undone. This will permanently delete the sale
+              record.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -215,3 +207,5 @@ export function SalesClient() {
     </div>
   );
 }
+
+    
