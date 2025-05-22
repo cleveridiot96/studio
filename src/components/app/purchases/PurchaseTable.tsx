@@ -11,7 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Printer } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Pencil, Trash2, Printer, Download } from "lucide-react";
 import type { Purchase } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -21,15 +28,19 @@ interface PurchaseTableProps {
   data: Purchase[];
   onEdit: (purchase: Purchase) => void;
   onDelete: (purchaseId: string) => void;
+  onDownloadPdf?: (purchase: Purchase) => void; // New prop
 }
 
-const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, onDelete }) => {
+const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
   if (data.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No purchases recorded yet.</p>;
   }
 
-  const handlePrint = () => {
-    console.log('Print Chitti (Purchases) clicked');
+  const handlePrintChitti = (purchase: Purchase) => {
+    console.log('Print Chitti (Purchase) clicked for ID:', purchase.id);
+    // For actual individual chitti printing, you'd likely open a new route or modal
+    // with the specific purchase details formatted for A5.
+    // For now, it triggers the browser print for the whole page.
     window.print();
   };
 
@@ -51,7 +62,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead className="text-right">Transport (₹)</TableHead>
               <TableHead className="text-right">Net Rate (₹/kg)</TableHead>
               <TableHead className="text-right">Total Val (₹)</TableHead>
-              <TableHead className="text-center w-[120px]">Actions</TableHead>
+              <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -92,15 +103,38 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 </TableCell>
                 <TableCell className="text-right font-semibold">{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-center">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(purchase)} className="mr-1 hover:text-primary" title="Edit Purchase">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={handlePrint} className="mr-1 hover:text-blue-600" title="Print Chitti">
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(purchase.id)} className="hover:text-destructive" title="Delete Purchase">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Actions</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit(purchase)}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        <span>Edit</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handlePrintChitti(purchase)}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        <span>Print Chitti</span>
+                      </DropdownMenuItem>
+                      {onDownloadPdf && (
+                        <DropdownMenuItem onClick={() => onDownloadPdf(purchase)}>
+                          <Download className="mr-2 h-4 w-4" />
+                          <span>Download PDF</span>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => onDelete(purchase.id)}
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        <span>Delete</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
@@ -113,4 +147,3 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 }
 
 export const PurchaseTable = React.memo(PurchaseTableComponent);
-
