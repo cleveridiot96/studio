@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -11,14 +12,17 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  FileText,
+  FileText, // Kept for DashboardTile compatibility, though Stock Report nav item changes
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
   BookUser,
   Users2,
   DatabaseBackup,
-  HelpCircle as FallbackIcon // Default/fallback icon
+  TrendingDown, // Kept if used elsewhere, or if previous icon for Stock Report on dashboard
+  HelpCircle as FallbackIcon, // Default/fallback icon
+  ArrowRightLeft,
+  ClipboardList, // Added new icon for Stock Report in sidebar
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -35,6 +39,9 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   BookUser,
   Users2,
   DatabaseBackup,
+  TrendingDown,
+  ArrowRightLeft,
+  ClipboardList, // Mapped the new icon
 };
 
 interface ClientSidebarMenuProps {

@@ -4,7 +4,7 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  TrendingDown, // Changed from BarChart
+  ClipboardList, // Changed from TrendingDown
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
@@ -43,7 +43,7 @@ export const navItems: NavItem[] = [
   {
     title: 'Stock Report',
     href: '/stock-report',
-    iconName: 'TrendingDown', // Changed icon
+    iconName: 'ClipboardList', // Changed icon
   },
   {
     title: 'Payments',
