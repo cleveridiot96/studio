@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, PlusCircle, Trash2, Truck, Warehouse as WarehouseIcon } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { locationTransferSchema, type LocationTransferFormValues } from "@/lib/schemas/locationTransferSchema";
@@ -20,14 +20,22 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 
+interface AggregatedStockItemForForm {
+  lotNumber: string;
+  locationId: string;
+  locationName: string;
+  currentBags: number;
+  currentWeight: number;
+  averageWeightPerBag: number;
+}
+
 interface AddLocationTransferFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (transfer: LocationTransfer) => void;
   warehouses: Warehouse[];
   transporters: Transporter[];
-  purchases: Purchase[]; // To get available lots and their stock
-  // We might need sales and existing transfers if stock calculation is very precise here
+  availableStock: AggregatedStockItemForForm[]; // Current stock in all warehouses
   onMasterDataUpdate: (type: "Warehouse" | "Transporter", item: MasterItem) => void;
   transferToEdit?: LocationTransfer | null;
 }
@@ -38,7 +46,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   onSubmit,
   warehouses,
   transporters,
-  purchases,
+  availableStock, // Use this for populating 'From Warehouse' lots
   onMasterDataUpdate,
   transferToEdit,
 }) => {
@@ -47,7 +55,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<"Warehouse" | "Transporter" | null>(null);
 
-  const formSchema = locationTransferSchema(warehouses, purchases);
+  // The schema now needs the available stock for validation
+  const formSchema = locationTransferSchema(warehouses, availableStock);
 
   const methods = useForm<LocationTransferFormValues>({
     resolver: zodResolver(formSchema),
@@ -61,6 +70,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           items: transferToEdit.items.map(item => ({
             lotNumber: item.lotNumber,
             bagsToTransfer: item.bagsToTransfer,
+            // netWeightToTransfer will be recalculated or based on user input if allowed
           })),
         }
       : {
@@ -73,68 +83,57 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         },
   });
 
-  const { control, handleSubmit, reset, watch, formState: { errors } } = methods;
+  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = methods;
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
   });
 
   const watchedFromWarehouseId = watch("fromWarehouseId");
+  const watchedItems = watch("items");
 
   React.useEffect(() => {
-    if (transferToEdit) {
-      reset({
-        date: new Date(transferToEdit.date),
-        fromWarehouseId: transferToEdit.fromWarehouseId,
-        toWarehouseId: transferToEdit.toWarehouseId,
-        transporterId: transferToEdit.transporterId || undefined,
-        notes: transferToEdit.notes || "",
-        items: transferToEdit.items.map(item => ({
-          lotNumber: item.lotNumber,
-          bagsToTransfer: item.bagsToTransfer,
-        })),
-      });
-    } else {
-      reset({
-        date: new Date(),
-        fromWarehouseId: undefined,
-        toWarehouseId: undefined,
-        transporterId: undefined,
-        notes: "",
-        items: [{ lotNumber: "", bagsToTransfer: 0 }],
-      });
+    if (isOpen) {
+      if (transferToEdit) {
+        reset({
+          date: new Date(transferToEdit.date),
+          fromWarehouseId: transferToEdit.fromWarehouseId,
+          toWarehouseId: transferToEdit.toWarehouseId,
+          transporterId: transferToEdit.transporterId || undefined,
+          notes: transferToEdit.notes || "",
+          items: transferToEdit.items.map(item => ({
+            lotNumber: item.lotNumber,
+            bagsToTransfer: item.bagsToTransfer,
+          })),
+        });
+      } else {
+        reset({
+          date: new Date(),
+          fromWarehouseId: undefined,
+          toWarehouseId: undefined,
+          transporterId: undefined,
+          notes: "",
+          items: [{ lotNumber: "", bagsToTransfer: 0 }],
+        });
+      }
     }
   }, [transferToEdit, reset, isOpen]);
 
-  const getAvailableLotsForWarehouse = React.useCallback((warehouseId?: string): { value: string; label: string; availableBags: number }[] => {
-    if (!warehouseId) return [];
-    const lotSummary: Record<string, { totalBags: number; firstPurchaseDate: string }> = {};
 
-    purchases.forEach(p => {
-      if (p.locationId === warehouseId) {
-        if (!lotSummary[p.lotNumber]) {
-          lotSummary[p.lotNumber] = { totalBags: 0, firstPurchaseDate: p.date };
-        }
-        lotSummary[p.lotNumber].totalBags += p.quantity;
-        if (new Date(p.date) < new Date(lotSummary[p.lotNumber].firstPurchaseDate)) {
-            lotSummary[p.lotNumber].firstPurchaseDate = p.date;
-        }
-      }
-    });
-
-    // In a full system, subtract sales and outgoing transfers here
-
-    return Object.entries(lotSummary)
-      .filter(([, data]) => data.totalBags > 0)
-      .map(([lotNumber, data]) => ({
-        value: lotNumber,
-        label: `${lotNumber} (Avl: ${data.totalBags} bags)`,
-        availableBags: data.totalBags,
+  const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
+    if (!watchedFromWarehouseId) return [];
+    return availableStock
+      .filter(item => item.locationId === watchedFromWarehouseId && item.currentBags > 0)
+      .map(item => ({
+        value: item.lotNumber,
+        label: `${item.lotNumber} (Avl: ${item.currentBags} bags)`,
+        availableBags: item.currentBags,
+        averageWeightPerBag: item.averageWeightPerBag,
       }))
       .sort((a,b) => a.label.localeCompare(b.label));
-  }, [purchases]);
-  
-  const availableLotsOptions = getAvailableLotsForWarehouse(watchedFromWarehouseId);
+  }, [availableStock, watchedFromWarehouseId]);
+
+  const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
 
   const handleOpenMasterForm = (type: "Warehouse" | "Transporter") => {
     setMasterFormItemType(type);
@@ -145,7 +144,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     onMasterDataUpdate(newItem.type as "Warehouse" | "Transporter", newItem);
     if (newItem.type === masterFormItemType) {
       if (newItem.type === "Warehouse") {
-        // Could set fromWarehouseId or toWarehouseId if needed, but usually user selects after adding.
+        // Optionally set a warehouse ID if contextually appropriate
       } else if (newItem.type === "Transporter") {
         methods.setValue('transporterId', newItem.id, { shouldValidate: true });
       }
@@ -165,20 +164,20 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       id: transferToEdit?.id || `lt-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
       fromWarehouseId: values.fromWarehouseId,
-      fromWarehouseName: fromWarehouse?.name,
+      fromWarehouseName: fromWarehouse?.name || values.fromWarehouseId,
       toWarehouseId: values.toWarehouseId,
-      toWarehouseName: toWarehouse?.name,
+      toWarehouseName: toWarehouse?.name || values.toWarehouseId,
       transporterId: values.transporterId,
       transporterName: transporter?.name,
       items: values.items.map(item => {
-        // Calculate net weight based on average or a standard (e.g., 50kg/bag)
-        // For simplicity here, let's use 50kg/bag. A more robust system would fetch avg weight.
-        const { averageWeightPerBag } = getAvailableLotsForWarehouse(values.fromWarehouseId)
-                                           .find(lot => lot.value === item.lotNumber) || { averageWeightPerBag: 50 };
+        const lotInfo = availableStock.find(
+          stockItem => stockItem.lotNumber === item.lotNumber && stockItem.locationId === values.fromWarehouseId
+        );
+        const avgWeight = lotInfo?.averageWeightPerBag || 50; // Default 50kg if not found
         return {
           lotNumber: item.lotNumber,
           bagsToTransfer: item.bagsToTransfer,
-          netWeightToTransfer: item.bagsToTransfer * averageWeightPerBag,
+          netWeightToTransfer: item.bagsToTransfer * avgWeight,
         };
       }),
       notes: values.notes,
@@ -188,11 +187,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     onClose();
   };
 
+
   if (!isOpen) return null;
 
   return (
     <>
-      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
         <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{transferToEdit ? "Edit Location Transfer" : "New Location Transfer"}</DialogTitle>
@@ -216,19 +216,19 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   />
                   <FormField control={control} name="fromWarehouseId" render={({ field }) => (
                     <FormItem><FormLabel>From Warehouse</FormLabel>
-                      <MasterDataCombobox name="fromWarehouseId" options={warehouses.map(w => ({ value: w.id, label: w.name }))} placeholder="Select Source" onAddNew={() => handleOpenMasterForm("Warehouse")} />
+                      <MasterDataCombobox name={field.name} options={warehouses.map(w => ({ value: w.id, label: w.name }))} placeholder="Select Source" onAddNew={() => handleOpenMasterForm("Warehouse")} />
                       <FormMessage />
                     </FormItem>)}
                   />
                   <FormField control={control} name="toWarehouseId" render={({ field }) => (
                     <FormItem><FormLabel>To Warehouse</FormLabel>
-                      <MasterDataCombobox name="toWarehouseId" options={warehouses.map(w => ({ value: w.id, label: w.name }))} placeholder="Select Destination" onAddNew={() => handleOpenMasterForm("Warehouse")} />
+                      <MasterDataCombobox name={field.name} options={warehouses.map(w => ({ value: w.id, label: w.name }))} placeholder="Select Destination" onAddNew={() => handleOpenMasterForm("Warehouse")} />
                       <FormMessage />
                     </FormItem>)}
                   />
                   <FormField control={control} name="transporterId" render={({ field }) => (
                     <FormItem className="md:col-span-3"><FormLabel>Transporter (Optional)</FormLabel>
-                      <MasterDataCombobox name="transporterId" options={transporters.map(t => ({ value: t.id, label: t.name }))} placeholder="Select Transporter" onAddNew={() => handleOpenMasterForm("Transporter")} />
+                      <MasterDataCombobox name={field.name} options={transporters.map(t => ({ value: t.id, label: t.name }))} placeholder="Select Transporter" onAddNew={() => handleOpenMasterForm("Transporter")} />
                       <FormMessage />
                     </FormItem>)}
                   />
@@ -240,7 +240,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-6"><FormLabel>Vakkal/Lot No.</FormLabel>
-                          <MasterDataCombobox name={`items.${index}.lotNumber`} options={availableLotsOptions} placeholder="Select Lot" disabled={!watchedFromWarehouseId} />
+                          <MasterDataCombobox name={itemField.name} options={availableLotsOptions} placeholder="Select Lot" disabled={!watchedFromWarehouseId} />
                           <FormMessage />
                         </FormItem>)}
                       />
@@ -250,7 +250,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           <FormMessage />
                         </FormItem>)}
                       />
-                      <div className="md:col-span-2">
+                      <div className="md:col-span-2 flex items-end justify-end">
                         <Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 && remove(index)} disabled={fields.length <= 1}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -260,11 +260,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", bagsToTransfer: 0 })} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
                   </Button>
-                   {errors.items && typeof errors.items === 'object' && !Array.isArray(errors.items) && (
-                    <FormMessage>{errors.items.message}</FormMessage>
+                   {typeof errors.items === 'object' && !Array.isArray(errors.items) && errors.items.message && (
+                    <FormMessage>{errors.items.message as string}</FormMessage>
                    )}
                 </div>
-                
+
                 <FormField control={control} name="notes" render={({ field }) => (
                   <FormItem className="p-4 border rounded-md shadow-sm">
                     <FormLabel>Notes (Optional)</FormLabel>
@@ -296,3 +296,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
+
+
+    

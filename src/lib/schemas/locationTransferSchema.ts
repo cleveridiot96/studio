@@ -1,47 +1,28 @@
 
 import { z } from 'zod';
-import type { Purchase, Warehouse } from '@/lib/types';
+import type { Warehouse } from '@/lib/types';
 
-// Helper function to calculate available stock for a lot in a specific warehouse
-const getLotStockInWarehouse = (
-  lotNumber: string,
-  warehouseId: string,
-  allPurchases: Purchase[],
-  // In a more complete system, sales and other transfers would also be considered here
-  // For now, focusing on purchase quantity as the basis for transferrable stock
-): { availableBags: number; averageWeightPerBag: number } => {
-  let totalBagsInLotAtWarehouse = 0;
-  let totalWeightInLotAtWarehouse = 0;
-
-  allPurchases.forEach(p => {
-    if (p.lotNumber === lotNumber && p.locationId === warehouseId) {
-      totalBagsInLotAtWarehouse += p.quantity;
-      totalWeightInLotAtWarehouse += p.netWeight;
-    }
-  });
-  // Simplified: sales and other outgoing transfers from this warehouse would need to be subtracted
-  // For this schema, we primarily validate against initial purchased quantity in that warehouse.
-  // More complex stock tracking would happen in InventoryClient.
-
-  const averageWeightPerBag = totalBagsInLotAtWarehouse > 0 ? totalWeightInLotAtWarehouse / totalBagsInLotAtWarehouse : 50; // Default to 50kg if no purchases
-
-  return { availableBags: totalBagsInLotAtWarehouse, averageWeightPerBag };
-};
-
+// availableStock prop for schema generation
+interface AggregatedStockItemForSchema {
+  lotNumber: string;
+  locationId: string;
+  currentBags: number;
+  averageWeightPerBag: number;
+}
 
 export const locationTransferItemSchema = (
     fromWarehouseId: string | undefined,
-    allPurchases: Purchase[]
+    availableStock: AggregatedStockItemForSchema[]
 ) => z.object({
     lotNumber: z.string().min(1, "Vakkal/Lot number is required."),
     bagsToTransfer: z.coerce.number().min(0.01, "Bags to transfer must be greater than 0."),
   }).refine(data => {
     if (fromWarehouseId && data.lotNumber) {
-      const { availableBags } = getLotStockInWarehouse(data.lotNumber, fromWarehouseId, allPurchases);
-      if (data.bagsToTransfer > availableBags) {
-        // This message might be generic as it's hard to display dynamic availableBags here.
-        // Form-level validation will provide a more specific message.
-        return false;
+      const stockInfo = availableStock.find(
+        s => s.lotNumber === data.lotNumber && s.locationId === fromWarehouseId
+      );
+      if (stockInfo && data.bagsToTransfer > stockInfo.currentBags) {
+        return false; // Validation fails if trying to transfer more than available
       }
     }
     return true;
@@ -53,7 +34,7 @@ export const locationTransferItemSchema = (
 
 export const locationTransferSchema = (
     warehouses: Warehouse[],
-    allPurchases: Purchase[] // To validate stock for each item
+    availableStock: AggregatedStockItemForSchema[] // Pass available stock for validation
 ) => z.object({
   date: z.date({ required_error: "Transfer date is required." }),
   fromWarehouseId: z.string().min(1, "Source warehouse is required.")
@@ -63,12 +44,9 @@ export const locationTransferSchema = (
   transporterId: z.string().optional(),
   notes: z.string().optional(),
   items: z.array(
-    // The fromWarehouseId is passed dynamically when creating the item schema
-    // This is a bit tricky with Zod's standard structure, so item-level validation
-    // against stock might be better handled in the form logic itself or with a superRefine.
-    // For now, the item schema takes fromWarehouseId as an argument.
-    // This means the schema for `items` needs to be constructed dynamically in the form.
-    // A simpler approach for schema: define item shape, do complex validation in superRefine or form.
+    // Use a function to generate the item schema dynamically based on the fromWarehouseId
+    // This is a conceptual approach; direct dynamic schema generation inside z.array is tricky.
+    // The actual validation for stock quantity per item will be done via superRefine.
     z.object({
         lotNumber: z.string().min(1, "Vakkal/Lot number is required."),
         bagsToTransfer: z.coerce.number().min(0.01, "Bags to transfer must be greater than 0."),
@@ -77,21 +55,31 @@ export const locationTransferSchema = (
 }).refine(data => data.fromWarehouseId !== data.toWarehouseId, {
   message: "Source and destination warehouses cannot be the same.",
   path: ["toWarehouseId"],
+}).superRefine((data, ctx) => { // SuperRefine for cross-field validation on items
+  data.items.forEach((item, index) => {
+    const stockInfo = availableStock.find(
+      s => s.lotNumber === item.lotNumber && s.locationId === data.fromWarehouseId
+    );
+    if (!stockInfo) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Lot "${item.lotNumber}" not found or has no stock in the source warehouse.`,
+            path: ["items", index, "lotNumber"],
+        });
+    } else if (item.bagsToTransfer > stockInfo.currentBags) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Bags for lot ${item.lotNumber} (${item.bagsToTransfer}) exceed available stock (${stockInfo.currentBags}).`,
+        path: ["items", index, "bagsToTransfer"],
+      });
+    }
+  });
 });
-// Super refine at the bottom for item stock validation might be more robust if schema generation is complex
-// .superRefine((data, ctx) => {
-//   data.items.forEach((item, index) => {
-//     const { availableBags } = getLotStockInWarehouse(item.lotNumber, data.fromWarehouseId, allPurchases);
-//     if (item.bagsToTransfer > availableBags) {
-//       ctx.addIssue({
-//         code: z.ZodIssueCode.custom,
-//         message: `Item ${index + 1}: Bags for lot ${item.lotNumber} exceed available stock (${availableBags}).`,
-//         path: ["items", index, "bagsToTransfer"],
-//       });
-//     }
-//   });
-// });
 
 
 export type LocationTransferFormValues = z.infer<ReturnType<typeof locationTransferSchema>>;
-export type LocationTransferItemFormValues = z.infer<ReturnType<typeof locationTransferItemSchema>>;
+// The item schema is now implicitly part of LocationTransferFormValues.items
+// export type LocationTransferItemFormValues = z.infer<ReturnType<typeof locationTransferItemSchema>>;
+
+
+    

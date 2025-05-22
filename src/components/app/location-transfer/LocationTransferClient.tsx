@@ -5,13 +5,13 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes, Printer, Trash2 } from "lucide-react"; // Added Printer, Trash2
+import { PlusCircle, AlertTriangle, ArrowRightLeft, ListChecks, Building, Boxes, Printer, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -25,20 +25,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSettings } from "@/contexts/SettingsContext";
+import { isDateInFinancialYear } from "@/lib/utils";
 
 // Storage Keys
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
-const SALES_STORAGE_KEY = 'salesData';
+const SALES_STORAGE_KEY = 'salesData'; // Needed to calculate current stock
 
 const initialLocationTransfers: LocationTransfer[] = [
   {
     id: "lt-fy2526-1", date: "2025-05-20", fromWarehouseId: "wh-mum", fromWarehouseName: "Mumbai Central Warehouse", toWarehouseId: "wh-pune", toWarehouseName: "Pune North Godown",
     transporterId: "trans-quick", transporterName: "Quick Movers",
     items: [
-      { lotNumber: "FY2526-LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 }, 
+      { lotNumber: "FY2526-LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 },
       { lotNumber: "FY2526-LOT-D/120", bagsToTransfer: 20, netWeightToTransfer: 1000 },
     ],
     notes: "Transferring partial stock for FY2526 to manage regional demand."
@@ -57,25 +59,24 @@ interface AggregatedStockItem {
   locationId: string;
   locationName: string;
   currentBags: number;
-  currentWeight: number;
+  currentWeight: number; // For display purposes, current weight after all transactions
+  averageWeightPerBag: number; // To calculate netWeightToTransfer if not directly provided by lot
 }
 
 export function LocationTransferClient() {
   const { toast } = useToast();
+  const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
-  
+
+  const memoizedEmptyArray = React.useMemo(() => [], []);
   const memoizedInitialLocationTransfers = React.useMemo(() => initialLocationTransfers, []);
-  const memoizedInitialWarehouses = React.useMemo(() => [], []);
-  const memoizedInitialTransporters = React.useMemo(() => [], []);
-  const memoizedInitialPurchases = React.useMemo(() => [], []);
-  const memoizedInitialSales = React.useMemo(() => [], []);
 
 
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialTransporters);
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
+  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
+  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray); // Needed for accurate stock
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -87,11 +88,12 @@ export function LocationTransferClient() {
     setHydrated(true);
   }, []);
 
-  const aggregatedStock = React.useMemo(() => {
-    if (!hydrated) return [];
+  const aggregatedStockForForm = React.useMemo(() => {
+    if (isAppHydrating || !hydrated) return [];
     const stockMap = new Map<string, AggregatedStockItem>();
 
-    purchases.forEach(p => {
+    const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+    fyPurchases.forEach(p => {
       const key = `${p.lotNumber}-${p.locationId}`;
       let entry = stockMap.get(key);
       if (!entry) {
@@ -101,38 +103,57 @@ export function LocationTransferClient() {
           locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
           currentBags: 0,
           currentWeight: 0,
+          averageWeightPerBag: p.netWeight > 0 && p.quantity > 0 ? p.netWeight / p.quantity : 50, // Default 50kg
         };
       }
       entry.currentBags += p.quantity;
       entry.currentWeight += p.netWeight;
+      // Update average weight if this purchase provides better data
+      if (p.netWeight > 0 && p.quantity > 0) {
+        entry.averageWeightPerBag = (entry.currentWeight) / (entry.currentBags);
+      }
       stockMap.set(key, entry);
     });
 
-    sales.forEach(s => {
-      const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
-      if (relatedPurchase) {
-          const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
+    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
+    fySales.forEach(s => {
+      const relatedPurchaseForSale = purchases.find(p => p.lotNumber === s.lotNumber);
+      if (relatedPurchaseForSale) {
+          const key = `${s.lotNumber}-${relatedPurchaseForSale.locationId}`;
           const entry = stockMap.get(key);
           if (entry) {
           entry.currentBags -= s.quantity;
           entry.currentWeight -= s.netWeight;
+          // Recalculate average weight based on remaining stock if needed, though usually not necessary for transfer form
+          if (entry.currentBags > 0 && entry.currentWeight > 0) {
+              entry.averageWeightPerBag = entry.currentWeight / entry.currentBags;
+          } else if (entry.currentBags <= 0) {
+              entry.currentWeight = 0; // Ensure weight is zero if bags are zero or less
+          }
           stockMap.set(key, entry);
           }
       }
     });
 
-    locationTransfers.forEach(transfer => {
+    // Reflect existing transfers on stock levels for the form's dropdowns
+    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    fyLocationTransfers.forEach(transfer => {
         transfer.items.forEach(item => {
+            // Deduct from source
             const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
             const fromEntry = stockMap.get(fromKey);
             if (fromEntry) {
                 fromEntry.currentBags -= item.bagsToTransfer;
                 fromEntry.currentWeight -= item.netWeightToTransfer;
-                stockMap.set(fromKey, fromEntry);
+                 if (fromEntry.currentBags > 0 && fromEntry.currentWeight > 0) {
+                    fromEntry.averageWeightPerBag = fromEntry.currentWeight / fromEntry.currentBags;
+                }
             }
-
+            // Add to destination
             const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`;
             let toEntry = stockMap.get(toKey);
+            const sourceLotData = stockMap.get(fromKey) || purchases.find(p => p.lotNumber === item.lotNumber && p.locationId === transfer.fromWarehouseId);
+
             if (!toEntry) {
                 toEntry = {
                     lotNumber: item.lotNumber,
@@ -140,17 +161,22 @@ export function LocationTransferClient() {
                     locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
                     currentBags: 0,
                     currentWeight: 0,
+                    averageWeightPerBag: sourceLotData?.averageWeightPerBag || (sourceLotData?.netWeight && sourceLotData?.quantity ? sourceLotData.netWeight/sourceLotData.quantity : 50)
                 };
             }
             toEntry.currentBags += item.bagsToTransfer;
             toEntry.currentWeight += item.netWeightToTransfer;
+            if (toEntry.currentBags > 0 && toEntry.currentWeight > 0) {
+                toEntry.averageWeightPerBag = toEntry.currentWeight / toEntry.currentBags;
+            }
             stockMap.set(toKey, toEntry);
         });
     });
 
-    return Array.from(stockMap.values()).filter(item => item.currentBags > 0 || item.currentWeight > 0)
+    return Array.from(stockMap.values())
+        .filter(item => item.currentBags > 0) // Only lots with positive stock are available for transfer
         .sort((a,b) => a.locationName.localeCompare(b.locationName) || a.lotNumber.localeCompare(b.lotNumber));
-  }, [purchases, sales, locationTransfers, warehouses, hydrated]);
+  }, [purchases, sales, locationTransfers, warehouses, hydrated, isAppHydrating, financialYear]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
@@ -159,7 +185,7 @@ export function LocationTransferClient() {
       if (isEditing) {
         return prev.map(t => (t.id === transfer.id ? transfer : t));
       } else {
-        return [transfer, ...prev];
+        return [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
       }
     });
     toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
@@ -187,21 +213,28 @@ export function LocationTransferClient() {
 
   const handleMasterDataUpdate = (type: "Warehouse" | "Transporter", newItem: MasterItem) => {
     if (type === "Warehouse") {
-      setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)]);
+      setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
     } else if (type === "Transporter") {
-      setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)]);
+      setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
     }
   };
 
-  if (!hydrated) {
+  const transfersFilteredByFY = React.useMemo(() => {
+      if (isAppHydrating || !hydrated) return [];
+      return locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+  }, [locationTransfers, financialYear, isAppHydrating, hydrated]);
+
+
+  if (isAppHydrating || !hydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading location transfer data...</p></div>;
   }
 
   return (
     <div className="space-y-8 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground flex items-center">
-            <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers
+            <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers (FY {financialYear})
         </h1>
         <div className="flex items-center gap-2">
             <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className="text-base py-3 px-6 shadow-md">
@@ -218,7 +251,7 @@ export function LocationTransferClient() {
       <TooltipProvider>
         <Tabs defaultValue="stockOverview" className="w-full">
           <CardHeader className="p-0">
-            <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none">
+            <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none no-print">
               <TabsTrigger value="stockOverview" className="py-3 text-base">
                 <Boxes className="mr-2 h-5 w-5"/>Stock Overview
               </TabsTrigger>
@@ -229,18 +262,20 @@ export function LocationTransferClient() {
           </CardHeader>
           <TabsContent value="stockOverview">
             <CardContent className="pt-6">
-                <ScrollArea className="h-[400px] border rounded-md">
+                <CardDescription className="mb-4 text-sm no-print">Current stock levels in each warehouse for the selected Financial Year ({financialYear}).</CardDescription>
+                <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                     <Table size="sm">
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Warehouse</TableHead>
                                 <TableHead>Vakkal/Lot</TableHead>
                                 <TableHead className="text-right">Bags</TableHead>
+                                <TableHead className="text-right">Weight (kg)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {aggregatedStock.length === 0 && <TableRow><TableCell colSpan={3} className="text-center h-24">No stock available.</TableCell></TableRow>}
-                            {aggregatedStock.map(item => (
+                            {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No stock available for FY {financialYear}.</TableCell></TableRow>}
+                            {aggregatedStockForForm.map(item => (
                                 <TableRow key={`${item.locationId}-${item.lotNumber}`}>
                                     <TableCell>
                                       <Tooltip>
@@ -255,6 +290,7 @@ export function LocationTransferClient() {
                                       </Tooltip>
                                     </TableCell>
                                     <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -264,7 +300,8 @@ export function LocationTransferClient() {
           </TabsContent>
           <TabsContent value="transferHistory">
             <CardContent className="pt-6">
-              <ScrollArea className="h-[400px] border rounded-md">
+              <CardDescription className="mb-4 text-sm no-print">History of stock transfers for the selected Financial Year ({financialYear}).</CardDescription>
+              <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                 <Table size="sm">
                   <TableHeader>
                     <TableRow>
@@ -273,14 +310,14 @@ export function LocationTransferClient() {
                       <TableHead>To</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead>Notes</TableHead>
-                      <TableHead className="text-center">Actions</TableHead>
+                      <TableHead className="text-center no-print">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {locationTransfers.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers recorded yet.</TableCell></TableRow>}
-                    {locationTransfers.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(transfer => (
+                    {transfersFilteredByFY.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers recorded for FY {financialYear}.</TableCell></TableRow>}
+                    {transfersFilteredByFY.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).map(transfer => (
                       <TableRow key={transfer.id}>
-                        <TableCell>{format(new Date(transfer.date), "dd-MM-yy")}</TableCell>
+                        <TableCell>{format(parseISO(transfer.date), "dd-MM-yy")}</TableCell>
                         <TableCell>
                           <Tooltip>
                             <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger>
@@ -302,7 +339,7 @@ export function LocationTransferClient() {
                             </TooltipTrigger>
                             <TooltipContent>
                               <ul className="list-disc pl-4">
-                                {transfer.items.map(i => <li key={i.lotNumber}>{`${i.lotNumber} (${i.bagsToTransfer} bags, ${i.netWeightToTransfer}kg)`}</li>)}
+                                {transfer.items.map(i => <li key={i.lotNumber}>{`${i.lotNumber} (${i.bagsToTransfer} bags, ${i.netWeightToTransfer.toFixed(0)}kg)`}</li>)}
                               </ul>
                             </TooltipContent>
                           </Tooltip>
@@ -315,7 +352,7 @@ export function LocationTransferClient() {
                             </Tooltip>
                           ) : 'N/A'}
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center no-print">
                           <Button variant="ghost" size="icon" onClick={() => handleEditTransfer(transfer)} className="mr-1 hover:text-primary"><PlusCircle className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDeleteTransferAttempt(transfer)} className="hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         </TableCell>
@@ -328,23 +365,17 @@ export function LocationTransferClient() {
           </TabsContent>
         </Tabs>
         </TooltipProvider>
-        <CardFooter className="flex items-start text-destructive p-3 mt-4 rounded-md border border-destructive/50 bg-destructive/10">
-            <AlertTriangle className="w-5 h-5 mr-2 mt-0.5 shrink-0"/>
-            <p className="text-xs">
-            <strong>Note:</strong> Inventory summary on other pages (Dashboard, Inventory, Stock Report) will reflect these transfers once those modules are updated to process transfer data.
-            </p>
-        </CardFooter>
       </Card>
 
 
       {isAddFormOpen && (
         <AddLocationTransferForm
           isOpen={isAddFormOpen}
-          onClose={() => setIsAddFormOpen(false)}
+          onClose={() => { setIsAddFormOpen(false); setTransferToEdit(null); }}
           onSubmit={handleAddOrUpdateTransfer}
           warehouses={warehouses}
           transporters={transporters}
-          purchases={purchases} 
+          availableStock={aggregatedStockForForm} // Pass the correctly calculated available stock
           onMasterDataUpdate={handleMasterDataUpdate}
           transferToEdit={transferToEdit}
         />
@@ -356,7 +387,7 @@ export function LocationTransferClient() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Transfer Record?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete this location transfer record? This action cannot be undone and will not automatically revert stock changes.
+                Are you sure you want to delete this location transfer record dated {format(parseISO(itemToDelete.date), "dd-MM-yyyy")} from {itemToDelete.fromWarehouseName} to {itemToDelete.toWarehouseName}? This action cannot be undone and will not automatically revert stock changes made by this transfer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -372,3 +403,5 @@ export function LocationTransferClient() {
   );
 }
 
+
+    
