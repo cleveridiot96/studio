@@ -44,8 +44,8 @@ interface AddSaleFormProps {
   customers: Customer[];
   transporters: Transporter[];
   brokers: Broker[];
-  inventoryLots: Purchase[]; // These are the purchase records to select lots from
-  existingSales: Sale[]; // Needed for stock validation within the schema
+  inventoryLots: Purchase[]; 
+  existingSales: Sale[]; 
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
 }
@@ -68,7 +68,6 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
 
-  // State to track manual interaction with netWeight and brokerageValue
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
   const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(false);
   const [purchaseRateForLot, setPurchaseRateForLot] = React.useState<number>(0);
@@ -77,7 +76,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     if (saleToEdit) {
       const originalPurchase = inventoryLots.find(p => p.lotNumber === saleToEdit.lotNumber);
       setPurchaseRateForLot(originalPurchase?.rate || 0);
-      setNetWeightManuallySet(true); // Assume manual set if editing
+      setNetWeightManuallySet(true); 
       setBrokerageValueManuallySet(!!saleToEdit.brokerageValue);
 
       return {
@@ -99,7 +98,6 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
         calculatedBrokerageCommission: saleToEdit.calculatedBrokerageCommission || 0,
       };
     }
-    // Reset for new form
     setPurchaseRateForLot(0);
     setNetWeightManuallySet(false);
     setBrokerageValueManuallySet(false);
@@ -149,14 +147,12 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageValue");
   const watchedLotNumber = watch("lotNumber");
 
-  // Auto-calculate netWeight when quantity changes
   React.useEffect(() => {
     if (typeof quantity === 'number' && quantity >= 0 && !netWeightManuallySet && !dirtyFields.netWeight) {
       setValue("netWeight", quantity * 50, { shouldValidate: true });
     }
   }, [quantity, setValue, netWeightManuallySet, dirtyFields.netWeight]);
 
-  // Fetch purchase rate when lotNumber changes
   React.useEffect(() => {
     if (watchedLotNumber) {
       const selectedPurchase = inventoryLots.find(p => p.lotNumber === watchedLotNumber);
@@ -166,7 +162,6 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     }
   }, [watchedLotNumber, inventoryLots]);
 
-  // Auto-populate brokerage from master when broker changes
   React.useEffect(() => {
     if (selectedBrokerId && !brokerageValueManuallySet && !dirtyFields.brokerageType && !dirtyFields.brokerageValue) {
       const brokerDetails = brokers.find(b => b.id === selectedBrokerId);
@@ -258,12 +253,12 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
       brokerageValue: values.brokerageValue,
       calculatedBrokerageCommission: calculatedBrokerageCommission,
       notes: values.notes,
-      totalAmount: finalBillAmountToUse,
+      totalAmount: finalBillAmountToUse, // Use the determined final bill amount
       calculatedProfit: calculatedProfit,
     };
     onSubmit(saleData);
     setIsSubmitting(false);
-    onClose();
+    onClose(); // Call onClose after successful submission
   };
 
   if (!isOpen) return null;
@@ -324,6 +319,15 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
                       <MasterDataCombobox
                         name={field.name}
+                        value={field.value}
+                        onChange={(value) => {
+                          field.onChange(value);
+                          const selectedPurchase = inventoryLots.find(p => p.lotNumber === value);
+                          setPurchaseRateForLot(selectedPurchase ? selectedPurchase.rate : 0);
+                          setValue("quantity",0);
+                          setNetWeightManuallySet(false);
+                          setValue("netWeight",0);
+                        }}
                         options={inventoryLots.map(p => {
                           const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
                           const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
@@ -337,15 +341,6 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                         placeholder="Select Lot"
                         searchPlaceholder="Search lots..."
                         notFoundMessage="Lot not found or out of stock."
-                        value={field.value} // Pass value for controlled component
-                        onChange={(value) => { // Pass onChange
-                          field.onChange(value);
-                          const selectedPurchase = inventoryLots.find(p => p.lotNumber === value);
-                          setPurchaseRateForLot(selectedPurchase ? selectedPurchase.rate : 0);
-                          setValue("quantity",0);
-                          setNetWeightManuallySet(false);
-                          setValue("netWeight",0);
-                        }}
                       />
                       <FormMessage /></FormItem>)}
                     />
@@ -353,8 +348,8 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Customer</FormLabel>
                       <MasterDataCombobox
                         name={field.name}
-                        value={field.value} // Pass value
-                        onChange={field.onChange} // Pass onChange
+                        value={field.value}
+                        onChange={field.onChange}
                         options={customers.map(c => ({ value: c.id, label: c.name }))}
                         placeholder="Select Customer"
                         searchPlaceholder="Search customers..."
@@ -372,7 +367,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                             onChange={e => {
                               const val = parseFloat(e.target.value) || 0;
                               field.onChange(val);
-                              setNetWeightManuallySet(false); // Allow auto-calc for net weight
+                              setNetWeightManuallySet(false); 
                             }}
                             onFocusCapture={() => setNetWeightManuallySet(false)}
                           /></FormControl><FormMessage /></FormItem>)}
@@ -402,8 +397,8 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                           <FormItem><FormLabel>Transporter</FormLabel>
                           <MasterDataCombobox
                             name={field.name}
-                            value={field.value} // Pass value
-                            onChange={field.onChange} // Pass onChange
+                            value={field.value}
+                            onChange={field.onChange}
                             options={transporters.map(t => ({ value: t.id, label: t.name }))}
                             placeholder="Select Transporter"
                             searchPlaceholder="Search transporters..."
@@ -421,10 +416,10 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                           <FormItem><FormLabel>Broker</FormLabel>
                           <MasterDataCombobox
                             name={field.name}
-                            value={field.value} // Pass value
-                            onChange={(val) => { // Pass onChange
+                            value={field.value}
+                            onChange={(val) => {
                                 field.onChange(val);
-                                setBrokerageValueManuallySet(false); // Allow auto-set from master
+                                setBrokerageValueManuallySet(false); 
                                 const brokerDetails = brokers.find(b => b.id === val);
                                 if (brokerDetails && brokerDetails.commission !== undefined) {
                                     setValue("brokerageType", "Percentage", { shouldValidate: true });
@@ -532,3 +527,5 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     </>
   );
 };
+
+    
