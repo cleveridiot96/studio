@@ -25,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -64,7 +63,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
   
-  // State flags to track manual input
   const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
 
@@ -101,18 +99,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   }, [purchaseToEdit]);
 
   const methods = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters)),
+    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, [])), // Pass empty brokers
     defaultValues: getDefaultValues(),
   });
-  const { control, watch, setValue, handleSubmit, reset, formState: { errors, dirtyFields } } = methods;
+  const { control, watch, setValue, handleSubmit: formHandleSubmit, reset, formState: { errors, dirtyFields } } = methods;
 
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
-      setQuantityManuallySet(!!purchaseToEdit?.quantity); // If editing, assume fields were manually set initially
+      setQuantityManuallySet(!!purchaseToEdit?.quantity); 
       setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
     } else {
-      // Reset manual flags when form closes too, for next opening
       setQuantityManuallySet(false);
       setNetWeightManuallySet(false);
     }
@@ -122,22 +119,18 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const lotNumberValue = watch("lotNumber");
   const quantityValue = watch("quantity");
 
-  // Effect for Lot Number to Bags
   React.useEffect(() => {
     if (lotNumberValue && !quantityManuallySet && !dirtyFields.quantity) {
-      // Regex to find trailing numbers after common separators or spaces
       const match = lotNumberValue.match(/[/\-. ](\d+)$/);
       if (match && match[1]) {
         const bags = parseInt(match[1], 10);
         if (!isNaN(bags) && bags > 0) {
           setValue("quantity", bags, { shouldValidate: true });
-          // This will trigger the next effect if netWeight isn't manually set
         }
       }
     }
   }, [lotNumberValue, setValue, dirtyFields.quantity, quantityManuallySet]);
 
-  // Effect for Bags to Net Weight
   React.useEffect(() => {
     if (typeof quantityValue === 'number' && quantityValue > 0 && !netWeightManuallySet && !dirtyFields.netWeight) {
       setValue("netWeight", quantityValue * 50, { shouldValidate: true });
@@ -150,8 +143,14 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const expenses = watch("expenses") || 0;
   const transportRatePerKgValue = watch("transportRatePerKg") || 0;
   
-  const grossWeightForTransport = (quantityValue || 0) * 50; // Assumed gross weight for transport calc
-  const calculatedTotalTransportCost = transportRatePerKgValue * grossWeightForTransport;
+  const calculatedTotalTransportCost = React.useMemo(() => {
+    const bags = parseFloat(String(quantityValue || 0));
+    const transportRateKg = parseFloat(String(transportRatePerKgValue || 0));
+    if (isNaN(bags) || isNaN(transportRateKg) || bags <= 0 || transportRateKg <=0) return 0;
+    const grossWeightForTransport = bags * 50; 
+    return transportRateKg * grossWeightForTransport;
+  }, [quantityValue, transportRatePerKgValue]);
+
 
   const totalAmount = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
@@ -166,7 +165,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const rateAfterExpensesAndTransport = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
     if (nw <= 0) return 0;
-    return totalAmount / nw; // totalAmount already includes calculatedTotalTransportCost
+    return totalAmount / nw;
   }, [netWeight, totalAmount]);
 
 
@@ -191,12 +190,16 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
-    const finalGrossWeightForTransport = (values.quantity || 0) * 50;
-    const finalCalculatedTotalTransportCost = (values.transportRatePerKg || 0) * finalGrossWeightForTransport;
+    const finalBags = parseFloat(String(values.quantity || 0));
+    const finalTransportRatePerKg = parseFloat(String(values.transportRatePerKg || 0));
+    const finalGrossWeightForTransport = finalBags * 50;
+    const finalCalculatedTotalTransportCost = finalTransportRatePerKg * finalGrossWeightForTransport;
 
     const finalTotalAmount = (parseFloat(String(values.netWeight || 0)) * parseFloat(String(values.rate || 0))) + 
                              (parseFloat(String(values.expenses || 0))) + 
                              finalCalculatedTotalTransportCost;
+    
+    const finalEffectiveRate = (values.netWeight && values.netWeight > 0) ? finalTotalAmount / values.netWeight : 0;
 
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
@@ -213,10 +216,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       rate: values.rate,
       expenses: values.expenses,
       transportRatePerKg: values.transportRatePerKg,
-      transportRate: finalCalculatedTotalTransportCost, // Store the calculated total transport cost
+      transportRate: finalCalculatedTotalTransportCost, 
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
       totalAmount: finalTotalAmount,
+      effectiveRate: finalEffectiveRate,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
@@ -235,7 +239,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
           </DialogHeader>
           <FormProvider {...methods}>
             <Form {...methods}> 
-              <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+              <form onSubmit={formHandleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                 {/* Section: Basic Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Basic Details</h3>
@@ -277,8 +281,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             {...field}
                             onChange={(e) => {
                                 field.onChange(e.target.value);
-                                setQuantityManuallySet(false); // Allow auto-calc from lot if user changes lot
-                                setNetWeightManuallySet(false); // Also allow net weight to recalc
+                                setQuantityManuallySet(false); 
+                                setNetWeightManuallySet(false); 
                             }}
                           /></FormControl>
                           <FormMessage />
@@ -373,7 +377,14 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             placeholder="e.g., 100" 
                             {...field} 
                             value={field.value || ''} 
-                            onChange={e => { field.onChange(parseFloat(e.target.value) || 0); setQuantityManuallySet(true); }} 
+                            onChange={e => { 
+                                const val = parseFloat(e.target.value) || 0;
+                                field.onChange(val); 
+                                setQuantityManuallySet(true); 
+                                if (!netWeightManuallySet) {
+                                    setValue("netWeight", val * 50, { shouldValidate: true });
+                                }
+                            }} 
                             onFocus={() => setQuantityManuallySet(true)}
                           /></FormControl>
                           <FormMessage />

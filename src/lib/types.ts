@@ -35,11 +35,12 @@ export interface Purchase {
   netWeight: number; // in KG
   rate: number; // per KG
   expenses?: number; // Other misc expenses added to cost
-  transportRatePerKg?: number; // Transport cost per KG
+  transportRatePerKg?: number; // Transport cost per KG (user input)
   transporterId?: string;
   transporterName?: string;
   transportRate?: number; // Calculated: transportRatePerKg * (quantity * 50kg assumed per bag or actual weight)
   totalAmount: number; // (netWeight * rate) + expenses + transportRate
+  effectiveRate?: number; // totalAmount / netWeight
   locationId: string;
   locationName?: string;
 }
@@ -52,8 +53,8 @@ export interface Sale {
   cutBill?: boolean; // Optional
   customerId: string;
   customerName?: string;
-  brokerId?: string; // NEW: Link to broker responsible for payment
-  brokerName?: string; // For display
+  brokerId?: string; 
+  brokerName?: string; 
   lotNumber: string; // This is the "Vakkal" from existing inventory
   quantity: number; // Number of Bags
   netWeight: number; // in KG
@@ -61,12 +62,12 @@ export interface Sale {
   transporterId?: string;
   transporterName?: string;
   transportCost?: number; // Fixed transport cost for this sale, affects profit
-  brokerageType?: 'Fixed' | 'Percentage'; // For broker commission calculation paid BY YOU to broker
-  brokerageValue?: number; // If fixed, this is the amount. If percentage, this is the % value.
-  calculatedBrokerageCommission?: number; // The actual brokerage commission amount paid BY YOU to broker
+  brokerageType?: 'Fixed' | 'Percentage'; 
+  brokerageValue?: number; 
+  calculatedBrokerageCommission?: number; 
   notes?: string;
-  totalAmount: number; // Final amount due for this sale (from customer or via broker) = (billAmount if provided and > 0) OR (netWeight * rate)
-  calculatedProfit?: number; // (totalAmount based on sale rate) - (cost of goods sold for this sale portion) - (transportCost || 0) - (calculatedBrokerageCommission || 0)
+  totalAmount: number; 
+  calculatedProfit?: number; 
 }
 
 export interface InventoryItem {
@@ -142,15 +143,14 @@ export interface LedgerEntry {
   debit?: number;
   credit?: number;
   balance: number; // This is the running balance for the ledger view
-  // Added for detailed ledger views, especially for print and context
-  vchType?: string; // E.g., "Sale", "Purchase", "Payment", "Receipt", "Agent Comm.", "Brokerage Exp."
-  refNo?: string; // E.g., Bill No., Lot No., Payment Ref
-  rate?: number; // For sales/purchases
-  netWeight?: number; // For sales/purchases
-  transactionAmount?: number; // Gross amount of underlying transaction
-  customerName?: string; // For broker ledger, to show customer on sale
-  supplierName?: string; // For agent ledger, to show supplier on purchase
-  cashDiscount?: number; // For receipts, esp. from brokers
+  vchType?: string; 
+  refNo?: string; 
+  rate?: number; 
+  netWeight?: number; 
+  transactionAmount?: number; 
+  customerName?: string; 
+  supplierName?: string; 
+  cashDiscount?: number; 
 }
 
 
@@ -170,8 +170,8 @@ export interface Transporter extends MasterItem {}
 export interface Warehouse extends MasterItem {} // Represents a Location
 export interface Customer extends MasterItem {}
 export interface Broker extends MasterItem {
-  commission?: number; // Assumed to be percentage for auto-population
-  brokerageType?: 'Fixed' | 'Percentage'; // Default brokerage type from master
+  commission?: number; 
+  brokerageType?: 'Fixed' | 'Percentage'; 
 }
 
 export interface BrokerData {
@@ -189,7 +189,7 @@ export interface TransactionalProfitInfo {
   saleQuantityBags: number;
   saleNetWeightKg: number;
   saleRatePerKg: number;
-  saleAmount: number; // (saleNetWeightKg * saleRatePerKg)
+  saleAmount: number; 
   purchaseCostForSalePortion: number;
   transportCostOnSale?: number;
   brokerageOnSale?: number;
@@ -197,10 +197,11 @@ export interface TransactionalProfitInfo {
 }
 
 export interface MonthlyProfitInfo {
-  monthKey: string; // "yyyy-MM"
-  monthYear: string; // e.g., "May 2024"
+  monthKey: string;
+  monthYear: string; 
   totalProfit: number;
   totalSalesValue: number;
   totalCostOfGoods: number;
 }
+
 
