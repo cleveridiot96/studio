@@ -25,12 +25,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-// Select, SelectContent, SelectItem, SelectTrigger, SelectValue removed as not used here
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType, Broker } from "@/lib/types"; // Broker removed
+import type { MasterItem, Purchase, MasterItemType } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
@@ -41,9 +41,8 @@ interface AddPurchaseFormProps {
   onSubmit: (purchase: Purchase) => void;
   suppliers: MasterItem[];
   agents: MasterItem[];
-  warehouses: MasterItem[]; 
+  warehouses: MasterItem[];
   transporters: MasterItem[];
-  // brokers: Broker[]; // brokers prop removed
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   purchaseToEdit?: Purchase | null;
 }
@@ -56,7 +55,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   agents,
   warehouses,
   transporters,
-  // brokers, // brokers prop removed
   onMasterDataUpdate,
   purchaseToEdit,
 }) => {
@@ -65,7 +63,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
-  const [lotNumberManuallySet, setLotNumberManuallySet] = React.useState(false);
+  
+  // State flags to track manual input
   const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
 
@@ -102,7 +101,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   }, [purchaseToEdit]);
 
   const methods = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters)), // brokers removed from schema call
+    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters)),
     defaultValues: getDefaultValues(),
   });
   const { control, watch, setValue, handleSubmit, reset, formState: { errors, dirtyFields } } = methods;
@@ -110,9 +109,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
-      setLotNumberManuallySet(!!purchaseToEdit?.lotNumber);
-      setQuantityManuallySet(!!purchaseToEdit?.quantity);
+      setQuantityManuallySet(!!purchaseToEdit?.quantity); // If editing, assume fields were manually set initially
       setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
+    } else {
+      // Reset manual flags when form closes too, for next opening
+      setQuantityManuallySet(false);
+      setNetWeightManuallySet(false);
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
@@ -120,26 +122,27 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const lotNumberValue = watch("lotNumber");
   const quantityValue = watch("quantity");
 
+  // Effect for Lot Number to Bags
   React.useEffect(() => {
-    if (lotNumberValue && !lotNumberManuallySet && !dirtyFields.quantity) {
+    if (lotNumberValue && !quantityManuallySet && !dirtyFields.quantity) {
+      // Regex to find trailing numbers after common separators or spaces
       const match = lotNumberValue.match(/[/\-. ](\d+)$/);
       if (match && match[1]) {
         const bags = parseInt(match[1], 10);
         if (!isNaN(bags) && bags > 0) {
           setValue("quantity", bags, { shouldValidate: true });
-          if (!netWeightManuallySet && !dirtyFields.netWeight) {
-             setValue("netWeight", bags * 50, { shouldValidate: true });
-          }
+          // This will trigger the next effect if netWeight isn't manually set
         }
       }
     }
-  }, [lotNumberValue, setValue, dirtyFields.quantity, dirtyFields.netWeight, lotNumberManuallySet, netWeightManuallySet]);
+  }, [lotNumberValue, setValue, dirtyFields.quantity, quantityManuallySet]);
 
+  // Effect for Bags to Net Weight
   React.useEffect(() => {
-    if (typeof quantityValue === 'number' && quantityValue > 0 && !quantityManuallySet && !dirtyFields.netWeight && !netWeightManuallySet) {
+    if (typeof quantityValue === 'number' && quantityValue > 0 && !netWeightManuallySet && !dirtyFields.netWeight) {
       setValue("netWeight", quantityValue * 50, { shouldValidate: true });
     }
-  }, [quantityValue, setValue, dirtyFields.netWeight, quantityManuallySet, netWeightManuallySet]);
+  }, [quantityValue, setValue, dirtyFields.netWeight, netWeightManuallySet]);
 
 
   const netWeight = watch("netWeight");
@@ -147,24 +150,24 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const expenses = watch("expenses") || 0;
   const transportRatePerKgValue = watch("transportRatePerKg") || 0;
   
-  const grossWeightForTransport = (watch("quantity") || 0) * 50; 
+  const grossWeightForTransport = (quantityValue || 0) * 50; // Assumed gross weight for transport calc
+  const calculatedTotalTransportCost = transportRatePerKgValue * grossWeightForTransport;
 
   const totalAmount = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
     const r = parseFloat(String(rate || 0));
     const exp = parseFloat(String(expenses || 0));
-    const transportCost = parseFloat(String(transportRatePerKgValue || 0)) * grossWeightForTransport;
+    
     if (isNaN(nw) || isNaN(r)) return 0;
-    return (nw * r) + exp + transportCost;
-  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeightForTransport]);
+    return (nw * r) + exp + calculatedTotalTransportCost;
+  }, [netWeight, rate, expenses, calculatedTotalTransportCost]);
 
 
   const rateAfterExpensesAndTransport = React.useMemo(() => {
-    const totalPurchaseCost = (parseFloat(String(netWeight || 0)) * parseFloat(String(rate || 0))) + (parseFloat(String(expenses || 0))) + (parseFloat(String(transportRatePerKgValue || 0)) * grossWeightForTransport);
     const nw = parseFloat(String(netWeight || 0));
     if (nw <= 0) return 0;
-    return totalPurchaseCost / nw;
-  }, [netWeight, rate, expenses, transportRatePerKgValue, grossWeightForTransport]);
+    return totalAmount / nw; // totalAmount already includes calculatedTotalTransportCost
+  }, [netWeight, totalAmount]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -187,11 +190,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
-    const finalGrossWeight = (values.quantity || 0) * 50; // Recalculate to ensure it uses form values
-    const finalTransportRate = values.transportRatePerKg ? values.transportRatePerKg * finalGrossWeight : undefined;
+    
+    const finalGrossWeightForTransport = (values.quantity || 0) * 50;
+    const finalCalculatedTotalTransportCost = (values.transportRatePerKg || 0) * finalGrossWeightForTransport;
+
     const finalTotalAmount = (parseFloat(String(values.netWeight || 0)) * parseFloat(String(values.rate || 0))) + 
                              (parseFloat(String(values.expenses || 0))) + 
-                             (finalTransportRate || 0);
+                             finalCalculatedTotalTransportCost;
 
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
@@ -208,7 +213,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       rate: values.rate,
       expenses: values.expenses,
       transportRatePerKg: values.transportRatePerKg,
-      transportRate: finalTransportRate,
+      transportRate: finalCalculatedTotalTransportCost, // Store the calculated total transport cost
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
       totalAmount: finalTotalAmount,
@@ -269,8 +274,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormLabel>Vakkal / Lot Number</FormLabel>
                           <FormControl><Input 
                             placeholder="e.g., AB/6 or BU-5" 
-                            {...field} 
-                            onFocus={() => setLotNumberManuallySet(true)}
+                            {...field}
+                            onChange={(e) => {
+                                field.onChange(e.target.value);
+                                setQuantityManuallySet(false); // Allow auto-calc from lot if user changes lot
+                                setNetWeightManuallySet(false); // Also allow net weight to recalc
+                            }}
                           /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -284,6 +293,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormLabel>Location (Warehouse)</FormLabel>
                           <MasterDataCombobox
                             name={field.name}
+                            value={field.value}
+                            onChange={field.onChange}
                             options={warehouses.filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
                             placeholder="Select Location"
                             searchPlaceholder="Search locations..."
@@ -310,6 +321,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormLabel>Supplier</FormLabel>
                           <MasterDataCombobox 
                               name={field.name}
+                              value={field.value}
+                              onChange={field.onChange}
                               options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
                               placeholder="Select Supplier" 
                               searchPlaceholder="Search suppliers..." 
@@ -329,6 +342,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormLabel>Agent (Optional)</FormLabel>
                           <MasterDataCombobox 
                               name={field.name}
+                              value={field.value}
+                              onChange={field.onChange}
                               options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
                               placeholder="Select Agent" 
                               searchPlaceholder="Search agents..." 
@@ -408,7 +423,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           render={({ field }) => (
                           <FormItem>
                               <FormLabel>Other Expenses (₹, Optional)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="e.g., Packaging" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                              <FormControl><Input type="number" step="0.01" placeholder="e.g., Packaging" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                               <FormMessage />
                           </FormItem>
                           )}
@@ -419,7 +434,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           render={({ field }) => (
                           <FormItem>
                             <FormLabel>Transport Rate (₹/kg, Optional)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="e.g., 0.50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
+                              <FormControl><Input type="number" step="0.01" placeholder="e.g., 0.50" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
                             <FormMessage />
                           </FormItem>
                           )}
@@ -432,6 +447,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormLabel>Transporter (Optional)</FormLabel>
                           <MasterDataCombobox 
                               name={field.name}
+                              value={field.value}
+                              onChange={field.onChange}
                               options={transporters.filter(t => t.type === "Transporter").map(t => ({ value: t.id, label: t.name }))}
                               placeholder="Select Transporter" 
                               searchPlaceholder="Search transporters..." 
@@ -446,8 +463,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
 
-                {/* Broker section removed */}
-
                 {/* Calculated Summary */}
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
@@ -459,9 +474,16 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                   </div>
-                  <p className="text-sm text-muted-foreground pl-7">
-                      Effective Rate (incl. expenses & transport): <span className="font-semibold">₹{rateAfterExpensesAndTransport.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
-                  </p>
+                   {netWeight > 0 && (
+                    <p className="text-sm text-muted-foreground pl-7">
+                        Effective Rate (incl. expenses & transport): <span className="font-semibold">₹{rateAfterExpensesAndTransport.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
+                    </p>
+                   )}
+                   {calculatedTotalTransportCost > 0 && (
+                    <p className="text-sm text-muted-foreground pl-7">
+                        Calculated Total Transport Cost: <span className="font-semibold">₹{calculatedTotalTransportCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </p>
+                   )}
                 </div>
 
 
@@ -495,3 +517,4 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
+
