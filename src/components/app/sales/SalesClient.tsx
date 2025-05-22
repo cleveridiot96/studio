@@ -32,131 +32,105 @@ const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory lots
 
 export function SalesClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); // Hook from SettingsContext
+  const { financialYear, isAppHydrating } = useSettings();
 
-  // UI State
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
   const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false);
 
-  // Memoized empty array for stable default value to useLocalStorageState
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
-  // Data states from localStorage
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
   const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
 
-  // Effect to mark client-side hydration as complete
   React.useEffect(() => {
     setIsSalesClientHydrated(true);
   }, []);
 
-  // Memoized derived data for sales filtered by financial year
   const filteredSales = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
     return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
   }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
 
-  // Memoized callback for opening the "Add Sale" form
-  const openAddSaleForm = React.useCallback(() => {
-    setSaleToEdit(null);
-    setIsAddSaleFormOpen(true);
-  }, []);
-
-  // Memoized callback for closing the "Add Sale" form
-  const closeAddSaleForm = React.useCallback(() => {
-    setIsAddSaleFormOpen(false);
-    setSaleToEdit(null);
-  }, []);
-
-  // Memoized callback for handling sale submission (add or update)
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     setSales(prevSales => {
       const isEditing = prevSales.some(s => s.id === sale.id);
+      // Toast should be called after state update or based on logic not directly inside updater
+      // For simplicity, calling it before, but in complex scenarios, consider useEffect
+      toast({
+        title: "Success!",
+        description: isEditing ? "Sale updated successfully." : "Sale added successfully."
+      });
       if (isEditing) {
         return prevSales.map(s => s.id === sale.id ? sale : s);
       } else {
-        // Ensure new sales get a unique ID if not provided
         return [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
       }
     });
-    toast({
-      title: "Success!",
-      description: sales.some(s => s.id === sale.id) ? "Sale updated successfully." : "Sale added successfully."
-    });
-    closeAddSaleForm(); // Close form after submission
-  }, [setSales, toast, closeAddSaleForm, sales]); // Added 'sales' to dep array for isEditing check message, though setSales is stable
+    setIsAddSaleFormOpen(false);
+    setSaleToEdit(null);
+  }, [setSales, toast]);
 
-  // Memoized callback for initiating sale edit
   const handleEditSale = React.useCallback((sale: Sale) => {
     setSaleToEdit(sale);
     setIsAddSaleFormOpen(true);
   }, []);
 
-  // Memoized callback for initiating sale deletion
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => {
     setSaleToDeleteId(saleId);
     setShowDeleteConfirm(true);
   }, []);
 
-  // Memoized callback for confirming sale deletion
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
       setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
-      toast({
-        title: "Success!",
-        description: "Sale deleted successfully.",
-        variant: "destructive"
-      });
+      toast({ title: "Success!", description: "Sale deleted successfully.", variant: "destructive" });
       setSaleToDeleteId(null);
       setShowDeleteConfirm(false);
     }
   }, [saleToDeleteId, setSales, toast]);
 
-  // Memoized callback for updating master data lists when a new master is added via the form
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    const updateList = (setter: React.Dispatch<React.SetStateAction<any[]>>) => {
-      setter(prev => {
-        const newSet = new Map(prev.map(item => [item.id, item]));
-        newSet.set(newItem.id, newItem);
-        return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
-      });
+    let updated = false;
+    const masterSetters = {
+      Customer: setCustomers,
+      Transporter: setTransporters,
+      Broker: setBrokers,
     };
 
-    switch (type) {
-      case "Customer":
-        updateList(setCustomers as React.Dispatch<React.SetStateAction<MasterItem[]>>);
-        break;
-      case "Transporter":
-        updateList(setTransporters as React.Dispatch<React.SetStateAction<MasterItem[]>>);
-        break;
-      case "Broker":
-        updateList(setBrokers as React.Dispatch<React.SetStateAction<Broker[]>>);
-        break;
-      default:
-        toast({ title: "Info", description: `Master type ${type} not directly handled for master data updates in Sales.` });
-        return; // Exit if type is not handled
+    const setter = masterSetters[type as keyof typeof masterSetters];
+
+    if (setter) {
+      setter(prev => {
+        updated = true;
+        const newSet = new Map(prev.map(item => [item.id, item]));
+        newSet.set(newItem.id, newItem as any); // Cast as any if type narrowing is complex
+        return Array.from(newSet.values()).sort((a, b) => a.name.localeCompare(b.name));
+      });
+    } else {
+        toast({title: "Info", description: `Master type ${type} not handled here for sales.`});
     }
-    toast({ title: `${newItem.type} "${newItem.name}" added/updated.` });
+
+    if (updated) {
+        toast({ title: `${newItem.type} "${newItem.name}" added/updated from Sales.` });
+    }
   }, [setCustomers, setTransporters, setBrokers, toast]);
 
-  // Render guard for development to catch excessive re-renders
-  const renderCount = React.useRef(0);
-  if (process.env.NODE_ENV === 'development') {
-    renderCount.current += 1;
-    if (renderCount.current > 50) { // Adjusted threshold for safety
-      console.error('SalesClient: Excessive re-renders detected! Potential infinite loop.');
-      // In a real scenario, you might throw an error or return a fallback UI
-      // For now, let's allow rendering but log the error.
-    }
-  }
+  const openAddSaleForm = React.useCallback(() => {
+    setSaleToEdit(null);
+    setIsAddSaleFormOpen(true);
+  }, []);
 
-  // Show loading state until settings and local client state are hydrated
+  const closeAddSaleForm = React.useCallback(() => {
+    setIsAddSaleFormOpen(false);
+    setSaleToEdit(null);
+  }, []);
+
   if (isAppHydrating || !isSalesClientHydrated) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -164,6 +138,14 @@ export function SalesClient() {
       </div>
     );
   }
+
+  // Temporarily commenting out render guard for syntax debugging
+  // const renderCount = React.useRef(0);
+  // renderCount.current += 1;
+  // if (renderCount.current > 50) {
+  //   console.error('SalesClient: Render loop detected - breaking cycle');
+  //   return <div className="p-4 text-destructive">Render loop blocked in SalesClient - please check console.</div>;
+  // }
 
   return (
     <div className="space-y-6 print-area">
@@ -183,34 +165,33 @@ export function SalesClient() {
 
       <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
       
-      {/* Conditionally render AddSaleForm only when it's meant to be open and client is hydrated */}
-      {isSalesClientHydrated && isAddSaleFormOpen && (
+      {isSalesClientHydrated && (
         <AddSaleForm
-          key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} // Unique key to force remount
-          isOpen={true} // isOpen is controlled by the conditional render
+          key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'}
+          isOpen={isAddSaleFormOpen}
           onClose={closeAddSaleForm}
           onSubmit={handleAddOrUpdateSale}
           customers={customers as Customer[]}
           transporters={transporters as Transporter[]}
           brokers={brokers}
           inventoryLots={inventorySource} 
-          existingSales={sales} // Pass existing sales for stock validation in form
+          existingSales={sales}
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the sale record.
+              This action cannot be undone. This will permanently delete the sale
+              record.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSaleToDeleteId(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteSale} className="bg-destructive hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
@@ -220,5 +201,3 @@ export function SalesClient() {
     </div>
   );
 }
-
-    

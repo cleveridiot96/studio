@@ -1,19 +1,18 @@
-
 "use client";
 
 import * as React from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/components/ui/command";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, Plus, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@/components/ui/command";
+import { ChevronsUpDown, Check, Plus } from "lucide-react";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Option {
   value: string;
   label: string;
-  tooltipContent?: React.ReactNode; // Added for tooltip support
+  tooltipContent?: React.ReactNode;
 }
 
 interface MasterDataComboboxProps {
@@ -32,10 +31,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   options,
   placeholder = "Select an option",
   searchPlaceholder = "Search...",
-  notFoundMessage = "No match found.",
+  notFoundMessage = "No results found.",
   addNewLabel = "Add New",
   onAddNew,
-  disabled,
+  disabled = false,
 }) => {
   const { control } = useFormContext();
   const { field } = useController({ name, control });
@@ -43,12 +42,23 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-  const filteredOptions = React.useMemo(() =>
-    options.filter((option) =>
-      option.label.toLowerCase().includes(search.toLowerCase())
-    ), [options, search]);
+  const filtered = options.filter(opt =>
+    opt.label.toLowerCase().includes(search.toLowerCase())
+  );
 
-  const selectedLabel = options.find((opt) => opt.value === field.value)?.label;
+  const selected = options.find(opt => opt.value === field.value);
+
+  const handleSelect = (value: string) => {
+    field.onChange(value);
+    setOpen(false);
+    setSearch("");
+  };
+
+  const handleAddNew = () => {
+    onAddNew?.();
+    setOpen(false);
+    setSearch("");
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -57,94 +67,79 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between text-sm", !field.value && "text-muted-foreground")}
+          className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
           disabled={disabled}
         >
-          <span className="truncate">
-            {selectedLabel || placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <span className="truncate">{selected?.label || placeholder}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command shouldFilter={false} className="max-h-[300px]">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-50">
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
             onValueChange={setSearch}
             autoFocus
           />
-          <TooltipProvider>
-            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]"> {/* Adjusted for padding */}
-              {filteredOptions.length === 0 && search.length > 0 ? (
-                <CommandEmpty>
+
+          <CommandList className="max-h-64 overflow-auto">
+            <TooltipProvider>
+              {filtered.length === 0 && search ? (
+                <CommandEmpty className="p-2 text-sm">
                   {notFoundMessage}
                   {onAddNew && (
                     <div
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onAddNew?.();
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm"
-                      role="button"
+                      onMouseDown={handleAddNew}
+                      className="mt-2 flex items-center cursor-pointer text-primary hover:underline"
                     >
-                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                      <Plus className="h-4 w-4 mr-1" /> {addNewLabel}
                     </div>
                   )}
                 </CommandEmpty>
               ) : (
                 <>
-                  {filteredOptions.map((option) => (
-                    <Tooltip key={option.value}>
+                  {filtered.map(opt => (
+                    <Tooltip key={opt.value}>
                       <TooltipTrigger asChild>
-                        <div
-                          onMouseDown={(e) => {
+                        <CommandItem
+                          value={opt.value}
+                          onMouseDown={e => {
                             e.preventDefault();
-                            field.onChange(option.value);
-                            setOpen(false);
-                            setSearch("");
+                            handleSelect(opt.value);
                           }}
-                          className={cn(
-                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full",
-                            field.value === option.value && "font-semibold"
-                          )}
-                          role="option"
-                          aria-selected={field.value === option.value}
+                          className="cursor-pointer"
                         >
                           <Check
-                            className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              opt.value === field.value ? "opacity-100" : "opacity-0"
+                            )}
                           />
-                          <span className="flex-grow truncate">{option.label}</span>
-                        </div>
+                          <span className="truncate">{opt.label}</span>
+                        </CommandItem>
                       </TooltipTrigger>
-                      {option.tooltipContent && (
-                        <TooltipContent side="right" align="start" className="z-[99999]"> {/* Ensure tooltip is on top */}
-                          {option.tooltipContent}
-                        </TooltipContent>
+                      {opt.tooltipContent && (
+                        <TooltipContent>{opt.tooltipContent}</TooltipContent>
                       )}
                     </Tooltip>
                   ))}
-                  {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
+                  {onAddNew && (
                     <div
-                       onMouseDown={(e) => {
+                      onMouseDown={e => {
                         e.preventDefault();
-                        onAddNew?.();
-                        setOpen(false);
-                        setSearch("");
+                        handleAddNew();
                       }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t"
-                      role="button"
+                      className="mt-1 border-t pt-2 flex items-center text-sm px-4 cursor-pointer hover:bg-accent"
                     >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </div>
                   )}
                 </>
               )}
-            </CommandList>
-          </TooltipProvider>
+            </TooltipProvider>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
