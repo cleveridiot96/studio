@@ -77,6 +77,9 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     if (saleToEdit) {
       const originalPurchase = inventoryLots.find(p => p.lotNumber === saleToEdit.lotNumber);
       if (originalPurchase) setPurchaseRateForLot(originalPurchase.rate);
+      setNetWeightManuallySet(true); // When editing, assume net weight was intentional
+      setBrokerageValueManuallySet(!!saleToEdit.brokerageValue);
+
 
       return {
         date: new Date(saleToEdit.date),
@@ -97,7 +100,9 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
         calculatedBrokerageCommission: saleToEdit.calculatedBrokerageCommission || 0,
       };
     }
-    setPurchaseRateForLot(0); // Reset for new form
+    setPurchaseRateForLot(0); 
+    setNetWeightManuallySet(false);
+    setBrokerageValueManuallySet(false);
     return {
       date: new Date(),
       billNumber: "",
@@ -122,15 +127,13 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     resolver: zodResolver(saleSchema(customers, transporters, brokers, inventoryLots, existingSales, saleToEdit?.id)),
     defaultValues: getDefaultValues(),
   });
-  const { control, watch, reset, setValue, handleSubmit, formState: { errors, dirtyFields } } = methods;
+  const { control, watch, reset, setValue, handleSubmit: formHandleSubmit, formState: { errors, dirtyFields } } = methods;
 
 
   React.useEffect(() => {
     if(isOpen){
       const defaultVals = getDefaultValues();
       reset(defaultVals);
-      setNetWeightManuallySet(!!saleToEdit?.netWeight);
-      setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue);
        if (saleToEdit && saleToEdit.lotNumber) {
         const originalPurchase = inventoryLots.find(p => p.lotNumber === saleToEdit.lotNumber);
         if (originalPurchase) {
@@ -146,7 +149,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
   const netWeight = watch("netWeight");
   const rate = watch("rate");
   const billAmountManual = watch("billAmount");
-  const transportCost = watch("transportCost") || 0;
+  const transportCostInput = watch("transportCost") || 0;
   const selectedBrokerId = watch("brokerId");
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
@@ -204,13 +207,14 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     return 0;
   }, [selectedBrokerId, brokerageType, brokerageValue, netWeight, quantity, rate]);
 
-  const calculatedProfit = React.useMemo(() => {
+  const costOfGoodsSold = React.useMemo(() => {
     const finalNetWeightForCalc = netWeight !== undefined && netWeight > 0 ? netWeight : (quantity || 0) * 50;
-    const costOfGoodsSold = finalNetWeightForCalc * purchaseRateForLot;
-    const saleValue = finalBillAmountToUse;
-    
-    return saleValue - costOfGoodsSold - transportCost - calculatedBrokerageCommission;
-  }, [finalBillAmountToUse, netWeight, quantity, purchaseRateForLot, transportCost, calculatedBrokerageCommission]);
+    return finalNetWeightForCalc * purchaseRateForLot;
+  }, [netWeight, quantity, purchaseRateForLot]);
+
+  const calculatedProfit = React.useMemo(() => {
+    return finalBillAmountToUse - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission;
+  }, [finalBillAmountToUse, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission]);
 
 
   React.useEffect(() => {
@@ -285,7 +289,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
           </DialogHeader>
           <FormProvider {...methods}>
             <Form {...methods}>
-              <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+              <form onSubmit={formHandleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                 {/* Section: Basic Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
@@ -348,7 +352,7 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                           field.onChange(value);
                           const selectedPurchase = inventoryLots.find(p => p.lotNumber === value);
                           setPurchaseRateForLot(selectedPurchase ? selectedPurchase.rate : 0);
-                          setValue("quantity",0); // Reset quantity and netWeight when lot changes
+                          setValue("quantity",0); 
                           setNetWeightManuallySet(false);
                           setValue("netWeight",0);
                         }}
@@ -494,21 +498,31 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
                       ₹{finalBillAmountToUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                   </div>
-                  {calculatedBrokerageCommission > 0 && (
-                      <p className="text-sm text-muted-foreground pl-7">
-                          Calculated Brokerage Expense: <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </p>
-                  )}
-                   <div className="flex items-center justify-between">
-                      <div className="flex items-center text-md font-semibold">
-                          <Info className="w-5 h-5 mr-2 text-primary" />
-                          Est. Profit on this Sale:
-                      </div>
-                      <p className={`text-xl font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          ₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </p>
+                 
+                  <div className="text-sm text-muted-foreground pl-7 space-y-1">
+                    <p>
+                        Sale Value: <span className="font-semibold float-right">₹{finalBillAmountToUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </p>
+                    <p>
+                        Less: Cost of Goods: <span className="font-semibold float-right">₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </p>
+                    {transportCostInput > 0 && (
+                        <p>
+                            Less: Transport Cost: <span className="font-semibold float-right">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </p>
+                    )}
+                    {calculatedBrokerageCommission > 0 && (
+                        <p>
+                            Less: Brokerage: <span className="font-semibold float-right">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </p>
+                    )}
+                     <hr className="my-1 border-muted-foreground/50" />
+                    <p className={`font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        Estimated Net Profit: <span className="float-right">₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </p>
                   </div>
                 </div>
+
 
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>
@@ -538,3 +552,4 @@ export const AddSaleForm: React.FC<AddSaleFormProps> = ({
     </>
   );
 };
+
