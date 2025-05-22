@@ -5,13 +5,13 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, Warehouse as MasterWarehouse } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, ShoppingBag, Package, CalendarDays } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, CalendarDays, BarChart3 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, startOfYear, endOfDay, subMonths } from 'date-fns';
 import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
 import { useSettings } from '@/contexts/SettingsContext';
-import { isDateInFinancialYear } from "@/lib/utils"; // Import financial year utility
+import { isDateInFinancialYear } from "@/lib/utils";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -24,8 +24,8 @@ const initialDashboardWarehouses: MasterWarehouse[] = [
   { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
   { id: "wh-chiplun", name: "Chiplun Warehouse", type: "Warehouse" },
   { id: "wh-sawantwadi", name: "Sawantwadi Warehouse", type: "Warehouse" },
-  { id: "w1", name: "Mumbai Godown (Old)", type: "Warehouse" }, // Match dummy data IDs
-  { id: "w2", name: "Chiplun Storage (Old)", type: "Warehouse" }, // Match dummy data IDs
+  { id: "w1", name: "Mumbai Godown", type: "Warehouse" },
+  { id: "w2", name: "Chiplun Storage", type: "Warehouse" },
 ];
 
 interface SummaryData {
@@ -54,7 +54,7 @@ const getFinancialYearDateRange = (fyString: string): { start: Date; end: Date }
 
 
 const DashboardClient = () => {
-  const [hydrated, setHydrated] = React.useState(false);
+  const [isHydrated, setIsHydrated] = React.useState(false);
   const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
   
   const memoizedInitialPurchases = React.useMemo(() => [], []);
@@ -66,44 +66,37 @@ const DashboardClient = () => {
   const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
 
   const [selectedPeriod, setSelectedPeriod] = React.useState<string>(() => format(new Date(), "yyyy-MM"));
+  const previousFinancialYearRef = React.useRef<string | null>(null);
+
 
   React.useEffect(() => {
-    if (!isAppHydrating) { // Only set hydrated to true once settings are hydrated
-      setHydrated(true);
-    }
-  }, [isAppHydrating]);
-  
+    setIsHydrated(true);
+  }, []);
+
   React.useEffect(() => {
-    if (hydrated && currentFinancialYearString) {
-        const fyRange = getFinancialYearDateRange(currentFinancialYearString);
+    if (isHydrated && !isAppHydrating) { // Ensure settings are also hydrated
+      if (previousFinancialYearRef.current && previousFinancialYearRef.current !== currentFinancialYearString) {
+        // Financial year has changed, reset selectedPeriod to a default for the new year
         const currentMonthKey = format(new Date(), "yyyy-MM");
+        const fyRange = getFinancialYearDateRange(currentFinancialYearString);
+        let defaultPeriodForNewFY = "currentFY"; // Default to "currentFY"
 
-        if (fyRange && selectedPeriod !== "all" && selectedPeriod !== "currentFY") {
-            try {
-                const selectedMonthDate = parseISO(`${selectedPeriod}-01`);
-                 if (!isWithinInterval(selectedMonthDate, { start: fyRange.start, end: fyRange.end })) {
-                    // If current selection is outside new FY, default to current month if it's in FY, else default to currentFY string
-                    const currentMonthDate = parseISO(`${currentMonthKey}-01`);
-                    if (isWithinInterval(currentMonthDate, { start: fyRange.start, end: fyRange.end })){
-                        setSelectedPeriod(currentMonthKey);
-                    } else {
-                        setSelectedPeriod("currentFY");
-                    }
-                 }
-            } catch (e) {
-                setSelectedPeriod(currentMonthKey); // Fallback to current month if parsing fails
+        if (fyRange) {
+            const monthsInFY = eachMonthOfInterval({ start: fyRange.start, end: fyRange.end });
+            if (monthsInFY.some(monthStart => format(monthStart, "yyyy-MM") === currentMonthKey)) {
+                defaultPeriodForNewFY = currentMonthKey;
             }
-        } else if (selectedPeriod === "all") {
-            // Keep as is
-        } else if (selectedPeriod !== "currentFY") { // Default to current month if nothing else fits
-             setSelectedPeriod(currentMonthKey);
         }
+        setSelectedPeriod(defaultPeriodForNewFY);
+      }
+      previousFinancialYearRef.current = currentFinancialYearString;
     }
-  }, [currentFinancialYearString, hydrated, selectedPeriod]);
+  }, [currentFinancialYearString, isHydrated, isAppHydrating]);
 
 
   const periodOptions = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (!isHydrated || !currentFinancialYearString) return []; // Guard against null/undefined currentFinancialYearString
+    
     const options: { value: string; label: string }[] = [
       { value: "currentFY", label: `Current FY (${currentFinancialYearString})` },
       { value: "all", label: "All Time" },
@@ -125,78 +118,82 @@ const DashboardClient = () => {
     return options.sort((a, b) => {
         if (a.value === "currentFY") return -1;
         if (b.value === "currentFY") return 1;
-        if (a.value === "all") return -1;
+        if (a.value === "all") return -1; // "All Time" after "Current FY"
         if (b.value === "all") return 1;
-        return b.value.localeCompare(a.value);
+        // For "yyyy-MM" strings, sort reverse chronologically
+        if (a.value.match(/^\d{4}-\d{2}$/) && b.value.match(/^\d{4}-\d{2}$/)) {
+            return b.value.localeCompare(a.value);
+        }
+        return 0; 
     });
-  }, [hydrated, currentFinancialYearString]);
+  }, [isHydrated, currentFinancialYearString]);
 
 
-  const filterByPeriod = <T extends { date: string }>(items: T[], period: string, fyString: string): T[] => {
+  const filterByPeriod = React.useCallback(<T extends { date: string }>(items: T[]): T[] => {
     if (!items) return [];
-    if (period === "all") return items;
+    if (selectedPeriod === "all") return items;
     
     let startDate: Date | null = null;
     let endDate: Date | null = null;
 
-    if (period === "currentFY") {
-      const fyRange = getFinancialYearDateRange(fyString);
+    if (selectedPeriod === "currentFY") {
+      const fyRange = getFinancialYearDateRange(currentFinancialYearString);
       if (fyRange) {
         startDate = fyRange.start;
         endDate = fyRange.end;
       }
-    } else if (period.match(/^\d{4}-\d{2}$/)) { 
+    } else if (selectedPeriod && selectedPeriod.match(/^\d{4}-\d{2}$/)) { 
       try {
-        const monthDate = parseISO(period + "-01");
+        const monthDate = parseISO(selectedPeriod + "-01");
         startDate = startOfMonth(monthDate);
         endDate = endOfDay(endOfMonth(monthDate));
       } catch (e) {
+        console.error("Error parsing selectedPeriod for date range:", selectedPeriod, e);
         return items; 
       }
     }
 
-    if (!startDate || !endDate) return items;
+    if (!startDate || !endDate) return items; // If somehow dates are not set, return all items
 
     return items.filter(item => {
+      if (!item.date) return false;
       try {
         const itemDate = parseISO(item.date);
         return isWithinInterval(itemDate, { start: startDate!, end: endDate! });
       } catch (e) {
+        console.error("Error parsing item date for filtering:", item.date, e);
         return false;
       }
     });
-  };
+  }, [selectedPeriod, currentFinancialYearString]);
   
   const salesSummary = React.useMemo<SummaryData>(() => {
-    if (!hydrated) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
-    const filteredSales = filterByPeriod(sales, selectedPeriod, currentFinancialYearString);
+    if (!isHydrated || !sales) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
+    const filteredSales = filterByPeriod(sales);
     return filteredSales.reduce((acc, sale) => {
       acc.totalAmount += sale.totalAmount || 0;
       acc.totalBags += sale.quantity || 0;
       acc.totalNetWeight += sale.netWeight || 0;
       return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-  }, [sales, selectedPeriod, hydrated, currentFinancialYearString]);
+  }, [sales, isHydrated, filterByPeriod]);
 
   const purchaseSummary = React.useMemo<SummaryData>(() => {
-    if (!hydrated) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
-    const filteredPurchases = filterByPeriod(purchases, selectedPeriod, currentFinancialYearString);
+    if (!isHydrated || !purchases) return { totalAmount: 0, totalBags: 0, totalNetWeight: 0 };
+    const filteredPurchases = filterByPeriod(purchases);
     return filteredPurchases.reduce((acc, purchase) => {
       acc.totalAmount += purchase.totalAmount || 0;
       acc.totalBags += purchase.quantity || 0;
       acc.totalNetWeight += purchase.netWeight || 0;
       return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-  }, [purchases, selectedPeriod, hydrated, currentFinancialYearString]);
+  }, [purchases, isHydrated, filterByPeriod]);
 
   const stockSummary = React.useMemo<StockSummary>(() => {
-    if (!hydrated) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
+    if (!isHydrated || !purchases || !sales || !warehouses) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
     
     const inventoryMap = new Map<string, { lotNumber: string, locationId: string, currentBags: number, currentWeight: number }>();
 
-    // Consider all purchases up to the end of the selected period for stock calculation
-    // Or, if "all" or "currentFY" is selected, consider all purchases within that FY
-    // For simplicity, current stock is always based on all transactions, regardless of period filter
     purchases.forEach(p => {
       const key = `${p.lotNumber}-${p.locationId}`;
       let entry = inventoryMap.get(key) || { lotNumber: p.lotNumber, locationId: p.locationId, currentBags: 0, currentWeight: 0 };
@@ -235,9 +232,9 @@ const DashboardClient = () => {
       }
     });
     return { totalBags, totalNetWeight, byLocation };
-  }, [purchases, sales, warehouses, hydrated]);
+  }, [purchases, sales, warehouses, isHydrated]);
   
-  if (!hydrated) {
+  if (isAppHydrating || !isHydrated) {
     return (
       <div className="w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -245,23 +242,20 @@ const DashboardClient = () => {
             <Card><CardHeader><CardTitle>Loading Summaries...</CardTitle></CardHeader><CardContent><p>Please wait...</p></CardContent></Card>
             <Card><CardHeader><CardTitle>Loading Summaries...</CardTitle></CardHeader><CardContent><p>Please wait...</p></CardContent></Card>
         </div>
+         <Card className="mt-6"><CardHeader><CardTitle>Loading Profit Analysis...</CardTitle></CardHeader><CardContent><p>Please wait...</p></CardContent></Card>
       </div>
     );
   }
 
-  const currentSelectionLabel = periodOptions.find(opt => opt.value === selectedPeriod)?.label || `Select Period`;
-
   return (
-    <div className='space-y-6 w-full overflow-x-auto'> {/* Added w-full and overflow-x-auto here */}
+    <div className='space-y-6 w-full overflow-x-auto'>
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold text-foreground">Summaries</h2>
-        <div className="w-auto sm:w-[220px]"> {/* Reduced width of select for smaller screens */}
+        <h2 className="text-2xl font-semibold text-foreground">Summaries (FY: {currentFinancialYearString})</h2>
+        <div className="w-full sm:w-[280px] md:w-[220px]"> {/* Adjusted width to be more flexible */}
           <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="text-sm">
+            <SelectTrigger className="text-sm w-full">
               <CalendarDays className="h-4 w-4 mr-2 opacity-70" />
-              <SelectValue placeholder="Select Period">
-                 {currentSelectionLabel}
-              </SelectValue>
+              <SelectValue placeholder="Select Period" />
             </SelectTrigger>
             <SelectContent>
               {periodOptions.map(option => (
