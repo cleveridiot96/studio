@@ -1,61 +1,45 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 type SetValue<T> = (value: T | ((prevValue: T) => T)) => void;
 
 export function useLocalStorageState<T>(key: string, defaultValue: T): [T, SetValue<T>] {
-  // Initialize state with defaultValue. This ensures server and initial client render are consistent.
-  const [value, setValue] = useState<T>(defaultValue);
-  const [isHydrated, setIsHydrated] = useState(false);
-
-  // Effect to load from localStorage on initial client-side mount
-  useEffect(() => {
-    setIsHydrated(true); // Mark that client-side effects can now run
+  const [value, setValue] = useState<T>(() => {
     if (typeof window !== 'undefined') {
       try {
         const storedValue = window.localStorage.getItem(key);
         if (storedValue !== null) {
-          setValue(JSON.parse(storedValue));
-        } else {
-          // If nothing in storage, ensure state is defaultValue (it already is, but explicit)
-          // and save defaultValue to localStorage if it wasn't there.
-          window.localStorage.setItem(key, JSON.stringify(defaultValue));
-          setValue(defaultValue);
+          const parsed = JSON.parse(storedValue);
+          // Ensure that if storedValue is explicitly null, and defaultValue isn't, we use defaultValue
+          // This handles cases where `null` might have been stored unintentionally.
+          return parsed === null && defaultValue !== null ? defaultValue : parsed;
         }
       } catch (error) {
         console.warn(`Error reading localStorage key "${key}" during initial state read:`, error);
-        // Fall back to defaultValue if parsing fails
-        setValue(defaultValue);
+        // Fall through to return defaultValue if parsing fails or not found
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]); // Only re-run if the key changes (which should be rare)
+    return defaultValue;
+  });
 
-  // Effect to save to localStorage, debounced
   useEffect(() => {
-    // Only save to localStorage if the component has hydrated and value is not undefined
-    // This prevents writing undefined to localStorage on initial server render/hydration.
-    if (typeof window !== 'undefined' && isHydrated) {
+    if (typeof window !== 'undefined') {
       const handler = setTimeout(() => {
         try {
-          if (value === undefined) {
-            // console.warn(`Attempted to save undefined for key "${key}". Removing from localStorage instead.`);
-            // window.localStorage.removeItem(key); // Or choose to save string "undefined"
-          } else {
-            window.localStorage.setItem(key, JSON.stringify(value));
-          }
+          window.localStorage.setItem(key, JSON.stringify(value));
         } catch (error) {
           console.warn(`Error setting localStorage key "${key}" during debounced write:`, error);
         }
-      }, 300);
+      }, 300); // Slightly reduced debounce delay
 
       return () => {
         clearTimeout(handler);
       };
     }
-  }, [key, value, isHydrated]);
+  }, [key, value]);
 
+  // `setValue` from useState is already stable and doesn't need useCallback wrapper
   return [value, setValue];
 }

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter } from "@/lib/types";
+import type { Payment, MasterItem, MasterItemType } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -26,12 +26,17 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
+// Brokers are no longer relevant for payments as per new instructions
+// const BROKERS_STORAGE_KEY = 'masterBrokers'; 
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
+// Updated initial payments data to reflect typical payment parties
 const initialPaymentsData: Payment[] = [
   { id: "pay-fy2526-1", date: "2025-05-03", partyId: "supp-anand", partyName: "Anand Agro Products", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", referenceNo: "CHKFY2526-001", notes: "Advance for LOT-A FY2526" },
   { id: "pay-fy2526-2", date: "2025-05-08", partyId: "agent-ajay", partyName: "Ajay Kumar", partyType: "Agent", amount: 2200, paymentMethod: "Cash", notes: "Commission for LOT-A FY2526" },
   { id: "pay-fy2425-1", date: "2024-08-12", partyId: "trans-reliable", partyName: "Reliable Transports", partyType: "Transporter", amount: 2500, paymentMethod: "UPI", referenceNo: "upiFY2425-123", notes: "Transport for LOT-X FY2425" },
+  // Removed broker payment example as brokers are typically paid from sales proceeds or receipts
+  // { id: "pay-fy2526-3", date: "2025-07-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-FY2526-001" },
   { id: "pay-fy2526-4", date: "2025-09-20", partyId: "supp-meena", partyName: "Meena Farms", partyType: "Supplier", amount: 60000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-5678", notes: "Payment for LOT-D FY2526" },
 ];
 
@@ -43,51 +48,51 @@ export function PaymentsClient() {
   const memoizedEmptyMasters = React.useMemo(() => [], []);
 
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
-  const [suppliers, setSuppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
+  // Brokers are not included in parties eligible for direct payment in this context
+  // const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = React.useState<string | null>(null);
-  
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   const allPaymentParties = React.useMemo(() => {
+    if (!hydrated) return [];
+    // Combine only Suppliers, Agents, and Transporters for the payment form's party dropdown
     return [
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
       ...transporters.filter(t => t.type === 'Transporter')
-    ].filter(party => party && party.id && party.name && party.type) 
+    ].filter(party => party && party.id && party.name && party.type) // Basic validation
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters]);
+  }, [suppliers, agents, transporters, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
-    if (isAppHydrating) return [];
+    if (isAppHydrating || !hydrated) return [];
     return payments.filter(payment => payment && payment.date && isDateInFinancialYear(payment.date, financialYear));
-  }, [payments, financialYear, isAppHydrating]);
+  }, [payments, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
     const isEditing = payments.some(p => p.id === payment.id);
-    let toastMessage = "";
-    let toastDescription = "";
-
     setPayments(prevPayments => {
       if (isEditing) {
-        toastMessage = "Success!";
-        toastDescription = "Payment updated successfully.";
         return prevPayments.map(p => p.id === payment.id ? payment : p);
       } else {
-        toastMessage = "Success!";
-        toastDescription = "Payment added successfully.";
         return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
       }
     });
     setPaymentToEdit(null);
-    if (toastMessage) {
-      toast({ title: toastMessage, description: toastDescription });
-    }
-  }, [setPayments, payments, toast]);
+    toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
+  }, [setPayments, toast, payments]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -109,32 +114,23 @@ export function PaymentsClient() {
   }, [paymentToDeleteId, setPayments, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    let updated = false;
     switch (type) {
       case "Supplier":
-        setSuppliers(prev => {
-            updated = true;
-            return [newItem as Supplier, ...prev.filter(i => i.id !== newItem.id)];
-        });
+        setSuppliers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       case "Agent":
-        setAgents(prev => {
-            updated = true;
-            return [newItem as Agent, ...prev.filter(i => i.id !== newItem.id)];
-        });
+        setAgents(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
+      // Brokers are not directly paid through this form typically
+      // case "Broker":
+      //   setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+      //   break;
       case "Transporter":
-        setTransporters(prev => {
-            updated = true;
-            return [newItem as Transporter, ...prev.filter(i => i.id !== newItem.id)];
-        });
+        setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       default:
         toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
         break;
-    }
-    if(updated){
-        toast({ title: `${newItem.type} "${newItem.name}" added/updated.` });
     }
   }, [setSuppliers, setAgents, setTransporters, toast]);
 
@@ -148,7 +144,7 @@ export function PaymentsClient() {
     setPaymentToEdit(null);
   }, []);
 
-  if (isAppHydrating) {
+  if (isAppHydrating || !hydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading payments data...</p>
@@ -179,7 +175,7 @@ export function PaymentsClient() {
           isOpen={isAddPaymentFormOpen}
           onClose={closeAddPaymentForm}
           onSubmit={handleAddOrUpdatePayment}
-          parties={allPaymentParties} 
+          parties={allPaymentParties} // Pass the filtered list
           onMasterDataUpdate={handleMasterDataUpdate}
           paymentToEdit={paymentToEdit}
         />

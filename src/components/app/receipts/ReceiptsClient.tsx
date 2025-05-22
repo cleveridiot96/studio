@@ -28,21 +28,19 @@ const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 const initialReceiptsData: Receipt[] = [
-  { id: "rec-fy2526-1", date: "2025-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-123", notes: "Part payment for INV-FY2526-001", cashDiscount: 0, relatedSaleIds: [] },
-  { id: "rec-fy2526-2", date: "2025-06-22", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-FY2526-002", cashDiscount: 0, relatedSaleIds: [] },
-  { id: "rec-fy2425-1", date: "2024-09-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-FY2425-001", cashDiscount: 0, relatedSaleIds: [] },
+  { id: "rec-fy2526-1", date: "2025-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-123", notes: "Part payment for INV-FY2526-001" },
+  { id: "rec-fy2526-2", date: "2025-06-22", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-FY2526-002" },
+  { id: "rec-fy2425-1", date: "2024-09-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-FY2425-001" },
 ];
 
 export function ReceiptsClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); 
+  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
+  const [hydrated, setHydrated] = React.useState(false); // Local hydration
 
-  const memoizedInitialReceipts = React.useMemo(() => initialReceiptsData, []);
-  const memoizedEmptyMasters = React.useMemo(() => [], []);
-
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
-  const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, initialReceiptsData);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
@@ -50,40 +48,35 @@ export function ReceiptsClient() {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [receiptToDeleteId, setReceiptToDeleteId] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   const allReceiptParties = React.useMemo(() => {
+    if (!hydrated) return [];
     return [
-        ...customers.filter(c => c.type === 'Customer'),
-        ...brokers.filter(b => b.type === 'Broker')
-    ].filter(party => party && party.id && party.name && party.type)
-     .sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, brokers]);
+        ...customers,
+        ...brokers
+    ].filter(party => ['Customer', 'Broker'].includes(party.type));
+  }, [customers, brokers, hydrated]);
 
   const filteredReceipts = React.useMemo(() => {
-    if (isAppHydrating) return [];
-    return receipts.filter(receipt => receipt && receipt.date && isDateInFinancialYear(receipt.date, financialYear));
-  }, [receipts, financialYear, isAppHydrating]);
+    if (isAppHydrating || !hydrated) return [];
+    return receipts.filter(receipt => isDateInFinancialYear(receipt.date, financialYear));
+  }, [receipts, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdateReceipt = React.useCallback((receipt: Receipt) => {
     const isEditing = receipts.some(r => r.id === receipt.id);
-    let toastMessage = "";
-    let toastDescription = "";
-
     setReceipts(prevReceipts => {
       if (isEditing) {
-        toastMessage = "Success!";
-        toastDescription = "Receipt updated successfully.";
         return prevReceipts.map(r => r.id === receipt.id ? receipt : r);
       } else {
-        toastMessage = "Success!";
-        toastDescription = "Receipt added successfully.";
-        return [{...receipt, id: receipt.id || `receipt-${Date.now()}`}, ...prevReceipts];
+        return [receipt, ...prevReceipts];
       }
     });
     setReceiptToEdit(null);
-    if (toastMessage) {
-      toast({ title: toastMessage, description: toastDescription });
-    }
-  }, [setReceipts, receipts, toast]); 
+    toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
+  }, [setReceipts, toast, receipts]); 
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);
@@ -105,27 +98,18 @@ export function ReceiptsClient() {
   }, [receiptToDeleteId, setReceipts, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    let updated = false;
     switch (type) {
       case "Customer":
-        setCustomers(prev => {
-          updated = true;
-          return [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)];
-        });
+        setCustomers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       case "Broker":
-        setBrokers(prev => {
-          updated = true;
-          return [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)];
-        });
+        setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
         break;
       default:
         toast({title: "Info", description: `Master type ${type} not handled here.`})
         break;
     }
-     if(updated){
-        toast({ title: `${newItem.type} "${newItem.name}" added/updated.` });
-    }
+    toast({ title: `${newItem.type} "${newItem.name}" updated/added from Receipts.` });
   }, [setCustomers, setBrokers, toast]);
 
   const openAddReceiptForm = React.useCallback(() => {
@@ -138,7 +122,7 @@ export function ReceiptsClient() {
     setReceiptToEdit(null);
   }, []);
 
-  if (isAppHydrating) {
+  if (isAppHydrating || !hydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading receipts data...</p>

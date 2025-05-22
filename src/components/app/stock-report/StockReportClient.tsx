@@ -13,15 +13,13 @@ import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SlidersHorizontal, Printer, TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, SlidersHorizontal, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose,
 } from "@/components/ui/sheet";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear } from "@/lib/utils";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -36,15 +34,13 @@ interface StockReportItem {
   purchaseDate?: string;
   purchaseBags: number;
   purchaseWeight: number;
-  purchaseRate: number; 
+  purchaseRate: number;
   purchaseValue: number;
   soldBags: number;
   soldWeight: number;
   soldValue: number; 
   transferredOutBags: number;
-  transferredOutWeight: number; // Added for consistency
   transferredInBags: number;
-  transferredInWeight: number; // Added for consistency
   remainingBags: number;
   remainingWeight: number;
   avgSaleRate?: number;
@@ -53,50 +49,56 @@ interface StockReportItem {
 }
 
 export function StockReportClient() {
-  const { financialYear, isAppHydrating } = useSettings(); 
-  
-  const memoizedEmptyTransactions = React.useMemo(() => [], []);
-  const memoizedEmptyMasters = React.useMemo(() => [], []);
+  const memoizedInitialPurchases = React.useMemo(() => [], []);
+  const memoizedInitialSales = React.useMemo(() => [], []);
+  const memoizedInitialWarehouses = React.useMemo(() => [], []);
+  const memoizedInitialLocationTransfers = React.useMemo(() => [], []);
 
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyTransactions);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyTransactions);
-  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyTransactions);
+
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales);
+  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
+
 
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [lotNumberFilter, setLotNumberFilter] = React.useState<string>("");
   const [locationFilter, setLocationFilter] = React.useState<string>(""); 
-  
+  const [hydrated, setHydrated] = React.useState(false);
+
   React.useEffect(() => {
-    if (!dateRange && !isAppHydrating) {
-        const fyStartDate = new Date(parseInt(financialYear.split('-')[0], 10), 3, 1);
-        const fyEndDate = new Date(parseInt(financialYear.split('-')[1], 10), 2, 31);
+    setHydrated(true);
+    // Set default date range only if it hasn't been set
+    if (!dateRange) {
         setDateRange({
-            from: startOfDay(fyStartDate), 
-            to: endOfDay(fyEndDate),
+            from: startOfDay(addDays(new Date(), -90)), 
+            to: endOfDay(new Date()),
         });
     }
-  }, [isAppHydrating, dateRange, financialYear]); 
+  }, [hydrated, dateRange]); // Add dateRange to dependency array
 
   const processedReportData = React.useMemo(() => {
-    if (isAppHydrating) return [];
+    if (!hydrated) return [];
     const reportItemsMap = new Map<string, StockReportItem>();
 
-    const filterByDateAndFY = <T extends { date: string }>(items: T[]): T[] => {
-      return items.filter(item => {
-        if (!item || !item.date) return false;
-        // Ensure items are within the globally selected financial year first
-        if (!isDateInFinancialYear(item.date, financialYear)) return false;
-        // Then apply the date range filter if set
-        if (!dateRange?.from) return true; 
-        const itemDate = parseISO(item.date);
-        return isWithinInterval(itemDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
-      });
-    };
+    const dateFilteredPurchases = purchases.filter(p => {
+      if (!dateRange?.from) return true; 
+      const purchaseDate = parseISO(p.date);
+      return isWithinInterval(purchaseDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
+    });
     
-    const dateFilteredPurchases = filterByDateAndFY(purchases);
-    const dateFilteredSales = filterByDateAndFY(sales);
-    const dateFilteredLocationTransfers = filterByDateAndFY(locationTransfers);
+    const dateFilteredSales = sales.filter(s => {
+      if (!dateRange?.from) return true;
+      const saleDate = parseISO(s.date);
+      return isWithinInterval(saleDate, { start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
+    });
+
+    const dateFilteredLocationTransfers = locationTransfers.filter(lt => {
+        if (!dateRange?.from) return true;
+        const transferDate = parseISO(lt.date);
+        return isWithinInterval(transferDate, {start: startOfDay(dateRange.from), end: endOfDay(dateRange.to || dateRange.from) });
+    });
+
 
     dateFilteredPurchases.forEach(p => {
       if (lotNumberFilter && !p.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
@@ -106,19 +108,29 @@ export function StockReportClient() {
       let item = reportItemsMap.get(key);
       if (!item) {
         item = {
-          lotNumber: p.lotNumber, locationId: p.locationId,
+          lotNumber: p.lotNumber,
+          locationId: p.locationId,
           locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
-          purchaseDate: p.date, purchaseBags: 0, purchaseWeight: 0,
-          purchaseRate: p.rate, purchaseValue: 0, soldBags: 0, soldWeight: 0,
-          soldValue: 0, transferredOutBags: 0, transferredOutWeight: 0,
-          transferredInBags: 0, transferredInWeight: 0, remainingBags: 0, remainingWeight: 0,
+          purchaseDate: p.date,
+          purchaseBags: 0,
+          purchaseWeight: 0,
+          purchaseRate: p.rate, 
+          purchaseValue: 0,
+          soldBags: 0,
+          soldWeight: 0,
+          soldValue: 0,
+          transferredOutBags: 0,
+          transferredInBags: 0,
+          remainingBags: 0,
+          remainingWeight: 0,
         };
       }
       item.purchaseBags += p.quantity;
       item.purchaseWeight += p.netWeight;
       item.purchaseValue += p.totalAmount; 
-      if (!item.purchaseDate || new Date(p.date) < new Date(item.purchaseDate)) { 
-        item.purchaseDate = p.date; item.purchaseRate = p.rate; 
+      if (new Date(p.date) < new Date(item.purchaseDate || '9999-12-31')) { 
+        item.purchaseDate = p.date;
+        item.purchaseRate = p.rate; 
       }
       reportItemsMap.set(key, item);
     });
@@ -131,7 +143,9 @@ export function StockReportClient() {
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
         let item = reportItemsMap.get(key);
         if (item) { 
-          item.soldBags += s.quantity; item.soldWeight += s.netWeight; item.soldValue += s.totalAmount; 
+          item.soldBags += s.quantity;
+          item.soldWeight += s.netWeight;
+          item.soldValue += s.totalAmount; 
         }
       }
     });
@@ -145,7 +159,6 @@ export function StockReportClient() {
                 let fromItem = reportItemsMap.get(fromKey);
                 if (fromItem) { 
                     fromItem.transferredOutBags += transferItem.bagsToTransfer;
-                    fromItem.transferredOutWeight += transferItem.netWeightToTransfer;
                 }
             }
 
@@ -155,26 +168,37 @@ export function StockReportClient() {
                 if (!toItem) { 
                     const sourcePurchase = purchases.find(p => p.lotNumber === transferItem.lotNumber);
                      toItem = {
-                        lotNumber: transferItem.lotNumber, locationId: lt.toWarehouseId,
+                        lotNumber: transferItem.lotNumber,
+                        locationId: lt.toWarehouseId,
                         locationName: warehouses.find(w => w.id === lt.toWarehouseId)?.name || lt.toWarehouseId,
-                        purchaseDate: sourcePurchase?.date, purchaseBags: 0, purchaseWeight: 0,
-                        purchaseRate: sourcePurchase?.rate || 0, purchaseValue: 0, soldBags: 0, soldWeight: 0,
-                        soldValue: 0, transferredOutBags: 0, transferredOutWeight: 0,
-                        transferredInBags: 0, transferredInWeight: 0, remainingBags: 0, remainingWeight: 0,
+                        purchaseDate: sourcePurchase?.date, 
+                        purchaseBags: 0, 
+                        purchaseWeight: 0,
+                        purchaseRate: sourcePurchase?.rate || 0, 
+                        purchaseValue: 0,
+                        soldBags: 0,
+                        soldWeight: 0,
+                        soldValue: 0,
+                        transferredOutBags: 0,
+                        transferredInBags: 0, 
+                        remainingBags: 0,
+                        remainingWeight: 0,
                     };
                     reportItemsMap.set(toKey, toItem);
                 }
                 toItem.transferredInBags += transferItem.bagsToTransfer;
-                toItem.transferredInWeight += transferItem.netWeightToTransfer;
             }
         });
     });
 
+
     const result: StockReportItem[] = [];
     reportItemsMap.forEach(item => {
       item.remainingBags = item.purchaseBags + item.transferredInBags - item.soldBags - item.transferredOutBags;
-      const avgWeightPerBag = item.purchaseBags > 0 && item.purchaseWeight > 0 ? item.purchaseWeight / item.purchaseBags : (item.transferredInBags > 0 && item.transferredInWeight > 0 ? item.transferredInWeight / item.transferredInBags : 50); 
+      
+      const avgWeightPerBag = item.purchaseBags > 0 ? item.purchaseWeight / item.purchaseBags : 50; 
       item.remainingWeight = item.remainingBags * avgWeightPerBag;
+
 
       item.avgSaleRate = item.soldWeight > 0 ? item.soldValue / item.soldWeight : 0;
       if (item.purchaseDate) {
@@ -183,15 +207,15 @@ export function StockReportClient() {
       const totalInitialBags = item.purchaseBags + item.transferredInBags;
       item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
       
-      if(item.purchaseBags > 0 || item.transferredInBags > 0 || item.soldBags > 0 || item.transferredOutBags > 0 || item.remainingBags > 0) { 
+      if(totalInitialBags > 0) {
         result.push(item);
       }
     });
 
     return result.sort((a,b) => (a.purchaseDate && b.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
-  }, [purchases, sales, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, financialYear, isAppHydrating]);
+  }, [purchases, sales, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, hydrated]);
   
-  if (isAppHydrating) {
+  if (!hydrated) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
         <p className="text-lg text-muted-foreground">Loading stock report data...</p>
@@ -203,7 +227,7 @@ export function StockReportClient() {
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <h1 className="text-3xl font-bold text-foreground">Stock Report (FY {financialYear})</h1>
+        <h1 className="text-3xl font-bold text-foreground">Stock Report</h1>
         <div className="flex items-center gap-2">
             <Sheet>
             <SheetTrigger asChild>
@@ -220,7 +244,7 @@ export function StockReportClient() {
                 </SheetHeader>
                 <div className="grid gap-6 py-6">
                 <div className="space-y-2">
-                    <label htmlFor="date-range" className="text-sm font-medium">Date Range (within FY)</label>
+                    <label htmlFor="date-range" className="text-sm font-medium">Date Range</label>
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} id="date-range" />
                 </div>
                 <div className="space-y-2">
@@ -240,7 +264,7 @@ export function StockReportClient() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="">All Locations</SelectItem>
-                        {warehouses.filter(w => w.type === "Warehouse").map(wh => (
+                        {warehouses.map(wh => (
                         <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
                         ))}
                     </SelectContent>
@@ -308,16 +332,14 @@ export function StockReportClient() {
                     <TableCell className="text-right font-bold">{item.remainingBags.toLocaleString()}</TableCell>
                     <TableCell className="text-right">{item.remainingWeight.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</TableCell>
                     <TableCell className="text-center">
-                      {item.remainingBags <= 0 && (item.purchaseBags > 0 || item.transferredInBags > 0) ? ( // Check if it ever had stock
+                      {item.remainingBags <= 0 ? (
                         <Badge variant="destructive">Sold Out / Transferred</Badge>
-                      ) : item.remainingBags > 0 && (item.turnoverRate || 0) >= 75 ? (
+                      ) : (item.turnoverRate || 0) >= 75 ? (
                         <Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast Moving</Badge>
-                      ) : item.remainingBags > 0 && (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (
-                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1"/> Slow / Aging</Badge>
-                      ) : item.remainingBags > 0 ? (
+                      ) : (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (
+                         <Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingUp className="h-3 w-3 mr-1 transform rotate-180"/> Slow / Aging</Badge>
+                      ) : (
                         <Badge variant="secondary">In Stock</Badge>
-                      ): (
-                        <Badge variant="outline">No Stock History</Badge> // For lots that never had stock (e.g. only transferred out)
                       )}
                     </TableCell>
                   </TableRow>

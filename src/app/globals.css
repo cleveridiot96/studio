@@ -106,12 +106,11 @@
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Prevent html/body from showing scrollbars */
+    /* overflow: hidden; REMOVED to allow body to manage its own scroll */
   }
-
   body {
     @apply bg-background text-foreground;
-    /* overflow-y: auto; Removed to rely on SidebarInset for scrolling */
+    overflow-y: auto; /* Allows body to scroll if content exceeds viewport */
     overscroll-behavior: contain; /* Prevents scroll chaining to parent elements */
   }
   h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; } 

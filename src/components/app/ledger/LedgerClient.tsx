@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, startOfYear } from "date-fns";
+import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
 import { BookUser, CalendarRange, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -34,22 +34,14 @@ const TRANSACTIONS_KEYS = {
   receipts: 'receiptsData',
 };
 
-interface LedgerEntryWithDetails extends LedgerEntry {
-  relatedDocId: string; // To link back to original doc if needed
-  vchType: string;
-  refNo?: string; // Bill No. or Lot No.
-  rate?: number;
-  netWeight?: number;
-  transactionAmount?: number; // Gross amount of original transaction
-  customerName?: string; // For broker ledger
-  supplierName?: string; // For agent ledger
-  cashDiscount?: number; // For receipts via broker
+interface LedgerEntryWithBalance extends LedgerEntry {
+  relatedDocId: string;
 }
 
-const initialLedgerData = { entries: [] as LedgerEntryWithDetails[], openingBalance: 0, closingBalance: 0, totalDebit: 0, totalCredit: 0 };
+const initialLedgerData = { entries: [] as LedgerEntryWithBalance[], openingBalance: 0, closingBalance: 0, totalDebit: 0, totalCredit: 0 };
 
 export function LedgerClient() {
-  const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false);
   const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
@@ -60,13 +52,18 @@ export function LedgerClient() {
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const { financialYear: currentFinancialYearString } = useSettings();
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const ledgerTableRef = React.useRef<HTMLTableElement>(null);
 
   React.useEffect(() => {
-    if (!isAppHydrating) { // Only run after settings are hydrated
+    setHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (hydrated) {
       const loadedMasters: MasterItem[] = [];
       Object.values(MASTERS_KEYS).forEach(key => {
         const data = localStorage.getItem(key);
@@ -80,7 +77,9 @@ export function LedgerClient() {
                     }
                 });
             }
-          } catch (e) { console.error("Failed to parse master data from localStorage for key:", key, e); }
+          } catch (e) {
+            console.error("Failed to parse master data from localStorage for key:", key, e);
+          }
         }
       });
       loadedMasters.sort((a, b) => a.name.localeCompare(b.name));
@@ -101,21 +100,21 @@ export function LedgerClient() {
         setSelectedPartyId(partyIdFromQuery);
       }
     }
-  }, [isAppHydrating, currentFinancialYearString, searchParams, dateRange, selectedPartyId]); // Added selectedPartyId to re-run if query changes
+  }, [hydrated, currentFinancialYearString, searchParams, dateRange, selectedPartyId]);
 
 
   const ledgerTransactions = React.useMemo(() => {
-    if (!selectedPartyId || !dateRange?.from || !dateRange?.to || isAppHydrating) {
+    if (!selectedPartyId || !dateRange?.from || !dateRange?.to || !hydrated) {
       return initialLedgerData;
     }
 
     const party = allMasters.find(m => m.id === selectedPartyId);
     if (!party) return initialLedgerData;
 
-    const tempTransactions: LedgerEntryWithDetails[] = [];
+    const tempTransactions: LedgerEntry[] = [];
 
+    // Purchases (affect Supplier, Agent, Transporter)
     purchases.forEach(p => {
-      if (!isDateInFinancialYear(p.date, currentFinancialYearString)) return;
       if (p.supplierId === selectedPartyId && party.type === 'Supplier') {
         tempTransactions.push({
           id: `pur-${p.id}`, relatedDocId: p.id, date: p.date, vchType: 'Purchase', refNo: p.lotNumber,
@@ -147,30 +146,31 @@ export function LedgerClient() {
       }
     });
 
+    // Sales (affect Customer, Broker, Transporter)
     sales.forEach(s => {
-      if (!isDateInFinancialYear(s.date, currentFinancialYearString)) return;
       if (s.customerId === selectedPartyId && party.type === 'Customer') {
         tempTransactions.push({
           id: `sale-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale', refNo: s.billNumber || s.id,
           description: `To Goods Sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber})`,
           debit: s.totalAmount,
-          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount,
-          customerName: s.customerName || s.customerId
+          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
         });
       }
       if (s.brokerId === selectedPartyId && party.type === 'Broker') {
+        // Entry for amount due from Broker for this sale
         tempTransactions.push({
-          id: `sale-via-broker-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale', refNo: s.billNumber || s.id,
+          id: `sale-via-broker-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale via Broker', refNo: s.billNumber || s.id,
           description: `To Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
-          debit: s.totalAmount, 
+          debit: s.totalAmount, // Broker owes the full sale amount to you
           customerName: s.customerName || s.customerId,
           rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
         });
+        // Entry for brokerage expense you owe to the broker for facilitating the sale
         if (s.calculatedBrokerageCommission && s.calculatedBrokerageCommission > 0) {
             tempTransactions.push({
                 id: `sale-brokerage-exp-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Brokerage Exp.', refNo: s.billNumber || s.id,
                 description: `By Brokerage on Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
-                credit: s.calculatedBrokerageCommission, 
+                credit: s.calculatedBrokerageCommission, // You owe this to the broker
                 customerName: s.customerName || s.customerId,
                 transactionAmount: s.calculatedBrokerageCommission
             });
@@ -186,8 +186,8 @@ export function LedgerClient() {
       }
     });
 
+    // Payments made by You
     payments.forEach(pm => {
-      if (!isDateInFinancialYear(pm.date, currentFinancialYearString)) return;
       if (pm.partyId === selectedPartyId) {
         tempTransactions.push({
           id: `pm-${pm.id}`, relatedDocId: pm.id, date: pm.date, vchType: 'Payment', refNo: pm.referenceNo,
@@ -198,29 +198,18 @@ export function LedgerClient() {
       }
     });
 
+    // Receipts received by You
     receipts.forEach(rc => {
-      if (!isDateInFinancialYear(rc.date, currentFinancialYearString)) return;
-      if (rc.partyId === selectedPartyId) { 
-        let particulars = `By ${rc.paymentMethod} ${rc.referenceNo ? `(${rc.referenceNo})` : ''}`;
-        if (rc.cashDiscount && rc.cashDiscount > 0) {
-            particulars += ` (Disc: ${rc.cashDiscount.toFixed(2)})`;
-        }
-        if (rc.notes) particulars += ` - ${rc.notes}`;
-        
-        // Attempt to find customer name if this receipt is from a broker for a sale
-        let customerContextName = "";
-        if (party.type === 'Broker' && rc.relatedSaleIds && rc.relatedSaleIds.length > 0) {
-            const firstSale = sales.find(s => s.id === rc.relatedSaleIds![0]);
-            if (firstSale) customerContextName = firstSale.customerName || firstSale.customerId;
-        }
-
+      if (rc.partyId === selectedPartyId) { // partyId on receipt is who paid you (Broker or Customer)
         tempTransactions.push({
           id: `rc-${rc.id}`, relatedDocId: rc.id, date: rc.date, vchType: 'Receipt', refNo: rc.referenceNo,
-          description: particulars,
-          credit: rc.amount + (rc.cashDiscount || 0), // Total value credited against party (amount received + discount)
+          description: `By ${rc.paymentMethod} ${rc.referenceNo ? `(${rc.referenceNo})` : ''} ${rc.notes ? '- ' + rc.notes : ''}`,
+          credit: rc.amount, // Amount actually received
           cashDiscount: rc.cashDiscount || 0,
-          transactionAmount: rc.amount, // Actual amount received
-          customerName: customerContextName, // For broker ledger context
+          transactionAmount: rc.amount + (rc.cashDiscount || 0), // Total value settled by this receipt (amount received + discount given)
+          // For broker ledger, we need to know which customer sale this receipt is against
+          // This might come from rc.notes or rc.relatedSaleIds if implemented
+          // For now, if partyType is Broker, we don't automatically fill customerName here from receipt itself
         });
       }
     });
@@ -244,7 +233,7 @@ export function LedgerClient() {
     let totalDebitForPeriod = 0;
     let totalCreditForPeriod = 0;
 
-    const entriesWithBalance: LedgerEntryWithDetails[] = dateFilteredTransactions.map(t => {
+    const entriesWithBalance: LedgerEntryWithBalance[] = dateFilteredTransactions.map(t => {
       totalDebitForPeriod += (t.debit || 0);
       totalCreditForPeriod += (t.credit || 0);
       currentPeriodBalance += (t.debit || 0) - (t.credit || 0);
@@ -259,7 +248,7 @@ export function LedgerClient() {
       totalCredit: totalCreditForPeriod
     };
 
-  }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange, isAppHydrating, currentFinancialYearString]);
+  }, [selectedPartyId, allMasters, purchases, sales, payments, receipts, dateRange, hydrated]);
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
@@ -272,19 +261,6 @@ export function LedgerClient() {
     return allMasters.find(p => p.id === selectedPartyId);
   }, [selectedPartyId, allMasters]);
 
-  const setDateFilter = (monthsToSubtract: number) => {
-    const to = endOfDay(new Date());
-    const from = startOfDay(subMonths(to, monthsToSubtract));
-    setDateRange({ from, to });
-  };
-
-  const setCurrentFinancialYearFilter = () => {
-    const [startYearStr] = currentFinancialYearString.split('-');
-    const startYear = parseInt(startYearStr, 10);
-    if (!isNaN(startYear)) {
-      setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
-    }
-  };
 
   const handleDownloadPdf = async () => {
     if (!ledgerTableRef.current || !selectedPartyDetails) {
@@ -401,7 +377,7 @@ export function LedgerClient() {
   };
 
 
-  if (isAppHydrating) {
+  if (!hydrated) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
         <p className="text-lg text-muted-foreground">Loading ledger data...</p>
@@ -425,20 +401,39 @@ export function LedgerClient() {
                             <SelectValue placeholder="Select Party..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectGroup><SelectLabel>Customers</SelectLabel>{allMasters.filter(p=>p.type==='Customer').map(opt => (<SelectItem key={`cust-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}</SelectGroup>
-                          <SelectGroup><SelectLabel>Suppliers</SelectLabel>{allMasters.filter(p=>p.type==='Supplier').map(opt => (<SelectItem key={`supp-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}</SelectGroup>
-                          <SelectGroup><SelectLabel>Agents</SelectLabel>{allMasters.filter(p=>p.type==='Agent').map(opt => (<SelectItem key={`agent-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}</SelectGroup>
-                          <SelectGroup><SelectLabel>Brokers</SelectLabel>{allMasters.filter(p=>p.type==='Broker').map(opt => (<SelectItem key={`brok-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}</SelectGroup>
-                          <SelectGroup><SelectLabel>Transporters</SelectLabel>{allMasters.filter(p=>p.type==='Transporter').map(opt => (<SelectItem key={`trans-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}</SelectGroup>
+                          <SelectGroup>
+                            <SelectLabel>Customers</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Customer').map(opt => (<SelectItem key={`cust-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                          <SelectGroup>
+                            <SelectLabel>Suppliers</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Supplier').map(opt => (<SelectItem key={`supp-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                           <SelectGroup>
+                            <SelectLabel>Agents</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Agent').map(opt => (<SelectItem key={`agent-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                           <SelectGroup>
+                            <SelectLabel>Brokers</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Broker').map(opt => (<SelectItem key={`brok-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
+                           <SelectGroup>
+                            <SelectLabel>Transporters</SelectLabel>
+                            {allMasters.filter(p=>p.type==='Transporter').map(opt => (<SelectItem key={`trans-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
+                          </SelectGroup>
                         </SelectContent>
                     </Select>
-                ) : ( <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties found.</p> )}
+                ) : (
+                    <p className="text-sm text-muted-foreground md:w-[280px] text-center py-2">No parties found. Add Masters.</p>
+                )}
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
                      <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
-                        <Printer className="h-5 w-5" /> <span className="sr-only">Print</span>
+                        <Printer className="h-5 w-5" />
+                        <span className="sr-only">Print</span>
                     </Button>
                     <Button variant="outline" size="icon" onClick={handleDownloadPdf} title="Download PDF" disabled={!selectedPartyId || !selectedPartyDetails}>
-                        <Download className="h-5 w-5" /> <span className="sr-only">Download PDF</span>
+                        <Download className="h-5 w-5" />
+                        <span className="sr-only">Download PDF</span>
                     </Button>
                 </div>
             </div>
@@ -453,7 +448,7 @@ export function LedgerClient() {
         </CardContent>
       </Card>
 
-      {selectedPartyId && selectedPartyDetails ? (
+      {selectedPartyId && selectedPartyDetails && hydrated ? (
         <Card className="shadow-xl print:shadow-none print:border-none">
           <CardHeader className="print:p-0 print:mb-2">
             <div className="print:text-center">
@@ -475,10 +470,12 @@ export function LedgerClient() {
                     <TableHead className="w-[80px] print:w-[50px]">Date</TableHead>
                     <TableHead className="print:w-[35%]">Particulars</TableHead>
                     <TableHead className="print:w-[10%]">Vch Type</TableHead>
-                    <TableHead className="print:w-[10%]">Vch No.</TableHead>
+                    <TableHead className="print:w-[10%]">Ref. No.</TableHead>
+                    {/* On-screen only columns */}
                     <TableHead className="text-right no-print">Rate (₹)</TableHead>
                     <TableHead className="text-right no-print">Net Wt. (kg)</TableHead>
                     <TableHead className="text-right no-print">Trans. Amt. (₹)</TableHead>
+                    {/* Shared columns */}
                     <TableHead className="text-right print:w-[12%]">Debit (₹)</TableHead>
                     <TableHead className="text-right print:w-[12%]">Credit (₹)</TableHead>
                     <TableHead className="text-right no-print">Balance (₹)</TableHead>
@@ -486,12 +483,17 @@ export function LedgerClient() {
                 </TableHeader>
                 <TableBody>
                   <TableRow className="print:font-medium">
-                    <TableCell colSpan={4} className="print:col-span-2 print:font-semibold print:text-left">Opening Balance</TableCell>
+                    <TableCell colSpan={selectedPartyDetails.type === 'Broker' ? 3 : 4} className="print:col-span-2 print:font-semibold print:text-left">Opening Balance</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Rate */}</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Net Wt. */}</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Trans. Amt. */}</TableCell>
-                    <TableCell className="text-right print:font-semibold"> {ledgerTransactions.openingBalance >= 0 ? ledgerTransactions.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'} </TableCell>
-                    <TableCell className="text-right print:font-semibold"> {ledgerTransactions.openingBalance < 0 ? Math.abs(ledgerTransactions.openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'} </TableCell>
+                     {/* Vch No. for Opening Balance in print view - colspan adjusted */}
+                    <TableCell className="text-right print:font-semibold">
+                        {ledgerTransactions.openingBalance >= 0 ? ledgerTransactions.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right print:font-semibold">
+                        {ledgerTransactions.openingBalance < 0 ? Math.abs(ledgerTransactions.openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                    </TableCell>
                     <TableCell className={`text-right font-semibold no-print ${ledgerTransactions.openingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {Math.abs(ledgerTransactions.openingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ledgerTransactions.openingBalance < 0 ? 'Cr' : 'Dr'}
                     </TableCell>
@@ -501,7 +503,10 @@ export function LedgerClient() {
                       <TableRow key={`${entry.id}-${index}`}>
                         <TableCell>{format(parseISO(entry.date), "dd-MM-yy")}</TableCell>
                         <TableCell className="max-w-xs truncate print:max-w-none print:whitespace-normal">
-                           <Tooltip><TooltipTrigger asChild><span className="no-print">{entry.description}</span></TooltipTrigger><TooltipContent><p>{entry.description}</p></TooltipContent></Tooltip>
+                           <Tooltip>
+                            <TooltipTrigger asChild><span className="no-print">{entry.description}</span></TooltipTrigger>
+                            <TooltipContent><p>{entry.description}</p></TooltipContent>
+                           </Tooltip>
                            <span className="print:block hidden print-only-block">{entry.description}</span>
                         </TableCell>
                         <TableCell>{entry.vchType}</TableCell>
@@ -509,7 +514,14 @@ export function LedgerClient() {
                         <TableCell className="text-right no-print">{entry.rate?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '-'}</TableCell>
                         <TableCell className="text-right no-print">{entry.netWeight?.toLocaleString() || '-'}</TableCell>
                         <TableCell className="text-right no-print">
-                           {entry.transactionAmount !== undefined ? (<Tooltip><TooltipTrigger asChild><span>{entry.transactionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></TooltipTrigger>{entry.refNo && (<TooltipContent><p>Ref: {entry.refNo}</p></TooltipContent>)}</Tooltip>) : '-'}
+                           {entry.transactionAmount !== undefined ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>{entry.transactionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              </TooltipTrigger>
+                              {entry.refNo && (<TooltipContent><p>Ref: {entry.refNo}</p></TooltipContent>)}
+                            </Tooltip>
+                          ) : '-'}
                         </TableCell>
                         <TableCell className="text-right">{entry.debit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || ''}</TableCell>
                         <TableCell className="text-right">{entry.credit?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || ''}</TableCell>
@@ -518,7 +530,13 @@ export function LedgerClient() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : ( <TableRow className="print:hidden"><TableCell colSpan={10} className="text-center h-24 text-muted-foreground">No transactions for this party in the selected period.</TableCell></TableRow> )}
+                  ) : (
+                    <TableRow className="print:hidden">
+                      <TableCell colSpan={10} className="text-center h-24 text-muted-foreground">
+                        No transactions for this party in the selected period after opening balance.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
                 <TableFooter className="print:text-[9pt]">
                     <TableRow className="font-semibold">
@@ -526,8 +544,13 @@ export function LedgerClient() {
                         <TableCell className="no-print">{/* Rate */}</TableCell>
                         <TableCell className="no-print">{/* Net Wt. */}</TableCell>
                         <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
-                        <TableCell className="text-right border-t border-b border-foreground"> {ledgerTransactions.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} </TableCell>
-                        <TableCell className="text-right border-t border-b border-foreground"> {ledgerTransactions.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} </TableCell>
+                         {/* Vch No. for Total in print view - colspan adjusted */}
+                        <TableCell className="text-right border-t border-b border-foreground">
+                            {ledgerTransactions.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right border-t border-b border-foreground">
+                            {ledgerTransactions.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
                         <TableCell className="no-print"></TableCell>
                     </TableRow>
                     <TableRow className="font-semibold text-base">
@@ -537,8 +560,13 @@ export function LedgerClient() {
                         <TableCell className="no-print">{/* Rate */}</TableCell>
                         <TableCell className="no-print">{/* Net Wt. */}</TableCell>
                         <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
-                        <TableCell className="text-right border-b-2 border-foreground"> {ledgerTransactions.closingBalance >= 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} </TableCell>
-                        <TableCell className="text-right border-b-2 border-foreground"> {ledgerTransactions.closingBalance < 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''} </TableCell>
+                         {/* Vch No. for Closing in print view - colspan adjusted */}
+                        <TableCell className="text-right border-b-2 border-foreground">
+                            {ledgerTransactions.closingBalance >= 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                        </TableCell>
+                        <TableCell className="text-right border-b-2 border-foreground">
+                             {ledgerTransactions.closingBalance < 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
+                        </TableCell>
                         <TableCell colSpan={1} className={`text-right font-semibold no-print ${ledgerTransactions.closingBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>
                            {Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {ledgerTransactions.closingBalance < 0 ? 'Cr' : 'Dr'}
                         </TableCell>
@@ -549,9 +577,22 @@ export function LedgerClient() {
           </TooltipProvider>
           </CardContent>
         </Card>
-      ) : ( !isAppHydrating && allMasters.length > 0 && <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print"><div className="text-center"><BookUser className="h-16 w-16 text-accent mb-4 mx-auto" /><p className="text-xl text-muted-foreground">Please select a party to view their ledger.</p></div></Card> )
-      }
-      { !isAppHydrating && allMasters.length === 0 && <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print"><div className="text-center"><BookUser className="h-16 w-16 text-accent mb-4 mx-auto" /><p className="text-xl text-muted-foreground">No parties found. Please add master data first.</p></div></Card> }
+      ) : (
+        !hydrated ? (
+          <div className="flex justify-center items-center min-h-[calc(100vh-20rem)] no-print">
+            <p className="text-lg text-muted-foreground">Initializing ledger...</p>
+          </div>
+        ) : (
+        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print">
+          <div className="text-center">
+            <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />
+            <p className="text-xl text-muted-foreground">
+              {allMasters.length === 0 && hydrated ? "No parties found. Please add master data first." : "Please select a party to view their ledger."}
+            </p>
+          </div>
+        </Card>
+        )
+      )}
     </div>
   );
 }

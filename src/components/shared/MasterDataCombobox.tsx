@@ -1,8 +1,9 @@
+
 "use client";
 
 import * as React from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
@@ -42,12 +43,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-  const filteredOptions = React.useMemo(() => {
-    if (!search) return options;
-    return options.filter((option) =>
+  const filteredOptions = React.useMemo(() =>
+    options.filter((option) =>
       option.label.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [options, search]);
+    ), [options, search]);
 
   const selectedLabel = options.find((opt) => opt.value === field.value)?.label;
 
@@ -68,7 +67,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[9999]"> {/* Ensured high z-index */}
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command shouldFilter={false} className="max-h-[300px]">
           <CommandInput
             placeholder={searchPlaceholder}
@@ -109,25 +108,16 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                             setSearch("");
                           }}
                           className={cn(
-                            "cursor-pointer select-none px-4 py-2 hover:bg-accent flex items-center text-sm w-full rounded-sm focus:bg-accent active:bg-accent transition-all",
-                            field.value === option.value && "font-semibold bg-accent/30"
+                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full",
+                            field.value === option.value && "font-semibold"
                           )}
                           role="option"
                           aria-selected={field.value === option.value}
-                          tabIndex={0} // Make it focusable
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              field.onChange(option.value);
-                              setOpen(false);
-                              setSearch("");
-                            }
-                          }}
                         >
                           <Check
                             className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
                           />
-                          <span className="flex-grow truncate" >{option.label}</span>
+                          <span className="flex-grow truncate">{option.label}</span>
                         </div>
                       </TooltipTrigger>
                       {option.tooltipContent && (
@@ -145,17 +135,8 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         setOpen(false);
                         setSearch("");
                       }}
-                      className="cursor-pointer select-none px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t pt-1 rounded-sm focus:bg-accent active:bg-accent transition-all"
+                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t"
                       role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                           e.preventDefault();
-                           onAddNew?.();
-                           setOpen(false);
-                           setSearch("");
-                        }
-                      }}
                     >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </div>
