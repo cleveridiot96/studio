@@ -23,11 +23,16 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
+const SALES_STORAGE_KEY = 'salesData';
+const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
+const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
+const PURCHASES_STORAGE_KEY = 'purchasesData'; // For inventory lots
+
 const initialSalesData: Sale[] = [
   {
     id: "sale-fy2526-1", date: "2025-05-10", billNumber: "INV-FY2526-001", customerId: "cust-ramesh", customerName: "Ramesh Retail", lotNumber: "FY2526-LOT-A/100",
     quantity: 20, netWeight: 1000, rate: 28,
-    billAmount: 1000 * 28,
     totalAmount: 1000 * 28,
     calculatedProfit: (1000 * 28) - (1000 * 22) - 200 - ((1000*28)*0.01), // Sale - Purchase - Transport - Brokerage
     transporterId: "trans-speedy", transporterName: "Speedy Logistics", transportCost: 200,
@@ -37,7 +42,6 @@ const initialSalesData: Sale[] = [
   {
     id: "sale-fy2526-2", date: "2025-06-20", billNumber: "INV-FY2526-002", customerId: "cust-sita", customerName: "Sita General Store", lotNumber: "FY2526-LOT-B/50",
     quantity: 30, netWeight: 1500, rate: 30,
-    billAmount: 1500 * 30,
     totalAmount: 1500 * 30,
     calculatedProfit: (1500 * 30) - (1500 * 25),
     notes: "Standard delivery for FY2526"
@@ -45,33 +49,24 @@ const initialSalesData: Sale[] = [
   {
     id: "sale-fy2425-1", date: "2024-09-15", billNumber: "INV-FY2425-001", customerId: "cust-mohan", customerName: "Mohan Wholesalers", lotNumber: "FY2425-LOT-X/90",
     quantity: 50, netWeight: 2500, rate: 32,
-    billAmount: 2500 * 32,
     totalAmount: 2500 * 32,
     calculatedProfit: (2500 * 32) - (2500 * 28) - 0 - 300, // Sale - Purchase - Transport - Brokerage
     brokerId: "broker-leela", brokerName: "Leela Associates", brokerageType: "Fixed", brokerageValue: 300, calculatedBrokerageCommission: 300,
   },
 ];
 
-const SALES_STORAGE_KEY = 'salesData';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const PURCHASES_STORAGE_KEY = 'purchasesData';
-
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
+  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false);
 
-  const memoizedInitialSalesData = React.useMemo(() => initialSalesData, []);
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
-
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSalesData);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
-  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray); // Renamed to avoid confusion
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
@@ -80,13 +75,13 @@ export function SalesClient() {
   const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    setHydrated(true);
+    setIsSalesClientHydrated(true);
   }, []);
 
   const filteredSales = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating || !isSalesClientHydrated) return [];
     return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
-  }, [sales, financialYear, isAppHydrating, hydrated]);
+  }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     const isEditing = sales.some(s => s.id === sale.id);
@@ -160,7 +155,7 @@ export function SalesClient() {
     setSaleToEdit(null);
   }, []);
 
-  if (isAppHydrating || !hydrated) {
+  if (isAppHydrating || !isSalesClientHydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading sales data...</p>
@@ -191,10 +186,10 @@ export function SalesClient() {
           isOpen={isAddSaleFormOpen}
           onClose={closeAddSaleForm}
           onSubmit={handleAddOrUpdateSale}
-          customers={customers}
-          transporters={transporters}
+          customers={customers as Customer[]}
+          transporters={transporters as Transporter[]}
           brokers={brokers}
-          inventoryLots={inventorySource}
+          inventoryLots={inventorySource} // Corrected prop name
           existingSales={sales}
           onMasterDataUpdate={handleMasterDataUpdate}
           saleToEdit={saleToEdit}
