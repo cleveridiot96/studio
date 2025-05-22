@@ -69,16 +69,25 @@ export function PaymentsClient() {
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
     const isEditing = payments.some(p => p.id === payment.id);
+    let toastMessage = "";
+    let toastDescription = "";
+
     setPayments(prevPayments => {
       if (isEditing) {
+        toastMessage = "Success!";
+        toastDescription = "Payment updated successfully.";
         return prevPayments.map(p => p.id === payment.id ? payment : p);
       } else {
+        toastMessage = "Success!";
+        toastDescription = "Payment added successfully.";
         return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
       }
     });
     setPaymentToEdit(null);
-    toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
-  }, [setPayments, toast, payments]);
+    if (toastMessage) {
+      toast({ title: toastMessage, description: toastDescription });
+    }
+  }, [setPayments, payments, toast]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -100,19 +109,32 @@ export function PaymentsClient() {
   }, [paymentToDeleteId, setPayments, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
+    let updated = false;
     switch (type) {
       case "Supplier":
-        setSuppliers(prev => [newItem as Supplier, ...prev.filter(i => i.id !== newItem.id)]);
+        setSuppliers(prev => {
+            updated = true;
+            return [newItem as Supplier, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       case "Agent":
-        setAgents(prev => [newItem as Agent, ...prev.filter(i => i.id !== newItem.id)]);
+        setAgents(prev => {
+            updated = true;
+            return [newItem as Agent, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       case "Transporter":
-        setTransporters(prev => [newItem as Transporter, ...prev.filter(i => i.id !== newItem.id)]);
+        setTransporters(prev => {
+            updated = true;
+            return [newItem as Transporter, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       default:
         toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
         break;
+    }
+    if(updated){
+        toast({ title: `${newItem.type} "${newItem.name}" added/updated.` });
     }
   }, [setSuppliers, setAgents, setTransporters, toast]);
 

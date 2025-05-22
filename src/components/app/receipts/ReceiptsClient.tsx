@@ -28,9 +28,9 @@ const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
 const initialReceiptsData: Receipt[] = [
-  { id: "rec-fy2526-1", date: "2025-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-123", notes: "Part payment for INV-FY2526-001" },
-  { id: "rec-fy2526-2", date: "2025-06-22", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-FY2526-002" },
-  { id: "rec-fy2425-1", date: "2024-09-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-FY2425-001" },
+  { id: "rec-fy2526-1", date: "2025-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-123", notes: "Part payment for INV-FY2526-001", cashDiscount: 0, relatedSaleIds: [] },
+  { id: "rec-fy2526-2", date: "2025-06-22", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-FY2526-002", cashDiscount: 0, relatedSaleIds: [] },
+  { id: "rec-fy2425-1", date: "2024-09-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-FY2425-001", cashDiscount: 0, relatedSaleIds: [] },
 ];
 
 export function ReceiptsClient() {
@@ -65,16 +65,25 @@ export function ReceiptsClient() {
 
   const handleAddOrUpdateReceipt = React.useCallback((receipt: Receipt) => {
     const isEditing = receipts.some(r => r.id === receipt.id);
+    let toastMessage = "";
+    let toastDescription = "";
+
     setReceipts(prevReceipts => {
       if (isEditing) {
+        toastMessage = "Success!";
+        toastDescription = "Receipt updated successfully.";
         return prevReceipts.map(r => r.id === receipt.id ? receipt : r);
       } else {
+        toastMessage = "Success!";
+        toastDescription = "Receipt added successfully.";
         return [{...receipt, id: receipt.id || `receipt-${Date.now()}`}, ...prevReceipts];
       }
     });
     setReceiptToEdit(null);
-    toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
-  }, [setReceipts, toast, receipts]); 
+    if (toastMessage) {
+      toast({ title: toastMessage, description: toastDescription });
+    }
+  }, [setReceipts, receipts, toast]); 
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);
@@ -96,16 +105,26 @@ export function ReceiptsClient() {
   }, [receiptToDeleteId, setReceipts, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
+    let updated = false;
     switch (type) {
       case "Customer":
-        setCustomers(prev => [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)]);
+        setCustomers(prev => {
+          updated = true;
+          return [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       case "Broker":
-        setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]);
+        setBrokers(prev => {
+          updated = true;
+          return [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)];
+        });
         break;
       default:
         toast({title: "Info", description: `Master type ${type} not handled here.`})
         break;
+    }
+     if(updated){
+        toast({ title: `${newItem.type} "${newItem.name}" added/updated.` });
     }
   }, [setCustomers, setBrokers, toast]);
 

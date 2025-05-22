@@ -22,8 +22,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { doesNameExist } from '@/lib/masterUtils';
 
-
-// Storage keys
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
@@ -31,15 +29,7 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
-
-// Initial data set (will be empty array after formatting)
-const initialCustomers: MasterItem[] = [];
-const initialSuppliers: MasterItem[] = [];
-const initialAgents: MasterItem[] = [];
-const initialTransporters: MasterItem[] = [];
-const initialBrokers: MasterItem[] = [];
-const initialWarehouses: MasterItem[] = [];
-
+const initialMasterData: MasterItem[] = []; // Used for all initial states
 
 type MasterPageTabKey = MasterItemType | 'All';
 
@@ -56,20 +46,14 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
 export default function MastersPage() {
   const { toast } = useToast();
   
-  const memoizedInitialCustomers = useMemo(() => initialCustomers, []);
-  const memoizedInitialSuppliers = useMemo(() => initialSuppliers, []);
-  const memoizedInitialAgents = useMemo(() => initialAgents, []);
-  const memoizedInitialTransporters = useMemo(() => initialTransporters, []);
-  const memoizedInitialBrokers = useMemo(() => initialBrokers, []);
-  const memoizedInitialWarehouses = useMemo(() => initialWarehouses, []);
+  const memoizedInitialData = useMemo(() => initialMasterData, []);
 
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedInitialCustomers);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedInitialSuppliers);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedInitialAgents);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialTransporters);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedInitialBrokers);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
-
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedInitialData);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedInitialData);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedInitialData);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialData);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedInitialData);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialData);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
@@ -81,16 +65,16 @@ export default function MastersPage() {
   const [hydrated, setHydrated] = useState(false);
   
   useEffect(() => {
-    // This effect runs once on mount to signal client-side hydration is complete.
     setHydrated(true);
   }, []);
 
   const allMasterItems = useMemo(() => {
     if (!hydrated) return []; 
-    // This combines all master lists. If a list (e.g., suppliers) is empty, nothing from it will be added.
-    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses].sort((a,b) => a.name.localeCompare(b.name));
+    return [
+      ...customers, ...suppliers, ...agents, 
+      ...transporters, ...brokers, ...warehouses
+    ].sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, hydrated]);
-
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
     switch (type) {
@@ -100,17 +84,20 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'All': return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All'
+      case 'All': return { data: allMasterItems, setData: () => {} };
       default: return { data: [], setData: () => {} };
     }
   }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     const { setData } = getMasterDataState(item.type);
-    // Use allMasterItems for name checking to ensure uniqueness across all types if needed,
-    // or filter based on current item's type if names can be duplicated across types.
-    // For this implementation, we check against all items.
-    const itemsForNameCheck = allMasterItems.filter(existingItem => existingItem.id !== item.id);
+    
+    // For name check, combine all current masters excluding the item being edited (if any)
+    const allCurrentMasters = [
+      ...customers, ...suppliers, ...agents,
+      ...transporters, ...brokers, ...warehouses
+    ];
+    const itemsForNameCheck = allCurrentMasters.filter(existingItem => existingItem.id !== item.id);
 
     if (doesNameExist(item.name, item.type, item.id, itemsForNameCheck)) {
       toast({
@@ -123,30 +110,28 @@ export default function MastersPage() {
 
     let toastMessage = "";
     let toastDescription = "";
+    let isEditing = false;
 
     setData(prev => {
       const existingIndex = prev.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
+        isEditing = true;
         const updatedData = [...prev];
         updatedData[existingIndex] = item;
-        toastMessage = `${item.type} updated successfully!`;
-        toastDescription = `Details for ${item.name} saved.`;
-        return updatedData;
+        return updatedData.sort((a,b) => a.name.localeCompare(b.name));
       } else {
-        toastMessage = `${item.type} added successfully!`;
-        toastDescription = `${item.name} is now in your masters.`;
         return [item, ...prev].sort((a,b) => a.name.localeCompare(b.name));
       }
     });
 
-    if (toastMessage) {
-      toast({ title: toastMessage, description: toastDescription });
-    }
+    toastMessage = `${item.type} ${isEditing ? 'updated' : 'added'} successfully!`;
+    toastDescription = `Details for ${item.name} saved.`;
+    toast({ title: toastMessage, description: toastDescription });
 
     setIsFormOpen(false);
     setEditingItem(null);
 
-  }, [getMasterDataState, allMasterItems, toast]); 
+  }, [getMasterDataState, toast, customers, suppliers, agents, transporters, brokers, warehouses]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
@@ -185,7 +170,6 @@ export default function MastersPage() {
     return `Add New ${singularLabel || 'Party/Entity'}`;
   }, [activeTab]);
 
-
   if (!hydrated) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
@@ -214,7 +198,7 @@ export default function MastersPage() {
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
-          const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(tab.value).data;
+          const currentDataState = getMasterDataState(tab.value);
           return (
             <TabsContent key={tab.value} value={tab.value} className="mt-6">
               <Card className="shadow-lg">
@@ -223,7 +207,7 @@ export default function MastersPage() {
                 </CardHeader>
                 <CardContent>
                   <MasterList
-                    data={currentData} 
+                    data={currentDataState.data} 
                     itemType={tab.value} 
                     isAllItemsTab={tab.value === "All"}
                     onEdit={handleEditItem}
@@ -232,7 +216,7 @@ export default function MastersPage() {
                 </CardContent>
                 <CardFooter>
                   <p className="text-xs text-muted-foreground">
-                    Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {currentData.length}
+                    Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {currentDataState.data.length}
                   </p>
                 </CardFooter>
               </Card>
@@ -270,6 +254,3 @@ export default function MastersPage() {
     </div>
   );
 }
-    
-
-    

@@ -1,21 +1,18 @@
-
 "use client";
 
 import * as React from "react";
 import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import Fuse from 'fuse.js';
-// import didYouMean from 'didyoumean2'; // Removed this import
 
 interface Option {
   value: string;
   label: string;
-  tooltipContent?: React.ReactNode;
+  tooltipContent?: React.ReactNode; // Added for tooltip support
 }
 
 interface MasterDataComboboxProps {
@@ -45,31 +42,12 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-
-  const fuse = React.useMemo(() => new Fuse(options, {
-    keys: ['label'],
-    threshold: 0.3,
-  }), [options]);
-
-  // Removed didYouMeanSuggest logic
-  // const didYouMeanSuggest = React.useMemo(() => {
-  //   if (!search) return null;
-  //   const suggestions = didYouMean(search, options.map(opt => opt.label), {
-  //     threshold: 0.6,
-  //     caseSensitive: false,
-  //   });
-  //   return Array.isArray(suggestions) ? suggestions[0] : suggestions;
-  // }, [search, options]);
-
-
   const filteredOptions = React.useMemo(() => {
-    if (!search) {
-      return options;
-    }
-    const fuseResults = fuse.search(search).map(result => result.item);
-    // Removed didYouMeanSuggest integration from here
-    return fuseResults;
-  }, [options, search, fuse]);
+    if (!search) return options;
+    return options.filter((option) =>
+      option.label.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [options, search]);
 
   const selectedLabel = options.find((opt) => opt.value === field.value)?.label;
 
@@ -90,22 +68,22 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command className="max-h-[300px]">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[9999]"> {/* Ensured high z-index */}
+        <Command shouldFilter={false} className="max-h-[300px]">
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
             onValueChange={setSearch}
             autoFocus
-            />
+          />
           <TooltipProvider>
-            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
+            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]"> {/* Adjusted for padding */}
               {filteredOptions.length === 0 && search.length > 0 ? (
                 <CommandEmpty>
                   {notFoundMessage}
                   {onAddNew && (
                     <div
-                      onMouseDown={(e) => { // Changed from onClick for consistency with item selection pattern
+                      onMouseDown={(e) => {
                         e.preventDefault();
                         onAddNew?.();
                         setOpen(false);
@@ -124,18 +102,27 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     <Tooltip key={option.value}>
                       <TooltipTrigger asChild>
                         <div
-                          onMouseDown={(e) => { // Changed from onClick
+                          onMouseDown={(e) => {
                             e.preventDefault();
                             field.onChange(option.value);
                             setOpen(false);
                             setSearch("");
                           }}
                           className={cn(
-                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full",
-                            field.value === option.value && "font-semibold"
+                            "cursor-pointer select-none px-4 py-2 hover:bg-accent flex items-center text-sm w-full rounded-sm focus:bg-accent active:bg-accent transition-all",
+                            field.value === option.value && "font-semibold bg-accent/30"
                           )}
                           role="option"
                           aria-selected={field.value === option.value}
+                          tabIndex={0} // Make it focusable
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              field.onChange(option.value);
+                              setOpen(false);
+                              setSearch("");
+                            }
+                          }}
                         >
                           <Check
                             className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
@@ -144,7 +131,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         </div>
                       </TooltipTrigger>
                       {option.tooltipContent && (
-                        <TooltipContent side="right" align="start" className="z-[99999]">
+                        <TooltipContent side="right" align="start" className="z-[99999]"> {/* Ensure tooltip is on top */}
                           {option.tooltipContent}
                         </TooltipContent>
                       )}
@@ -152,14 +139,23 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                   ))}
                   {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
                     <div
-                       onMouseDown={(e) => { // Changed from onClick
+                       onMouseDown={(e) => {
                         e.preventDefault();
                         onAddNew?.();
                         setOpen(false);
                         setSearch("");
                       }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t"
+                      className="cursor-pointer select-none px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t pt-1 rounded-sm focus:bg-accent active:bg-accent transition-all"
                       role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                           e.preventDefault();
+                           onAddNew?.();
+                           setOpen(false);
+                           setSearch("");
+                        }
+                      }}
                     >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </div>
