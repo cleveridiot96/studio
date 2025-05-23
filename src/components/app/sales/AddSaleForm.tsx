@@ -27,8 +27,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Info, Percent } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema';
 import type { MasterItem, MasterItemType, Purchase, Sale, Broker, Customer, Transporter } from '@/lib/types';
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
@@ -44,7 +44,7 @@ interface AddSaleFormProps {
   customers: Customer[];
   transporters: Transporter[];
   brokers: Broker[];
-  inventoryLots: Purchase[];
+  inventoryLots: Purchase[]; // These are Purchase[] items
   existingSales: Sale[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
@@ -72,15 +72,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(!!saleToEdit?.brokerageValue);
   const [purchaseRateForLot, setPurchaseRateForLot] = React.useState<number>(0);
 
-
-  const defaultValues = React.useMemo((): SaleFormValues => {
+  // Define getDefaultValues BEFORE it's used in useForm
+  const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
-      const originalPurchase = inventoryLots.find(p => p.lotNumber === saleToEdit.lotNumber);
-      // Don't call setPurchaseRateForLot here, do it in useEffect based on saleToEdit
       return {
         date: new Date(saleToEdit.date),
         billNumber: saleToEdit.billNumber || "",
-        manualBillAmount: saleToEdit.manualBillAmount || undefined,
+        billAmount: saleToEdit.billAmount === undefined || saleToEdit.billAmount === null ? undefined : saleToEdit.billAmount,
         cutBill: saleToEdit.cutBill || false,
         customerId: saleToEdit.customerId,
         lotNumber: saleToEdit.lotNumber,
@@ -88,18 +86,18 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         netWeight: saleToEdit.netWeight,
         rate: saleToEdit.rate,
         transporterId: saleToEdit.transporterId || undefined,
-        transportCost: saleToEdit.transportCost || undefined,
+        transportCost: saleToEdit.transportCost === undefined || saleToEdit.transportCost === null ? undefined : saleToEdit.transportCost,
         brokerId: saleToEdit.brokerId || undefined,
         brokerageType: saleToEdit.brokerageType || undefined,
-        brokerageValue: saleToEdit.brokerageValue || undefined,
+        brokerageValue: saleToEdit.brokerageValue === undefined || saleToEdit.brokerageValue === null ? undefined : saleToEdit.brokerageValue,
         notes: saleToEdit.notes || "",
-        calculatedBrokerageCommission: saleToEdit.calculatedBrokerageCommission || 0,
+        // calculatedBrokerageCommission is not part of form values, it's derived
       };
     }
     return {
       date: new Date(),
       billNumber: "",
-      manualBillAmount: undefined,
+      billAmount: undefined,
       cutBill: false,
       customerId: undefined,
       lotNumber: undefined,
@@ -112,9 +110,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerageType: undefined,
       brokerageValue: undefined,
       notes: "",
-      calculatedBrokerageCommission: 0,
     };
-  }, [saleToEdit, inventoryLots]);
+  }, [saleToEdit]); // inventoryLots removed as it's used in useEffect for purchaseRateForLot
+
+  const memoizedDefaultValues = React.useMemo(() => getDefaultValues(), [getDefaultValues]);
 
   const memoizedSaleSchema = React.useMemo(() =>
     saleSchema(customers, transporters, brokers, inventoryLots, existingSales, saleToEdit?.id)
@@ -122,14 +121,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const methods = useForm<SaleFormValues>({
     resolver: zodResolver(memoizedSaleSchema),
-    defaultValues,
+    defaultValues: memoizedDefaultValues, // Use memoized default values
   });
-  const { control, watch, reset, setValue, handleSubmit, formState: { errors } } = methods;
+  const { control, watch, reset, setValue, handleSubmit, formState: { errors, dirtyFields } } = methods;
+
 
   React.useEffect(() => {
-    if(isOpen){
-      const newDefaultValues = getDefaultValues();
-      reset(newDefaultValues);
+    if (isOpen) {
+      reset(memoizedDefaultValues); // Use memoized default values for reset
       setNetWeightManuallySet(!!saleToEdit?.netWeight);
       setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue);
       if (saleToEdit && saleToEdit.lotNumber) {
@@ -139,18 +138,21 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         setPurchaseRateForLot(0);
       }
     }
-  }, [isOpen, saleToEdit, reset, getDefaultValues, inventoryLots]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, saleToEdit, reset, memoizedDefaultValues, inventoryLots]);
+
 
   const quantity = watch("quantity");
   const netWeight = watch("netWeight");
   const rate = watch("rate");
-  const manualBillAmount = watch("manualBillAmount");
+  const billAmountManual = watch("billAmount"); // This is the manual override field
   const cutBill = watch("cutBill");
   const transportCostInput = watch("transportCost") || 0;
   const selectedBrokerId = watch("brokerId");
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
   const watchedLotNumber = watch("lotNumber");
+
 
   React.useEffect(() => {
     if (typeof quantity === 'number' && quantity >= 0 && !netWeightManuallySet) {
@@ -173,34 +175,32 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       if (brokerDetails && brokerDetails.commission !== undefined) {
         setValue("brokerageType", "Percentage", { shouldValidate: true });
         setValue("brokerageValue", brokerDetails.commission, { shouldValidate: true });
-      } else if (!brokerDetails || brokerDetails.commission === undefined) {
-        if (!brokerageValueManuallySet) {
-            setValue("brokerageType", undefined, { shouldValidate: false }); // Don't validate if clearing
-            setValue("brokerageValue", undefined, { shouldValidate: false });
-        }
+      } else if ((!brokerDetails || brokerDetails.commission === undefined) && !brokerageValueManuallySet) {
+            setValue("brokerageType", undefined, { shouldValidate: true });
+            setValue("brokerageValue", undefined, { shouldValidate: true });
       }
     } else if (!selectedBrokerId && !brokerageValueManuallySet) {
-      setValue("brokerageType", undefined, {shouldValidate: false});
-      setValue("brokerageValue", undefined, {shouldValidate: false});
+      setValue("brokerageType", undefined);
+      setValue("brokerageValue", undefined);
     }
   }, [selectedBrokerId, brokers, setValue, brokerageValueManuallySet]);
 
-  const calculatedSaleValueBeforeCut = React.useMemo(() => {
-    const currentNetWeight = netWeight !== undefined && netWeight > 0 ? netWeight : (quantity || 0) * 50;
-    const currentRate = parseFloat(String(rate || 0));
-    return currentNetWeight * currentRate;
-  }, [quantity, netWeight, rate]);
 
-  const finalTotalAmount = React.useMemo(() => {
-    return cutBill && manualBillAmount !== undefined && manualBillAmount > 0 
-      ? manualBillAmount 
-      : calculatedSaleValueBeforeCut;
-  }, [cutBill, manualBillAmount, calculatedSaleValueBeforeCut]);
+  const calculatedBillAmount = React.useMemo(() => {
+    const currentNetWeight = parseFloat(String(netWeight || 0));
+    const currentRate = parseFloat(String(rate || 0));
+    if (isNaN(currentNetWeight) || isNaN(currentRate)) return 0;
+    return currentNetWeight * currentRate;
+  }, [netWeight, rate]);
+
+  const finalBillAmountToUse = cutBill && billAmountManual !== undefined && billAmountManual > 0
+    ? billAmountManual
+    : calculatedBillAmount;
 
 
   const calculatedBrokerageCommission = React.useMemo(() => {
     if (!selectedBrokerId || brokerageValue === undefined || brokerageValue < 0) return 0;
-    const baseAmountForBrokerage = finalTotalAmount;
+    const baseAmountForBrokerage = finalBillAmountToUse;
 
     if (brokerageType === "Percentage") {
       return (baseAmountForBrokerage * (brokerageValue / 100));
@@ -208,16 +208,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       return brokerageValue;
     }
     return 0;
-  }, [selectedBrokerId, brokerageType, brokerageValue, finalTotalAmount]);
+  }, [selectedBrokerId, brokerageType, brokerageValue, finalBillAmountToUse]);
 
   const costOfGoodsSold = React.useMemo(() => {
-    const finalNetWeightForCalc = netWeight !== undefined && netWeight > 0 ? netWeight : (quantity || 0) * 50;
-    return finalNetWeightForCalc * purchaseRateForLot;
-  }, [netWeight, quantity, purchaseRateForLot]);
+    const currentNetWeight = parseFloat(String(netWeight || 0));
+    if (isNaN(currentNetWeight) || isNaN(purchaseRateForLot)) return 0;
+    return currentNetWeight * purchaseRateForLot;
+  }, [netWeight, purchaseRateForLot]);
 
   const calculatedProfit = React.useMemo(() => {
-    return finalTotalAmount - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission;
-  }, [finalTotalAmount, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission]);
+    return finalBillAmountToUse - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission;
+  }, [finalBillAmountToUse, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -239,11 +240,12 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const processSubmit = (values: SaleFormValues) => {
     let submissionValues = { ...values };
-    let finalNetWeightForSubmit = submissionValues.netWeight;
+
+    // Fallback for netWeight if not manually set and quantity is available
     if (!netWeightManuallySet && submissionValues.quantity > 0 && (!submissionValues.netWeight || submissionValues.netWeight === 0)) {
-      finalNetWeightForSubmit = submissionValues.quantity * 50;
-      submissionValues.netWeight = finalNetWeightForSubmit; // Update submissionValues as well
+      submissionValues.netWeight = submissionValues.quantity * 50;
     }
+    const finalNetWeightForSubmit = submissionValues.netWeight; // Use the now potentially updated netWeight
 
     if (!submissionValues.customerId || !submissionValues.lotNumber) {
         toast({ title: "Missing Info", description: "Customer and Lot Number are required.", variant: "destructive" });
@@ -252,28 +254,33 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     setIsSubmitting(true);
     const selectedCustomer = customers.find(c => c.id === submissionValues.customerId);
     const selectedBroker = brokers.find(b => b.id === submissionValues.brokerId);
-    
-    const currentRateForSubmit = submissionValues.rate;
-    const currentManualBillAmount = submissionValues.manualBillAmount;
-    const currentCutBill = submissionValues.cutBill;
 
-    const currentCalculatedSaleValueBeforeCut = finalNetWeightForSubmit * currentRateForSubmit;
-    const currentFinalTotalAmount = currentCutBill && currentManualBillAmount !== undefined && currentManualBillAmount > 0 
-      ? currentManualBillAmount 
-      : currentCalculatedSaleValueBeforeCut;
+    // Re-calculate bill amount, brokerage, and profit based on final submission values
+    const rateForSubmit = submissionValues.rate;
+    const billAmountManualForSubmit = submissionValues.billAmount; // This is the manual override from form
+    const cutBillForSubmit = submissionValues.cutBill;
+
+    const calculatedBillAmountForSubmit = finalNetWeightForSubmit * rateForSubmit;
     
-    const currentCostOfGoodsSold = finalNetWeightForSubmit * purchaseRateForLot; // Uses state purchaseRateForLot
-    const currentCalculatedBrokerage = (submissionValues.brokerId && submissionValues.brokerageValue !== undefined) ?
-      (submissionValues.brokerageType === "Percentage" ? (currentFinalTotalAmount * (submissionValues.brokerageValue / 100)) : submissionValues.brokerageValue)
+    const finalBillAmountToUseForSubmit = cutBillForSubmit && billAmountManualForSubmit !== undefined && billAmountManualForSubmit > 0 
+        ? billAmountManualForSubmit 
+        : calculatedBillAmountForSubmit;
+    
+    const costOfGoodsSoldForSubmit = finalNetWeightForSubmit * purchaseRateForLot; // purchaseRateForLot is from state
+    
+    const brokerageTypeForSubmit = submissionValues.brokerageType;
+    const brokerageValueForSubmit = submissionValues.brokerageValue;
+    const calculatedBrokerageCommissionForSubmit = (submissionValues.brokerId && brokerageValueForSubmit !== undefined && brokerageValueForSubmit >= 0) ?
+      (brokerageTypeForSubmit === "Percentage" ? (finalBillAmountToUseForSubmit * (brokerageValueForSubmit / 100)) : brokerageValueForSubmit)
       : 0;
     
-    const currentCalculatedProfit = currentFinalTotalAmount - currentCostOfGoodsSold - (submissionValues.transportCost || 0) - currentCalculatedBrokerage;
+    const calculatedProfitForSubmit = finalBillAmountToUseForSubmit - costOfGoodsSoldForSubmit - (submissionValues.transportCost || 0) - calculatedBrokerageCommissionForSubmit;
 
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,
       date: format(submissionValues.date, "yyyy-MM-dd"),
       billNumber: submissionValues.billNumber,
-      manualBillAmount: submissionValues.manualBillAmount, 
+      billAmount: submissionValues.billAmount, 
       cutBill: submissionValues.cutBill,
       customerId: submissionValues.customerId as string,
       customerName: selectedCustomer?.name,
@@ -288,11 +295,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transportCost: submissionValues.transportCost,
       brokerageType: submissionValues.brokerageType,
       brokerageValue: submissionValues.brokerageValue,
-      calculatedBrokerageCommission: currentCalculatedBrokerage,
+      calculatedBrokerageCommission: calculatedBrokerageCommissionForSubmit,
       notes: submissionValues.notes,
-      totalAmount: currentFinalTotalAmount, 
-      calculatedSaleValueBeforeCut: currentCalculatedSaleValueBeforeCut,
-      calculatedProfit: currentCalculatedProfit,
+      totalAmount: finalBillAmountToUseForSubmit, // This is the amount the customer is liable for
+      calculatedProfit: calculatedProfitForSubmit,
     };
     onSubmit(saleData);
     setIsSubmitting(false);
@@ -303,7 +309,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const availableLotsForDropdown = React.useMemo(() => {
     return inventoryLots
-      .filter(p => p.locationName?.toLowerCase().includes("mumbai")) // Filter for Mumbai
+      // .filter(p => p.locationName?.toLowerCase().includes("mumbai")) // Removed specific Mumbai filter
       .map(p => {
         const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
         const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
@@ -319,7 +325,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open && isOpen) onClose(); }}>
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
+          if (!openState && isOpen) { 
+            onClose();
+          }
+        }}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
@@ -335,7 +345,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={control} name="date" render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Sale Date</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl>
+                        <Popover>
+                          <PopoverTrigger asChild><FormControl>
                             <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                               {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -348,13 +359,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)}
                     />
-                    <FormField control={control} name="manualBillAmount" render={({ field }) => ( // Changed from billAmount
-                      <FormItem><FormLabel>Manual Bill Amount (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="Overrides auto-calc if Cut Bill" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!cutBill} /></FormControl>
+                    <FormField control={control} name="billAmount" render={({ field }) => (
+                      <FormItem><FormLabel>Bill Amount (₹, Manual)</FormLabel>
+                      <FormControl><Input type="number" step="0.01" placeholder="Overrides auto-calc" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
                       <FormMessage /></FormItem>)}
                     />
                   </div>
-                  <FormField control={control} name="cutBill" render={({ field }) => (
+                   <FormField control={control} name="cutBill" render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-2 mt-4 pt-4 border-t">
                           <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                           <FormLabel className="font-normal cursor-pointer mt-0!">Is this a "Cut Bill"?</FormLabel>
@@ -373,9 +384,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <MasterDataCombobox
                         name={field.name}
                         options={availableLotsForDropdown}
-                        placeholder="Select Lot from Mumbai"
+                        placeholder="Select Lot"
                         searchPlaceholder="Search lots..."
-                        notFoundMessage="Lot not found or out of stock in Mumbai."
+                        notFoundMessage="Lot not found or out of stock."
                       />
                       <FormMessage /></FormItem>)}
                     />
@@ -400,9 +411,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             onChange={e => {
                               const val = parseFloat(e.target.value) || 0;
                               field.onChange(val);
-                              setNetWeightManuallySet(false); // Allow auto-calc if bags change
+                              setNetWeightManuallySet(false);
                             }}
-                            onFocusCapture={() => setNetWeightManuallySet(false)} 
+                            onFocusCapture={() => setNetWeightManuallySet(false)}
                           /></FormControl><FormMessage /></FormItem>)}
                       />
                      <FormField control={control} name="netWeight" render={({ field }) => (
@@ -489,6 +500,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     />
                 </div>
 
+                {/* Calculated Summary */}
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center text-md font-semibold">
@@ -496,17 +508,21 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             Total for Customer:
                         </div>
                         <p className="text-xl font-bold text-primary">
-                        ₹{finalTotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ₹{finalBillAmountToUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                     </div>
+
                     <div className="text-sm text-muted-foreground pl-7 space-y-1">
                         <div className="flex justify-between">
-                          <span>Sale Value ({cutBill && manualBillAmount !== undefined ? 'Manual' : 'Calculated'}):</span> 
-                          <span className="font-semibold">₹{finalTotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          <span>Sale Value:</span>
+                          <span className="font-semibold">₹{finalBillAmountToUse.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Less: Cost of Goods <span className="text-xs">({purchaseRateForLot.toFixed(2)}/kg × { (netWeight || quantity * 50).toFixed(2)}kg)</span>:</span> 
+                          <span>Less: Cost of Goods Sold:</span> 
                           <span className="font-semibold">₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="text-xs pl-2">
+                           (Purchase Rate: ₹{purchaseRateForLot.toFixed(2)}/kg × Net Weight: { (parseFloat(String(netWeight || 0))).toFixed(2)} kg)
                         </div>
                         {transportCostInput > 0 && (
                             <div className="flex justify-between"><span>Less: Transport Cost:</span> <span className="font-semibold">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
@@ -552,3 +568,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
+
+
+    
