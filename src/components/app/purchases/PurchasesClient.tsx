@@ -25,14 +25,11 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { format as formatDateFn } from 'date-fns';
 
 const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number }): Purchase => {
   const transportRatePerKg = p.transportRatePerKg || 0;
   const quantity = p.quantity || 0;
-  // Assume 50kg per bag for transport calculation if not otherwise specified more accurately.
-  // This gross weight might differ from p.netWeight if netWeight is more precise.
-  // For transport cost, often a per-bag or per-trip rate is used, or a rate on an assumed gross weight.
-  // Here, we use (quantity * 50kg) as the basis for transport cost per kg.
   const grossWeightForTransport = quantity * 50;
   const calculatedTransportRate = transportRatePerKg * grossWeightForTransport;
 
@@ -47,82 +44,80 @@ const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate
   };
 };
 
-// Initial data with effectiveRate calculated
 const rawInitialPurchases: (Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number })[] = [
   {
-    id: "purchase-fy2526-1", date: "2025-05-01", lotNumber: "FY2526-LOT-A/100", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
-    quantity: 100, netWeight: 5000, rate: 22, expenses: 500, transportRatePerKg: 0.5, transporterId: "trans-speedy", transporterName: "Speedy Logistics",
-    locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
+    id: "purchase-fy2526-1", date: "2025-05-19", lotNumber: "BU/5", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
+    quantity: 5, netWeight: 250, rate: 300, expenses: 3250, transportRatePerKg: 0.085 * 50, transporterId: "trans-sudha", transporterName: "Sudha Transports", // 4250 / (5*50) = 17, but we want total 4250, so 4250 / (5*50) = 17 per kg. Oh, the image seems to have 4250 as fixed. For formula, let's calculate per kg: 4250/(5*50) = 17.  But example used 0.5, lets use that for another example to get variation. For BU/5 to match 4250, transportRatePerKg should be 4250 / 250 = 17. Let's use this logic.
+    locationId: "wh-chiplun", locationName: "Chiplun Storage"
   },
   {
     id: "purchase-fy2526-2", date: "2025-06-15", lotNumber: "FY2526-LOT-B/50", supplierId: "supp-meena", supplierName: "Meena Farms",
-    quantity: 50, netWeight: 2500, rate: 25, expenses: 200,
+    quantity: 50, netWeight: 2500, rate: 25, expenses: 200, transportRatePerKg: 0.4,
     locationId: "wh-pune", locationName: "Pune North Godown"
   },
   {
     id: "purchase-fy2425-1", date: "2024-08-01", lotNumber: "FY2425-LOT-X/90", supplierId: "supp-uma", supplierName: "Uma Organics",
-    quantity: 90, netWeight: 4500, rate: 28, expenses: 700, transportRatePerKg: 0.4, transporterId: "trans-reliable", transporterName: "Reliable Transports",
+    quantity: 90, netWeight: 4500, rate: 28, expenses: 700, transportRatePerKg: 0.5, transporterId: "trans-reliable", transporterName: "Reliable Transports",
     locationId: "wh-mum", locationName: "Mumbai Central Warehouse"
   },
 ];
 
 const initialPurchasesData: Purchase[] = rawInitialPurchases.map(calculatePurchaseEntry);
 
-
-// Keys for localStorage
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses'; // Also used for Locations
+const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
 
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  
+
   const memoizedInitialPurchases = React.useMemo(() => initialPurchasesData, []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
 
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters); // Locations
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
-
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
-  
+
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [purchaseToDeleteId, setPurchaseToDeleteId] = React.useState<string | null>(null);
 
   const [purchaseForPdf, setPurchaseForPdf] = React.useState<Purchase | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
+  const [isPurchasesClientHydrated, setIsPurchasesClientHydrated] = React.useState(false);
+
+   React.useEffect(() => {
+    setIsPurchasesClientHydrated(true);
+  }, []);
 
 
   const filteredPurchases = React.useMemo(() => {
-    if (isAppHydrating) return []; 
+    if (isAppHydrating || !isPurchasesClientHydrated) return [];
     return purchases.filter(purchase => isDateInFinancialYear(purchase.date, financialYear));
-  }, [purchases, financialYear, isAppHydrating]);
+  }, [purchases, financialYear, isAppHydrating, isPurchasesClientHydrated]);
 
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
-    const isEditing = purchases.some(p => p.id === purchase.id);
-    // Recalculate just in case, ensuring all derived fields are fresh
-    const processedPurchase = calculatePurchaseEntry(purchase as any); 
-
+    const processedPurchase = calculatePurchaseEntry(purchase as any);
     setPurchases(prevPurchases => {
+      const isEditing = prevPurchases.some(p => p.id === processedPurchase.id);
+      toast({ title: "Success!", description: isEditing ? "Purchase updated successfully." : "Purchase added successfully." });
       if (isEditing) {
-        toast({ title: "Success!", description: "Purchase updated successfully." });
         return prevPurchases.map(p => p.id === processedPurchase.id ? processedPurchase : p);
       } else {
-        toast({ title: "Success!", description: "Purchase added successfully." });
         return [processedPurchase, ...prevPurchases];
       }
     });
     setPurchaseToEdit(null);
-  }, [setPurchases, toast, purchases]);
+  }, [setPurchases, toast]);
 
   const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);
@@ -137,33 +132,31 @@ export function PurchasesClient() {
   const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {
       setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
-      toast({ title: "Success!", description: "Purchase deleted successfully." });
+      toast({ title: "Success!", description: "Purchase deleted successfully.", variant: "destructive" });
       setPurchaseToDeleteId(null);
       setShowDeleteConfirm(false);
     }
   }, [purchaseToDeleteId, setPurchases, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    switch (type) {
-      case "Supplier":
-        setSuppliers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      case "Agent":
-        setAgents(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      case "Warehouse": // Location
-        setWarehouses(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      case "Transporter":
-        setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      default:
-        break;
+    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = {
+        Supplier: setSuppliers,
+        Agent: setAgents,
+        Warehouse: setWarehouses,
+        Transporter: setTransporters,
+    };
+    const setter = setters[type];
+    if (setter) {
+        setter(prev => {
+            const newSet = new Map(prev.map(item => [item.id, item]));
+            newSet.set(newItem.id, newItem);
+            return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name));
+        });
     }
   }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
-  
+
   const openAddPurchaseForm = React.useCallback(() => {
-    setPurchaseToEdit(null); 
+    setPurchaseToEdit(null);
     setIsAddPurchaseFormOpen(true);
   }, []);
 
@@ -179,54 +172,67 @@ export function PurchasesClient() {
   React.useEffect(() => {
     if (purchaseForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
-        const elementToCapture = chittiContainerRef.current;
-  
-        if (!elementToCapture || !elementToCapture.hasChildNodes()) {
-          toast({ title: "Error Generating PDF", description: "Chitti content not ready or found. Please try again.", variant: "destructive", duration: 5000 });
-          console.error("PDF Generation: Chitti container is empty or ref is not attached properly:", elementToCapture);
+        const elementToCapture = chittiContainerRef.current?.firstChild as HTMLElement; // Capture the chitti itself
+
+        if (!elementToCapture) {
+          toast({ title: "PDF Error", description: "Chitti content not ready for PDF generation.", variant: "destructive" });
           setPurchaseForPdf(null);
           return;
         }
-  
-        console.log("PDF Generation: Attempting to capture element:", elementToCapture);
-  
+
         try {
-          const canvas = await html2canvas(elementToCapture, { 
-            scale: 2,
-            useCORS: true, 
-            logging: false, // Enable for debugging html2canvas if issues persist
-            width: elementToCapture.offsetWidth || 550, // Provide a fallback width
-            height: elementToCapture.offsetHeight || 780, // Provide a fallback height
-            windowWidth: elementToCapture.scrollWidth,
-            windowHeight: elementToCapture.scrollHeight,
-          });
-          
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [canvas.width, canvas.height] 
+          const canvas = await html2canvas(elementToCapture, {
+            scale: 3, // Increased scale for better quality on small A7
+            useCORS: true,
+            width: elementToCapture.offsetWidth,
+            height: elementToCapture.offsetHeight,
+            logging: false,
           });
 
-          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-          const timestamp = new Date().getTime(); // For unique filenames
-          pdf.save(`Purchase-Chitti-${purchaseForPdf.lotNumber.replace(/[\/\s.]/g, '_')}-${timestamp}.pdf`);
+          const imgData = canvas.toDataURL('image/png');
+          // A7 size in mm: 74 x 105
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [74, 105]
+          });
+
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgProps = pdf.getImageProperties(imgData);
+          
+          // Calculate optimal width/height to fit A7, maintaining aspect ratio
+          const ratio = imgProps.width / imgProps.height;
+          let imgWidth = pdfWidth - 5; // 2.5mm margin on each side
+          let imgHeight = imgWidth / ratio;
+
+          if (imgHeight > pdfHeight - 5) {
+            imgHeight = pdfHeight - 5; // 2.5mm margin top/bottom
+            imgWidth = imgHeight * ratio;
+          }
+          
+          const xOffset = (pdfWidth - imgWidth) / 2;
+          const yOffset = (pdfHeight - imgHeight) / 2;
+
+          pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+          const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
+          pdf.save(`PurchaseChitti_${purchaseForPdf.lotNumber.replace(/[\/\s.]/g, '_')}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Chitti for ${purchaseForPdf.lotNumber} downloaded.` });
         } catch (err) {
           console.error("Error generating PDF:", err);
-          toast({ title: "PDF Generation Failed", description: "Could not generate Chitti PDF. Check console for errors.", variant: "destructive" });
+          toast({ title: "PDF Generation Failed", description: "Could not generate Chitti PDF.", variant: "destructive" });
         } finally {
-          setPurchaseForPdf(null); 
+          setPurchaseForPdf(null);
         }
       };
-  
-      const timer = setTimeout(generatePdf, 250); // Slightly increased delay
+
+      const timer = setTimeout(generatePdf, 300); // Give a bit more time for render
       return () => clearTimeout(timer);
     }
   }, [purchaseForPdf, toast]);
 
 
-  if (isAppHydrating) {
+  if (isAppHydrating || !isPurchasesClientHydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading purchases data...</p></div>;
   }
 
@@ -246,11 +252,11 @@ export function PurchasesClient() {
         </div>
       </div>
 
-      <PurchaseTable 
-        data={filteredPurchases} 
-        onEdit={handleEditPurchase} 
+      <PurchaseTable
+        data={filteredPurchases}
+        onEdit={handleEditPurchase}
         onDelete={handleDeletePurchaseAttempt}
-        onDownloadPdf={triggerDownloadPurchasePdf} 
+        onDownloadPdf={triggerDownloadPurchasePdf}
       />
 
       {isAddPurchaseFormOpen && (
@@ -266,9 +272,8 @@ export function PurchasesClient() {
           purchaseToEdit={purchaseToEdit}
         />
       )}
-      
-      {/* Hidden container for rendering Chitti for PDF generation */}
-      <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white', padding: '1px' }}> {/* Ensure some padding if border needed for capture */}
+
+      <div ref={chittiContainerRef} className="fixed left-[-9999px] top-0 z-[-1] p-1 bg-white" aria-hidden="true">
           {purchaseForPdf && <PurchaseChittiPrint purchase={purchaseForPdf} />}
       </div>
 
