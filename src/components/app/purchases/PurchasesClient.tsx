@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer } from "lucide-react";
+import { PlusCircle, Printer, Download, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
@@ -25,12 +25,15 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { format as formatDateFn } from 'date-fns';
+import { format as formatDateFn } from 'date-fns'; // Renamed to avoid conflict
 
+// Helper function to calculate derived fields for a purchase
 const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number }): Purchase => {
   const transportRatePerKg = p.transportRatePerKg || 0;
   const quantity = p.quantity || 0;
-  const grossWeightForTransport = quantity * 50;
+  // Assuming gross weight for transport is based on bags * 50kg/bag
+  // If actual gross weight differs, this logic might need adjustment or a new field
+  const grossWeightForTransport = quantity * 50; 
   const calculatedTransportRate = transportRatePerKg * grossWeightForTransport;
 
   const totalAmount = (p.netWeight * p.rate) + (p.expenses || 0) + calculatedTransportRate;
@@ -44,10 +47,11 @@ const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate
   };
 };
 
-const rawInitialPurchases: (Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number })[] = [
+const rawInitialPurchases: (Omit<Purchase, 'id' | 'totalAmount' | 'effectiveRate' | 'transportRate'> & { id?: string, transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number })[] = [
   {
-    id: "purchase-fy2526-1", date: "2025-05-19", lotNumber: "BU/5", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
-    quantity: 5, netWeight: 250, rate: 300, expenses: 3250, transportRatePerKg: 0.085 * 50, transporterId: "trans-sudha", transporterName: "Sudha Transports", // 4250 / (5*50) = 17, but we want total 4250, so 4250 / (5*50) = 17 per kg. Oh, the image seems to have 4250 as fixed. For formula, let's calculate per kg: 4250/(5*50) = 17.  But example used 0.5, lets use that for another example to get variation. For BU/5 to match 4250, transportRatePerKg should be 4250 / 250 = 17. Let's use this logic.
+    id: "purchase-fy2526-1", date: "2025-05-16", lotNumber: "BU/5", supplierId: "supp-anand", supplierName: "Anand Agro Products", agentId: "agent-ajay", agentName: "Ajay Kumar",
+    quantity: 5, netWeight: 250, rate: 300, expenses: 3250, transportRatePerKg: 17, // 17 * (5*50) = 4250
+    transporterId: "trans-sudha", transporterName: "Sudha Transports",
     locationId: "wh-chiplun", locationName: "Chiplun Storage"
   },
   {
@@ -62,7 +66,8 @@ const rawInitialPurchases: (Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'tr
   },
 ];
 
-const initialPurchasesData: Purchase[] = rawInitialPurchases.map(calculatePurchaseEntry);
+const initialPurchasesData: Purchase[] = rawInitialPurchases.map(p => calculatePurchaseEntry({ ...p, id: p.id || `purchase-${Date.now()}-${Math.random()}`}));
+
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
@@ -101,23 +106,26 @@ export function PurchasesClient() {
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !isPurchasesClientHydrated) return [];
-    return purchases.filter(purchase => isDateInFinancialYear(purchase.date, financialYear));
+    return purchases.filter(purchase => purchase && purchase.date && isDateInFinancialYear(purchase.date, financialYear));
   }, [purchases, financialYear, isAppHydrating, isPurchasesClientHydrated]);
 
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
-    const processedPurchase = calculatePurchaseEntry(purchase as any);
+    // Recalculate derived fields before saving
+    const processedPurchase = calculatePurchaseEntry(purchase as any); // Cast as any if some fields might be missing temporarily from form values
+    
     setPurchases(prevPurchases => {
       const isEditing = prevPurchases.some(p => p.id === processedPurchase.id);
-      toast({ title: "Success!", description: isEditing ? "Purchase updated successfully." : "Purchase added successfully." });
       if (isEditing) {
         return prevPurchases.map(p => p.id === processedPurchase.id ? processedPurchase : p);
       } else {
-        return [processedPurchase, ...prevPurchases];
+        // Ensure new entries also get an ID if not already assigned
+        return [{ ...processedPurchase, id: processedPurchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
       }
     });
     setPurchaseToEdit(null);
-  }, [setPurchases, toast]);
+    toast({ title: "Success!", description: purchases.some(p=>p.id === processedPurchase.id) ? "Purchase updated successfully." : "Purchase added successfully." });
+  }, [setPurchases, toast, purchases]);
 
   const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);
@@ -172,7 +180,7 @@ export function PurchasesClient() {
   React.useEffect(() => {
     if (purchaseForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
-        const elementToCapture = chittiContainerRef.current?.firstChild as HTMLElement; // Capture the chitti itself
+        const elementToCapture = chittiContainerRef.current?.querySelector('.print-chitti-styles') as HTMLElement;
 
         if (!elementToCapture) {
           toast({ title: "PDF Error", description: "Chitti content not ready for PDF generation.", variant: "destructive" });
@@ -182,32 +190,35 @@ export function PurchasesClient() {
 
         try {
           const canvas = await html2canvas(elementToCapture, {
-            scale: 3, // Increased scale for better quality on small A7
+            scale: 2, // Good scale for A5
             useCORS: true,
-            width: elementToCapture.offsetWidth,
+            width: elementToCapture.offsetWidth, // Use the actual width of the rendered chitti
             height: elementToCapture.offsetHeight,
             logging: false,
           });
 
           const imgData = canvas.toDataURL('image/png');
-          // A7 size in mm: 74 x 105
+          // A5 size in mm: 148 x 210
           const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [74, 105]
+            format: 'a5' // Standard A5
           });
 
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
           const imgProps = pdf.getImageProperties(imgData);
           
-          // Calculate optimal width/height to fit A7, maintaining aspect ratio
+          const margin = 5; // 5mm margin
+          const contentWidth = pdfWidth - 2 * margin;
+          const contentHeight = pdfHeight - 2 * margin;
+
           const ratio = imgProps.width / imgProps.height;
-          let imgWidth = pdfWidth - 5; // 2.5mm margin on each side
+          let imgWidth = contentWidth;
           let imgHeight = imgWidth / ratio;
 
-          if (imgHeight > pdfHeight - 5) {
-            imgHeight = pdfHeight - 5; // 2.5mm margin top/bottom
+          if (imgHeight > contentHeight) {
+            imgHeight = contentHeight;
             imgWidth = imgHeight * ratio;
           }
           
@@ -215,18 +226,19 @@ export function PurchasesClient() {
           const yOffset = (pdfHeight - imgHeight) / 2;
 
           pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
-          const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
+          const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss'); // Use alias
           pdf.save(`PurchaseChitti_${purchaseForPdf.lotNumber.replace(/[\/\s.]/g, '_')}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Chitti for ${purchaseForPdf.lotNumber} downloaded.` });
         } catch (err) {
           console.error("Error generating PDF:", err);
           toast({ title: "PDF Generation Failed", description: "Could not generate Chitti PDF.", variant: "destructive" });
         } finally {
-          setPurchaseForPdf(null);
+          setPurchaseForPdf(null); // Clear after attempt
         }
       };
 
-      const timer = setTimeout(generatePdf, 300); // Give a bit more time for render
+      // Timeout to allow DOM to update if purchaseForPdf just changed
+      const timer = setTimeout(generatePdf, 300); 
       return () => clearTimeout(timer);
     }
   }, [purchaseForPdf, toast]);
@@ -273,6 +285,7 @@ export function PurchasesClient() {
         />
       )}
 
+      {/* Hidden div for rendering chitti for PDF generation */}
       <div ref={chittiContainerRef} className="fixed left-[-9999px] top-0 z-[-1] p-1 bg-white" aria-hidden="true">
           {purchaseForPdf && <PurchaseChittiPrint purchase={purchaseForPdf} />}
       </div>
@@ -297,3 +310,4 @@ export function PurchasesClient() {
     </div>
   );
 }
+
