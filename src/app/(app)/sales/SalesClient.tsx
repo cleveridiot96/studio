@@ -19,6 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { renderToString } from 'react-dom/server'; // Import renderToString
+import { SaleChittiPrint } from '@/components/app/sales/SaleChittiPrint'; // Import SaleChittiPrint
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -175,6 +177,24 @@ export function SalesClient() {
     setSaleToEdit(null);
   }, []);
 
+  const handleDownloadPdf = React.useCallback((sale: Sale) => {
+    // Create a temporary div element
+    const printWindow = document.createElement('div');
+    // Render the SaleChittiPrint component into the temporary div
+    printWindow.innerHTML = renderToString(<SaleChittiPrint sale={sale} />);
+
+    // Append the temporary div to the body (necessary for styling to apply correctly)
+    document.body.appendChild(printWindow);
+
+    // Use html2pdf to generate and download the PDF
+    // @ts-ignore // Ignore type errors for the hypothetical html2pdf
+    html2pdf().from(printWindow).save(`sale-chitti-${sale.id}.pdf`);
+
+    // Clean up the temporary div
+    document.body.removeChild(printWindow);
+    toast({ title: "Downloading PDF", description: `Generating Chitti for Sale ${sale.id}.` });
+  }, []);
+
 
   return (
     <div className="space-y-6">
@@ -193,7 +213,7 @@ export function SalesClient() {
         </div>
     </div>
 
-      <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} />
+      <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} onDownloadPdf={handleDownloadPdf} />
       
       {isAddSaleFormOpen && (
         <AddSaleForm

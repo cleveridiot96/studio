@@ -220,7 +220,7 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground"
+        className="group peer hidden md:block text-sidebar-foreground bg-gray-100 rounded-lg"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
@@ -713,7 +713,7 @@ SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 const SidebarMenuSubButton = React.forwardRef<
   HTMLAnchorElement,
   React.ComponentProps<"a"> & {
-    asChild?: boolean
+    asChild?: boolean;
     size?: "sm" | "md"
     isActive?: boolean
   }
@@ -730,8 +730,10 @@ const SidebarMenuSubButton = React.forwardRef<
         "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground",
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
-        size === "md" && "text-sm",
+        size === "md" && "text-sm h-8", // Added h-8 for consistent sizing before becoming circular
         "group-data-[collapsible=icon]:hidden",
+        // Added styles for collapsed icon state: make circular and add placeholder colors
+        "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!rounded-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0", // Adjusted padding for centering
         className
       )}
       {...props}

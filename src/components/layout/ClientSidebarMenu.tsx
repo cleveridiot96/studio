@@ -63,16 +63,27 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
               <SidebarMenuButton
                 isActive={isActive}
                 tooltip={item.title}
-                className="w-full justify-start text-base py-3 h-auto group" // Increased font size and padding, allow height to adjust
+                className={cn(
+                  "w-full justify-start text-base py-3 h-auto group", // Increased font size and padding, allow height to adjust
+                  "transition-all duration-200 ease-in-out", // Smooth transitions
+                  isActive
+                    ? "rounded-full bg-primary px-4 py-2 shadow-md hover:scale-105" // Active styles with pop-up effect
+                    : ""
+                )}
               >
                 <IconComponent className={cn(
-                  "h-5 w-5 mr-3 shrink-0",
-                  isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground group-hover:text-sidebar-accent-foreground"
-                  )} />
+ "h-5 w-5 mr-3 shrink-0",
+                  isActive
+                    ? "text-primary-foreground" // Icon color for active state
+                    : "text-sidebar-foreground group-hover:text-sidebar-accent-foreground"
+                )} />
                 <span className={cn(
                   "text-sidebar-foreground group-data-[state=collapsed]:hidden",
-                  isActive ? "text-sidebar-primary-foreground font-semibold" : "group-hover:text-sidebar-accent-foreground"
-                  )}>
+                  isActive
+                    ? "text-primary-foreground font-semibold" // Text color and weight for active state
+                    : "group-hover:text-sidebar-accent-foreground"
+                )}
+                >
                   {item.title}
                 </span>
               </SidebarMenuButton>

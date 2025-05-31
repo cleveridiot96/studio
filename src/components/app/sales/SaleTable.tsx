@@ -28,10 +28,15 @@ interface SaleTableProps {
   data: Sale[];
   onEdit: (sale: Sale) => void;
   onDelete: (saleId: string) => void;
-  onDownloadPdf?: (sale: Sale) => void; // Added for specific PDF download
+  onDownloadPdf?: (sale: Sale) => void;
+  currentPage: number;
+  itemsPerPage: number;
+  totalPages: number;
+  goToPage: (page: number) => void;
+  nextPage: () => void;
+  prevPage: () => void;
 }
-
-const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
+const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf, currentPage, itemsPerPage, totalPages, goToPage, nextPage, prevPage }) => {
   if (data.length === 0) {
     return <p className="text-center text-muted-foreground py-8">No sales recorded yet.</p>;
   }
@@ -126,6 +131,20 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
         </Table>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+      {totalPages > 1 && (
+        <div className=\"flex items-center justify-end space-x-2 py-4\">
+          <Button
+            variant=\"outline\"
+            size=\"sm\"
+            onClick={prevPage}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className=\"text-sm font-medium\">Page {currentPage} of {totalPages}</span>
+          <Button variant=\"outline\" size=\"sm\" onClick={nextPage} disabled={currentPage === totalPages}>Next</Button>
+        </div>
+      )}
     </TooltipProvider>
   );
 }

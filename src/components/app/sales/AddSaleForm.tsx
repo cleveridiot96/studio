@@ -50,6 +50,9 @@ interface AddSaleFormProps {
   saleToEdit?: Sale | null;
 }
 
+// TODO: Replace with actual Mumbai warehouse ID obtained from warehouses data
+const MUMBAI_WAREHOUSE_ID = "mumbai-warehouse-id-placeholder"; 
+
 const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   isOpen,
   onClose,
@@ -71,6 +74,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(!!saleToEdit?.netWeight);
   const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(!!saleToEdit?.brokerageValue);
   const [purchaseRateForLot, setPurchaseRateForLot] = React.useState<number>(0);
+  const [lastSoldRate, setLastSoldRate] = React.useState<number | null>(null);
 
   // Define getDefaultValues BEFORE it's used in useForm
   const getDefaultValues = React.useCallback((): SaleFormValues => {
@@ -163,11 +167,38 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (watchedLotNumber) {
       const selectedPurchase = inventoryLots.find(p => p.lotNumber === watchedLotNumber);
-      setPurchaseRateForLot(selectedPurchase?.rate || 0);
+      const newPurchaseRate = selectedPurchase?.rate || 0;
+      // Only update state if the purchase rate has actually changed
+      if (newPurchaseRate !== purchaseRateForLot) {
+ setPurchaseRateForLot(newPurchaseRate);
+      }
     } else {
-      setPurchaseRateForLot(0);
+        // Only update state if purchaseRateForLot is not already 0
+        if (purchaseRateForLot !== 0) {
+ setPurchaseRateForLot(0);
+        }
     }
-  }, [watchedLotNumber, inventoryLots]);
+  }, [watchedLotNumber, inventoryLots, purchaseRateForLot]); // Added purchaseRateForLot to dependencies
+
+  // Effect to find the last sold rate for the selected lot
+  React.useEffect(() => {
+    if (watchedLotNumber && existingSales && existingSales.length > 0) {
+      const salesForThisLot = existingSales.filter(
+        (sale) => sale.lotNumber === watchedLotNumber
+      );
+
+      if (salesForThisLot.length > 0) {
+        // Sort sales by date in descending order to find the most recent
+        salesForThisLot.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setLastSoldRate(salesForThisLot[0].rate);
+      } else {
+        setLastSoldRate(null);
+      }
+    } else {
+      setLastSoldRate(null);
+    }
+  }, [watchedLotNumber, existingSales]);
+
 
   React.useEffect(() => {
     if (selectedBrokerId && !brokerageValueManuallySet) {
@@ -193,9 +224,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return currentNetWeight * currentRate;
   }, [netWeight, rate]);
 
-  const finalBillAmountToUse = cutBill && billAmountManual !== undefined && billAmountManual > 0
-    ? billAmountManual
-    : calculatedBillAmount;
+ const finalBillAmountToUse = calculatedBillAmount - (cutBill && billAmountManual !== undefined && billAmountManual > 0 ? billAmountManual : 0);
 
 
   const calculatedBrokerageCommission = React.useMemo(() => {
@@ -263,7 +292,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const calculatedBillAmountForSubmit = finalNetWeightForSubmit * rateForSubmit;
     
     const finalBillAmountToUseForSubmit = cutBillForSubmit && billAmountManualForSubmit !== undefined && billAmountManualForSubmit > 0 
-        ? billAmountManualForSubmit 
+ ? calculatedBillAmountForSubmit - billAmountManualForSubmit
         : calculatedBillAmountForSubmit;
     
     const costOfGoodsSoldForSubmit = finalNetWeightForSubmit * purchaseRateForLot; // purchaseRateForLot is from state
@@ -309,7 +338,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const availableLotsForDropdown = React.useMemo(() => {
     return inventoryLots
-      // .filter(p => p.locationName?.toLowerCase().includes("mumbai")) // Removed specific Mumbai filter
+      .filter(p => p.locationId === MUMBAI_WAREHOUSE_ID) // Only allow sales from Mumbai
       .map(p => {
         const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
         const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
@@ -359,7 +388,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)}
                     />
-                    <FormField control={control} name="billAmount" render={({ field }) => (
+ <FormField control={control} name="billAmount" render={({ field }) => (
                       <FormItem><FormLabel>Bill Amount (₹, Manual)</FormLabel>
                       <FormControl><Input type="number" step="0.01" placeholder="Overrides auto-calc" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
                       <FormMessage /></FormItem>)}
@@ -368,7 +397,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                    <FormField control={control} name="cutBill" render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-2 mt-4 pt-4 border-t">
                           <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                          <FormLabel className="font-normal cursor-pointer mt-0!">Is this a "Cut Bill"?</FormLabel>
+ <FormLabel className="font-normal cursor-pointer mt-0!">
+ {cutBill ? 'Is this a "Cut Bill"?' : 'Is this a "Cut Bill"?'}
+ </FormLabel>
                           <FormMessage />
                       </FormItem>
                     )}
@@ -427,7 +458,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           /></FormControl><FormMessage /></FormItem>)}
                       />
                       <FormField control={control} name="rate" render={({ field }) => (
-                          <FormItem><FormLabel>Sale Rate (₹/kg)</FormLabel>
+                          <FormItem>
+                          <FormLabel>Sale Rate (₹/kg)</FormLabel>
+                          {lastSoldRate !== null && <p className="text-xs text-muted-foreground">Last sold: ₹{lastSoldRate.toFixed(2)}/kg</p>}
+
                           <FormControl><Input type="number" step="0.01" placeholder="e.g., 25.50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}
                       />
                   </div>

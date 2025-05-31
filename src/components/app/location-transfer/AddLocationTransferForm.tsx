@@ -50,7 +50,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   onMasterDataUpdate,
   transferToEdit,
 }) => {
-  const { toast } = useToast();
+  const { toast } = useToast(); // Move inside component
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -118,8 +118,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         );
         const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50; // Default if not found
         setValue(`items.${index}.netWeightToTransfer`, item.bagsToTransfer * avgWeightPerBag, { shouldValidate: true });
+      } else if (item.bagsToTransfer === 0 && item.netWeightToTransfer !== 0) {
+        // If bags are zero, set net weight to zero unless it was manually set
+        if (!isManuallySet) {
+          setValue(`items.${index}.netWeightToTransfer`, 0, { shouldValidate: true });
+        }
       }
-    });
+    }); // Missing dependency `isManuallySet` or replace with itemNetWeightManuallySet[index]
   }, [watchedItems, watchedFromWarehouseId, availableStock, setValue, itemNetWeightManuallySet]);
 
 

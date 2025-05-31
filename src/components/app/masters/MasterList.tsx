@@ -54,7 +54,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
 
   return (
-    <ScrollArea className="rounded-md border shadow-sm max-h-[500px] min-h-[300px]">
+    <ScrollArea className="rounded-md border shadow-sm"> {/* Removed max-h and min-h */}
       <Table className="min-w-full whitespace-nowrap">
         <TableHeader>
           <TableRow>
@@ -115,4 +115,3 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
     </ScrollArea>
   );
 };
-

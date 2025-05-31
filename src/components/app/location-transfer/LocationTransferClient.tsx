@@ -172,8 +172,10 @@ export function LocationTransferClient() {
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
-    setLocationTransfers(prev => isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev]);
-    toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
+    setLocationTransfers(prev => {
+ console.log("setLocationTransfers called with new array:", prev);
+ return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
+    });    toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
     setTransferToEdit(null);
   };
 
@@ -188,10 +190,10 @@ export function LocationTransferClient() {
     }
   };
 
-  const handleMasterDataUpdate = (type: "Warehouse" | "Transporter", newItem: MasterItem) => {
+  const handleMasterDataUpdate = React.useCallback((type: "Warehouse" | "Transporter", newItem: MasterItem) => {
     if (type === "Warehouse") setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
     else if (type === "Transporter") setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
-  };
+  }, [setWarehouses, setTransporters]); // Add setWarehouses and setTransporters as dependencies
 
   const triggerDownloadTransferPdf = React.useCallback((transfer: LocationTransfer) => {
     setTransferForPdf(transfer);
@@ -325,7 +327,11 @@ export function LocationTransferClient() {
       {isAddFormOpen && (
         <AddLocationTransferForm
           isOpen={isAddFormOpen}
-          onClose={() => { setIsAddFormOpen(false); setTransferToEdit(null); }}
+          onClose={() => {
+ console.log("AddLocationTransferForm onClose called");
+ setIsAddFormOpen(false);
+ setTransferToEdit(null);
+          }}
           onSubmit={handleAddOrUpdateTransfer}
           warehouses={warehouses}
           transporters={transporters}

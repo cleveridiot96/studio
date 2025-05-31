@@ -159,7 +159,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </header>
             {isAppLayoutMounted && <LoadingBar />}
             <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
-              {children}
+ <div className="flex flex-col flex-1 w-full">{children}</div>
             </SidebarInset>
           </div>
         </div>

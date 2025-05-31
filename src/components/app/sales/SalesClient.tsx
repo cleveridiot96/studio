@@ -45,6 +45,9 @@ export function SalesClient() {
   const [saleForPdf, setSaleForPdf] = React.useState<Sale | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
 
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10); // You can adjust this value
+
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
@@ -62,17 +65,36 @@ export function SalesClient() {
     return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
   }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
 
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSales = React.useMemo(() => {
+    return filteredSales.slice(startIndex, endIndex);
+  }, [filteredSales, startIndex, endIndex]);
+
+  const totalPages = React.useMemo(() => {
+    return Math.ceil(filteredSales.length / itemsPerPage);
+  }, [filteredSales, itemsPerPage]);
+
+  const goToPage = React.useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  const nextPage = React.useCallback(() => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  }, [totalPages]);
+
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
-    setSales(prevSales => {
-      const isEditing = prevSales.some(s => s.id === sale.id);
-      toast({
-        title: "Success!",
-        description: isEditing ? "Sale updated successfully." : "Sale added successfully."
-      });
+    const isEditing = sales.some(s => s.id === sale.id);
+    setSales(prevSales => { // Use prevSales here for correct state update
       return isEditing
         ? prevSales.map(s => s.id === sale.id ? sale : s)
         : [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
     });
+    toast({
+ title: "Success!",
+ description: isEditing ? "Sale updated successfully." : "Sale added successfully."
+ });
+    })
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
   }, [setSales, toast]);
@@ -85,6 +107,10 @@ export function SalesClient() {
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => {
     setSaleToDeleteId(saleId);
     setShowDeleteConfirm(true);
+  }, []);
+
+  const prevPage = React.useCallback(() => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
   }, []);
 
   const confirmDeleteSale = React.useCallback(() => {
@@ -182,7 +208,13 @@ export function SalesClient() {
       </div>
 
       <SaleTable 
-        data={filteredSales} 
+        data={paginatedSales}
+        currentPage={currentPage}
+        itemsPerPage={itemsPerPage}
+        totalPages={totalPages}
+        goToPage={goToPage}
+        nextPage={nextPage}
+        prevPage={prevPage}
         onEdit={handleEditSale} 
         onDelete={handleDeleteSaleAttempt}
         onDownloadPdf={triggerDownloadSalePdf} 
