@@ -4,15 +4,15 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  ClipboardList, // Changed from TrendingDown
+  ClipboardList, 
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
   BookUser,
   Users2,
   DatabaseBackup,
-  Tractor, // App icon
-  ArrowRightLeft, // For Location Transfer
+  Tractor, 
+  ArrowRightLeft, 
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -24,72 +24,72 @@ export const navItems: NavItem[] = [
     title: 'Dashboard',
     href: '/dashboard',
     iconName: 'LayoutGrid',
-    iconColor: 'text-blue-500',
+    iconColor: 'text-indigo-500', // A distinct color for Dashboard/Home
   },
   {
     title: 'Purchases',
     href: '/purchases',
     iconName: 'ShoppingCart',
-    iconColor: 'text-green-500',
+    iconColor: 'text-purple-600', // Matches dashboard tile
   },
   {
     title: 'Sales',
     href: '/sales',
     iconName: 'Receipt',
-    iconColor: 'text-red-500',
+    iconColor: 'text-blue-600', // Matches dashboard tile
   },
   {
     title: 'Inventory',
     href: '/inventory',
     iconName: 'Boxes',
-    iconColor: 'text-purple-500',
+    iconColor: 'text-teal-600', // Matches dashboard tile
   },
   {
     title: 'Stock Report',
     href: '/stock-report',
-    iconName: 'ClipboardList', // Changed icon
-    iconColor: 'text-yellow-600', // Darker yellow for better visibility
+    iconName: 'ClipboardList', 
+    iconColor: 'text-orange-600', // Matches dashboard tile
   },
   {
     title: 'Payments',
     href: '/payments',
     iconName: 'ArrowRightCircle',
-    iconColor: 'text-pink-500',
+    iconColor: 'text-red-600', // Matches dashboard tile
   },
   {
     title: 'Receipts',
     href: '/receipts',
     iconName: 'ArrowLeftCircle',
-    iconColor: 'text-teal-500',
+    iconColor: 'text-green-600', // Matches dashboard tile (assuming the green for receipts)
   },
   {
     title: 'Cash Book',
     href: '/cashbook',
     iconName: 'BookOpen',
-    iconColor: 'text-orange-500',
+    iconColor: 'text-pink-600', // Matches dashboard tile
   },
   {
     title: 'Ledger',
     href: '/ledger',
     iconName: 'BookUser',
-    iconColor: 'text-indigo-500',
+    iconColor: 'text-gray-700', // Matches dashboard tile
   },
   {
     title: 'Masters',
     href: '/masters',
     iconName: 'Users2',
-    iconColor: 'text-cyan-500',
+    iconColor: 'text-sky-600', // Matches dashboard tile
   },
   {
     title: 'Location Transfer',
     href: '/location-transfer',
     iconName: 'ArrowRightLeft',
-    iconColor: 'text-lime-500',
+    iconColor: 'text-cyan-600', // Matches dashboard tile
   },
   {
     title: 'Backup/Restore',
     href: '/backup',
     iconName: 'DatabaseBackup',
-    iconColor: 'text-gray-500',
+    iconColor: 'text-sky-500', // Matches dashboard "Backup Data" tile
   },
 ];

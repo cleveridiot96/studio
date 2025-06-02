@@ -12,17 +12,17 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  FileText, // Kept for DashboardTile compatibility, though Stock Report nav item changes
+  FileText, 
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
   BookUser,
   Users2,
   DatabaseBackup,
-  TrendingDown, // Kept if used elsewhere, or if previous icon for Stock Report on dashboard
-  HelpCircle as FallbackIcon, // Default/fallback icon
+  TrendingDown, 
+  HelpCircle as FallbackIcon, 
   ArrowRightLeft,
-  ClipboardList, // Added new icon for Stock Report in sidebar
+  ClipboardList, 
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -41,7 +41,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   DatabaseBackup,
   TrendingDown,
   ArrowRightLeft,
-  ClipboardList, // Mapped the new icon
+  ClipboardList, 
 };
 
 interface ClientSidebarMenuProps {
@@ -64,23 +64,23 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 isActive={isActive}
                 tooltip={item.title}
                 className={cn(
-                  "w-full justify-start text-base py-3 h-auto group", // Increased font size and padding, allow height to adjust
-                  "transition-all duration-200 ease-in-out", // Smooth transitions
+                  "w-full justify-start text-base py-3 h-auto group", 
+                  "transition-all duration-200 ease-in-out", 
                   isActive
-                    ? "rounded-full bg-primary px-4 py-2 shadow-md hover:scale-105" // Active styles with pop-up effect
+                    ? "rounded-full bg-primary px-4 py-2 shadow-md hover:scale-105" 
                     : ""
                 )}
               >
                 <IconComponent className={cn(
-                  "h-5 w-5 mr-3 shrink-0",
+                  "h-6 w-6 mr-3 shrink-0", // Increased icon size to h-6 w-6
                   isActive
-                    ? "text-primary-foreground" // Active: use primary foreground for contrast on primary background
-                    : item.iconColor || "text-sidebar-foreground group-hover:text-sidebar-accent-foreground" // Not active: use defined iconColor, or fallback
+                    ? "text-primary-foreground" 
+                    : item.iconColor || "text-sidebar-foreground group-hover:text-sidebar-accent-foreground" 
                 )} />
                 <span className={cn(
                   "text-sidebar-foreground group-data-[state=collapsed]:hidden",
                   isActive
-                    ? "text-primary-foreground font-semibold" // Text color and weight for active state
+                    ? "text-primary-foreground font-semibold" 
                     : "group-hover:text-sidebar-accent-foreground"
                 )}
                 >
