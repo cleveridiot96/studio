@@ -12,17 +12,18 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  FileText, 
+  FileText,
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
   BookUser,
   Users2,
   DatabaseBackup,
-  TrendingDown, 
-  HelpCircle as FallbackIcon, 
+  TrendingDown,
+  HelpCircle as FallbackIcon,
   ArrowRightLeft,
-  ClipboardList, 
+  ClipboardList,
+  Rocket,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -41,7 +42,8 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   DatabaseBackup,
   TrendingDown,
   ArrowRightLeft,
-  ClipboardList, 
+  ClipboardList,
+  Rocket,
 };
 
 interface ClientSidebarMenuProps {
@@ -64,24 +66,29 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 isActive={isActive}
                 tooltip={item.title}
                 className={cn(
-                  "w-full justify-start text-base py-3 h-auto group", 
-                  "transition-all duration-200 ease-in-out", 
+                  "w-full justify-start text-base py-3 h-auto group items-center", // Ensure items-center
+                  "transition-all duration-200 ease-in-out",
                   isActive
-                    ? "rounded-full bg-primary px-4 py-2 shadow-md hover:scale-105" 
-                    : ""
+                    ? "rounded-full bg-primary px-4 py-2 shadow-md hover:scale-105"
+                    : "hover:bg-sidebar-accent/50" // More subtle hover for inactive
                 )}
               >
-                <IconComponent className={cn(
-                  "h-6 w-6 mr-3 shrink-0", // Increased icon size to h-6 w-6
-                  isActive
-                    ? "text-primary-foreground" 
-                    : item.iconColor || "text-sidebar-foreground group-hover:text-sidebar-accent-foreground" 
-                )} />
+                <div className={cn(
+                  "flex items-center justify-center h-8 w-8 rounded-full mr-3 shrink-0",
+                  isActive ? "bg-primary-foreground" : item.iconColor || "bg-sidebar-accent"
+                )}>
+                  <IconComponent className={cn(
+                    "h-5 w-5", // Icon size adjusted for circular background
+                    isActive
+                      ? "text-primary" // Icon color on active background
+                      : "text-white" // Default icon color on colored circle
+                  )} />
+                </div>
                 <span className={cn(
-                  "text-sidebar-foreground group-data-[state=collapsed]:hidden",
+                  "group-data-[state=collapsed]:hidden",
                   isActive
-                    ? "text-primary-foreground font-semibold" 
-                    : "group-hover:text-sidebar-accent-foreground"
+                    ? "text-primary-foreground font-semibold"
+                    : "text-slate-50 group-hover:text-sidebar-accent-foreground" // Brighter text for inactive
                 )}
                 >
                   {item.title}
