@@ -48,6 +48,38 @@ const rawInitialPurchases: (Omit<Purchase, 'id' | 'totalAmount' | 'effectiveRate
 ];
 const initialPurchasesData: Purchase[] = rawInitialPurchases.map(p => calculatePurchaseEntry({ ...p, id: p.id || `purchase-${Date.now()}-${Math.random()}`}));
 
+const initialPurchaseReturnsData: PurchaseReturn[] = [
+    {
+        id: "pr-fy2526-1",
+        date: "2025-05-20",
+        originalPurchaseId: "purchase-fy2526-1",
+        originalLotNumber: "BU/5",
+        originalSupplierId: "supp-anand",
+        originalSupplierName: "Anand Agro Products",
+        originalPurchaseRate: 300,
+        quantityReturned: 1,
+        netWeightReturned: 50,
+        returnAmount: 1 * 50 * 300, // Assuming 1 bag is 50kg; this is simplified. Rate * weight is more accurate.
+        returnReason: "Damaged bags",
+        notes: "Partial return due to damage."
+    },
+    {
+        id: "pr-fy2526-2",
+        date: "2025-06-20",
+        originalPurchaseId: "purchase-fy2526-2",
+        originalLotNumber: "FY2526-LOT-B/50",
+        originalSupplierId: "supp-meena",
+        originalSupplierName: "Meena Farms",
+        originalPurchaseRate: 25,
+        quantityReturned: 5,
+        netWeightReturned: 250, // 5 bags * 50kg/bag (assuming)
+        returnAmount: 250 * 25,
+        returnReason: "Quality issue",
+        notes: "Returned 5 bags due to poor quality.",
+    }
+];
+
+
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
@@ -61,11 +93,11 @@ export function PurchasesClient() {
   const { financialYear, isAppHydrating } = useSettings();
 
   const memoizedInitialPurchases = React.useMemo(() => initialPurchasesData, []);
-  const memoizedEmptyReturns = React.useMemo(() => [], []);
+  const memoizedInitialPurchaseReturns = React.useMemo(() => initialPurchaseReturnsData, []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
 
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
-  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyReturns);
+  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedInitialPurchaseReturns);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
@@ -253,4 +285,6 @@ export function PurchasesClient() {
     </div>
   );
 }
+    
 
+    
