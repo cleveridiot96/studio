@@ -78,7 +78,7 @@ export function FinancialYearToggle() {
     <div className="flex items-center">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-[140px] text-sm font-semibold">
+          <Button variant="outline" className="px-3 text-sm font-semibold whitespace-nowrap">
             {buttonText}
           </Button>
         </DropdownMenuTrigger>

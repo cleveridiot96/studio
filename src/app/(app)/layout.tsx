@@ -152,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Menu className="h-7 w-7 text-foreground" />
                 </SidebarTrigger>
               </div>
-              <div className="flex items-center gap-2 flex-1 justify-center"> {/* Flex-1 and justify-center for SearchBar */}
+              <div className="flex items-center gap-2 flex-1 justify-center min-w-0"> {/* Flex-1 and justify-center for SearchBar, added min-w-0 */}
                 {isAppLayoutMounted && <AppHeaderContent />}
               </div>
             </header>

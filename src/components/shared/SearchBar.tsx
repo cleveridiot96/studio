@@ -56,7 +56,7 @@ const SearchBar = () => {
   };
 
   return (
-    <div className="relative w-full max-w-md" ref={searchContainerRef}>
+    <div className="relative w-full max-w-xs sm:max-w-sm md:max-w-md flex-shrink min-w-0" ref={searchContainerRef}>
       <Command className="overflow-visible bg-transparent">
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
