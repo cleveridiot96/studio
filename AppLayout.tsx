@@ -1,3 +1,4 @@
+
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
@@ -13,6 +14,7 @@ import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
+import ErrorBoundary from "@/components/ErrorBoundary"; // Import ErrorBoundary
 import React, { useEffect } from "react";
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
@@ -159,7 +161,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </header>
             {isAppLayoutMounted && <LoadingBar />}
             <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
- <div className="flex flex-col flex-1 w-full">{children}</div>
+              <ErrorBoundary>
+                <div className="flex flex-col flex-1 w-full">{children}</div>
+              </ErrorBoundary>
             </SidebarInset>
           </div>
         </div>
