@@ -71,6 +71,39 @@ export interface Sale {
   calculatedProfit?: number;
 }
 
+export interface PurchaseReturn {
+  id: string;
+  date: string; // ISO string date
+  originalPurchaseId: string;
+  originalLotNumber: string;
+  originalSupplierId: string;
+  originalSupplierName?: string;
+  quantityReturned: number;
+  netWeightReturned: number;
+  returnReason?: string;
+  notes?: string;
+  returnAmount: number; // Calculated based on original purchase rate
+  originalPurchaseRate: number; // Store for reference
+}
+
+export interface SaleReturn {
+  id: string;
+  date: string; // ISO string date
+  originalSaleId: string;
+  originalBillNumber?: string;
+  originalCustomerId: string;
+  originalCustomerName?: string;
+  originalLotNumber: string;
+  quantityReturned: number;
+  netWeightReturned: number;
+  returnReason?: string;
+  notes?: string;
+  returnAmount: number; // Calculated based on original sale rate
+  originalSaleRate: number; // Store for reference
+  restockingFee?: number; // Optional
+}
+
+
 export interface InventoryItem {
   id: string; // Corresponds to Purchase lotNumber (Vakkal)
   vakkalNumber: string; // Lot Number
