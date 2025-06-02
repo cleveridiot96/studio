@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear } from "@/lib/utils";
+import { isDateInFinancialYear, cn } from "@/lib/utils";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; // New
@@ -26,6 +26,8 @@ const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; // New
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+
+const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
 interface StockReportItem {
   lotNumber: string;
@@ -39,10 +41,10 @@ interface StockReportItem {
   soldBags: number;
   soldWeight: number;
   soldValue: number;
-  purchaseReturnedBags: number; // New
-  purchaseReturnedWeight: number; // New
-  saleReturnedBags: number; // New
-  saleReturnedWeight: number; // New
+  purchaseReturnedBags: number; 
+  purchaseReturnedWeight: number; 
+  saleReturnedBags: number; 
+  saleReturnedWeight: number; 
   transferredOutBags: number;
   transferredOutWeight: number;
   transferredInBags: number;
@@ -52,6 +54,7 @@ interface StockReportItem {
   avgSaleRate?: number;
   daysInStock?: number;
   turnoverRate?: number;
+  isDeadStock?: boolean; // New property
 }
 
 export function StockReportClient() {
@@ -59,9 +62,9 @@ export function StockReportClient() {
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
 
@@ -180,6 +183,7 @@ export function StockReportClient() {
       if (item.purchaseDate) item.daysInStock = Math.floor((new Date().getTime() - parseISO(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
       const totalInitialBags = item.purchaseBags + item.transferredInBags;
       item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
+      item.isDeadStock = item.remainingBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
       if (item.purchaseBags > 0 || item.transferredInBags > 0 || item.soldBags > 0 || item.transferredOutBags > 0 || item.purchaseReturnedBags > 0 || item.saleReturnedBags > 0) {
          result.push(item);
       }
@@ -212,14 +216,23 @@ export function StockReportClient() {
             {processedReportData.map((item) => {
                 const netInBags = item.purchaseBags + item.transferredInBags + item.saleReturnedBags;
                 const netOutBags = item.soldBags + item.transferredOutBags + item.purchaseReturnedBags;
-                return (<TableRow key={`${item.lotNumber}-${item.locationId}`}>
+                return (<TableRow key={`${item.lotNumber}-${item.locationId}`} className={cn(
+                  item.isDeadStock && "bg-destructive text-destructive-foreground"
+                )}>
                     <TableCell className="font-semibold">{item.lotNumber}</TableCell><TableCell>{item.locationName}</TableCell>
                     <TableCell>{item.purchaseDate ? format(parseISO(item.purchaseDate), "dd-MM-yy") : 'N/A'}</TableCell>
                     <TableCell className="text-right text-green-600">{netInBags.toLocaleString()}</TableCell>
                     <TableCell className="text-right text-red-600">{netOutBags.toLocaleString()}</TableCell>
                     <TableCell className="text-right font-bold">{item.remainingBags.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{item.remainingWeight.toLocaleString(undefined,{minFrac:0,maxFrac:0})}</TableCell>
-                    <TableCell className="text-center">{item.remainingBags <= 0 ? (<Badge variant="destructive">Zero</Badge>):item.remainingBags <=5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600">Low</Badge>):(item.turnoverRate||0)>=75?(<Badge className="bg-green-500">Fast</Badge>):(item.daysInStock||0)>90&&(item.turnoverRate||0)<25?(<Badge className="bg-orange-500">Slow</Badge>):(<Badge variant="secondary">Stock</Badge>)}</TableCell>
+                    <TableCell className="text-right">{item.remainingWeight.toLocaleString(undefined,{minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>
+                    <TableCell className="text-center">
+                      {item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
+                      item.remainingBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) :
+                      item.remainingBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100">Low Stock</Badge>) :
+                      (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast</Badge>) :
+                      (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1"/> Slow</Badge>) :
+                      (<Badge variant="secondary">In Stock</Badge>)}
+                    </TableCell>
                 </TableRow>);
             })}
             </TableBody></Table>
@@ -228,3 +241,6 @@ export function StockReportClient() {
     </div>
   );
 }
+
+
+    

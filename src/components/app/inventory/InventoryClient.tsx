@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear } from "@/lib/utils";
+import { isDateInFinancialYear, cn } from "@/lib/utils";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; // New Key
@@ -32,6 +32,8 @@ const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; // New Key
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+
+const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
 interface AggregatedInventoryItem {
   lotNumber: string;
@@ -41,10 +43,10 @@ interface AggregatedInventoryItem {
   totalPurchasedWeight: number;
   totalSoldBags: number;
   totalSoldWeight: number;
-  totalPurchaseReturnedBags: number; // New
-  totalPurchaseReturnedWeight: number; // New
-  totalSaleReturnedBags: number; // New
-  totalSaleReturnedWeight: number; // New
+  totalPurchaseReturnedBags: number; 
+  totalPurchaseReturnedWeight: number; 
+  totalSaleReturnedBags: number; 
+  totalSaleReturnedWeight: number; 
   totalTransferredOutBags: number;
   totalTransferredOutWeight: number;
   totalTransferredInBags: number;
@@ -55,6 +57,7 @@ interface AggregatedInventoryItem {
   purchaseRate?: number;
   daysInStock?: number;
   turnoverRate?: number;
+  isDeadStock?: boolean; // New property
 }
 
 export function InventoryClient() {
@@ -64,9 +67,9 @@ export function InventoryClient() {
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New State
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New State
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
 
@@ -94,8 +97,8 @@ export function InventoryClient() {
           locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
           totalPurchasedBags: 0, totalPurchasedWeight: 0,
           totalSoldBags: 0, totalSoldWeight: 0,
-          totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, // Init
-          totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0, // Init
+          totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, 
+          totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0, 
           totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
           totalTransferredInBags: 0, totalTransferredInWeight: 0,
           currentBags: 0, currentWeight: 0,
@@ -197,6 +200,7 @@ export function InventoryClient() {
       }
       const totalInitialBagsForTurnover = item.totalPurchasedBags + item.totalTransferredInBags;
       item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
+      item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
 
       if (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0 || item.totalSaleReturnedBags > 0) {
         result.push(item);
@@ -210,10 +214,10 @@ export function InventoryClient() {
     const newNotified = new Set(notifiedLowStock);
     aggregatedInventory.forEach(item => {
       const itemKey = `${item.lotNumber}-${item.locationId}`;
-      if (item.currentBags <= 5 && item.currentBags > 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey)) {
+      if (item.currentBags <= 5 && item.currentBags > 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey) && !item.isDeadStock) {
         toast({ title: "Low Stock Alert", description: `Lot "${item.lotNumber}" at ${item.locationName} has ${item.currentBags} bags.`, variant: "default", duration: 7000 });
         newNotified.add(itemKey);
-      } else if (item.currentBags <= 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey + "-zero")) {
+      } else if (item.currentBags <= 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey + "-zero") && !item.isDeadStock) {
          toast({ title: "Zero Stock", description: `Lot "${item.lotNumber}" at ${item.locationName} is out of stock.`, variant: "default", duration: 7000 });
         newNotified.add(itemKey + "-zero");
       }
@@ -276,13 +280,26 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
     <ScrollArea className="h-[400px] rounded-md border print:h-auto print:overflow-visible">
       <Table><TableHeader><TableRow><TableHead>Vakkal/Lot</TableHead><TableHead>Location</TableHead><TableHead className="text-right">Current Bags</TableHead><TableHead className="text-right">Current Wt (kg)</TableHead><TableHead>Last Purch.</TableHead><TableHead className="text-right">Last Rate (₹/kg)</TableHead><TableHead className="text-center">Status</TableHead><TableHead className="text-center no-print">Actions</TableHead></TableRow></TableHeader>
         <TableBody>
-          {items.map((item) => (<TableRow key={`${item.lotNumber}-${item.locationId}`} className={item.currentBags <= 0 ? "bg-red-50 dark:bg-red-900/30" : item.currentBags <= 5 ? "bg-yellow-50 dark:bg-yellow-900/30" : ""}>
+          {items.map((item) => (<TableRow key={`${item.lotNumber}-${item.locationId}`} 
+            className={cn(
+              item.isDeadStock && "bg-destructive text-destructive-foreground",
+              !item.isDeadStock && item.currentBags <= 0 && "bg-red-50 dark:bg-red-900/30",
+              !item.isDeadStock && item.currentBags > 0 && item.currentBags <= 5 && "bg-yellow-50 dark:bg-yellow-900/30"
+            )}
+          >
             <TableCell>{item.lotNumber}</TableCell><TableCell>{item.locationName}</TableCell>
             <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
             <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>
             <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
             <TableCell className="text-right">{item.purchaseRate ? item.purchaseRate.toFixed(2) : 'N/A'}</TableCell>
-            <TableCell className="text-center">{item.currentBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) : item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100">Low Stock</Badge>) : (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast</Badge>) : (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1"/> Slow</Badge>) : (<Badge variant="secondary">In Stock</Badge>)}</TableCell>
+            <TableCell className="text-center">
+              {item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
+              item.currentBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) :
+              item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100">Low Stock</Badge>) :
+              (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast</Badge>) :
+              (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1"/> Slow</Badge>) :
+              (<Badge variant="secondary">In Stock</Badge>)}
+            </TableCell>
             <TableCell className="text-center no-print">{item.currentBags <= 0 && (<Button variant="outline" size="sm" onClick={() => onArchive(item)} title="Archive lot"><Archive className="h-4 w-4 mr-1" /> Archive</Button>)}</TableCell>
           </TableRow>))}
         </TableBody>
@@ -290,3 +307,6 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => 
     </ScrollArea>
   );
 };
+
+
+    
