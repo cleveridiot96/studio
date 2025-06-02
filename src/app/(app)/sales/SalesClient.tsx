@@ -5,11 +5,11 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn } from "@/lib/types";
-import { SaleTable } from "@/components/app/sales/SaleTable";
-import { AddSaleForm } from "@/components/app/sales/AddSaleForm";
-import { SaleChittiPrint } from "@/components/app/sales/SaleChittiPrint";
-import { AddSaleReturnForm } from "@/components/app/sales/AddSaleReturnForm";
-import { SaleReturnTable } from "@/components/app/sales/SaleReturnTable";
+import { SaleTable } from "./SaleTable";
+import { AddSaleForm } from "./AddSaleForm";
+import { SaleChittiPrint } from "./SaleChittiPrint";
+import { AddSaleReturnForm } from "./AddSaleReturnForm";
+import { SaleReturnTable } from "./SaleReturnTable";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -163,14 +163,19 @@ export function SalesClient() {
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
+        <h1 className="text-3xl font-bold text-foreground">Sales & Returns (FY {financialYear})</h1>
+      </div>
+      
       <Tabs defaultValue="sales" className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
-          <h1 className="text-3xl font-bold text-foreground">Sales & Returns (FY {financialYear})</h1>
-          <TabsList className="grid w-full md:w-auto grid-cols-2">
-            <TabsTrigger value="sales"><ListCollapse className="mr-2 h-4 w-4" />Sales</TabsTrigger>
-            <TabsTrigger value="saleReturns"><RotateCcw className="mr-2 h-4 w-4" />Sale Returns</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print">
+          <TabsTrigger value="sales" className="py-2.5 text-base">
+            <ListCollapse className="mr-2 h-5 w-5" />Sales
+          </TabsTrigger>
+          <TabsTrigger value="saleReturns" className="py-2.5 text-base">
+            <RotateCcw className="mr-2 h-5 w-5" />Sale Returns
+          </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="sales">
           <div className="flex justify-end gap-2 mb-4 no-print">

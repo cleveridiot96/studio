@@ -5,11 +5,11 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn } from "@/lib/types";
-import { PurchaseTable } from "@/components/app/purchases/PurchaseTable";
-import { AddPurchaseForm } from "@/components/app/purchases/AddPurchaseForm";
-import { PurchaseChittiPrint } from "@/components/app/purchases/PurchaseChittiPrint";
-import { AddPurchaseReturnForm } from "@/components/app/purchases/AddPurchaseReturnForm";
-import { PurchaseReturnTable } from "@/components/app/purchases/PurchaseReturnTable";
+import { PurchaseTable } from "./PurchaseTable";
+import { AddPurchaseForm } from "./AddPurchaseForm";
+import { PurchaseChittiPrint } from "./PurchaseChittiPrint";
+import { AddPurchaseReturnForm } from "./AddPurchaseReturnForm";
+import { PurchaseReturnTable } from "./PurchaseReturnTable";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -186,14 +186,19 @@ export function PurchasesClient() {
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
+        <h1 className="text-3xl font-bold text-foreground">Purchases & Returns (FY {financialYear})</h1>
+      </div>
+
       <Tabs defaultValue="purchases" className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
-          <h1 className="text-3xl font-bold text-foreground">Purchases & Returns (FY {financialYear})</h1>
-          <TabsList className="grid w-full md:w-auto grid-cols-2">
-            <TabsTrigger value="purchases"><ListCollapse className="mr-2 h-4 w-4" />Purchases</TabsTrigger>
-            <TabsTrigger value="purchaseReturns"><RotateCcw className="mr-2 h-4 w-4" />Purchase Returns</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print">
+          <TabsTrigger value="purchases" className="py-2.5 text-base">
+            <ListCollapse className="mr-2 h-5 w-5" />Purchases
+          </TabsTrigger>
+          <TabsTrigger value="purchaseReturns" className="py-2.5 text-base">
+            <RotateCcw className="mr-2 h-5 w-5" />Purchase Returns
+          </TabsTrigger>
+        </TabsList>
 
         <TabsContent value="purchases">
           <div className="flex justify-end gap-2 mb-4 no-print">
