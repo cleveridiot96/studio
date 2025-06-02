@@ -42,13 +42,13 @@
     --chart-5: 158 59% 45%;
 
     /* Sidebar specific colors, can be same as main or distinct */
-    --sidebar-background: 225 47% 10%; /* Deep Navy Blue */
+    --sidebar-background: 215 30% 22%; /* Dark Slate Blue-Gray */
     --sidebar-foreground: 56 88% 90%; /* Light Cream / Off-white */
     --sidebar-primary: 45 100% 50%; /* Saffron / Turmeric yellow for active/hover states */
     --sidebar-primary-foreground: 225 47% 10%; /* Deep Navy for text on saffron */
-    --sidebar-accent: 225 47% 15%; /* Slightly lighter navy for hover backgrounds */
+    --sidebar-accent: 215 30% 27%; /* Lighter Slate Blue-Gray for hover backgrounds */
     --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
-    --sidebar-border: 225 47% 20%;
+    --sidebar-border: 215 30% 30%; /* Lighter Slate Blue-Gray for borders */
     --sidebar-ring: 45 100% 50%;
   }
 
@@ -82,13 +82,14 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    --sidebar-background: 0 0% 8%; /* Darker than main dark bg */
+    /* Dark mode sidebar, keeping it distinct and dark */
+    --sidebar-background: 215 20% 15%; /* Darker Slate Blue-Gray for dark mode */
     --sidebar-foreground: 56 88% 85%;
     --sidebar-primary: 45 100% 55%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 12%;
+    --sidebar-primary-foreground: 215 20% 10%; /* Darker contrast for saffron on dark slate */
+    --sidebar-accent: 215 20% 20%;
     --sidebar-accent-foreground: 45 100% 60%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-border: 215 20% 25%;
     --sidebar-ring: 45 100% 55%;
   }
 }
