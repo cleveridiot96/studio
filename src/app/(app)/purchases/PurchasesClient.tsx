@@ -5,11 +5,11 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn } from "@/lib/types";
-import { PurchaseTable } from "./PurchaseTable";
-import { AddPurchaseForm } from "./AddPurchaseForm";
-import { PurchaseChittiPrint } from "./PurchaseChittiPrint";
-import { AddPurchaseReturnForm } from "./AddPurchaseReturnForm";
-import { PurchaseReturnTable } from "./PurchaseReturnTable";
+import { PurchaseTable } from "@/components/app/purchases/PurchaseTable";
+import { AddPurchaseForm } from "@/components/app/purchases/AddPurchaseForm";
+import { PurchaseChittiPrint } from "@/components/app/purchases/PurchaseChittiPrint";
+import { AddPurchaseReturnForm } from "@/components/app/purchases/AddPurchaseReturnForm";
+import { PurchaseReturnTable } from "@/components/app/purchases/PurchaseReturnTable";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -161,11 +161,11 @@ export function PurchasesClient() {
         const elementToCapture = chittiContainerRef.current?.querySelector('.print-chitti-styles') as HTMLElement;
         if (!elementToCapture) { toast({ title: "PDF Error", description: "Chitti content not ready.", variant: "destructive" }); setPurchaseForPdf(null); return; }
         try {
-          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: elementToCapture.offsetWidth, height: elementToCapture.offsetHeight, logging: false });
+          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false }); // Adjusted height for A5
           const imgData = canvas.toDataURL('image/png');
           const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
           const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = pdf.internal.pageSize.getHeight(); const imgProps = pdf.getImageProperties(imgData);
-          const margin = 5; const contentWidth = pdfWidth - 2 * margin; const contentHeight = pdfHeight - 2 * margin;
+          const margin = 10; const contentWidth = pdfWidth - 2 * margin; const contentHeight = pdfHeight - 2 * margin;
           const ratio = imgProps.width / imgProps.height; let imgWidth = contentWidth; let imgHeight = imgWidth / ratio;
           if (imgHeight > contentHeight) { imgHeight = contentHeight; imgWidth = imgHeight * ratio; }
           const xOffset = (pdfWidth - imgWidth) / 2; const yOffset = (pdfHeight - imgHeight) / 2;
@@ -248,3 +248,4 @@ export function PurchasesClient() {
     </div>
   );
 }
+

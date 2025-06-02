@@ -18,22 +18,21 @@ import { Eraser } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Define the keys for data stored in localStorage that need to be formatted
-// This should mirror the keys used across the application, especially in backup/restore
 const APP_DATA_STORAGE_KEYS = [
   'purchasesData',
   'salesData',
   'receiptsData',
   'paymentsData',
+  'locationTransfersData', // Added from previous context
+  'purchaseReturnsData', // New
+  'saleReturnsData',     // New
   'masterCustomers',
   'masterSuppliers',
   'masterAgents',
   'masterTransporters',
   'masterWarehouses',
   'masterBrokers',
-  // Settings keys are often kept, but can be included if full reset is desired
-  // 'appFontSize', 
-  // 'appFinancialYear',
-  'lastBackupTimestamp' // Also clear the last backup timestamp
+  'lastBackupTimestamp'
 ];
 
 // Keys for settings that might be preserved or reset differently
@@ -66,7 +65,7 @@ export function FormatButton() {
         }
       });
       
-      // Also backup settings if needed, or handle them separately
+      // Also backup settings
       APP_SETTINGS_STORAGE_KEYS.forEach(key => {
         const item = localStorage.getItem(key);
         if (item !== null) {
@@ -89,8 +88,7 @@ export function FormatButton() {
         localStorage.removeItem(key);
       });
 
-      // Optionally, reset settings keys to defaults or remove them too
-      // For a full format, removing them is typical. Users can set them again.
+      // Wipe settings keys as well for a full format
       APP_SETTINGS_STORAGE_KEYS.forEach(key => {
          localStorage.removeItem(key);
       });
@@ -98,16 +96,15 @@ export function FormatButton() {
 
       toast({
         title: 'Application Data Formatted',
-        description: 'All application data has been wiped. A secret backup was created in localStorage.',
+        description: "All application data has been wiped. A timestamped backup of the previous data has been saved to your browser's local storage. Please reload the application.",
         variant: 'destructive',
-        duration: 5000,
+        duration: 7000, // Increased duration for better visibility
       });
       
       // 4. Reload the application to reflect the cleared state
-      // This ensures components re-initialize with default/empty values
       setTimeout(() => {
         window.location.reload();
-      }, 1500); // Delay reload slightly to allow toast to be seen
+      }, 2000); // Delay reload slightly to allow toast to be seen
 
     } catch (error) {
       console.error("Formatting failed:", error);
@@ -133,7 +130,7 @@ export function FormatButton() {
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action will permanently wipe all application data (purchases, sales, masters, receipts, payments etc.) from this browser.
+            This action will permanently wipe all application data (purchases, sales, masters, receipts, payments, returns, transfers etc.) and settings from this browser.
             A secret backup of the current data will be created in localStorage. This cannot be undone easily.
           </AlertDialogDescription>
         </AlertDialogHeader>

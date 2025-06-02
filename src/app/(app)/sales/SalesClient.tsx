@@ -5,11 +5,11 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
 import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn } from "@/lib/types";
-import { SaleTable } from "./SaleTable";
-import { AddSaleForm } from "./AddSaleForm";
-import { SaleChittiPrint } from "./SaleChittiPrint";
-import { AddSaleReturnForm } from "./AddSaleReturnForm";
-import { SaleReturnTable } from "./SaleReturnTable";
+import { SaleTable } from "@/components/app/sales/SaleTable";
+import { AddSaleForm } from "@/components/app/sales/AddSaleForm";
+import { SaleChittiPrint } from "@/components/app/sales/SaleChittiPrint";
+import { AddSaleReturnForm } from "@/components/app/sales/AddSaleReturnForm";
+import { SaleReturnTable } from "@/components/app/sales/SaleReturnTable";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -212,3 +212,4 @@ export function SalesClient() {
     </div>
   );
 }
+
