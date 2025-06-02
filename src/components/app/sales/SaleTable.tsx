@@ -132,17 +132,17 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       {totalPages > 1 && (
-        <div className=\"flex items-center justify-end space-x-2 py-4\">
+        <div className="flex items-center justify-end space-x-2 py-4">
           <Button
-            variant=\"outline\"
-            size=\"sm\"
+            variant="outline"
+            size="sm"
             onClick={prevPage}
             disabled={currentPage === 1}
           >
             Previous
           </Button>
-          <span className=\"text-sm font-medium\">Page {currentPage} of {totalPages}</span>
-          <Button variant=\"outline\" size=\"sm\" onClick={nextPage} disabled={currentPage === totalPages}>Next</Button>
+          <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+          <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>Next</Button>
         </div>
       )}
     </TooltipProvider>
