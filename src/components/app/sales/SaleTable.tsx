@@ -22,7 +22,7 @@ import { MoreVertical, Pencil, Trash2, Printer, Download } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Corrected import
 
 interface SaleTableProps {
   data: Sale[];
