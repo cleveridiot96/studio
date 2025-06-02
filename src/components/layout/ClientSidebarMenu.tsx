@@ -72,10 +72,10 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 )}
               >
                 <IconComponent className={cn(
- "h-5 w-5 mr-3 shrink-0",
+                  "h-5 w-5 mr-3 shrink-0",
                   isActive
-                    ? "text-primary-foreground" // Icon color for active state
-                    : "text-sidebar-foreground group-hover:text-sidebar-accent-foreground"
+                    ? "text-primary-foreground" // Active: use primary foreground for contrast on primary background
+                    : item.iconColor || "text-sidebar-foreground group-hover:text-sidebar-accent-foreground" // Not active: use defined iconColor, or fallback
                 )} />
                 <span className={cn(
                   "text-sidebar-foreground group-data-[state=collapsed]:hidden",

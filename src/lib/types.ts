@@ -5,6 +5,7 @@ export interface NavItem {
   title: string;
   href: string;
   iconName: string;
+  iconColor?: string; // Added for individual icon colors
   label?: string;
   disabled?: boolean;
   external?: boolean;
@@ -232,3 +233,4 @@ export interface MonthlyProfitInfo {
   totalSalesValue: number;
   totalCostOfGoods: number;
 }
+
