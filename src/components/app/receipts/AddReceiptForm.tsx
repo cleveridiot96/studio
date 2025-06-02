@@ -49,7 +49,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  parties, // Should be filtered to Customers and Brokers by parent
+  parties, 
   onMasterDataUpdate,
   receiptToEdit
 }) => {
@@ -133,7 +133,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       paymentMethod: values.paymentMethod,
       referenceNo: values.referenceNo,
       notes: values.notes,
-      cashDiscount: values.cashDiscount || 0, // Ensure cashDiscount is a number
+      cashDiscount: values.cashDiscount || 0,
       relatedSaleIds: values.relatedSaleIds || [],
     };
     onSubmit(receiptData);
@@ -189,7 +189,6 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                     <FormItem>
                       <FormLabel>Party (Customer/Broker)</FormLabel>
                       <MasterDataCombobox
-                        name={field.name} 
                         value={field.value}
                         onChange={field.onChange}
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
@@ -262,7 +261,6 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                     </FormItem>
                   )}
                 />
-                {/* TODO: Add a multi-select for relatedSaleIds in a future iteration */}
                 <FormField
                   control={methods.control}
                   name="notes"

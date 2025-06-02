@@ -44,13 +44,12 @@ interface AddSaleFormProps {
   customers: Customer[];
   transporters: Transporter[];
   brokers: Broker[];
-  inventoryLots: Purchase[]; // These are Purchase[] items
+  inventoryLots: Purchase[]; 
   existingSales: Sale[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
 }
 
-// TODO: Replace with actual Mumbai warehouse ID obtained from warehouses data
 const MUMBAI_WAREHOUSE_ID = "mumbai-warehouse-id-placeholder"; 
 
 const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
@@ -76,7 +75,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [purchaseRateForLot, setPurchaseRateForLot] = React.useState<number>(0);
   const [lastSoldRate, setLastSoldRate] = React.useState<number | null>(null);
 
-  // Define getDefaultValues BEFORE it's used in useForm
   const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
       return {
@@ -95,7 +93,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         brokerageType: saleToEdit.brokerageType || undefined,
         brokerageValue: saleToEdit.brokerageValue === undefined || saleToEdit.brokerageValue === null ? undefined : saleToEdit.brokerageValue,
         notes: saleToEdit.notes || "",
-        // calculatedBrokerageCommission is not part of form values, it's derived
       };
     }
     return {
@@ -115,7 +112,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerageValue: undefined,
       notes: "",
     };
-  }, [saleToEdit]); // inventoryLots removed as it's used in useEffect for purchaseRateForLot
+  }, [saleToEdit]);
 
   const memoizedDefaultValues = React.useMemo(() => getDefaultValues(), [getDefaultValues]);
 
@@ -125,14 +122,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const methods = useForm<SaleFormValues>({
     resolver: zodResolver(memoizedSaleSchema),
-    defaultValues: memoizedDefaultValues, // Use memoized default values
+    defaultValues: memoizedDefaultValues,
   });
   const { control, watch, reset, setValue, handleSubmit, formState: { errors, dirtyFields } } = methods;
 
 
   React.useEffect(() => {
     if (isOpen) {
-      reset(memoizedDefaultValues); // Use memoized default values for reset
+      reset(memoizedDefaultValues);
       setNetWeightManuallySet(!!saleToEdit?.netWeight);
       setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue);
       if (saleToEdit && saleToEdit.lotNumber) {
@@ -142,14 +139,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         setPurchaseRateForLot(0);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, saleToEdit, reset, memoizedDefaultValues, inventoryLots]);
 
 
   const quantity = watch("quantity");
   const netWeight = watch("netWeight");
   const rate = watch("rate");
-  const billAmountManual = watch("billAmount"); // This is the manual override field
+  const billAmountManual = watch("billAmount"); 
   const cutBill = watch("cutBill");
   const transportCostInput = watch("transportCost") || 0;
   const selectedBrokerId = watch("brokerId");
@@ -168,19 +164,16 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     if (watchedLotNumber) {
       const selectedPurchase = inventoryLots.find(p => p.lotNumber === watchedLotNumber);
       const newPurchaseRate = selectedPurchase?.rate || 0;
-      // Only update state if the purchase rate has actually changed
       if (newPurchaseRate !== purchaseRateForLot) {
- setPurchaseRateForLot(newPurchaseRate);
+        setPurchaseRateForLot(newPurchaseRate);
       }
     } else {
-        // Only update state if purchaseRateForLot is not already 0
         if (purchaseRateForLot !== 0) {
- setPurchaseRateForLot(0);
+          setPurchaseRateForLot(0);
         }
     }
-  }, [watchedLotNumber, inventoryLots, purchaseRateForLot]); // Added purchaseRateForLot to dependencies
+  }, [watchedLotNumber, inventoryLots, purchaseRateForLot]);
 
-  // Effect to find the last sold rate for the selected lot
   React.useEffect(() => {
     if (watchedLotNumber && existingSales && existingSales.length > 0) {
       const salesForThisLot = existingSales.filter(
@@ -188,7 +181,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       );
 
       if (salesForThisLot.length > 0) {
-        // Sort sales by date in descending order to find the most recent
         salesForThisLot.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setLastSoldRate(salesForThisLot[0].rate);
       } else {
@@ -270,11 +262,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const processSubmit = (values: SaleFormValues) => {
     let submissionValues = { ...values };
 
-    // Fallback for netWeight if not manually set and quantity is available
     if (!netWeightManuallySet && submissionValues.quantity > 0 && (!submissionValues.netWeight || submissionValues.netWeight === 0)) {
       submissionValues.netWeight = submissionValues.quantity * 50;
     }
-    const finalNetWeightForSubmit = submissionValues.netWeight; // Use the now potentially updated netWeight
+    const finalNetWeightForSubmit = submissionValues.netWeight;
 
     if (!submissionValues.customerId || !submissionValues.lotNumber) {
         toast({ title: "Missing Info", description: "Customer and Lot Number are required.", variant: "destructive" });
@@ -284,9 +275,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const selectedCustomer = customers.find(c => c.id === submissionValues.customerId);
     const selectedBroker = brokers.find(b => b.id === submissionValues.brokerId);
 
-    // Re-calculate bill amount, brokerage, and profit based on final submission values
     const rateForSubmit = submissionValues.rate;
-    const billAmountManualForSubmit = submissionValues.billAmount; // This is the manual override from form
+    const billAmountManualForSubmit = submissionValues.billAmount;
     const cutBillForSubmit = submissionValues.cutBill;
 
     const calculatedBillAmountForSubmit = finalNetWeightForSubmit * rateForSubmit;
@@ -295,7 +285,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
  ? calculatedBillAmountForSubmit - billAmountManualForSubmit
         : calculatedBillAmountForSubmit;
     
-    const costOfGoodsSoldForSubmit = finalNetWeightForSubmit * purchaseRateForLot; // purchaseRateForLot is from state
+    const costOfGoodsSoldForSubmit = finalNetWeightForSubmit * purchaseRateForLot;
     
     const brokerageTypeForSubmit = submissionValues.brokerageType;
     const brokerageValueForSubmit = submissionValues.brokerageValue;
@@ -326,7 +316,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerageValue: submissionValues.brokerageValue,
       calculatedBrokerageCommission: calculatedBrokerageCommissionForSubmit,
       notes: submissionValues.notes,
-      totalAmount: finalBillAmountToUseForSubmit, // This is the amount the customer is liable for
+      totalAmount: finalBillAmountToUseForSubmit,
       calculatedProfit: calculatedProfitForSubmit,
     };
     onSubmit(saleData);
@@ -338,7 +328,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const availableLotsForDropdown = React.useMemo(() => {
     return inventoryLots
-      .filter(p => p.locationId === MUMBAI_WAREHOUSE_ID) // Only allow sales from Mumbai
+      .filter(p => p.locationId === MUMBAI_WAREHOUSE_ID) 
       .map(p => {
         const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
         const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
@@ -367,7 +357,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           <FormProvider {...methods}>
             <Form {...methods}>
               <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
-                {/* Section: Basic Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -388,7 +377,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)}
                     />
- <FormField control={control} name="billAmount" render={({ field }) => (
+                     <FormField control={control} name="billAmount" render={({ field }) => (
                       <FormItem><FormLabel>Bill Amount (₹, Manual)</FormLabel>
                       <FormControl><Input type="number" step="0.01" placeholder="Overrides auto-calc" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
                       <FormMessage /></FormItem>)}
@@ -397,23 +386,23 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                    <FormField control={control} name="cutBill" render={({ field }) => (
                       <FormItem className="flex flex-row items-center space-x-2 mt-4 pt-4 border-t">
                           <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
- <FormLabel className="font-normal cursor-pointer mt-0!">
- {cutBill ? 'Is this a "Cut Bill"?' : 'Is this a "Cut Bill"?'}
- </FormLabel>
+                            <FormLabel className="font-normal cursor-pointer mt-0!">
+                            {cutBill ? 'Is this a "Cut Bill"?' : 'Is this a "Cut Bill"?'}
+                            </FormLabel>
                           <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
-                {/* Section: Product & Customer */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Product &amp; Customer</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={control} name="lotNumber" render={({ field }) => (
                       <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
                       <MasterDataCombobox
-                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
                         options={availableLotsForDropdown}
                         placeholder="Select Lot"
                         searchPlaceholder="Search lots..."
@@ -424,7 +413,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={control} name="customerId" render={({ field }) => (
                       <FormItem><FormLabel>Customer</FormLabel>
                       <MasterDataCombobox
-                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
                         options={customers.map(c => ({ value: c.id, label: c.name, tooltipContent: `Type: ${c.type}` }))}
                         placeholder="Select Customer"
                         searchPlaceholder="Search customers..."
@@ -467,14 +457,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   </div>
                 </div>
 
-                {/* Section: Transport & Broker */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Transport &amp; Broker (Optional)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
                       <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem><FormLabel>Transporter</FormLabel>
                           <MasterDataCombobox
-                            name={field.name}
+                            value={field.value}
+                            onChange={field.onChange}
                             options={transporters.map(t => ({ value: t.id, label: t.name }))}
                             placeholder="Select Transporter"
                             searchPlaceholder="Search transporters..."
@@ -491,7 +481,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormField control={control} name="brokerId" render={({ field }) => (
                           <FormItem><FormLabel>Broker</FormLabel>
                           <MasterDataCombobox
-                            name={field.name}
+                            value={field.value}
+                            onChange={field.onChange}
                             options={brokers.map(b => ({ value: b.id, label: b.name, tooltipContent: `Commission: ${b.commission || 0}%` }))}
                             placeholder="Select Broker"
                             searchPlaceholder="Search brokers..."
@@ -534,7 +525,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     />
                 </div>
 
-                {/* Calculated Summary */}
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center text-md font-semibold">
@@ -602,6 +592,3 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
-
-
-    

@@ -99,7 +99,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   }, [purchaseToEdit]);
 
   const methods = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, [])), // Pass empty brokers
+    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, [])),
     defaultValues: getDefaultValues(),
   });
   const { control, watch, setValue, handleSubmit: formHandleSubmit, reset, formState: { errors, dirtyFields } } = methods;
@@ -240,7 +240,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
           <FormProvider {...methods}>
             <Form {...methods}> 
               <form onSubmit={formHandleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
-                {/* Section: Basic Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Basic Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -296,7 +295,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <FormItem>
                           <FormLabel>Location (Warehouse)</FormLabel>
                           <MasterDataCombobox
-                            name={field.name}
                             value={field.value}
                             onChange={field.onChange}
                             options={warehouses.filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
@@ -313,7 +311,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
 
-                {/* Section: Supplier Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Supplier &amp; Agent</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -324,7 +321,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <FormItem>
                           <FormLabel>Supplier</FormLabel>
                           <MasterDataCombobox 
-                              name={field.name}
                               value={field.value}
                               onChange={field.onChange}
                               options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
@@ -345,7 +341,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <FormItem>
                           <FormLabel>Agent (Optional)</FormLabel>
                           <MasterDataCombobox 
-                              name={field.name}
                               value={field.value}
                               onChange={field.onChange}
                               options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
@@ -362,7 +357,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
                 
-                {/* Section: Quantity Details */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Quantity &amp; Rate</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -424,7 +418,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
 
-                {/* Section: Expenses & Transport */}
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Transport</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -457,7 +450,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormItem>
                           <FormLabel>Transporter (Optional)</FormLabel>
                           <MasterDataCombobox 
-                              name={field.name}
                               value={field.value}
                               onChange={field.onChange}
                               options={transporters.filter(t => t.type === "Transporter").map(t => ({ value: t.id, label: t.name }))}
@@ -474,7 +466,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
 
-                {/* Calculated Summary */}
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
                       <div className="flex items-center text-md font-semibold">
@@ -528,4 +519,3 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
-

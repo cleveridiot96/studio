@@ -182,7 +182,8 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                     <FormItem>
                       <FormLabel>Party</FormLabel>
                        <MasterDataCombobox
-                        name={field.name}
+                        value={field.value}
+                        onChange={field.onChange}
                         options={parties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                         placeholder="Select Party"
                         searchPlaceholder="Search parties..."

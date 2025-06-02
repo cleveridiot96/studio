@@ -168,7 +168,12 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
               <FormField control={control} name="originalSaleId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Original Sale</FormLabel>
-                  <MasterDataCombobox name={field.name} options={saleOptions} placeholder="Select Original Sale" />
+                  <MasterDataCombobox 
+                    value={field.value} 
+                    onChange={field.onChange} 
+                    options={saleOptions} 
+                    placeholder="Select Original Sale" 
+                  />
                   <FormMessage />
                 </FormItem>)}
               />

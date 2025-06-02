@@ -2,22 +2,26 @@
 "use client";
 
 import * as React from "react";
-import { useController, useFormContext } from "react-hook-form";
+// Removed: import { useController, useFormContext } from "react-hook-form";
 import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import Fuse from 'fuse.js';
+import didYouMean from 'didyoumean2';
+
 
 interface Option {
   value: string;
   label: string;
-  tooltipContent?: React.ReactNode; // Added for tooltip support
+  tooltipContent?: React.ReactNode;
 }
 
 interface MasterDataComboboxProps {
-  name: string;
+  value: string | undefined; // Controlled component: value from parent
+  onChange: (value: string | undefined) => void; // Controlled component: onChange handler from parent
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -25,10 +29,12 @@ interface MasterDataComboboxProps {
   addNewLabel?: string;
   onAddNew?: () => void;
   disabled?: boolean;
+  name?: string; // Optional: for external refs or testing, but not for RHF control here
 }
 
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
-  name,
+  value, // Use prop
+  onChange, // Use prop
   options,
   placeholder = "Select an option",
   searchPlaceholder = "Search...",
@@ -36,23 +42,40 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   addNewLabel = "Add New",
   onAddNew,
   disabled,
+  // name prop is kept if needed for other purposes, but not for useController
 }) => {
-  const { control } = useFormContext(); // Requires <FormProvider> from parent
-  const { field } = useController({ name, control });
-
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
+
+  const fuse = React.useMemo(() => new Fuse(options, {
+    keys: ['label'],
+    threshold: 0.3,
+  }), [options]);
+
+  const didYouMeanSuggest = React.useMemo(() => {
+    if (!search) return null;
+    const suggestions = didYouMean(search, options.map(opt => opt.label), {
+      threshold: 0.6,
+      caseSensitive: false,
+    });
+    return Array.isArray(suggestions) ? suggestions[0] : suggestions;
+  }, [search, options]);
 
   const filteredOptions = React.useMemo(() => {
     if (!search) {
       return options;
     }
-    return options.filter((option) =>
-      option.label.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [options, search]);
+    const fuseResults = fuse.search(search).map(result => result.item);
+    if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
+        const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
+        if (suggestionOption) {
+            return [suggestionOption, ...fuseResults];
+        }
+    }
+    return fuseResults;
+  }, [options, search, fuse, didYouMeanSuggest]);
 
-  const selectedLabel = options.find((opt) => opt.value === field.value)?.label;
+  const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -61,7 +84,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between text-sm", !field.value && "text-muted-foreground")}
+          className={cn("w-full justify-between text-sm", !value && "text-muted-foreground")}
           disabled={disabled}
         >
           <span className="truncate">
@@ -71,8 +94,8 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[99999]"> {/* Increased z-index */}
-        <Command shouldFilter={false} className="max-h-[300px]"> {/* shouldFilter=false as we filter manually */}
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[99999]">
+        <Command shouldFilter={false} className="max-h-[300px]">
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
@@ -80,14 +103,13 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             autoFocus
             />
           <TooltipProvider>
-            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]"> {/* Adjusted for padding */}
+            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
               {filteredOptions.length === 0 && search.length > 0 ? (
                 <CommandEmpty>
                   {notFoundMessage}
                   {onAddNew && (
                     <div
-                      onMouseDown={(e) => { // Using onMouseDown for "Add New" in empty state
-                        e.preventDefault();
+                      onClick={() => {
                         onAddNew?.();
                         setOpen(false);
                         setSearch("");
@@ -104,38 +126,35 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                   {filteredOptions.map((option) => (
                     <Tooltip key={option.value}>
                       <TooltipTrigger asChild>
-                        <div // Using div with onMouseDown for option items
-                          onMouseDown={(e) => {
-                            e.preventDefault(); // Crucial to prevent focus issues
-                            field.onChange(option.value);
+                        <div
+                          onClick={() => {
+                            onChange(option.value); // Use onChange from props
                             setOpen(false);
                             setSearch("");
                           }}
                           className={cn(
-                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full", // ensure full width for click
-                            field.value === option.value && "font-semibold" // bg-accent/30 removed for simplicity, font-semibold is good
+                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full",
+                            value === option.value && "font-semibold" // Use value from props
                           )}
                           role="option"
-                          aria-selected={field.value === option.value}
+                          aria-selected={value === option.value} // Use value from props
                         >
                           <Check
-                            className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
+                            className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")} // Use value from props
                           />
                           <span className="flex-grow truncate" >{option.label}</span>
                         </div>
                       </TooltipTrigger>
                       {option.tooltipContent && (
-                        <TooltipContent side="right" align="start" className="z-[99999]"> {/* Ensure tooltip is on top */}
+                        <TooltipContent side="right" align="start" className="z-[99999]">
                           {option.tooltipContent}
                         </TooltipContent>
                       )}
                     </Tooltip>
                   ))}
-                  {/* "Add New" option consistently available if onAddNew is provided */}
                   {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
-                    <div // Using div with onMouseDown for the "Add New" option at the bottom
-                      onMouseDown={(e) => {
-                        e.preventDefault();
+                    <div
+                       onClick={() => {
                         onAddNew?.();
                         setOpen(false);
                         setSearch("");

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { purchaseReturnSchema, type PurchaseReturnFormValues } from "@/lib/schemas/purchaseReturnSchema";
 import type { Purchase, PurchaseReturn } from "@/lib/types";
-import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox"; // Assuming this can be reused or adapted
+import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
@@ -23,8 +23,8 @@ interface AddPurchaseReturnFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (purchaseReturn: PurchaseReturn) => void;
-  purchases: Purchase[]; // List of all purchases to select from
-  existingPurchaseReturns: PurchaseReturn[]; // To validate against
+  purchases: Purchase[]; 
+  existingPurchaseReturns: PurchaseReturn[]; 
   purchaseReturnToEdit?: PurchaseReturn | null;
 }
 
@@ -86,13 +86,6 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
     if (watchedOriginalPurchaseId) {
       const purchase = purchases.find(p => p.id === watchedOriginalPurchaseId);
       setSelectedOriginalPurchase(purchase || null);
-      if (purchase) {
-        // Auto-fill quantity and weight if not editing, or if they are zero
-        if (!purchaseReturnToEdit || (formMethods.getValues("quantityReturned") === 0 && formMethods.getValues("netWeightReturned") === 0)) {
-            // This auto-fill logic might need to be smarter, e.g., only if user hasn't manually entered.
-            // For now, let's assume user will adjust.
-        }
-      }
     } else {
       setSelectedOriginalPurchase(null);
     }
@@ -101,7 +94,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
   React.useEffect(() => {
     if (selectedOriginalPurchase && watchedQuantityReturned > 0) {
       const avgWeightPerBag = selectedOriginalPurchase.netWeight / selectedOriginalPurchase.quantity;
-      if (!isNaN(avgWeightPerBag) && formMethods.getValues("netWeightReturned") === 0) { // Only auto-fill if netWeight is 0
+      if (!isNaN(avgWeightPerBag) && formMethods.getValues("netWeightReturned") === 0) { 
         setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)));
       }
     }
@@ -169,7 +162,12 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
               <FormField control={control} name="originalPurchaseId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Original Purchase</FormLabel>
-                  <MasterDataCombobox name={field.name} options={purchaseOptions} placeholder="Select Original Purchase" />
+                  <MasterDataCombobox 
+                    value={field.value} 
+                    onChange={field.onChange} 
+                    options={purchaseOptions} 
+                    placeholder="Select Original Purchase" 
+                  />
                   <FormMessage />
                 </FormItem>)}
               />

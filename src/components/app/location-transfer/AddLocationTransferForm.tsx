@@ -50,7 +50,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   onMasterDataUpdate,
   transferToEdit,
 }) => {
-  const { toast } = useToast(); // Move inside component
+  const { toast } = useToast(); 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -61,7 +61,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const getDefaultValues = React.useCallback((): LocationTransferFormValues => {
     if (transferToEdit) {
-      setItemNetWeightManuallySet(transferToEdit.items.map(() => true)); // Assume edited weights are manual
+      setItemNetWeightManuallySet(transferToEdit.items.map(() => true)); 
       return {
           date: new Date(transferToEdit.date),
           fromWarehouseId: transferToEdit.fromWarehouseId,
@@ -99,32 +99,29 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   });
 
   const watchedFromWarehouseId = watch("fromWarehouseId");
-  const watchedItems = watch("items"); // Watch all items for dynamic calculations
+  const watchedItems = watch("items"); 
 
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transferToEdit, reset, isOpen]); // getDefaultValues is memoized by useCallback
+  }, [transferToEdit, reset, isOpen, getDefaultValues]); 
 
 
-  // Auto-calculate netWeightToTransfer for an item when bagsToTransfer changes
   React.useEffect(() => {
     watchedItems.forEach((item, index) => {
       if (item.bagsToTransfer > 0 && (!itemNetWeightManuallySet[index] || !item.netWeightToTransfer)) {
         const stockInfo = availableStock.find(
           s => s.lotNumber === item.lotNumber && s.locationId === watchedFromWarehouseId
         );
-        const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50; // Default if not found
+        const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50; 
         setValue(`items.${index}.netWeightToTransfer`, item.bagsToTransfer * avgWeightPerBag, { shouldValidate: true });
       } else if (item.bagsToTransfer === 0 && item.netWeightToTransfer !== 0) {
-        // If bags are zero, set net weight to zero unless it was manually set
-        if (!isManuallySet) {
+        if (!itemNetWeightManuallySet[index]) {
           setValue(`items.${index}.netWeightToTransfer`, 0, { shouldValidate: true });
         }
       }
-    }); // Missing dependency `isManuallySet` or replace with itemNetWeightManuallySet[index]
+    }); 
   }, [watchedItems, watchedFromWarehouseId, availableStock, setValue, itemNetWeightManuallySet]);
 
 
@@ -151,8 +148,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type as "Warehouse" | "Transporter", newItem);
     if (newItem.type === masterFormItemType) {
-      if (newItem.type === "Warehouse") {
-        // Optionally set a warehouse ID if contextually appropriate
+      if (newItem.type === "Warehouse" && newItem.id === methods.getValues("fromWarehouseId")) {
+         methods.setValue('fromWarehouseId', newItem.id, { shouldValidate: true });
+      } else if (newItem.type === "Warehouse" && newItem.id === methods.getValues("toWarehouseId")) {
+         methods.setValue('toWarehouseId', newItem.id, { shouldValidate: true });
       } else if (newItem.type === "Transporter") {
         methods.setValue('transporterId', newItem.id, { shouldValidate: true });
       }
@@ -178,7 +177,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       transporterId: values.transporterId,
       transporterName: transporter?.name,
       items: values.items.map(item => {
-        // Net weight should already be in item.netWeightToTransfer from the form
         return {
           lotNumber: item.lotNumber,
           bagsToTransfer: item.bagsToTransfer,
@@ -221,19 +219,37 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   />
                   <FormField control={control} name="fromWarehouseId" render={({ field }) => (
                     <FormItem><FormLabel>From Warehouse</FormLabel>
-                      <MasterDataCombobox name={field.name} options={warehouses.map(w => ({ value: w.id, label: w.name }))} placeholder="Select Source" onAddNew={() => handleOpenMasterForm("Warehouse")} />
+                      <MasterDataCombobox 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        options={warehouses.map(w => ({ value: w.id, label: w.name }))} 
+                        placeholder="Select Source" 
+                        onAddNew={() => handleOpenMasterForm("Warehouse")} 
+                      />
                       <FormMessage />
                     </FormItem>)}
                   />
                   <FormField control={control} name="toWarehouseId" render={({ field }) => (
                     <FormItem><FormLabel>To Warehouse</FormLabel>
-                      <MasterDataCombobox name={field.name} options={warehouses.map(w => ({ value: w.id, label: w.name }))} placeholder="Select Destination" onAddNew={() => handleOpenMasterForm("Warehouse")} />
+                      <MasterDataCombobox 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        options={warehouses.map(w => ({ value: w.id, label: w.name }))} 
+                        placeholder="Select Destination" 
+                        onAddNew={() => handleOpenMasterForm("Warehouse")} 
+                      />
                       <FormMessage />
                     </FormItem>)}
                   />
                   <FormField control={control} name="transporterId" render={({ field }) => (
                     <FormItem className="md:col-span-3"><FormLabel>Transporter (Optional)</FormLabel>
-                      <MasterDataCombobox name={field.name} options={transporters.map(t => ({ value: t.id, label: t.name }))} placeholder="Select Transporter" onAddNew={() => handleOpenMasterForm("Transporter")} />
+                      <MasterDataCombobox 
+                        value={field.value} 
+                        onChange={field.onChange} 
+                        options={transporters.map(t => ({ value: t.id, label: t.name }))} 
+                        placeholder="Select Transporter" 
+                        onAddNew={() => handleOpenMasterForm("Transporter")} 
+                      />
                       <FormMessage />
                     </FormItem>)}
                   />
@@ -245,7 +261,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot No.</FormLabel>
-                          <MasterDataCombobox name={itemField.name} options={availableLotsOptions} placeholder="Select Lot" disabled={!watchedFromWarehouseId} />
+                          <MasterDataCombobox 
+                            value={itemField.value} 
+                            onChange={itemField.onChange} 
+                            options={availableLotsOptions} 
+                            placeholder="Select Lot" 
+                            disabled={!watchedFromWarehouseId} 
+                          />
                           <FormMessage />
                         </FormItem>)}
                       />
@@ -261,7 +283,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             }} 
                             onFocus={() => {
                               const currentManuallySet = [...itemNetWeightManuallySet];
-                              currentManuallySet[index] = false; // Allow auto-calc if user re-focuses bags
+                              currentManuallySet[index] = false; 
                               setItemNetWeightManuallySet(currentManuallySet);
                             }}
                             /></FormControl>
