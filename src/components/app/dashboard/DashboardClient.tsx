@@ -21,12 +21,8 @@ const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 
 
-const initialDashboardWarehouses: MasterWarehouse[] = [
-  { id: "wh-mum", name: "Mumbai Central Warehouse", type: "Warehouse" }, { id: "wh-pune", name: "Pune North Godown", type: "Warehouse" },
-  { id: "wh-ngp", name: "Nagpur South Storage", type: "Warehouse" }, { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
-  { id: "wh-chiplun", name: "Chiplun Warehouse", type: "Warehouse" }, { id: "wh-sawantwadi", name: "Sawantwadi Warehouse", type: "Warehouse" },
-  { id: "w1", name: "Mumbai Godown", type: "Warehouse" }, { id: "w2", name: "Chiplun Storage", type: "Warehouse" },
-];
+// Initial data sets - changed to empty arrays for clean slate on format
+const initialDashboardWarehouses: MasterWarehouse[] = [];
 
 interface SummaryData { totalAmount: number; totalBags: number; totalNetWeight: number; }
 interface StockSummary { totalBags: number; totalNetWeight: number; byLocation: Record<string, { name: string; bags: number; netWeight: number }>; }

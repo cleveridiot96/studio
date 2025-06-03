@@ -32,41 +32,13 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 
-// Initial data sets
-const initialCustomers: MasterItem[] = [
-  { id: "c1", name: "Ram Kumar", type: "Customer" },
-  { id: "c2", name: "Sita Devi Traders", type: "Customer" },
-  { id: "c3", name: "Vijay General Stores", type: "Customer"},
-];
-const initialSuppliers: MasterItem[] = [
-  { id: "s1", name: "AR Agent Supplier", type: "Supplier" },
-  { id: "s2", name: "Local Farm Co.", type: "Supplier" },
-  { id: "s3", name: "Kisan Agro Products", type: "Supplier"},
-];
-const initialAgents: MasterItem[] = [
-  { id: "a1", name: "AR Agent", type: "Agent", commission: 5 },
-  { id: "a2", name: "Krishi Mitra", type: "Agent", commission: 3 },
-  { id: "a3", name: "Sahayak Commission Center", type: "Agent", commission: 2.5},
-];
-const initialTransporters: MasterItem[] = [
-  { id: "t1", name: "Speedy Logistics", type: "Transporter" },
-  { id: "t2", name: "Bharat Transports", type: "Transporter" },
-  { id: "t3", name: "Quick Deliveries", type: "Transporter"},
-];
-const initialBrokers: MasterItem[] = [
-  { id: "b1", name: "AgriConnect Brokers", type: "Broker", commission: 2 },
-  { id: "b2", name: "MarketLink Services", type: "Broker", commission: 1.5 },
-];
-const initialWarehouses: MasterItem[] = [
-  { id: "wh-mum", name: "Mumbai Central Warehouse", type: "Warehouse" },
-  { id: "wh-pune", name: "Pune North Godown", type: "Warehouse" },
-  { id: "wh-ngp", name: "Nagpur South Storage", type: "Warehouse" },
-  { id: "wh-nsk", name: "Nashik West Depot", type: "Warehouse" },
-  { id: "wh-chiplun", name: "Chiplun Warehouse", type: "Warehouse" }, // From dashboard example
-  { id: "wh-sawantwadi", name: "Sawantwadi Warehouse", type: "Warehouse" }, // From dashboard example
-  { id: "w1", name: "Mumbai Godown", type: "Warehouse" }, // From original purchase example
-  { id: "w2", name: "Chiplun Storage", type: "Warehouse" }, // From original purchase example, distinct from wh-chiplun by ID
-];
+// Initial data sets - changed to empty arrays for clean slate on format
+const initialCustomers: MasterItem[] = [];
+const initialSuppliers: MasterItem[] = [];
+const initialAgents: MasterItem[] = [];
+const initialTransporters: MasterItem[] = [];
+const initialBrokers: MasterItem[] = [];
+const initialWarehouses: MasterItem[] = [];
 
 
 type MasterPageTabKey = MasterItemType | 'All';

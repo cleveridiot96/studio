@@ -30,15 +30,8 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 // const BROKERS_STORAGE_KEY = 'masterBrokers'; 
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
-// Updated initial payments data to reflect typical payment parties
-const initialPaymentsData: Payment[] = [
-  { id: "pay-fy2526-1", date: "2025-05-03", partyId: "supp-anand", partyName: "Anand Agro Products", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", referenceNo: "CHKFY2526-001", notes: "Advance for LOT-A FY2526" },
-  { id: "pay-fy2526-2", date: "2025-05-08", partyId: "agent-ajay", partyName: "Ajay Kumar", partyType: "Agent", amount: 2200, paymentMethod: "Cash", notes: "Commission for LOT-A FY2526" },
-  { id: "pay-fy2425-1", date: "2024-08-12", partyId: "trans-reliable", partyName: "Reliable Transports", partyType: "Transporter", amount: 2500, paymentMethod: "UPI", referenceNo: "upiFY2425-123", notes: "Transport for LOT-X FY2425" },
-  // Removed broker payment example as brokers are typically paid from sales proceeds or receipts
-  // { id: "pay-fy2526-3", date: "2025-07-18", partyId: "broker-vinod", partyName: "Vinod Mehta", partyType: "Broker", amount: 280, paymentMethod: "Cash", notes: "Brokerage INV-FY2526-001" },
-  { id: "pay-fy2526-4", date: "2025-09-20", partyId: "supp-meena", partyName: "Meena Farms", partyType: "Supplier", amount: 60000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-5678", notes: "Payment for LOT-D FY2526" },
-];
+// Initial data sets - changed to empty arrays for clean slate on format
+const initialPaymentsData: Payment[] = [];
 
 export function PaymentsClient() {
   const { toast } = useToast();

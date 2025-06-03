@@ -46,24 +46,8 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const SALES_STORAGE_KEY = 'salesData';
 
-const initialLocationTransfers: LocationTransfer[] = [
-  {
-    id: "lt-fy2526-1", date: "2025-05-20", fromWarehouseId: "wh-mum", fromWarehouseName: "Mumbai Central Warehouse", toWarehouseId: "wh-pune", toWarehouseName: "Pune North Godown",
-    transporterId: "trans-quick", transporterName: "Quick Movers",
-    items: [
-      { lotNumber: "FY2526-LOT-A/100", bagsToTransfer: 10, netWeightToTransfer: 500 },
-      { lotNumber: "FY2526-LOT-D/120", bagsToTransfer: 20, netWeightToTransfer: 1000 },
-    ],
-    notes: "Transferring partial stock for FY2526 to manage regional demand."
-  },
-  {
-    id: "lt-fy2425-1", date: "2024-08-22", fromWarehouseId: "wh-pune", fromWarehouseName: "Pune North Godown", toWarehouseId: "wh-ngp", toWarehouseName: "Nagpur South Storage",
-    items: [
-      { lotNumber: "FY2425-LOT-X/90", bagsToTransfer: 15, netWeightToTransfer: 750 },
-    ],
-    notes: "Moving LOT-X stock to Nagpur for FY2425 distribution strategy."
-  },
-];
+// Initial data sets - changed to empty arrays for clean slate on format
+const initialLocationTransfers: LocationTransfer[] = [];
 
 interface AggregatedStockItem {
   lotNumber: string;
@@ -173,7 +157,6 @@ export function LocationTransferClient() {
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
     setLocationTransfers(prev => {
- console.log("setLocationTransfers called with new array:", prev);
  return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
     });    toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
     setTransferToEdit(null);
@@ -328,7 +311,6 @@ export function LocationTransferClient() {
         <AddLocationTransferForm
           isOpen={isAddFormOpen}
           onClose={() => {
- console.log("AddLocationTransferForm onClose called");
  setIsAddFormOpen(false);
  setTransferToEdit(null);
           }}

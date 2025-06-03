@@ -27,20 +27,20 @@ const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
-const initialReceiptsData: Receipt[] = [
-  { id: "rec-fy2526-1", date: "2025-05-11", partyId: "cust-ramesh", partyName: "Ramesh Retail", partyType: "Customer", amount: 15000, paymentMethod: "Bank", referenceNo: "NEFTFY2526-123", notes: "Part payment for INV-FY2526-001" },
-  { id: "rec-fy2526-2", date: "2025-06-22", partyId: "cust-sita", partyName: "Sita General Store", partyType: "Customer", amount: 45000, paymentMethod: "Cash", notes: "Full payment for INV-FY2526-002" },
-  { id: "rec-fy2425-1", date: "2024-09-19", partyId: "broker-leela", partyName: "Leela Associates", partyType: "Broker", amount: 300, paymentMethod: "UPI", notes: "Brokerage received for INV-FY2425-001" },
-];
+// Initial data sets - changed to empty arrays for clean slate on format
+const initialReceiptsData: Receipt[] = [];
 
 export function ReceiptsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
   const [hydrated, setHydrated] = React.useState(false); // Local hydration
+  const memoizedInitialReceipts = React.useMemo(() => initialReceiptsData, []);
+  const memoizedEmptyMasters = React.useMemo(() => [], []);
 
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, initialReceiptsData);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
