@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
 
 import {
   LayoutGrid,
@@ -52,6 +53,7 @@ interface ClientSidebarMenuProps {
 
 export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
   const pathname = usePathname();
+  const { state: sidebarState } = useSidebar(); // Get sidebar state
 
   return (
     <SidebarMenu>
@@ -66,33 +68,33 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 isActive={isActive}
                 tooltip={item.title}
                 className={cn(
-                  "w-full relative text-base group items-center py-2 h-auto", // Removed justify-center, px-4. Added relative.
-                  "transition-all duration-200 ease-in-out",
+                  // Base styles for the <a> tag
+                  "w-full relative text-base group flex items-center py-2 h-auto transition-colors duration-200 ease-in-out",
+                  // Conditional horizontal alignment for the <a> tag's content (the <button>)
+                  sidebarState === 'collapsed' ? "justify-center" : "justify-start px-2",
                   isActive
-                    ? "bg-primary shadow-md hover:scale-105 rounded-md" // Changed from rounded-full
-                    : "hover:bg-sidebar-accent/50 rounded-md" // Ensured rounded-md for consistency
+                    ? "bg-primary shadow-md hover:scale-105 rounded-md"
+                    : "hover:bg-sidebar-accent/50 rounded-md"
                 )}
               >
+                {/* Icon Circle Div - always present */}
                 <div className={cn(
-                  "absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2", // Centering the icon circle
-                  "flex items-center justify-center h-8 w-8 rounded-full shrink-0", // Removed mr-3
+                  "flex items-center justify-center h-8 w-8 rounded-full shrink-0",
+                  // Margin for expanded state to create space for text
+                  sidebarState === 'expanded' && "mr-2.5", // Use state directly
                   isActive ? "bg-primary-foreground" : item.iconColor || "bg-sidebar-accent"
                 )}>
                   <IconComponent className={cn(
-                    "h-5 w-5", 
-                    isActive
-                      ? "text-primary" 
-                      : "text-white" 
+                    "h-5 w-5",
+                    isActive ? "text-primary" : "text-white"
                   )} />
                 </div>
+
+                {/* Text Span - hidden when collapsed */}
                 <span className={cn(
-                  "group-data-[state=collapsed]:hidden",
-                  "pl-[calc(50%_+_1rem_+_4px)] pr-3 text-left", // Padding to clear centered icon + gap, and right padding for text
-                  isActive
-                    ? "text-primary-foreground font-semibold"
-                    : "text-slate-50 group-hover:text-sidebar-accent-foreground"
-                )}
-                >
+                  sidebarState === 'collapsed' && "hidden", // Use state directly
+                  isActive ? "text-primary-foreground font-semibold" : "text-slate-50 group-hover:text-sidebar-accent-foreground"
+                )}>
                   {item.title}
                 </span>
               </SidebarMenuButton>
