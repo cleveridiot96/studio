@@ -66,15 +66,16 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 isActive={isActive}
                 tooltip={item.title}
                 className={cn(
-                  "w-full justify-center text-base group items-center px-4 py-2 h-auto", // Changed justify-start to justify-center
+                  "w-full relative text-base group items-center py-2 h-auto", // Removed justify-center, px-4. Added relative.
                   "transition-all duration-200 ease-in-out",
                   isActive
-                    ? "rounded-full bg-primary shadow-md hover:scale-105" 
-                    : "hover:bg-sidebar-accent/50"
+                    ? "bg-primary shadow-md hover:scale-105 rounded-md" // Changed from rounded-full
+                    : "hover:bg-sidebar-accent/50 rounded-md" // Ensured rounded-md for consistency
                 )}
               >
                 <div className={cn(
-                  "flex items-center justify-center h-8 w-8 rounded-full mr-3 shrink-0", 
+                  "absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2", // Centering the icon circle
+                  "flex items-center justify-center h-8 w-8 rounded-full shrink-0", // Removed mr-3
                   isActive ? "bg-primary-foreground" : item.iconColor || "bg-sidebar-accent"
                 )}>
                   <IconComponent className={cn(
@@ -86,6 +87,7 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 </div>
                 <span className={cn(
                   "group-data-[state=collapsed]:hidden",
+                  "pl-[calc(50%_+_1rem_+_4px)] pr-3 text-left", // Padding to clear centered icon + gap, and right padding for text
                   isActive
                     ? "text-primary-foreground font-semibold"
                     : "text-slate-50 group-hover:text-sidebar-accent-foreground"
