@@ -8,7 +8,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  // AlertDialogDescription, // Removed
+  // AlertDialogDescription, // Removed as per user request
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -27,15 +27,14 @@ const CSV_EXPORTABLE_KEYS_MAP: Record<string, string> = {
   [LOCAL_STORAGE_KEYS.receipts]: 'Receipts',
   [LOCAL_STORAGE_KEYS.payments]: 'Payments',
   [LOCAL_STORAGE_KEYS.locationTransfers]: 'LocationTransfers',
+  [LOCAL_STORAGE_KEYS.purchaseReturns]: 'PurchaseReturns', // Added
+  [LOCAL_STORAGE_KEYS.saleReturns]: 'SaleReturns',         // Added
   [LOCAL_STORAGE_KEYS.customers]: 'Customers',
   [LOCAL_STORAGE_KEYS.suppliers]: 'Suppliers',
   [LOCAL_STORAGE_KEYS.agents]: 'Agents',
   [LOCAL_STORAGE_KEYS.transporters]: 'Transporters',
   [LOCAL_STORAGE_KEYS.warehouses]: 'Warehouses',
   [LOCAL_STORAGE_KEYS.brokers]: 'Brokers',
-  // Note: PurchaseReturns and SaleReturns might also be candidates if they are added to LOCAL_STORAGE_KEYS
-  // 'purchaseReturnsData': 'PurchaseReturns', // Example if added
-  // 'saleReturnsData': 'SaleReturns',       // Example if added
 };
 
 // Helper function to convert an array of objects to CSV and trigger download
@@ -121,9 +120,13 @@ export function FormatButton() {
         if (item !== null) {
           try {
             allDataForJsonBackup[key] = JSON.parse(item);
+            console.info(`FormatButton: Backed up (JSON) key: ${key} (parsed)`);
           } catch (e) {
             allDataForJsonBackup[key] = item; // Store as string if not JSON
+            console.info(`FormatButton: Backed up (JSON) key: ${key} (as string)`);
           }
+        } else {
+          console.info(`FormatButton: Key ${key} not found in localStorage for JSON backup.`);
         }
       });
 
@@ -152,6 +155,7 @@ export function FormatButton() {
           try {
             const dataArray = JSON.parse(item);
             if (Array.isArray(dataArray) && dataArray.length > 0) {
+              console.info(`FormatButton: Preparing CSV for ${fileNamePrefix} (${storageKey}) with ${dataArray.length} items.`);
               convertToCSVAndDownload(dataArray, fileNamePrefix);
             } else {
               console.info(`FormatButton: Data for ${fileNamePrefix} (${storageKey}) is not an array or is empty, skipping CSV.`);
@@ -159,6 +163,8 @@ export function FormatButton() {
           } catch (e) {
             console.error(`FormatButton: Error parsing data for CSV export of ${fileNamePrefix} (${storageKey}):`, e);
           }
+        } else {
+           console.info(`FormatButton: Key ${storageKey} not found for CSV export of ${fileNamePrefix}.`);
         }
       });
       
@@ -182,7 +188,7 @@ export function FormatButton() {
       setTimeout(() => {
         console.info("FormatButton: Reloading application...");
         window.location.reload();
-      }, 3000); // Slightly longer delay to allow downloads to initiate
+      }, 3000); 
 
     } catch (error) {
       console.error("FormatButton: Formatting process failed:", error);
@@ -207,7 +213,7 @@ export function FormatButton() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          {/* AlertDialogDescription removed */}
+           {/* AlertDialogDescription removed as per user request */}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

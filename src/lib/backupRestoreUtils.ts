@@ -11,6 +11,8 @@ export const LOCAL_STORAGE_KEYS = {
   receipts: 'receiptsData',
   payments: 'paymentsData',
   locationTransfers: 'locationTransfersData',
+  purchaseReturns: 'purchaseReturnsData', // Added
+  saleReturns: 'saleReturnsData',       // Added
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
