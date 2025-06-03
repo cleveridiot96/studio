@@ -8,7 +8,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  // AlertDialogDescription, // Removed as per user request
+  // AlertDialogDescription, // Intentionally removed as per user request
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -27,8 +27,8 @@ const CSV_EXPORTABLE_KEYS_MAP: Record<string, string> = {
   [LOCAL_STORAGE_KEYS.receipts]: 'Receipts',
   [LOCAL_STORAGE_KEYS.payments]: 'Payments',
   [LOCAL_STORAGE_KEYS.locationTransfers]: 'LocationTransfers',
-  [LOCAL_STORAGE_KEYS.purchaseReturns]: 'PurchaseReturns', // Added
-  [LOCAL_STORAGE_KEYS.saleReturns]: 'SaleReturns',         // Added
+  [LOCAL_STORAGE_KEYS.purchaseReturns]: 'PurchaseReturns',
+  [LOCAL_STORAGE_KEYS.saleReturns]: 'SaleReturns',
   [LOCAL_STORAGE_KEYS.customers]: 'Customers',
   [LOCAL_STORAGE_KEYS.suppliers]: 'Suppliers',
   [LOCAL_STORAGE_KEYS.agents]: 'Agents',
@@ -55,16 +55,13 @@ function convertToCSVAndDownload(dataArray: any[], fileNamePrefix: string): void
             if (fieldValue === null || fieldValue === undefined) {
               fieldValue = '';
             } else if (typeof fieldValue === 'object') {
-              // For complex objects/arrays within a cell, stringify them.
-              // This keeps the CSV structure simple.
               try {
                 fieldValue = JSON.stringify(fieldValue);
               } catch (e) {
-                fieldValue = '[Object]'; // Fallback for circular refs or unserializable objects
+                fieldValue = '[Object]';
               }
             }
             const stringValue = String(fieldValue);
-            // Escape double quotes and ensure the value is wrapped in quotes if it contains commas or newlines.
             return `"${stringValue.replace(/"/g, '""')}"`;
           })
           .join(',')
@@ -86,7 +83,6 @@ function convertToCSVAndDownload(dataArray: any[], fileNamePrefix: string): void
     console.info(`FormatButton: CSV download initiated for ${fileNamePrefix}`);
   } catch (error) {
     console.error(`FormatButton: Failed to generate CSV for ${fileNamePrefix}`, error);
-    // Potentially notify user here if a specific CSV fails, though the main toast covers general process
   }
 }
 
@@ -112,25 +108,24 @@ export function FormatButton() {
       const timestamp = Date.now();
       const formattedDateForFile = format(new Date(timestamp), 'ddMMyy_HHmm');
 
-      // 1. Gather all data for JSON backup
       console.info("FormatButton: Gathering all data for JSON backup...");
-      const allKeysToBackup = [...Object.values(LOCAL_STORAGE_KEYS), LAST_BACKUP_TIMESTAMP_KEY];
-      allKeysToBackup.forEach(key => {
+      const allKeysToBackupAndClear = [...Object.values(LOCAL_STORAGE_KEYS), LAST_BACKUP_TIMESTAMP_KEY];
+      
+      allKeysToBackupAndClear.forEach(key => {
         const item = localStorage.getItem(key);
         if (item !== null) {
           try {
             allDataForJsonBackup[key] = JSON.parse(item);
-            console.info(`FormatButton: Backed up (JSON) key: ${key} (parsed)`);
+            console.info(`FormatButton: Gathered for JSON backup (parsed): ${key}`);
           } catch (e) {
-            allDataForJsonBackup[key] = item; // Store as string if not JSON
-            console.info(`FormatButton: Backed up (JSON) key: ${key} (as string)`);
+            allDataForJsonBackup[key] = item; 
+            console.info(`FormatButton: Gathered for JSON backup (as string): ${key}`);
           }
         } else {
           console.info(`FormatButton: Key ${key} not found in localStorage for JSON backup.`);
         }
       });
 
-      // 2. Trigger JSON backup download
       if (Object.keys(allDataForJsonBackup).length > 0) {
         const jsonString = JSON.stringify(allDataForJsonBackup, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
@@ -147,7 +142,6 @@ export function FormatButton() {
         console.info("FormatButton: No data found for JSON backup.");
       }
 
-      // 3. Trigger CSV backup downloads for specified data types
       console.info("FormatButton: Initiating CSV backups for primary data types...");
       Object.entries(CSV_EXPORTABLE_KEYS_MAP).forEach(([storageKey, fileNamePrefix]) => {
         const item = localStorage.getItem(storageKey);
@@ -168,15 +162,41 @@ export function FormatButton() {
         }
       });
       
-      // 4. Wipe the original application data keys
-      console.info("FormatButton: Removing application data keys from localStorage...");
-      const allKeysToRemove = [...Object.values(LOCAL_STORAGE_KEYS), LAST_BACKUP_TIMESTAMP_KEY];
-      allKeysToRemove.forEach(key => {
+      console.info("FormatButton: Attempting to remove application data keys from localStorage...");
+      console.log("FormatButton: Keys to remove:", allKeysToBackupAndClear);
+
+      // Log state before removal
+      console.log("--- LocalStorage state BEFORE explicit removal ---");
+      allKeysToBackupAndClear.forEach(key => {
+        console.log(`FormatButton: BEFORE - Key: ${key}, Value: ${localStorage.getItem(key)?.substring(0, 50) || 'null'}`);
+      });
+
+      // Loop removal (should be sufficient)
+      allKeysToBackupAndClear.forEach(key => {
         localStorage.removeItem(key);
-        console.info(`FormatButton: Removed ${key}`);
+        // console.info(`FormatButton: Attempted removal of (loop): ${key}`);
+      });
+
+      // Explicit removal for master data keys as a failsafe
+      const masterKeysExplicit = [
+        'masterCustomers', 'masterSuppliers', 'masterAgents', 
+        'masterTransporters', 'masterWarehouses', 'masterBrokers'
+      ];
+      masterKeysExplicit.forEach(key => {
+        localStorage.removeItem(key);
+        // console.info(`FormatButton: Attempted explicit removal of: ${key}`);
       });
       
-      console.info("FormatButton: Data formatting complete. Toasting and preparing to reload...");
+      // Log state after removal
+      console.log("--- LocalStorage state AFTER explicit removal ---");
+      allKeysToBackupAndClear.forEach(key => {
+        console.log(`FormatButton: AFTER - Key: ${key}, Value: ${localStorage.getItem(key)?.substring(0, 50) || 'null'}`);
+      });
+      masterKeysExplicit.forEach(key => { // Also check the explicitly removed keys again
+          console.log(`FormatButton: AFTER (explicit check) - Key: ${key}, Value: ${localStorage.getItem(key)?.substring(0, 50) || 'null'}`);
+      });
+      
+      console.info("FormatButton: Data formatting actions complete. Toasting and preparing to reload...");
       toast({
         title: 'Application Data Formatted',
         description: "JSON and CSV backup downloads initiated. All application data and settings have been wiped. The application will reload automatically.",
@@ -184,7 +204,6 @@ export function FormatButton() {
         duration: 9000, 
       });
       
-      // 5. Reload the application to reflect the cleared state
       setTimeout(() => {
         console.info("FormatButton: Reloading application...");
         window.location.reload();
@@ -213,7 +232,7 @@ export function FormatButton() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-           {/* AlertDialogDescription removed as per user request */}
+          {/* AlertDialogDescription removed as per user request */}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -225,3 +244,4 @@ export function FormatButton() {
     </AlertDialog>
   );
 }
+
