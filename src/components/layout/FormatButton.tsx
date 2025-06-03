@@ -57,42 +57,42 @@ export function FormatButton() {
         return;
     }
 
-    console.log("FormatButton: Starting data format process...");
+    console.info("FormatButton: Starting data format process...");
     try {
       const secretBackupData: Record<string, any> = {};
       const timestamp = Date.now();
 
       // 1. Create secret backup for app data
-      console.log("FormatButton: Backing up APP_DATA_STORAGE_KEYS...");
+      console.info("FormatButton: Backing up APP_DATA_STORAGE_KEYS...");
       APP_DATA_STORAGE_KEYS.forEach(key => {
         const item = localStorage.getItem(key);
         if (item !== null) {
           try {
             secretBackupData[key] = JSON.parse(item);
-            // console.log(`FormatButton: Backed up (parsed JSON) ${key}`);
+            console.info(`FormatButton: Backed up (parsed JSON) ${key}`);
           } catch (e) {
             secretBackupData[key] = item; // Store as string if not JSON
-            // console.log(`FormatButton: Backed up (as string) ${key}`);
+            console.info(`FormatButton: Backed up (as string) ${key}`);
           }
         } else {
-            // console.log(`FormatButton: No data found for key ${key} to backup.`);
+            console.info(`FormatButton: No data found for key ${key} to backup.`);
         }
       });
       
       // Also backup settings
-      console.log("FormatButton: Backing up APP_SETTINGS_STORAGE_KEYS...");
+      console.info("FormatButton: Backing up APP_SETTINGS_STORAGE_KEYS...");
       APP_SETTINGS_STORAGE_KEYS.forEach(key => {
         const item = localStorage.getItem(key);
         if (item !== null) {
              try {
             secretBackupData[key] = JSON.parse(item);
-            // console.log(`FormatButton: Backed up setting (parsed JSON) ${key}`);
+            console.info(`FormatButton: Backed up setting (parsed JSON) ${key}`);
           } catch (e) {
             secretBackupData[key] = item; 
-            // console.log(`FormatButton: Backed up setting (as string) ${key}`);
+            console.info(`FormatButton: Backed up setting (as string) ${key}`);
           }
         } else {
-            // console.log(`FormatButton: No setting found for key ${key} to backup.`);
+            console.info(`FormatButton: No setting found for key ${key} to backup.`);
         }
       });
 
@@ -101,35 +101,36 @@ export function FormatButton() {
       if (Object.keys(secretBackupData).length > 0) {
         const backupKey = `secret_kisan_khata_backup_${timestamp}`;
         localStorage.setItem(backupKey, JSON.stringify(secretBackupData));
-        console.log(`FormatButton: Secret backup created at ${backupKey} with ${Object.keys(secretBackupData).length} items.`);
+        console.info(`FormatButton: Secret backup created at ${backupKey} with ${Object.keys(secretBackupData).length} items.`);
       } else {
-        console.log("FormatButton: No data found to create a secret backup.");
+        console.info("FormatButton: No data found to create a secret backup.");
       }
 
       // 3. Wipe the original application data keys
-      console.log("FormatButton: Removing APP_DATA_STORAGE_KEYS...");
+      console.info("FormatButton: Removing APP_DATA_STORAGE_KEYS...");
       APP_DATA_STORAGE_KEYS.forEach(key => {
         localStorage.removeItem(key);
-        // console.log(`FormatButton: Removed ${key}`);
+        console.info(`FormatButton: Removed ${key}`);
       });
 
       // Wipe settings keys as well for a full format
-      console.log("FormatButton: Removing APP_SETTINGS_STORAGE_KEYS...");
+      console.info("FormatButton: Removing APP_SETTINGS_STORAGE_KEYS...");
       APP_SETTINGS_STORAGE_KEYS.forEach(key => {
          localStorage.removeItem(key);
-        //  console.log(`FormatButton: Removed setting ${key}`);
+         console.info(`FormatButton: Removed setting ${key}`);
       });
       
-      console.log("FormatButton: Data formatting complete. Toasting and reloading...");
+      console.info("FormatButton: Data formatting complete. Toasting and preparing to reload...");
       toast({
         title: 'Application Data Formatted',
-        description: "All application data and settings have been wiped. A local backup was attempted. Please reload the application now.",
+        description: "All application data and settings have been wiped. A local backup was attempted. The application will now reload.",
         variant: 'destructive',
         duration: 9000, 
       });
       
       // 4. Reload the application to reflect the cleared state
       setTimeout(() => {
+        console.info("FormatButton: Reloading application...");
         window.location.reload();
       }, 2500); 
 
