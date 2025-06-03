@@ -8,7 +8,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
+  // AlertDialogDescription, // Removed
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -173,7 +173,7 @@ export function FormatButton() {
       console.info("FormatButton: Data formatting complete. Toasting and preparing to reload...");
       toast({
         title: 'Application Data Formatted',
-        description: "JSON and CSV backup downloads initiated. All application data and settings have been wiped. The application will now reload.",
+        description: "JSON and CSV backup downloads initiated. All application data and settings have been wiped. The application will reload automatically.",
         variant: 'destructive',
         duration: 9000, 
       });
@@ -207,10 +207,7 @@ export function FormatButton() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action will permanently wipe all application data (purchases, sales, masters, financial settings, etc.) from this browser.
-            JSON and CSV backups will be downloaded first. This action is intended for development or troubleshooting and is irreversible.
-          </AlertDialogDescription>
+          {/* AlertDialogDescription removed */}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
