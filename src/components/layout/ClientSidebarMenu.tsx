@@ -66,22 +66,22 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 isActive={isActive}
                 tooltip={item.title}
                 className={cn(
-                  "w-full justify-start text-base group items-center px-4 py-2 h-auto", // Consistent padding applied here
+                  "w-full justify-center text-base group items-center px-4 py-2 h-auto", // Changed justify-start to justify-center
                   "transition-all duration-200 ease-in-out",
                   isActive
-                    ? "rounded-full bg-primary shadow-md hover:scale-105" // Active state only changes background and shadow
+                    ? "rounded-full bg-primary shadow-md hover:scale-105" 
                     : "hover:bg-sidebar-accent/50"
                 )}
               >
                 <div className={cn(
-                  "flex items-center justify-center h-8 w-8 rounded-full mr-3 shrink-0", // Circle container
+                  "flex items-center justify-center h-8 w-8 rounded-full mr-3 shrink-0", 
                   isActive ? "bg-primary-foreground" : item.iconColor || "bg-sidebar-accent"
                 )}>
                   <IconComponent className={cn(
-                    "h-5 w-5", // Icon size
+                    "h-5 w-5", 
                     isActive
-                      ? "text-primary" // Icon color on active background
-                      : "text-white" // Default icon color on colored circle
+                      ? "text-primary" 
+                      : "text-white" 
                   )} />
                 </div>
                 <span className={cn(
