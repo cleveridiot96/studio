@@ -75,7 +75,8 @@ export function ProfitAnalysisClient() {
         saleQuantityBags: sale.quantity,
         saleNetWeightKg: sale.netWeight,
         saleRatePerKg: sale.rate,
-        saleAmount: sale.totalAmount, 
+        saleAmount: sale.billedAmount, // Use billedAmount for "Sale Amount" column
+        goodsValueForProfitCalc: sale.goodsValue, // Use goodsValue for profit context
         purchaseCostForSalePortion: costOfGoodsSold,
         transportCostOnSale: sale.transportCost,
         brokerageOnSale: sale.calculatedBrokerageCommission,
@@ -87,7 +88,7 @@ export function ProfitAnalysisClient() {
         monthlyAgg[monthKey] = { totalProfit: 0, totalSalesValue: 0, totalCostOfGoods: 0 };
       }
       monthlyAgg[monthKey].totalProfit += netProfit;
-      monthlyAgg[monthKey].totalSalesValue += sale.totalAmount;
+      monthlyAgg[monthKey].totalSalesValue += sale.goodsValue; // Sum of actual goods value
       monthlyAgg[monthKey].totalCostOfGoods += costOfGoodsSold;
     });
 
@@ -166,7 +167,7 @@ export function ProfitAnalysisClient() {
                     <CardTitle className="text-lg">{month.monthYear}</CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
-                    <p>Total Sales: <span className="font-semibold">₹{month.totalSalesValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
+                    <p>Total Actual Sales Value: <span className="font-semibold">₹{month.totalSalesValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
                     <p>Total COGS: <span className="font-semibold">₹{month.totalCostOfGoods.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></p>
                     <p className={`font-bold ${month.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       Net Profit: ₹{month.totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -205,7 +206,8 @@ export function ProfitAnalysisClient() {
                   <TableHead className="text-right">Sale Qty (Bags)</TableHead>
                   <TableHead className="text-right">Sale Wt (kg)</TableHead>
                   <TableHead className="text-right">Sale Rate (₹/kg)</TableHead>
-                  <TableHead className="text-right">Sale Amt (₹)</TableHead>
+                  <TableHead className="text-right">Billed Amt (₹)</TableHead>
+                  <TableHead className="text-right">Actual Goods Value (₹)</TableHead>
                   <TableHead className="text-right">COGS (₹)</TableHead>
                   <TableHead className="text-right">Expenses (₹)</TableHead>
                   <TableHead className="text-right">Net Profit (₹)</TableHead>
@@ -213,7 +215,7 @@ export function ProfitAnalysisClient() {
               </TableHeader>
               <TableBody>
                 {profitData.transactions.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center h-32 text-muted-foreground">No sales transactions to analyze for the selected period.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={12} className="text-center h-32 text-muted-foreground">No sales transactions to analyze for the selected period.</TableCell></TableRow>
                 ) : (
                   profitData.transactions.map((tx) => (
                     <TableRow key={tx.saleId}>
@@ -225,6 +227,7 @@ export function ProfitAnalysisClient() {
                       <TableCell className="text-right">{tx.saleNetWeightKg.toLocaleString()}</TableCell>
                       <TableCell className="text-right">{tx.saleRatePerKg.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{tx.saleAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{tx.goodsValueForProfitCalc.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{tx.purchaseCostForSalePortion.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{((tx.transportCostOnSale || 0) + (tx.brokerageOnSale || 0)).toFixed(2)}</TableCell>
                       <TableCell className={`text-right font-semibold ${tx.netProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
@@ -241,5 +244,3 @@ export function ProfitAnalysisClient() {
     </div>
   );
 }
-
-    

@@ -12,7 +12,9 @@ interface SaleChittiPrintProps {
 export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
   if (!sale) return null;
 
-  const calculatedSaleValue = sale.netWeight * sale.rate;
+  // const calculatedSaleValue = sale.netWeight * sale.rate; // This is now sale.goodsValue
+  const displayGoodsValue = sale.goodsValue;
+  const displayBilledAmount = sale.billedAmount;
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
@@ -60,7 +62,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
             <th className="text-right">Bags</th>
             <th className="text-right">Net Wt (kg)</th>
             <th className="text-right">Rate (₹/kg)</th>
-            <th className="text-right">Amount (₹)</th>
+            <th className="text-right">Goods Value (₹)</th>
           </tr>
         </thead>
         <tbody>
@@ -69,16 +71,16 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
             <td className="text-right">{sale.quantity}</td>
             <td className="text-right">{sale.netWeight.toLocaleString()}</td>
             <td className="text-right">{sale.rate.toFixed(2)}</td>
-            <td className="text-right">{calculatedSaleValue.toFixed(2)}</td>
+            <td className="text-right">{displayGoodsValue.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
 
       <div className="mt-4 space-y-1">
-        {sale.cutBill && sale.manualBillAmount !== undefined && sale.manualBillAmount !== calculatedSaleValue && (
+        {sale.cutBill && sale.manualBillAmount !== undefined && sale.manualBillAmount !== displayGoodsValue && (
           <div className="flex-between">
-            <span>Original Sale Value:</span>
-            <span className="font-bold">₹{calculatedSaleValue.toFixed(2)}</span>
+            <span>Actual Goods Value:</span>
+            <span className="font-bold">₹{displayGoodsValue.toFixed(2)}</span>
           </div>
         )}
         {sale.transportCost && sale.transportCost > 0 && (
@@ -94,8 +96,8 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
           </div>
         )}
          <div className="flex-between border-t pt-2 mt-2">
-          <span className="font-bold text-base">Total Amount Due:</span>
-          <span className="font-bold text-base">₹{sale.totalAmount.toFixed(2)}</span>
+          <span className="font-bold text-base">Total Amount Billed:</span>
+          <span className="font-bold text-base">₹{displayBilledAmount.toFixed(2)}</span>
         </div>
       </div>
 

@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building } from "lucide-react";
 import type { MasterItem, MasterItemType } from "@/lib/types";
-// ScrollArea and ScrollBar removed
 import { Badge } from '@/components/ui/badge';
 
 
@@ -53,19 +52,15 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
 
   return (
-    // Outer ScrollArea removed. The Table component itself handles overflow.
-    // The Table component internally has a div with "relative w-full overflow-auto".
-    // The table element inside it has "w-full". With whitespace-nowrap on cells,
-    // the table content can exceed its container, and the overflow-auto div will scroll.
-    <div className="rounded-md border shadow-sm"> {/* Added a div to retain border and shadow */}
-      <Table className="min-w-full whitespace-nowrap">
+    <div className="rounded-md border shadow-sm"> {/* Wrapper to retain styling */}
+      <Table> {/* Removed min-w-full and whitespace-nowrap from here */}
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px] sm:w-[150px]">ID</TableHead>
-            <TableHead>Name</TableHead>
-            {showTypeColumn && <TableHead>Type</TableHead>}
-            {showCommissionColumn && <TableHead className="text-right">Commission (%)</TableHead>}
-            <TableHead className="text-center w-[100px] sm:w-[120px]">Actions</TableHead>
+            <TableHead className="w-[100px] sm:w-[150px] whitespace-nowrap">ID</TableHead>
+            <TableHead className="whitespace-nowrap">Name</TableHead>
+            {showTypeColumn && <TableHead className="whitespace-nowrap">Type</TableHead>}
+            {showCommissionColumn && <TableHead className="text-right whitespace-nowrap">Commission (%)</TableHead>}
+            <TableHead className="text-center w-[100px] sm:w-[120px] whitespace-nowrap">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -74,10 +69,10 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
             const TypeIcon = typeIconMap[item.type] || Users;
             return (
               <TableRow key={item.id}>
-                <TableCell className="font-mono text-xs">{item.id}</TableCell>
-                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell className="font-mono text-xs whitespace-nowrap">{item.id}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
                 {showTypeColumn && (
-                  <TableCell>
+                  <TableCell className="whitespace-nowrap">
                     <Badge variant="secondary" className="text-xs capitalize">
                       <TypeIcon className="w-3 h-3 mr-1.5" />
                       {item.type}
@@ -85,7 +80,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                   </TableCell>
                 )}
                 {showCommissionColumn && (
-                  <TableCell className="text-right">
+                  <TableCell className="text-right whitespace-nowrap">
                     {itemHasCommission && item.commission !== undefined
                       ? `${item.commission.toLocaleString()}%`
                       : 'N/A'}
@@ -104,7 +99,6 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           })}
         </TableBody>
       </Table>
-      {/* ScrollBar removed as it's part of ScrollArea */}
        {uniqueMasters.length === 0 && data.length > 0 && (
         <div className="flex items-center justify-center h-full text-muted-foreground p-10">
           No unique items to display after filtering. Check for ID issues.

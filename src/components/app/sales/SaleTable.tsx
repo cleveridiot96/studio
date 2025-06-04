@@ -60,7 +60,8 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               <TableHead className="text-right">Net Wt.(kg)</TableHead>
               <TableHead className="text-right">Rate (₹/kg)</TableHead>
               <TableHead>Broker</TableHead>
-              <TableHead className="text-right">Total (₹)</TableHead>
+              <TableHead className="text-right">Billed Amt (₹)</TableHead>
+              <TableHead className="text-right">Actual Goods Value (₹)</TableHead>
               <TableHead className="text-right">Profit (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
@@ -91,7 +92,8 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     <TooltipContent><p>{sale.brokerName || sale.brokerId || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
-                <TableCell className="text-right font-semibold">{(sale.totalAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className="text-right font-semibold">{(sale.billedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className="text-right">{(sale.goodsValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
                   {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
                 </TableCell>

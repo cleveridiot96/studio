@@ -50,8 +50,10 @@ export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber?: string; // Optional
-  manualBillAmount?: number; // Optional override for the final bill amount if cutBill is true
-  cutBill?: boolean; // Optional
+  cutBill?: boolean; // Is this a "cut bill"?
+  goodsValue: number; // Actual value of goods sold (netWeight * rate). Used for profit.
+  billedAmount: number; // Amount on the invoice. If cutBill, this is manualBillAmount. Else, same as goodsValue.
+  manualBillAmount?: number; // User-entered amount for the cut bill.
   customerId: string;
   customerName?: string;
   brokerId?: string;
@@ -59,7 +61,7 @@ export interface Sale {
   lotNumber: string; // This is the "Vakkal" from existing inventory
   quantity: number; // Number of Bags
   netWeight: number; // in KG
-  rate: number; // Sale price per KG
+  rate: number; // Sale price per KG (used to calculate goodsValue)
   transporterId?: string;
   transporterName?: string;
   transportCost?: number; // Fixed transport cost for this sale, affects profit
@@ -67,9 +69,7 @@ export interface Sale {
   brokerageValue?: number;
   calculatedBrokerageCommission?: number;
   notes?: string;
-  totalAmount: number; // Final amount customer is liable for: (manualBillAmount if cutBill and provided) OR (netWeight * rate)
-  calculatedSaleValueBeforeCut?: number; // Stores (netWeight * rate) for reference if cutBill is used
-  calculatedProfit?: number;
+  calculatedProfit?: number; // Based on goodsValue - COGS - expenses
 }
 
 export interface PurchaseReturn {
@@ -219,18 +219,19 @@ export interface TransactionalProfitInfo {
   saleQuantityBags: number;
   saleNetWeightKg: number;
   saleRatePerKg: number;
-  saleAmount: number;
+  saleAmount: number; // This should be the billedAmount
   purchaseCostForSalePortion: number;
   transportCostOnSale?: number;
   brokerageOnSale?: number;
-  netProfit: number;
+  netProfit: number; // Based on goodsValue
+  goodsValueForProfitCalc: number; // The goodsValue used for profit calculation
 }
 
 export interface MonthlyProfitInfo {
   monthKey: string; // "yyyy-MM"
   monthYear: string; // "MMMM yyyy"
   totalProfit: number;
-  totalSalesValue: number;
+  totalSalesValue: number; // Sum of goodsValue
   totalCostOfGoods: number;
 }
 
