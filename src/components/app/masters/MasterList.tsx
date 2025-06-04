@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building } from "lucide-react";
 import type { MasterItem, MasterItemType } from "@/lib/types";
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+// ScrollArea and ScrollBar removed
 import { Badge } from '@/components/ui/badge';
 
 
@@ -42,7 +42,6 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
     return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
   }
 
-  // Corrected de-duplication logic
   const uniqueMasters = React.useMemo(() => {
     if (!data) return [];
     return Array.from(new Map(data.map(item => [item.id, item])).values());
@@ -54,7 +53,11 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
 
   return (
-    <ScrollArea className="rounded-md border shadow-sm"> {/* Removed max-h and min-h */}
+    // Outer ScrollArea removed. The Table component itself handles overflow.
+    // The Table component internally has a div with "relative w-full overflow-auto".
+    // The table element inside it has "w-full". With whitespace-nowrap on cells,
+    // the table content can exceed its container, and the overflow-auto div will scroll.
+    <div className="rounded-md border shadow-sm"> {/* Added a div to retain border and shadow */}
       <Table className="min-w-full whitespace-nowrap">
         <TableHeader>
           <TableRow>
@@ -68,7 +71,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
         <TableBody>
           {uniqueMasters.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
-            const TypeIcon = typeIconMap[item.type] || Users; // Fallback to Users icon if type not in map
+            const TypeIcon = typeIconMap[item.type] || Users;
             return (
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs">{item.id}</TableCell>
@@ -101,17 +104,17 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           })}
         </TableBody>
       </Table>
-      <ScrollBar orientation="horizontal" />
-       {uniqueMasters.length === 0 && data.length > 0 && ( // Show this if uniqueMasters is empty but original data wasn't
+      {/* ScrollBar removed as it's part of ScrollArea */}
+       {uniqueMasters.length === 0 && data.length > 0 && (
         <div className="flex items-center justify-center h-full text-muted-foreground p-10">
           No unique items to display after filtering. Check for ID issues.
         </div>
       )}
-      {uniqueMasters.length === 0 && data.length === 0 && ( // Original condition for no data at all
+      {uniqueMasters.length === 0 && data.length === 0 && (
         <div className="flex items-center justify-center h-full text-muted-foreground p-10">
           No items to display.
         </div>
       )}
-    </ScrollArea>
+    </div>
   );
 };
