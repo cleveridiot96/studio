@@ -15,12 +15,12 @@ import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
 import React, { useEffect } from "react";
-import SearchBar from '@/components/shared/SearchBar'; // Import SearchBar
+import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
+import ErrorBoundary from "@/components/ErrorBoundary"; // Ensure ErrorBoundary is imported
 
-// Define the keys for data stored in localStorage
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
@@ -44,7 +44,7 @@ function AppHeaderContent() {
           <Home className="h-6 w-6 text-foreground" />
         </Button>
       </Link>
-      <SearchBar /> {/* Add SearchBar here */}
+      <SearchBar />
       <FinancialYearToggle />
       <Popover>
         <PopoverTrigger asChild>
@@ -87,7 +87,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   useEffect(() => {
     setIsAppLayoutMounted(true);
-    // Initialize search engine on client mount
     if (typeof window !== 'undefined') {
       try {
         const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
@@ -122,9 +121,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen={false} collapsible="icon">
+      <SidebarProvider defaultOpen={true} collapsible="icon"> {/* Changed defaultOpen to true */}
         <AppExitHandler />
-        <div className="flex h-screen bg-background">
+        {/* Root flex container for the entire app layout */}
+        <div className="flex flex-1 bg-background"> {/* Changed from h-screen to flex-1 */}
           <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto print:hidden" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
@@ -142,7 +142,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </SidebarFooter>
           </Sidebar>
 
-          <div className="flex flex-col flex-1 h-full">
+          {/* Main content area */}
+          <div className="flex flex-col flex-1 min-h-0"> {/* Added min-h-0 to ensure flex-1 works within parent flex */}
             <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden -ml-2">
@@ -152,13 +153,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Menu className="h-7 w-7 text-foreground" />
                 </SidebarTrigger>
               </div>
-              <div className="flex items-center gap-2 flex-1 justify-center min-w-0"> {/* Flex-1 and justify-center for SearchBar, added min-w-0 */}
+              <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
                 {isAppLayoutMounted && <AppHeaderContent />}
               </div>
             </header>
             {isAppLayoutMounted && <LoadingBar />} 
-            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible">
-              {children}
+            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col"> {/* Added flex flex-col to SidebarInset */}
+              <ErrorBoundary>
+                 {/* Ensure this div allows its children (page content) to scroll if they overflow horizontally */}
+                <div className="flex flex-col flex-1 w-full min-w-0"> {/* Added min-w-0 */}
+                    {children}
+                </div>
+              </ErrorBoundary>
             </SidebarInset>
           </div>
         </div>

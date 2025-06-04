@@ -95,25 +95,30 @@
 }
 
 .MuiPopover-root {
-  z-index: 9999 !important; /* Ensure dropdowns appear above modals */
+  z-index: 9999 !important; 
 }
 
 @layer base {
   * {
     @apply border-border box-border;
   }
-  html, body {
+  html {
     height: 100%;
-    width: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
-    overflow: hidden; /* Prevent html/body from showing scrollbars */
+    /* overflow: hidden; Removed for better page-level scroll */
   }
-
   body {
     @apply bg-background text-foreground;
-    overflow-y: auto; /* Allows body to scroll if content exceeds viewport */
-    overscroll-behavior: contain; /* Prevents scroll chaining to parent elements */
+    min-height: 100%; /* Allow body to grow with content */
+    display: flex; /* Make body a flex container */
+    flex-direction: column; /* Stack children vertically */
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: contain;
+    /* overflow-y: auto; Let specific content areas scroll */
   }
   h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; }
   h2 { @apply text-2xl font-semibold md:text-3xl lg:text-4xl; }
@@ -126,18 +131,19 @@
 
 @media print {
   @page {
-    size: A7 portrait; /* Changed from A5 to A7 */
-    margin: 5mm;       /* Reduced margin for smaller page */
+    size: A7 portrait; 
+    margin: 5mm;       
   }
 
   body {
     background: white !important;
     color: black !important;
-    font-size: 8pt !important; /* Reduced font size for A7 */
-    overflow: visible !important; /* Ensure all content is printable */
+    font-size: 8pt !important; 
+    overflow: visible !important; 
     height: auto !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    display: block !important; /* Override body flex for print */
   }
   .print\:hidden, .no-print, header, nav, footer, aside, [data-sidebar="sidebar"], [data-sidebar="trigger"] {
     display: none !important;
@@ -157,18 +163,18 @@
     color: black !important;
   }
   table, th, td {
-    border: 0.5px solid #ddd !important; /* Thinner border for smaller size */
-    font-size: 7pt !important;        /* Reduced font size for A7 tables */
+    border: 0.5px solid #ddd !important; 
+    font-size: 7pt !important;        
   }
   th {
-    background-color: #f8f8f8 !important; /* Lighter background for better print */
+    background-color: #f8f8f8 !important; 
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   .card, .card-content, .card-header, .card-footer {
     box-shadow: none !important;
-    border: 0.5px solid #f0f0f0 !important; /* Lighter border */
-    padding: 0.25rem !important;             /* Reduced padding */
+    border: 0.5px solid #f0f0f0 !important; 
+    padding: 0.25rem !important;             
   }
   .print\:overflow-visible {
      overflow: visible !important;

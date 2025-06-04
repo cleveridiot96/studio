@@ -3,10 +3,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton, useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useSidebar } from "@/components/ui/sidebar"; 
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 import {
   LayoutGrid,
@@ -57,53 +58,61 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
   return (
     <SidebarMenu className="p-2 space-y-1">
       {navItems.map((item) => {
-        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")) || (item.href === "/dashboard" && pathname === "/");
+        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) || (item.href === "/dashboard" && pathname === "/");
         const IconComponent = iconMap[item.iconName] || FallbackIcon;
+
+        const buttonContent = (
+          <>
+            <div className={cn( // Icon circle
+                "flex items-center justify-center h-8 w-8 rounded-full shrink-0 transition-colors",
+                sidebarState === 'expanded' && "mr-3",
+                isActive 
+                    ? "bg-sidebar-primary-foreground text-sidebar-primary"
+                    : item.iconColor ? `${item.iconColor} text-white` : "bg-sidebar-accent text-sidebar-accent-foreground"
+            )}>
+              <IconComponent className="h-5 w-5" />
+            </div>
+            <span className={cn( // Text
+                "truncate text-sm",
+                // Use sr-only for collapsed state to hide text but keep it accessible
+                sidebarState === 'collapsed' && "sr-only", 
+                isActive ? "font-semibold" : "font-medium"
+            )}>
+              {item.title}
+            </span>
+          </>
+        );
 
         return (
           <SidebarMenuItem key={item.href}>
-            <Link href={item.href} legacyBehavior passHref>
-              <SidebarMenuButton
-                isActive={isActive}
-                tooltip={item.title}
-                className={cn(
-                  "relative flex items-center h-auto transition-transform duration-200 ease-in-out group transform hover:scale-[1.02]",
-                  sidebarState === 'collapsed'
-                    ? "w-12 h-12 justify-center rounded-lg" // Square button for collapsed
-                    : "w-full justify-start px-3 py-2.5 rounded-md", // Full width for expanded
-                  isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg scale-[1.03]"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-              >
-                {/* Icon Circle Div - consistent size, different bg/text based on state */}
-                <div className={cn(
-                  "flex items-center justify-center h-8 w-8 rounded-full shrink-0 transition-colors",
-                  sidebarState === 'expanded' && "mr-3", 
-                  isActive && sidebarState === 'collapsed'
-                    ? "bg-sidebar-primary-foreground text-sidebar-primary" // Collapsed Active
-                    : isActive && sidebarState === 'expanded'
-                      ? "bg-sidebar-primary-foreground text-sidebar-primary" // Expanded Active
-                      : item.iconColor ? `${item.iconColor} text-white` : "bg-sidebar-accent text-sidebar-accent-foreground" // Inactive (collapsed or expanded)
-                )}>
-                  <IconComponent className="h-5 w-5" />
-                </div>
-
-                {/* Text Span - hidden when collapsed */}
-                <span className={cn(
-                  "truncate text-sm", // Adjusted text size
-                  sidebarState === 'collapsed' && "hidden",
-                  isActive ? "font-semibold" : "font-medium" // Slightly bolder for active
-                )}>
-                  {item.title}
-                </span>
-              </SidebarMenuButton>
-            </Link>
+             <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "relative flex items-center transition-colors duration-150 ease-in-out group focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background",
+                    "text-sidebar-foreground hover:text-sidebar-accent-foreground rounded-md",
+                    sidebarState === 'collapsed'
+                      ? "w-10 h-10 justify-center" // Centered square for the <a> tag (Link)
+                      : "w-full justify-start px-2.5 py-2", // Expanded state styles
+                    isActive
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                      : "hover:bg-sidebar-accent"
+                  )}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {buttonContent}
+                </Link>
+              </TooltipTrigger>
+              {sidebarState === 'collapsed' && (
+                <TooltipContent side="right" align="center" className="ml-1">
+                  <p>{item.title}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
           </SidebarMenuItem>
         );
       })}
     </SidebarMenu>
   );
 }
-
-    
