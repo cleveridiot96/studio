@@ -34,13 +34,12 @@ const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolea
   { value: "Agent", label: "Agent", hasCommission: true },
   { value: "Transporter", label: "Transporter", hasCommission: false },
   { value: "Broker", label: "Broker", hasCommission: true },
-  // "Item" config removed
   { value: "Warehouse", label: "Warehouse", hasCommission: false },
 ];
 
 const masterItemSchema = z.object({
   name: z.string().min(1, "Name is required."),
-  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse"]), // "Item" removed
+  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse"]),
   commission: z.coerce.number().optional(),
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
@@ -65,6 +64,7 @@ interface MasterFormProps {
   onSubmit: (item: MasterItem) => void;
   initialData?: MasterItem | null;
   itemTypeFromButton?: MasterItemType;
+  fixedWarehouseIds?: string[]; // Added to check if editing a fixed warehouse
 }
 
 export const MasterForm: React.FC<MasterFormProps> = ({
@@ -73,6 +73,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   onSubmit,
   initialData,
   itemTypeFromButton,
+  fixedWarehouseIds = [],
 }) => {
   const form = useForm<MasterItemFormValues>({
     resolver: zodResolver(masterItemSchema),
@@ -82,6 +83,8 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       commission: undefined,
     },
   });
+
+  const isEditingFixedWarehouse = initialData?.type === 'Warehouse' && fixedWarehouseIds.includes(initialData.id);
 
   useEffect(() => {
     if (isOpen) {
@@ -127,6 +130,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
           <DialogTitle>{initialData ? `Edit ${initialData.type}` : `Add New Master Item`}</DialogTitle>
           <DialogDescription>
             {initialData ? `Update details for ${initialData.name}.` : 'Fill in the details for the new master item.'}
+            {isEditingFixedWarehouse && " (This is a fixed warehouse, only name can be changed)."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -152,13 +156,14 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                   <FormLabel>Type</FormLabel>
                   <Select
                     onValueChange={(value) => {
-                        field.onChange(value as MasterItemType); // Ensure value is cast to MasterItemType
+                        field.onChange(value as MasterItemType); 
                         const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
                         if (!newTypeConfig?.hasCommission) {
                           form.setValue('commission', undefined);
                         }
                     }}
-                    value={field.value} 
+                    value={field.value}
+                    disabled={isEditingFixedWarehouse} // Disable type change for fixed warehouses
                   >
                     <FormControl>
  <SelectTrigger>
@@ -167,7 +172,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                     </FormControl>
                     <SelectContent>
                       {TABS_CONFIG.map(tab => (
-                        <SelectItem key={tab.value} value={tab.value}>
+                        <SelectItem key={tab.value} value={tab.value} disabled={isEditingFixedWarehouse && tab.value !== 'Warehouse'}>
                           {tab.label}
                         </SelectItem>
                       ))}
@@ -178,7 +183,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
               )}
             />
 
-            {showCommissionField && (
+            {showCommissionField && !isEditingFixedWarehouse && ( // Commission field not applicable or editable for fixed warehouses
               <FormField
                 control={form.control}
                 name="commission"
@@ -227,3 +232,5 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   );
 };
 
+
+    

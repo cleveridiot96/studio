@@ -12,9 +12,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building } from "lucide-react";
+import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building, Lock } from "lucide-react";
 import type { MasterItem, MasterItemType } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const typeIconMap: Record<MasterItemType, React.ElementType> = {
@@ -33,9 +34,10 @@ interface MasterListProps {
   isAllItemsTab?: boolean;
   onEdit: (item: MasterItem) => void;
   onDelete: (item: MasterItem) => void;
+  fixedWarehouseIds?: string[]; // Added to identify fixed warehouses
 }
 
-export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete }) => {
+export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete, fixedWarehouseIds = [] }) => {
   if (!data || data.length === 0) {
     const typeLabel = itemType === 'All' ? 'parties/entities' : `${itemType.toLowerCase()}s`;
     return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
@@ -52,8 +54,9 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
 
   return (
-    <div className="rounded-md border shadow-sm"> {/* Wrapper to retain styling */}
-      <Table> {/* Removed min-w-full and whitespace-nowrap from here */}
+    <TooltipProvider>
+    <div className="rounded-md border shadow-sm overflow-x-auto"> {/* Added overflow-x-auto */}
+      <Table>
         <TableHeader>
           <TableRow>
             <TableHead className="w-[100px] sm:w-[150px] whitespace-nowrap">ID</TableHead>
@@ -67,10 +70,14 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           {uniqueMasters.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
             const TypeIcon = typeIconMap[item.type] || Users;
+            const isFixedWarehouse = item.type === 'Warehouse' && fixedWarehouseIds.includes(item.id);
             return (
               <TableRow key={item.id}>
                 <TableCell className="font-mono text-xs whitespace-nowrap">{item.id}</TableCell>
-                <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap">
+                  {isFixedWarehouse && <Lock className="h-3 w-3 inline-block mr-1.5 text-muted-foreground" />}
+                  {item.name}
+                </TableCell>
                 {showTypeColumn && (
                   <TableCell className="whitespace-nowrap">
                     <Badge variant="secondary" className="text-xs capitalize">
@@ -90,9 +97,14 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                   <Button variant="ghost" size="icon" onClick={() => onEdit(item)} className="mr-1 sm:mr-2 hover:text-primary">
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(item)} className="hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => onDelete(item)} className="hover:text-destructive" disabled={isFixedWarehouse}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    {isFixedWarehouse && <TooltipContent><p>Fixed warehouses cannot be deleted.</p></TooltipContent>}
+                  </Tooltip>
                 </TableCell>
               </TableRow>
             );
@@ -110,5 +122,9 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 };
+
+
+    

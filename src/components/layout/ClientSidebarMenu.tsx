@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
+import { useSidebar } from "@/components/ui/sidebar"; 
 
 import {
   LayoutGrid,
@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
-// Map icon names to components
 const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   LayoutGrid,
   ShoppingCart,
@@ -53,12 +52,12 @@ interface ClientSidebarMenuProps {
 
 export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
   const pathname = usePathname();
-  const { state: sidebarState } = useSidebar(); // Get sidebar state
+  const { state: sidebarState } = useSidebar(); 
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className="p-2 space-y-1">
       {navItems.map((item) => {
-        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")) || (item.href === "/dashboard" && pathname === "/dashboard");
+        const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/")) || (item.href === "/dashboard" && pathname === "/");
         const IconComponent = iconMap[item.iconName] || FallbackIcon;
 
         return (
@@ -68,32 +67,33 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 isActive={isActive}
                 tooltip={item.title}
                 className={cn(
-                  // Base styles for the <a> tag
-                  "w-full relative text-base group flex items-center py-2 h-auto transition-colors duration-200 ease-in-out",
-                  // Conditional horizontal alignment for the <a> tag's content (the <button>)
-                  sidebarState === 'collapsed' ? "justify-center" : "justify-start px-2",
+                  "relative flex items-center h-auto transition-transform duration-200 ease-in-out group transform hover:scale-[1.02]",
+                  sidebarState === 'collapsed'
+                    ? "w-12 h-12 justify-center rounded-lg" // Square button for collapsed
+                    : "w-full justify-start px-3 py-2.5 rounded-md", // Full width for expanded
                   isActive
-                    ? "bg-primary shadow-md hover:scale-105 rounded-md"
-                    : "hover:bg-sidebar-accent/50 rounded-md"
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg scale-[1.03]"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )}
               >
-                {/* Icon Circle Div - always present */}
+                {/* Icon Circle Div - consistent size, different bg/text based on state */}
                 <div className={cn(
-                  "flex items-center justify-center h-8 w-8 rounded-full shrink-0",
-                  // Margin for expanded state to create space for text
-                  sidebarState === 'expanded' && "mr-2.5", // Use state directly
-                  isActive ? "bg-primary-foreground" : item.iconColor || "bg-sidebar-accent"
+                  "flex items-center justify-center h-8 w-8 rounded-full shrink-0 transition-colors",
+                  sidebarState === 'expanded' && "mr-3", 
+                  isActive && sidebarState === 'collapsed'
+                    ? "bg-sidebar-primary-foreground text-sidebar-primary" // Collapsed Active
+                    : isActive && sidebarState === 'expanded'
+                      ? "bg-sidebar-primary-foreground text-sidebar-primary" // Expanded Active
+                      : item.iconColor ? `${item.iconColor} text-white` : "bg-sidebar-accent text-sidebar-accent-foreground" // Inactive (collapsed or expanded)
                 )}>
-                  <IconComponent className={cn(
-                    "h-5 w-5",
-                    isActive ? "text-primary" : "text-white"
-                  )} />
+                  <IconComponent className="h-5 w-5" />
                 </div>
 
                 {/* Text Span - hidden when collapsed */}
                 <span className={cn(
-                  sidebarState === 'collapsed' && "hidden", // Use state directly
-                  isActive ? "text-primary-foreground font-semibold" : "text-slate-50 group-hover:text-sidebar-accent-foreground"
+                  "truncate text-sm", // Adjusted text size
+                  sidebarState === 'collapsed' && "hidden",
+                  isActive ? "font-semibold" : "font-medium" // Slightly bolder for active
                 )}>
                   {item.title}
                 </span>
@@ -105,3 +105,5 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
     </SidebarMenu>
   );
 }
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, Building } from "lucide-react";
+import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, Building, Lock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,12 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
+export const FIXED_WAREHOUSES: Readonly<MasterItem[]> = [
+  { id: 'fixed-wh-mumbai', name: 'MUMBAI', type: 'Warehouse' },
+  { id: 'fixed-wh-chiplun', name: 'CHIPLUN', type: 'Warehouse' },
+  { id: 'fixed-wh-sawantwadi', name: 'SAWANTWADI', type: 'Warehouse' },
+];
+const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 
 type MasterPageTabKey = MasterItemType | 'All';
 
@@ -65,15 +71,38 @@ export default function MastersPage() {
   const [hydrated, setHydrated] = useState(false);
   
   useEffect(() => {
-    // This effect runs once on mount to signal client-side hydration is complete.
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    if (hydrated) {
+      // Ensure fixed warehouses exist
+      setWarehouses(currentWarehouses => {
+        const warehousesMap = new Map(currentWarehouses.map(wh => [wh.id, wh]));
+        let updated = false;
+        FIXED_WAREHOUSES.forEach(fixedWh => {
+          if (!warehousesMap.has(fixedWh.id)) {
+            warehousesMap.set(fixedWh.id, fixedWh);
+            updated = true;
+          } else {
+            // Ensure name and type are correct if ID exists
+            const existing = warehousesMap.get(fixedWh.id)!;
+            if (existing.name !== fixedWh.name || existing.type !== fixedWh.type) {
+              warehousesMap.set(fixedWh.id, { ...existing, name: fixedWh.name, type: fixedWh.type });
+              updated = true;
+            }
+          }
+        });
+        return updated ? Array.from(warehousesMap.values()).sort((a, b) => a.name.localeCompare(b.name)) : currentWarehouses;
+      });
+    }
+  }, [hydrated, setWarehouses]);
+
+
   const allMasterItems = useMemo(() => {
     if (!hydrated) return []; 
-    // This combines all master lists.
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses]
-      .filter(item => item && item.id && item.name && item.type) // Basic validation
+      .filter(item => item && item.id && item.name && item.type) 
       .sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, hydrated]);
 
@@ -86,12 +115,32 @@ export default function MastersPage() {
       case 'Transporter': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'All': return { data: allMasterItems, setData: () => {} }; // setData is a no-op for 'All'
+      case 'All': return { data: allMasterItems, setData: () => {} }; 
       default: return { data: [], setData: () => {} };
     }
   }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
+    if (FIXED_WAREHOUSE_IDS.includes(item.id) && item.type === 'Warehouse' && initialData?.id === item.id) {
+      // Allow editing name of fixed warehouse, but not type or deleting
+      const fixedWhConfig = FIXED_WAREHOUSES.find(fw => fw.id === item.id);
+      if (item.name !== fixedWhConfig?.name) {
+         // Update only name, keep other fixed props
+         const updatedItem = { ...item, name: item.name, type: 'Warehouse' as MasterItemType };
+         setWarehouses(prev => prev.map(w => w.id === item.id ? updatedItem : w).sort((a,b) => a.name.localeCompare(b.name)));
+         toast({ title: "Fixed Warehouse Updated", description: `Name for ${item.name} updated.`});
+         setIsFormOpen(false);
+         setEditingItem(null);
+         return;
+      } else if (item.name === fixedWhConfig?.name) {
+         toast({ title: "No Changes", description: `No changes made to fixed warehouse ${item.name}.`});
+         setIsFormOpen(false);
+         setEditingItem(null);
+         return;
+      }
+    }
+
+
     const { setData } = getMasterDataState(item.type);
     const itemsForNameCheck = allMasterItems.filter(existingItem => existingItem.id !== item.id);
 
@@ -129,7 +178,7 @@ export default function MastersPage() {
     setIsFormOpen(false);
     setEditingItem(null);
 
-  }, [getMasterDataState, allMasterItems, toast]); 
+  }, [getMasterDataState, allMasterItems, toast, setWarehouses, initialData]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
@@ -137,12 +186,26 @@ export default function MastersPage() {
   }, []);
 
   const handleDeleteItemAttempt = useCallback((item: MasterItem) => {
+    if (FIXED_WAREHOUSE_IDS.includes(item.id)) {
+      toast({
+        title: "Deletion Prohibited",
+        description: `${item.name} is a fixed warehouse and cannot be deleted.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setItemToDelete(item);
     setShowDeleteConfirm(true);
-  }, []);
+  }, [toast]);
 
   const confirmDeleteItem = useCallback(() => {
     if (itemToDelete) {
+      if (FIXED_WAREHOUSE_IDS.includes(itemToDelete.id)) {
+        toast({ title: "Error", description: "Fixed warehouses cannot be deleted.", variant: "destructive" });
+        setItemToDelete(null);
+        setShowDeleteConfirm(false);
+        return;
+      }
       const itemType = itemToDelete.type;
       const itemName = itemToDelete.name;
       const { setData } = getMasterDataState(itemType);
@@ -211,6 +274,7 @@ export default function MastersPage() {
                     isAllItemsTab={tab.value === "All"}
                     onEdit={handleEditItem}
                     onDelete={handleDeleteItemAttempt}
+                    fixedWarehouseIds={FIXED_WAREHOUSE_IDS}
                   />
                 </CardContent>
                 <CardFooter>
@@ -231,6 +295,7 @@ export default function MastersPage() {
           onSubmit={handleAddOrUpdateMasterItem}
           initialData={editingItem}
           itemTypeFromButton={editingItem ? editingItem.type : (activeTab === 'All' ? 'Customer' : activeTab as MasterItemType)}
+          fixedWarehouseIds={FIXED_WAREHOUSE_IDS}
         />
       )}
 
@@ -254,5 +319,8 @@ export default function MastersPage() {
   );
 }
     
+
+    
+
 
     
