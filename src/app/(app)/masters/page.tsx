@@ -32,15 +32,6 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 
-// Initial data sets - changed to empty arrays for clean slate on format
-const initialCustomers: MasterItem[] = [];
-const initialSuppliers: MasterItem[] = [];
-const initialAgents: MasterItem[] = [];
-const initialTransporters: MasterItem[] = [];
-const initialBrokers: MasterItem[] = [];
-const initialWarehouses: MasterItem[] = [];
-
-
 type MasterPageTabKey = MasterItemType | 'All';
 
 const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; }[] = [
@@ -56,19 +47,12 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
 export default function MastersPage() {
   const { toast } = useToast();
   
-  const memoizedInitialCustomers = useMemo(() => initialCustomers, []);
-  const memoizedInitialSuppliers = useMemo(() => initialSuppliers, []);
-  const memoizedInitialAgents = useMemo(() => initialAgents, []);
-  const memoizedInitialTransporters = useMemo(() => initialTransporters, []);
-  const memoizedInitialBrokers = useMemo(() => initialBrokers, []);
-  const memoizedInitialWarehouses = useMemo(() => initialWarehouses, []);
-
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedInitialCustomers);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedInitialSuppliers);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedInitialAgents);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedInitialTransporters);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedInitialBrokers);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
 
 
   const [isFormOpen, setIsFormOpen] = useState(false);
