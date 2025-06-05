@@ -41,15 +41,15 @@
     --chart-4: 0 65% 38%;
     --chart-5: 158 59% 45%;
 
-    /* Sidebar specific colors, updated for Saffron/Turmeric Yellow background */
-    --sidebar-background: 45 100% 50%;       /* Saffron / Turmeric yellow */
-    --sidebar-foreground: 225 47% 14%;       /* Deep Navy Blue for text */
-    --sidebar-primary: 158 59% 27%;          /* Deep Green for active item background */
-    --sidebar-primary-foreground: 56 88% 97%;/* Light Cream for active item text */
-    --sidebar-accent: 45 90% 55%;            /* Slightly darker/desaturated yellow for hover on inactive */
-    --sidebar-accent-foreground: 225 47% 14%;/* Deep Navy Blue for hover text on inactive */
-    --sidebar-border: 45 100% 40%;           /* Darker yellow/orange for borders */
-    --sidebar-ring: 158 59% 27%;             /* Deep Green for focus rings */
+    /* Sidebar specific colors, updated for #ff831c (orange) background */
+    --sidebar-background: 26 100% 55%;        /* Orange #ff831c */
+    --sidebar-foreground: 225 47% 14%;        /* Deep Navy Blue for text on orange */
+    --sidebar-primary: 158 59% 27%;           /* Deep Green for active item background */
+    --sidebar-primary-foreground: 56 88% 97%; /* Light Cream for active item text (on green) */
+    --sidebar-accent: 26 100% 65%;             /* Lighter orange for hover on inactive items */
+    --sidebar-accent-foreground: 225 47% 10%; /* Almost black/very dark navy for text on lighter orange hover */
+    --sidebar-border: 26 100% 48%;            /* Darker orange for borders */
+    --sidebar-ring: 158 59% 27%;              /* Deep Green for focus rings */
   }
 
   .dark {
@@ -82,16 +82,16 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    /* Dark mode sidebar, can be different from light mode's saffron */
-    /* Keeping it distinct and dark for now, but could also be a darker saffron/yellow */
+    /* Dark mode sidebar, can be different from light mode's orange */
+    /* Keeping it distinct and dark for now */
     --sidebar-background: 215 20% 15%; /* Darker Slate Blue-Gray for dark mode */
     --sidebar-foreground: 56 88% 85%;
-    --sidebar-primary: 45 100% 55%; /* Saffron for active items in dark mode */
-    --sidebar-primary-foreground: 215 20% 10%;
+    --sidebar-primary: 26 100% 60%; /* Brighter Orange for active items in dark mode */
+    --sidebar-primary-foreground: 215 20% 10%; /* Dark text on orange */
     --sidebar-accent: 215 20% 20%;
-    --sidebar-accent-foreground: 45 100% 60%;
+    --sidebar-accent-foreground: 26 100% 65%; /* Lighter orange for hover text */
     --sidebar-border: 215 20% 25%;
-    --sidebar-ring: 45 100% 55%;
+    --sidebar-ring: 26 100% 60%; /* Orange ring for dark mode */
   }
 }
 
