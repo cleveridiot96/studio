@@ -41,14 +41,14 @@
     --chart-4: 0 65% 38%;
     --chart-5: 158 59% 45%;
 
-    /* Sidebar specific colors, can be same as main or distinct */
-    --sidebar-background: 215 30% 22%; /* Dark Slate Blue-Gray */
+    /* Sidebar specific colors, updated to Dark Slate */
+    --sidebar-background: 0 0% 11%; /* Dark Slate #1c1c1c */
     --sidebar-foreground: 56 88% 90%; /* Light Cream / Off-white */
     --sidebar-primary: 45 100% 50%; /* Saffron / Turmeric yellow for active/hover states */
-    --sidebar-primary-foreground: 225 47% 10%; /* Deep Navy for text on saffron */
-    --sidebar-accent: 215 30% 27%; /* Lighter Slate Blue-Gray for hover backgrounds */
+    --sidebar-primary-foreground: 0 0% 5%; /* Almost black for text on saffron */
+    --sidebar-accent: 0 0% 16%; /* Slightly lighter Dark Slate for hover backgrounds */
     --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
-    --sidebar-border: 215 30% 30%; /* Lighter Slate Blue-Gray for borders */
+    --sidebar-border: 0 0% 20%; /* Lighter Dark Slate for borders */
     --sidebar-ring: 45 100% 50%;
   }
 
@@ -182,3 +182,4 @@
      max-height: none !important;
   }
 }
+
