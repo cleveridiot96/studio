@@ -41,15 +41,15 @@
     --chart-4: 0 65% 38%;
     --chart-5: 158 59% 45%;
 
-    /* Sidebar specific colors, updated to Dark Slate */
-    --sidebar-background: 0 0% 11%; /* Dark Slate #1c1c1c */
-    --sidebar-foreground: 56 88% 90%; /* Light Cream / Off-white */
-    --sidebar-primary: 45 100% 50%; /* Saffron / Turmeric yellow for active/hover states */
-    --sidebar-primary-foreground: 0 0% 5%; /* Almost black for text on saffron */
-    --sidebar-accent: 0 0% 16%; /* Slightly lighter Dark Slate for hover backgrounds */
-    --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
-    --sidebar-border: 0 0% 20%; /* Lighter Dark Slate for borders */
-    --sidebar-ring: 45 100% 50%;
+    /* Sidebar specific colors, updated for Saffron/Turmeric Yellow background */
+    --sidebar-background: 45 100% 50%;       /* Saffron / Turmeric yellow */
+    --sidebar-foreground: 225 47% 14%;       /* Deep Navy Blue for text */
+    --sidebar-primary: 158 59% 27%;          /* Deep Green for active item background */
+    --sidebar-primary-foreground: 56 88% 97%;/* Light Cream for active item text */
+    --sidebar-accent: 45 90% 55%;            /* Slightly darker/desaturated yellow for hover on inactive */
+    --sidebar-accent-foreground: 225 47% 14%;/* Deep Navy Blue for hover text on inactive */
+    --sidebar-border: 45 100% 40%;           /* Darker yellow/orange for borders */
+    --sidebar-ring: 158 59% 27%;             /* Deep Green for focus rings */
   }
 
   .dark {
@@ -82,11 +82,12 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    /* Dark mode sidebar, keeping it distinct and dark */
+    /* Dark mode sidebar, can be different from light mode's saffron */
+    /* Keeping it distinct and dark for now, but could also be a darker saffron/yellow */
     --sidebar-background: 215 20% 15%; /* Darker Slate Blue-Gray for dark mode */
     --sidebar-foreground: 56 88% 85%;
-    --sidebar-primary: 45 100% 55%;
-    --sidebar-primary-foreground: 215 20% 10%; /* Darker contrast for saffron on dark slate */
+    --sidebar-primary: 45 100% 55%; /* Saffron for active items in dark mode */
+    --sidebar-primary-foreground: 215 20% 10%;
     --sidebar-accent: 215 20% 20%;
     --sidebar-accent-foreground: 45 100% 60%;
     --sidebar-border: 215 20% 25%;
@@ -95,7 +96,7 @@
 }
 
 .MuiPopover-root {
-  z-index: 9999 !important; 
+  z-index: 9999 !important;
 }
 
 @layer base {
@@ -131,15 +132,15 @@
 
 @media print {
   @page {
-    size: A7 portrait; 
-    margin: 5mm;       
+    size: A7 portrait;
+    margin: 5mm;
   }
 
   body {
     background: white !important;
     color: black !important;
-    font-size: 8pt !important; 
-    overflow: visible !important; 
+    font-size: 8pt !important;
+    overflow: visible !important;
     height: auto !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -163,18 +164,18 @@
     color: black !important;
   }
   table, th, td {
-    border: 0.5px solid #ddd !important; 
-    font-size: 7pt !important;        
+    border: 0.5px solid #ddd !important;
+    font-size: 7pt !important;
   }
   th {
-    background-color: #f8f8f8 !important; 
+    background-color: #f8f8f8 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   .card, .card-content, .card-header, .card-footer {
     box-shadow: none !important;
-    border: 0.5px solid #f0f0f0 !important; 
-    padding: 0.25rem !important;             
+    border: 0.5px solid #f0f0f0 !important;
+    padding: 0.25rem !important;
   }
   .print\:overflow-visible {
      overflow: visible !important;
@@ -182,4 +183,3 @@
      max-height: none !important;
   }
 }
-
