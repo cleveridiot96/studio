@@ -261,6 +261,23 @@ export function LedgerClient() {
     return allMasters.find(p => p.id === selectedPartyId);
   }, [selectedPartyId, allMasters]);
 
+  const setDateFilter = React.useCallback((monthsAgo: number) => {
+    const today = new Date();
+    const fromDate = startOfDay(subMonths(today, monthsAgo));
+    setDateRange({ from: fromDate, to: endOfDay(today) });
+  }, []);
+
+  const setCurrentFinancialYearFilter = React.useCallback(() => {
+    const [startYearStr] = currentFinancialYearString.split('-');
+    const startYear = parseInt(startYearStr, 10);
+    if (!isNaN(startYear)) {
+      setDateRange({
+        from: new Date(startYear, 3, 1), // April 1st
+        to: endOfDay(new Date(startYear + 1, 2, 31)), // March 31st
+      });
+    }
+  }, [currentFinancialYearString]);
+
 
   const handleDownloadPdf = async () => {
     if (!ledgerTableRef.current || !selectedPartyDetails) {
