@@ -121,7 +121,7 @@ export default function MastersPage() {
   }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
-    if (FIXED_WAREHOUSE_IDS.includes(item.id) && item.type === 'Warehouse' && initialData?.id === item.id) {
+    if (FIXED_WAREHOUSE_IDS.includes(item.id) && item.type === 'Warehouse' && editingItem?.id === item.id) {
       // Allow editing name of fixed warehouse, but not type or deleting
       const fixedWhConfig = FIXED_WAREHOUSES.find(fw => fw.id === item.id);
       if (item.name !== fixedWhConfig?.name) {
@@ -178,7 +178,7 @@ export default function MastersPage() {
     setIsFormOpen(false);
     setEditingItem(null);
 
-  }, [getMasterDataState, allMasterItems, toast, setWarehouses, initialData]); 
+  }, [getMasterDataState, allMasterItems, toast, setWarehouses, editingItem]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
