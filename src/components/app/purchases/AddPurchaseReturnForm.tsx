@@ -23,8 +23,8 @@ interface AddPurchaseReturnFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (purchaseReturn: PurchaseReturn) => void;
-  purchases: Purchase[]; 
-  existingPurchaseReturns: PurchaseReturn[]; 
+  purchases: Purchase[];
+  existingPurchaseReturns: PurchaseReturn[];
   purchaseReturnToEdit?: PurchaseReturn | null;
 }
 
@@ -39,6 +39,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [selectedOriginalPurchase, setSelectedOriginalPurchase] = React.useState<Purchase | null>(null);
+  const [netWeightReturnedManuallySet, setNetWeightReturnedManuallySet] = React.useState(!!purchaseReturnToEdit?.netWeightReturned);
 
   const formMethods = useForm<PurchaseReturnFormValues>({
     resolver: zodResolver(purchaseReturnSchema(purchases, existingPurchaseReturns)),
@@ -67,7 +68,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
-      reset(purchaseReturnToEdit
+      const defaultVals = purchaseReturnToEdit
         ? {
             date: new Date(purchaseReturnToEdit.date),
             originalPurchaseId: purchaseReturnToEdit.originalPurchaseId,
@@ -76,9 +77,10 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
             returnReason: purchaseReturnToEdit.returnReason || "",
             notes: purchaseReturnToEdit.notes || "",
           }
-        : { date: new Date(), originalPurchaseId: undefined, quantityReturned: 0, netWeightReturned: 0, returnReason: "", notes: "" }
-      );
+        : { date: new Date(), originalPurchaseId: undefined, quantityReturned: 0, netWeightReturned: 0, returnReason: "", notes: "" };
+      reset(defaultVals);
       setSelectedOriginalPurchase(purchaseReturnToEdit ? purchases.find(p => p.id === purchaseReturnToEdit.originalPurchaseId) || null : null);
+      setNetWeightReturnedManuallySet(!!purchaseReturnToEdit?.netWeightReturned);
     }
   }, [isOpen, purchaseReturnToEdit, reset, purchases]);
 
@@ -86,19 +88,28 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
     if (watchedOriginalPurchaseId) {
       const purchase = purchases.find(p => p.id === watchedOriginalPurchaseId);
       setSelectedOriginalPurchase(purchase || null);
+      // When original purchase changes, reset manual flag for net weight if quantity is also reset or not yet set
+      if (formMethods.getValues("quantityReturned") === 0) {
+        setNetWeightReturnedManuallySet(false);
+      }
     } else {
       setSelectedOriginalPurchase(null);
+      setNetWeightReturnedManuallySet(false);
     }
-  }, [watchedOriginalPurchaseId, purchases, purchaseReturnToEdit, setValue, formMethods]);
-  
+  }, [watchedOriginalPurchaseId, purchases, formMethods]);
+
   React.useEffect(() => {
-    if (selectedOriginalPurchase && watchedQuantityReturned > 0) {
-      const avgWeightPerBag = selectedOriginalPurchase.netWeight / selectedOriginalPurchase.quantity;
-      if (!isNaN(avgWeightPerBag) && formMethods.getValues("netWeightReturned") === 0) { 
-        setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)));
+    if (selectedOriginalPurchase && watchedQuantityReturned > 0 && !netWeightReturnedManuallySet) {
+      const avgWeightPerBag = (selectedOriginalPurchase.quantity > 0)
+        ? selectedOriginalPurchase.netWeight / selectedOriginalPurchase.quantity
+        : 50; // Fallback if original quantity is somehow zero
+      if (!isNaN(avgWeightPerBag)) {
+        setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)), { shouldValidate: true });
       }
+    } else if (watchedQuantityReturned === 0 && !netWeightReturnedManuallySet) {
+        setValue("netWeightReturned", 0, { shouldValidate: true });
     }
-  }, [watchedQuantityReturned, selectedOriginalPurchase, setValue, formMethods]);
+  }, [watchedQuantityReturned, selectedOriginalPurchase, netWeightReturnedManuallySet, setValue]);
 
 
   const processSubmit = (values: PurchaseReturnFormValues) => {
@@ -134,7 +145,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
 
   const purchaseOptions = purchases.map(p => ({
     value: p.id,
-    label: `${p.lotNumber} - ${p.supplierName || p.supplierId} (Date: ${format(parseISO(p.date), "dd-MM-yy")}, Rate: ₹${p.rate})`,
+    label: `${p.lotNumber} - ${p.supplierName || p.supplierId} (Date: ${format(parseISO(p.date), "dd-MM-yy")}, Rate: ₹${p.rate.toFixed(2)})`,
   }));
 
   return (
@@ -162,11 +173,11 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
               <FormField control={control} name="originalPurchaseId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Original Purchase</FormLabel>
-                  <MasterDataCombobox 
-                    value={field.value} 
-                    onChange={field.onChange} 
-                    options={purchaseOptions} 
-                    placeholder="Select Original Purchase" 
+                  <MasterDataCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    options={purchaseOptions}
+                    placeholder="Select Original Purchase"
                   />
                   <FormMessage />
                 </FormItem>)}
@@ -183,14 +194,26 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
                 <FormField control={control} name="quantityReturned" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Quantity Returned (Bags)</FormLabel>
-                    <FormControl><Input type="number" placeholder="Bags" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                    <FormControl><Input type="number" placeholder="Bags" {...field}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value) || 0;
+                        field.onChange(val);
+                        setNetWeightReturnedManuallySet(false);
+                      }}
+                    /></FormControl>
                     <FormMessage />
                   </FormItem>)}
                 />
                 <FormField control={control} name="netWeightReturned" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Net Weight Returned (kg)</FormLabel>
-                    <FormControl><Input type="number" step="0.01" placeholder="Weight" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                    <FormControl><Input type="number" step="0.01" placeholder="Weight" {...field}
+                      onChange={e => {
+                        field.onChange(parseFloat(e.target.value) || 0);
+                        setNetWeightReturnedManuallySet(true);
+                      }}
+                      onFocus={() => setNetWeightReturnedManuallySet(true)}
+                    /></FormControl>
                     <FormMessage />
                   </FormItem>)}
                 />
