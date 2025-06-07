@@ -82,7 +82,8 @@ const DashboardClient = () => {
     if(isAppHydrating||!hydrated) return {totalAmount:0,totalBags:0,totalNetWeight:0};
     const filteredSales = filterByPeriod(sales, selectedPeriod, currentFinancialYearString);
     const netSales = filteredSales.reduce((acc, sale) => {
-        acc.totalAmount += sale.totalAmount || 0; acc.totalBags += sale.quantity || 0; acc.totalNetWeight += sale.netWeight || 0; return acc;
+        acc.totalAmount += sale.billedAmount || 0; // Corrected property from totalAmount to billedAmount
+        acc.totalBags += sale.quantity || 0; acc.totalNetWeight += sale.netWeight || 0; return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
     // Adjust for sale returns
     const relevantSaleReturns = filterByPeriod(saleReturns, selectedPeriod, currentFinancialYearString);
@@ -178,3 +179,5 @@ const DashboardClient = () => {
   );
 };
 export default DashboardClient;
+
+    
