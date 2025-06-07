@@ -16,6 +16,7 @@ import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building, 
 import type { MasterItem, MasterItemType } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Added ScrollArea and ScrollBar
 
 
 const typeIconMap: Record<MasterItemType, React.ElementType> = {
@@ -34,7 +35,7 @@ interface MasterListProps {
   isAllItemsTab?: boolean;
   onEdit: (item: MasterItem) => void;
   onDelete: (item: MasterItem) => void;
-  fixedWarehouseIds?: string[]; // Added to identify fixed warehouses
+  fixedWarehouseIds?: string[];
 }
 
 export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete, fixedWarehouseIds = [] }) => {
@@ -55,7 +56,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
   return (
     <TooltipProvider>
-    <div className="rounded-md border shadow-sm overflow-x-auto"> {/* Added overflow-x-auto */}
+    <ScrollArea className="rounded-md border shadow-sm h-[50vh] print:h-auto print:overflow-visible"> {/* Replaced div with ScrollArea and added height */}
       <Table>
         <TableHeader>
           <TableRow>
@@ -121,10 +122,9 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           No items to display.
         </div>
       )}
-    </div>
+      <ScrollBar orientation="horizontal" /> {/* Added horizontal scrollbar */}
+    </ScrollArea>
     </TooltipProvider>
   );
 };
 
-
-    
