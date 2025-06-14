@@ -68,7 +68,7 @@ const PurchaseReturnTableComponent: React.FC<PurchaseReturnTableProps> = ({ data
                       <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions</span></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(pr)} disabled> {/* Edit for returns can be complex, disabled for now */}
+                      <DropdownMenuItem onClick={() => onEdit(pr)}>
                         <Pencil className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />

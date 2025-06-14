@@ -128,7 +128,10 @@ export function PurchasesClient() {
     toast({ title: "Success!", description: purchaseReturns.some(pr => pr.id === prData.id) ? "Purchase return updated." : "Purchase return added." });
   }, [setPurchaseReturns, toast, purchaseReturns]);
 
-  const handleEditPurchaseReturn = React.useCallback((pr: PurchaseReturn) => { /* setPurchaseReturnToEdit(pr); setIsAddPurchaseReturnFormOpen(true); */ toast({title: "Info", description: "Editing purchase returns is planned for a future update."})}, [toast]);
+  const handleEditPurchaseReturn = React.useCallback((pr: PurchaseReturn) => {
+    setPurchaseReturnToEdit(pr);
+    setIsAddPurchaseReturnFormOpen(true);
+  }, []);
   const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => { setPurchaseReturnToDeleteId(prId); setShowDeleteReturnConfirm(true); }, []);
   const confirmDeletePurchaseReturn = React.useCallback(() => {
     if (purchaseReturnToDeleteId) {
