@@ -137,9 +137,10 @@ export function LedgerClient() {
         });
       }
       if (p.transporterId === selectedPartyId && party.type === 'Transporter' && p.transportRate) {
+        const transportDescription = `By Transport: Lot ${p.lotNumber} (${p.quantity} bags, Total: ₹${p.transportRate?.toFixed(2)})${p.transportRatePerKg ? ' @ ₹'+p.transportRatePerKg.toFixed(2)+'/kg' : ''}`;
         tempTransactions.push({
           id: `pur-trans-${p.id}`, relatedDocId: p.id, date: p.date, vchType: 'Transport Exp.', refNo: p.lotNumber,
-          description: `By Transport for Purchase Lot ${p.lotNumber}`,
+          description: transportDescription,
           credit: p.transportRate,
           transactionAmount: p.transportRate
         });
@@ -152,17 +153,17 @@ export function LedgerClient() {
         tempTransactions.push({
           id: `sale-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale', refNo: s.billNumber || s.id,
           description: `To Goods Sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber})`,
-          debit: s.billedAmount, // Corrected
-          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.billedAmount // Corrected
+          debit: s.billedAmount, 
+          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.billedAmount 
         });
       }
       if (s.brokerId === selectedPartyId && party.type === 'Broker') {
         tempTransactions.push({
           id: `sale-via-broker-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale via Broker', refNo: s.billNumber || s.id,
           description: `To Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
-          debit: s.billedAmount, // Corrected: Broker owes the billed amount
+          debit: s.billedAmount, 
           customerName: s.customerName || s.customerId,
-          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.billedAmount // Corrected
+          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.billedAmount
         });
         if (s.calculatedBrokerageCommission && s.calculatedBrokerageCommission > 0) {
             tempTransactions.push({
