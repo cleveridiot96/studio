@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer, Download, ListCollapse, RotateCcw, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react"; // Removed MoreVertical, Pencil, Trash2 as they are in table
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
@@ -30,7 +30,6 @@ import html2canvas from 'html2canvas';
 import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-
 const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number }): Purchase => {
   const transportRatePerKg = p.transportRatePerKg || 0;
   const quantity = p.quantity || 0;
@@ -41,10 +40,8 @@ const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate
   return { ...p, transportRate: calculatedTransportRate, totalAmount, effectiveRate };
 };
 
-// Initial data sets - changed to empty arrays for clean slate on format
 const initialPurchasesData: Purchase[] = [];
 const initialPurchaseReturnsData: PurchaseReturn[] = [];
-
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
@@ -52,7 +49,6 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-
 
 export function PurchasesClient() {
   const { toast } = useToast();
@@ -79,14 +75,24 @@ export function PurchasesClient() {
   const [showDeleteReturnConfirm, setShowDeleteReturnConfirm] = React.useState(false);
   const [purchaseReturnToDeleteId, setPurchaseReturnToDeleteId] = React.useState<string | null>(null);
 
-
   const [purchaseForPdf, setPurchaseForPdf] = React.useState<Purchase | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
   const [isPurchasesClientHydrated, setIsPurchasesClientHydrated] = React.useState(false);
 
-   React.useEffect(() => {
+  React.useEffect(() => {
     setIsPurchasesClientHydrated(true);
+    console.info("PurchasesClient: Component hydrated.");
   }, []);
+
+  // Log state changes for debugging
+  React.useEffect(() => {
+    console.info('PurchasesClient: isAddPurchaseFormOpen changed to:', isAddPurchaseFormOpen);
+  }, [isAddPurchaseFormOpen]);
+
+  React.useEffect(() => {
+    console.info('PurchasesClient: purchaseToEdit changed to:', purchaseToEdit ? purchaseToEdit.id : null);
+  }, [purchaseToEdit]);
+
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !isPurchasesClientHydrated) return [];
@@ -99,6 +105,7 @@ export function PurchasesClient() {
   }, [purchaseReturns, financialYear, isAppHydrating, isPurchasesClientHydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
+    console.info('PurchasesClient: handleAddOrUpdatePurchase called with:', JSON.stringify(purchase));
     const processedPurchase = calculatePurchaseEntry(purchase as any);
     setPurchases(prevPurchases => {
       const isEditing = prevPurchases.some(p => p.id === processedPurchase.id);
@@ -108,10 +115,31 @@ export function PurchasesClient() {
     toast({ title: "Success!", description: purchases.some(p=>p.id === processedPurchase.id) ? "Purchase updated." : "Purchase added." });
   }, [setPurchases, toast, purchases]);
 
-  const handleEditPurchase = React.useCallback((purchase: Purchase) => { setPurchaseToEdit(purchase); setIsAddPurchaseFormOpen(true); }, []);
-  const handleDeletePurchaseAttempt = React.useCallback((purchaseId: string) => { setPurchaseToDeleteId(purchaseId); setShowDeleteConfirm(true); }, []);
+  // Refs to log current state values inside handleEditPurchase
+  const isAddPurchaseFormOpenRef = React.useRef(isAddPurchaseFormOpen);
+  const purchaseToEditRef = React.useRef(purchaseToEdit);
+  React.useEffect(() => { isAddPurchaseFormOpenRef.current = isAddPurchaseFormOpen; }, [isAddPurchaseFormOpen]);
+  React.useEffect(() => { purchaseToEditRef.current = purchaseToEdit; }, [purchaseToEdit]);
+
+  // Simplified for debugging, removed useCallback temporarily
+  const handleEditPurchase = (purchase: Purchase) => {
+    console.info('PurchasesClient: handleEditPurchase called for purchase ID:', purchase.id);
+    console.info('PurchasesClient: Current isAddPurchaseFormOpen (before set):', isAddPurchaseFormOpenRef.current);
+    console.info('PurchasesClient: Current purchaseToEdit (before set):', purchaseToEditRef.current ? purchaseToEditRef.current.id : null);
+    setPurchaseToEdit(purchase);
+    setIsAddPurchaseFormOpen(true); // This should trigger the useEffect for isAddPurchaseFormOpen
+    console.info('PurchasesClient: Set isAddPurchaseFormOpen to true. purchaseToEdit is now:', purchase.id);
+  };
+
+  const handleDeletePurchaseAttempt = React.useCallback((purchaseId: string) => {
+    console.info('PurchasesClient: handleDeletePurchaseAttempt for ID:', purchaseId);
+    setPurchaseToDeleteId(purchaseId);
+    setShowDeleteConfirm(true);
+  }, []);
+
   const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {
+      console.info('PurchasesClient: confirmDeletePurchase for ID:', purchaseToDeleteId);
       setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
       toast({ title: "Deleted!", description: "Purchase record removed.", variant: "destructive" });
       setPurchaseToDeleteId(null); setShowDeleteConfirm(false);
@@ -119,9 +147,9 @@ export function PurchasesClient() {
   }, [purchaseToDeleteId, setPurchases, toast]);
 
   const handleAddOrUpdatePurchaseReturn = React.useCallback((prData: PurchaseReturn) => {
+    console.info('PurchasesClient: handleAddOrUpdatePurchaseReturn called with:', JSON.stringify(prData));
     setPurchaseReturns(prevReturns => {
       const isEditing = prevReturns.some(pr => pr.id === prData.id);
-      // TODO: Add logic to update inventory based on return
       return isEditing ? prevReturns.map(pr => pr.id === prData.id ? prData : pr) : [{ ...prData, id: prData.id || `pr-${Date.now()}` }, ...prevReturns];
     });
     setPurchaseReturnToEdit(null);
@@ -129,40 +157,69 @@ export function PurchasesClient() {
   }, [setPurchaseReturns, toast, purchaseReturns]);
 
   const handleEditPurchaseReturn = React.useCallback((pr: PurchaseReturn) => {
+    console.info('PurchasesClient: handleEditPurchaseReturn called for PR ID:', pr.id);
     setPurchaseReturnToEdit(pr);
     setIsAddPurchaseReturnFormOpen(true);
   }, []);
-  const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => { setPurchaseReturnToDeleteId(prId); setShowDeleteReturnConfirm(true); }, []);
+
+  const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => {
+    console.info('PurchasesClient: handleDeletePurchaseReturnAttempt for PR ID:', prId);
+    setPurchaseReturnToDeleteId(prId);
+    setShowDeleteReturnConfirm(true);
+  }, []);
+
   const confirmDeletePurchaseReturn = React.useCallback(() => {
     if (purchaseReturnToDeleteId) {
+      console.info('PurchasesClient: confirmDeletePurchaseReturn for PR ID:', purchaseReturnToDeleteId);
       setPurchaseReturns(prev => prev.filter(pr => pr.id !== purchaseReturnToDeleteId));
-      // TODO: Add logic to revert inventory changes if a return is deleted
       toast({ title: "Deleted!", description: "Purchase return record removed.", variant: "destructive" });
       setPurchaseReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
     }
   }, [purchaseReturnToDeleteId, setPurchaseReturns, toast]);
 
-
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
+    console.info(`PurchasesClient: handleMasterDataUpdate for type "${type}", item ID: ${newItem.id}`);
     const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { Supplier: setSuppliers, Agent: setAgents, Warehouse: setWarehouses, Transporter: setTransporters };
     const setter = setters[type];
     if (setter) setter(prev => { const newSet = new Map(prev.map(item => [item.id, item])); newSet.set(newItem.id, newItem); return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name)); });
   }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
 
-  const openAddPurchaseForm = React.useCallback(() => { setPurchaseToEdit(null); setIsAddPurchaseFormOpen(true); }, []);
-  const closeAddPurchaseForm = React.useCallback(() => { setIsAddPurchaseFormOpen(false); setPurchaseToEdit(null); }, []);
-  const openAddPurchaseReturnForm = React.useCallback(() => { setPurchaseReturnToEdit(null); setIsAddPurchaseReturnFormOpen(true); }, []);
-  const closeAddPurchaseReturnForm = React.useCallback(() => { setIsAddPurchaseReturnFormOpen(false); setPurchaseReturnToEdit(null); }, []);
+  const openAddPurchaseForm = React.useCallback(() => {
+    console.info('PurchasesClient: openAddPurchaseForm called.');
+    setPurchaseToEdit(null);
+    setIsAddPurchaseFormOpen(true);
+  }, []);
 
+  const closeAddPurchaseForm = React.useCallback(() => {
+    console.info('PurchasesClient: closeAddPurchaseForm called.');
+    setIsAddPurchaseFormOpen(false);
+    setPurchaseToEdit(null);
+  }, []);
 
-  const triggerDownloadPurchasePdf = React.useCallback((purchase: Purchase) => setPurchaseForPdf(purchase), []);
+  const openAddPurchaseReturnForm = React.useCallback(() => {
+    console.info('PurchasesClient: openAddPurchaseReturnForm called.');
+    setPurchaseReturnToEdit(null);
+    setIsAddPurchaseReturnFormOpen(true);
+  }, []);
+
+  const closeAddPurchaseReturnForm = React.useCallback(() => {
+    console.info('PurchasesClient: closeAddPurchaseReturnForm called.');
+    setIsAddPurchaseReturnFormOpen(false);
+    setPurchaseReturnToEdit(null);
+  }, []);
+
+  const triggerDownloadPurchasePdf = React.useCallback((purchase: Purchase) => {
+    console.info('PurchasesClient: triggerDownloadPurchasePdf for purchase ID:', purchase.id);
+    setPurchaseForPdf(purchase);
+  }, []);
+
   React.useEffect(() => {
     if (purchaseForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
         const elementToCapture = chittiContainerRef.current?.querySelector('.print-chitti-styles') as HTMLElement;
         if (!elementToCapture) { toast({ title: "PDF Error", description: "Chitti content not ready.", variant: "destructive" }); setPurchaseForPdf(null); return; }
         try {
-          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false }); // Adjusted height for A5
+          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
           const imgData = canvas.toDataURL('image/png');
           const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
           const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = pdf.internal.pageSize.getHeight(); const imgProps = pdf.getImageProperties(imgData);
@@ -222,7 +279,6 @@ export function PurchasesClient() {
         </TabsContent>
       </Tabs>
 
-
       {isAddPurchaseFormOpen && (
         <AddPurchaseForm
           key={purchaseToEdit ? `edit-purchase-${purchaseToEdit.id}` : 'add-new-purchase'}
@@ -243,7 +299,7 @@ export function PurchasesClient() {
           isOpen={isAddPurchaseReturnFormOpen}
           onClose={closeAddPurchaseReturnForm}
           onSubmit={handleAddOrUpdatePurchaseReturn}
-          purchases={filteredPurchases} /* Pass only FY relevant purchases */
+          purchases={filteredPurchases}
           existingPurchaseReturns={purchaseReturns}
           purchaseReturnToEdit={purchaseReturnToEdit}
         />
@@ -269,7 +325,3 @@ export function PurchasesClient() {
     </div>
   );
 }
-    
-
-    
-
