@@ -152,25 +152,23 @@ export function LedgerClient() {
         tempTransactions.push({
           id: `sale-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale', refNo: s.billNumber || s.id,
           description: `To Goods Sold (Bill: ${s.billNumber || s.id}, Lot: ${s.lotNumber})`,
-          debit: s.totalAmount,
-          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
+          debit: s.billedAmount, // Corrected
+          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.billedAmount // Corrected
         });
       }
       if (s.brokerId === selectedPartyId && party.type === 'Broker') {
-        // Entry for amount due from Broker for this sale
         tempTransactions.push({
           id: `sale-via-broker-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Sale via Broker', refNo: s.billNumber || s.id,
           description: `To Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
-          debit: s.totalAmount, // Broker owes the full sale amount to you
+          debit: s.billedAmount, // Corrected: Broker owes the billed amount
           customerName: s.customerName || s.customerId,
-          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.totalAmount
+          rate: s.rate, netWeight: s.netWeight, transactionAmount: s.billedAmount // Corrected
         });
-        // Entry for brokerage expense you owe to the broker for facilitating the sale
         if (s.calculatedBrokerageCommission && s.calculatedBrokerageCommission > 0) {
             tempTransactions.push({
                 id: `sale-brokerage-exp-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Brokerage Exp.', refNo: s.billNumber || s.id,
                 description: `By Brokerage on Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
-                credit: s.calculatedBrokerageCommission, // You owe this to the broker
+                credit: s.calculatedBrokerageCommission,
                 customerName: s.customerName || s.customerId,
                 transactionAmount: s.calculatedBrokerageCommission
             });
@@ -200,16 +198,13 @@ export function LedgerClient() {
 
     // Receipts received by You
     receipts.forEach(rc => {
-      if (rc.partyId === selectedPartyId) { // partyId on receipt is who paid you (Broker or Customer)
+      if (rc.partyId === selectedPartyId) {
         tempTransactions.push({
           id: `rc-${rc.id}`, relatedDocId: rc.id, date: rc.date, vchType: 'Receipt', refNo: rc.referenceNo,
           description: `By ${rc.paymentMethod} ${rc.referenceNo ? `(${rc.referenceNo})` : ''} ${rc.notes ? '- ' + rc.notes : ''}`,
-          credit: rc.amount, // Amount actually received
+          credit: rc.amount,
           cashDiscount: rc.cashDiscount || 0,
-          transactionAmount: rc.amount + (rc.cashDiscount || 0), // Total value settled by this receipt (amount received + discount given)
-          // For broker ledger, we need to know which customer sale this receipt is against
-          // This might come from rc.notes or rc.relatedSaleIds if implemented
-          // For now, if partyType is Broker, we don't automatically fill customerName here from receipt itself
+          transactionAmount: rc.amount + (rc.cashDiscount || 0),
         });
       }
     });
@@ -613,3 +608,4 @@ export function LedgerClient() {
     </div>
   );
 }
+
