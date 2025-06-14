@@ -41,10 +41,10 @@ interface StockReportItem {
   soldBags: number;
   soldWeight: number;
   soldValue: number;
-  purchaseReturnedBags: number; 
-  purchaseReturnedWeight: number; 
-  saleReturnedBags: number; 
-  saleReturnedWeight: number; 
+  purchaseReturnedBags: number;
+  purchaseReturnedWeight: number;
+  saleReturnedBags: number;
+  saleReturnedWeight: number;
   transferredOutBags: number;
   transferredOutWeight: number;
   transferredInBags: number;
@@ -62,9 +62,9 @@ export function StockReportClient() {
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
 
@@ -89,7 +89,7 @@ export function StockReportClient() {
     const effectiveToDate = dateRange.to || dateRange.from;
 
     const filterByDate = <T extends {date: string}>(items: T[]) => items.filter(i => isWithinInterval(parseISO(i.date), { start: dateRange.from!, end: endOfDay(effectiveToDate) }));
-    
+
     const fyPurchases = filterByDate(purchases);
     const fyPurchaseReturns = filterByDate(purchaseReturns);
     const fySales = filterByDate(sales);
@@ -135,10 +135,10 @@ export function StockReportClient() {
         if (locationFilter && relatedPurchase.locationId !== locationFilter) return;
         const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
         let item = reportItemsMap.get(key);
-        if (item) { item.soldBags += s.quantity; item.soldWeight += s.netWeight; item.soldValue += s.totalAmount; }
+        if (item) { item.soldBags += s.quantity; item.soldWeight += s.netWeight; item.soldValue += s.billedAmount; } // Use billedAmount for sales value
       }
     });
-    
+
     fySaleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if (originalSale) {
@@ -161,11 +161,25 @@ export function StockReportClient() {
             let fromItem = reportItemsMap.get(fromKey);
             if (fromItem) { fromItem.transferredOutBags += transferItem.bagsToTransfer; fromItem.transferredOutWeight += transferItem.netWeightToTransfer; }
         }
+        // Ensure item exists or is created for the 'to' location
+        const toKey = `${transferItem.lotNumber}-${transfer.toWarehouseId}`;
         if (!locationFilter || transfer.toWarehouseId === locationFilter) {
-            const toKey = `${transferItem.lotNumber}-${transfer.toWarehouseId}`;
             let toItem = reportItemsMap.get(toKey);
-            if (!toItem) { /* Create if not exists as transfers can introduce lots to new locations */ }
-            if (toItem) { toItem.transferredInBags += transferItem.bagsToTransfer; toItem.transferredInWeight += transferItem.netWeightToTransfer; }
+            if (!toItem) {
+                // If lot doesn't exist at destination, create a shell. Might need purchaseDate from original source for daysInStock logic.
+                const originalPurchaseForLot = purchases.find(p => p.lotNumber === transferItem.lotNumber);
+                toItem = {
+                    lotNumber: transferItem.lotNumber, locationId: transfer.toWarehouseId,
+                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
+                    purchaseDate: originalPurchaseForLot?.date, purchaseBags: 0, purchaseWeight: 0, purchaseRate: originalPurchaseForLot?.rate || 0, purchaseValue: 0,
+                    soldBags: 0, soldWeight: 0, soldValue: 0,
+                    purchaseReturnedBags: 0, purchaseReturnedWeight: 0, saleReturnedBags: 0, saleReturnedWeight: 0,
+                    transferredOutBags: 0, transferredOutWeight: 0, transferredInBags: 0, transferredInWeight: 0,
+                    remainingBags: 0, remainingWeight: 0,
+                };
+                reportItemsMap.set(toKey, toItem);
+            }
+            toItem.transferredInBags += transferItem.bagsToTransfer; toItem.transferredInWeight += transferItem.netWeightToTransfer;
         }
       });
     });
@@ -174,17 +188,16 @@ export function StockReportClient() {
     reportItemsMap.forEach(item => {
       item.remainingBags = item.purchaseBags + item.transferredInBags + item.saleReturnedBags
                           - item.soldBags - item.transferredOutBags - item.purchaseReturnedBags;
-      const totalEffectivePurchaseWeight = item.purchaseWeight + item.transferredInWeight + item.saleReturnedWeight;
-      const totalEffectivePurchaseBags = item.purchaseBags + item.transferredInBags + item.saleReturnedBags;
-      const avgWeightPerBag = totalEffectivePurchaseBags > 0 ? totalEffectivePurchaseWeight / totalEffectivePurchaseBags : 50;
-      item.remainingWeight = item.remainingBags * avgWeightPerBag;
+      item.remainingWeight = item.purchaseWeight + item.transferredInWeight + item.saleReturnedWeight
+                           - item.soldWeight - item.transferredOutWeight - item.purchaseReturnedWeight;
 
       item.avgSaleRate = item.soldWeight > 0 ? item.soldValue / item.soldWeight : 0;
       if (item.purchaseDate) item.daysInStock = Math.floor((new Date().getTime() - parseISO(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
       const totalInitialBags = item.purchaseBags + item.transferredInBags;
       item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
       item.isDeadStock = item.remainingBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
-      if (item.purchaseBags > 0 || item.transferredInBags > 0 || item.soldBags > 0 || item.transferredOutBags > 0 || item.purchaseReturnedBags > 0 || item.saleReturnedBags > 0) {
+      // Include item if it had any activity or has remaining stock.
+      if (item.purchaseBags > 0 || item.transferredInBags > 0 || item.soldBags > 0 || item.transferredOutBags > 0 || item.purchaseReturnedBags > 0 || item.saleReturnedBags > 0 || item.remainingBags > 0) {
          result.push(item);
       }
     });
@@ -212,7 +225,7 @@ export function StockReportClient() {
       <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2">Stock Movement & Status</CardTitle></CardHeader>
         <CardContent><ScrollArea className="h-[500px] rounded-md border print:h-auto print:overflow-visible">
             <Table><TableHeader><TableRow><TableHead>Lot No.</TableHead><TableHead>Location</TableHead><TableHead>Purch. Date</TableHead><TableHead className="text-right">Net In (Bags)</TableHead><TableHead className="text-right">Net Out (Bags)</TableHead><TableHead className="text-right">Rem. Bags</TableHead><TableHead className="text-right">Rem. Wt (kg)</TableHead><TableHead className="text-center">Status</TableHead></TableRow></TableHeader>
-            <TableBody>{processedReportData.length === 0 && (<TableRow><TableCell colSpan={8} className="text-center h-32">No stock data.</TableCell></TableRow>)}
+            <TableBody>{processedReportData.length === 0 && (<TableRow><TableCell colSpan={8} className="text-center h-32">No stock data for the selected filters.</TableCell></TableRow>)}
             {processedReportData.map((item) => {
                 const netInBags = item.purchaseBags + item.transferredInBags + item.saleReturnedBags;
                 const netOutBags = item.soldBags + item.transferredOutBags + item.purchaseReturnedBags;
@@ -242,5 +255,3 @@ export function StockReportClient() {
   );
 }
 
-
-    
