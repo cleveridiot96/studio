@@ -224,14 +224,29 @@ export function PurchasesClient() {
 
 
       {isAddPurchaseFormOpen && (
-        <AddPurchaseForm isOpen={isAddPurchaseFormOpen} onClose={closeAddPurchaseForm} onSubmit={handleAddOrUpdatePurchase}
-          suppliers={suppliers as Supplier[]} agents={agents as Agent[]} warehouses={warehouses as Warehouse[]} transporters={transporters as Transporter[]}
-          onMasterDataUpdate={handleMasterDataUpdate} purchaseToEdit={purchaseToEdit} />
+        <AddPurchaseForm
+          key={purchaseToEdit ? `edit-purchase-${purchaseToEdit.id}` : 'add-new-purchase'}
+          isOpen={isAddPurchaseFormOpen}
+          onClose={closeAddPurchaseForm}
+          onSubmit={handleAddOrUpdatePurchase}
+          suppliers={suppliers as Supplier[]}
+          agents={agents as Agent[]}
+          warehouses={warehouses as Warehouse[]}
+          transporters={transporters as Transporter[]}
+          onMasterDataUpdate={handleMasterDataUpdate}
+          purchaseToEdit={purchaseToEdit}
+        />
       )}
       {isAddPurchaseReturnFormOpen && (
-        <AddPurchaseReturnForm isOpen={isAddPurchaseReturnFormOpen} onClose={closeAddPurchaseReturnForm} onSubmit={handleAddOrUpdatePurchaseReturn}
-          purchases={filteredPurchases} /* Pass only FY relevant purchases */ existingPurchaseReturns={purchaseReturns}
-          purchaseReturnToEdit={purchaseReturnToEdit} />
+        <AddPurchaseReturnForm
+          key={purchaseReturnToEdit ? `edit-preturn-${purchaseReturnToEdit.id}` : 'add-new-preturn'}
+          isOpen={isAddPurchaseReturnFormOpen}
+          onClose={closeAddPurchaseReturnForm}
+          onSubmit={handleAddOrUpdatePurchaseReturn}
+          purchases={filteredPurchases} /* Pass only FY relevant purchases */
+          existingPurchaseReturns={purchaseReturns}
+          purchaseReturnToEdit={purchaseReturnToEdit}
+        />
       )}
 
       <div ref={chittiContainerRef} className="fixed left-[-9999px] top-0 z-[-1] p-1 bg-white" aria-hidden="true">
@@ -257,3 +272,4 @@ export function PurchasesClient() {
     
 
     
+
