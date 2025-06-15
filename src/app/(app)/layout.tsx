@@ -62,8 +62,6 @@ function AppHeaderContentInternal() {
 }
 
 function LoadingBarInternal() {
-  // This component relies on useSettings, which must be called within SettingsProvider.
-  // The AppLayout's isAppLayoutMounted guard ensures SettingsProvider is rendered before this.
   const { isAppHydrating } = useSettings();
   if (!isAppHydrating) return null;
   return <div className="w-full h-1 bg-primary animate-pulse" />;
@@ -107,17 +105,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!isAppLayoutMounted) {
-    // Render nothing on the server and during the initial client render pass.
-    // This ensures that the server HTML and the client's first render attempt match perfectly (both are empty for this component slot).
-    // The actual content will be rendered only after client-side mount.
-    return null; 
+    // Render a simple, static placeholder instead of null
+    // This ensures the server and initial client render have *some* identical HTML structure.
+    return (
+      <div id="app-layout-hydration-placeholder" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+        <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Loading Kisan Khata Sahayak...</p>
+        <div style={{ width: '50px', height: '50px', border: '4px solid hsl(var(--primary))', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
     <SettingsProvider>
       <SidebarProvider defaultOpen={false} collapsible="icon">
         <AppExitHandler />
-        <div className="flex flex-1 bg-background"> {/* This was line 126 in the error */}
+        <div className="flex flex-1 bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto print:hidden" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
