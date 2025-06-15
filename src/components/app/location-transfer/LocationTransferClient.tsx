@@ -283,7 +283,7 @@ export function LocationTransferClient() {
                         <TableCell className="truncate max-w-xs">{transfer.notes ? (<Tooltip><TooltipTrigger asChild><span>{transfer.notes}</span></TooltipTrigger><TooltipContent><p>{transfer.notes}</p></TooltipContent></Tooltip>) : 'N/A'}</TableCell>
                         <TableCell className="text-center no-print">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions</span></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions</span></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEditTransfer(transfer)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => triggerDownloadTransferPdf(transfer)}><Download className="mr-2 h-4 w-4" /> Download Slip</DropdownMenuItem>
@@ -309,10 +309,11 @@ export function LocationTransferClient() {
 
       {isAddFormOpen && (
         <AddLocationTransferForm
+          key={transferToEdit ? `edit-transfer-${transferToEdit.id}` : 'add-new-transfer'}
           isOpen={isAddFormOpen}
           onClose={() => {
- setIsAddFormOpen(false);
- setTransferToEdit(null);
+            setIsAddFormOpen(false);
+            setTransferToEdit(null);
           }}
           onSubmit={handleAddOrUpdateTransfer}
           warehouses={warehouses}

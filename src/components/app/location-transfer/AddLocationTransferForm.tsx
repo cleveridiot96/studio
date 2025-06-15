@@ -50,7 +50,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   onMasterDataUpdate,
   transferToEdit,
 }) => {
-  const { toast } = useToast(); 
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -61,7 +61,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const getDefaultValues = React.useCallback((): LocationTransferFormValues => {
     if (transferToEdit) {
-      setItemNetWeightManuallySet(transferToEdit.items.map(() => true)); 
+      // When editing, all net weights are considered "manually set" initially from saved data
+      setItemNetWeightManuallySet(transferToEdit.items.map(() => true));
       return {
           date: new Date(transferToEdit.date),
           fromWarehouseId: transferToEdit.fromWarehouseId,
@@ -75,6 +76,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           })),
         };
     }
+    // For new form, initialize first item as not manually set for net weight
     setItemNetWeightManuallySet([false]);
     return {
         date: new Date(),
@@ -99,30 +101,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   });
 
   const watchedFromWarehouseId = watch("fromWarehouseId");
-  const watchedItems = watch("items"); 
+  // const watchedItems = watch("items"); // No longer needed for a separate useEffect
 
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
     }
-  }, [transferToEdit, reset, isOpen, getDefaultValues]); 
-
-
-  React.useEffect(() => {
-    watchedItems.forEach((item, index) => {
-      if (item.bagsToTransfer > 0 && (!itemNetWeightManuallySet[index] || !item.netWeightToTransfer)) {
-        const stockInfo = availableStock.find(
-          s => s.lotNumber === item.lotNumber && s.locationId === watchedFromWarehouseId
-        );
-        const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50; 
-        setValue(`items.${index}.netWeightToTransfer`, item.bagsToTransfer * avgWeightPerBag, { shouldValidate: true });
-      } else if (item.bagsToTransfer === 0 && item.netWeightToTransfer !== 0) {
-        if (!itemNetWeightManuallySet[index]) {
-          setValue(`items.${index}.netWeightToTransfer`, 0, { shouldValidate: true });
-        }
-      }
-    }); 
-  }, [watchedItems, watchedFromWarehouseId, availableStock, setValue, itemNetWeightManuallySet]);
+  }, [transferToEdit, reset, isOpen, getDefaultValues]);
 
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
@@ -195,7 +180,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
+      <Dialog modal={true} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
         <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{transferToEdit ? "Edit Location Transfer" : "New Location Transfer"}</DialogTitle>
@@ -219,36 +204,36 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   />
                   <FormField control={control} name="fromWarehouseId" render={({ field }) => (
                     <FormItem><FormLabel>From Warehouse</FormLabel>
-                      <MasterDataCombobox 
-                        value={field.value} 
-                        onChange={field.onChange} 
-                        options={warehouses.map(w => ({ value: w.id, label: w.name }))} 
-                        placeholder="Select Source" 
-                        onAddNew={() => handleOpenMasterForm("Warehouse")} 
+                      <MasterDataCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={warehouses.map(w => ({ value: w.id, label: w.name }))}
+                        placeholder="Select Source"
+                        onAddNew={() => handleOpenMasterForm("Warehouse")}
                       />
                       <FormMessage />
                     </FormItem>)}
                   />
                   <FormField control={control} name="toWarehouseId" render={({ field }) => (
                     <FormItem><FormLabel>To Warehouse</FormLabel>
-                      <MasterDataCombobox 
-                        value={field.value} 
-                        onChange={field.onChange} 
-                        options={warehouses.map(w => ({ value: w.id, label: w.name }))} 
-                        placeholder="Select Destination" 
-                        onAddNew={() => handleOpenMasterForm("Warehouse")} 
+                      <MasterDataCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={warehouses.map(w => ({ value: w.id, label: w.name }))}
+                        placeholder="Select Destination"
+                        onAddNew={() => handleOpenMasterForm("Warehouse")}
                       />
                       <FormMessage />
                     </FormItem>)}
                   />
                   <FormField control={control} name="transporterId" render={({ field }) => (
                     <FormItem className="md:col-span-3"><FormLabel>Transporter (Optional)</FormLabel>
-                      <MasterDataCombobox 
-                        value={field.value} 
-                        onChange={field.onChange} 
-                        options={transporters.map(t => ({ value: t.id, label: t.name }))} 
-                        placeholder="Select Transporter" 
-                        onAddNew={() => handleOpenMasterForm("Transporter")} 
+                      <MasterDataCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={transporters.map(t => ({ value: t.id, label: t.name }))}
+                        placeholder="Select Transporter"
+                        onAddNew={() => handleOpenMasterForm("Transporter")}
                       />
                       <FormMessage />
                     </FormItem>)}
@@ -261,30 +246,44 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot No.</FormLabel>
-                          <MasterDataCombobox 
-                            value={itemField.value} 
-                            onChange={itemField.onChange} 
-                            options={availableLotsOptions} 
-                            placeholder="Select Lot" 
-                            disabled={!watchedFromWarehouseId} 
+                          <MasterDataCombobox
+                            value={itemField.value}
+                            onChange={itemField.onChange}
+                            options={availableLotsOptions}
+                            placeholder="Select Lot"
+                            disabled={!watchedFromWarehouseId}
                           />
                           <FormMessage />
                         </FormItem>)}
                       />
                       <FormField control={control} name={`items.${index}.bagsToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField} 
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField}
                             onChange={e => {
-                              const val = parseFloat(e.target.value) || 0;
-                              itemField.onChange(val);
-                              const currentManuallySet = [...itemNetWeightManuallySet];
-                              currentManuallySet[index] = false;
-                              setItemNetWeightManuallySet(currentManuallySet);
-                            }} 
+                              const bagsVal = parseFloat(e.target.value) || 0;
+                              itemField.onChange(bagsVal);
+
+                              const currentManuallySetFlags = [...itemNetWeightManuallySet];
+                              currentManuallySetFlags[index] = false;
+                              setItemNetWeightManuallySet(currentManuallySetFlags);
+
+                              if (!currentManuallySetFlags[index]) { // Check the updated flag
+                                const lotValue = watch(`items.${index}.lotNumber`);
+                                const stockInfo = availableStock.find(
+                                  s => s.lotNumber === lotValue && s.locationId === watchedFromWarehouseId
+                                );
+                                const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
+                                let newNetWeight = 0;
+                                if (bagsVal > 0) {
+                                  newNetWeight = parseFloat((bagsVal * avgWeightPerBag).toFixed(2));
+                                }
+                                setValue(`items.${index}.netWeightToTransfer`, newNetWeight, { shouldValidate: true });
+                              }
+                            }}
                             onFocus={() => {
-                              const currentManuallySet = [...itemNetWeightManuallySet];
-                              currentManuallySet[index] = false; 
-                              setItemNetWeightManuallySet(currentManuallySet);
+                              const currentManuallySetFlags = [...itemNetWeightManuallySet];
+                              currentManuallySetFlags[index] = false;
+                              setItemNetWeightManuallySet(currentManuallySetFlags);
                             }}
                             /></FormControl>
                           <FormMessage />
@@ -292,17 +291,17 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} 
+                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField}
                             onChange={e => {
                               itemField.onChange(parseFloat(e.target.value) || 0);
-                              const currentManuallySet = [...itemNetWeightManuallySet];
-                              currentManuallySet[index] = true;
-                              setItemNetWeightManuallySet(currentManuallySet);
-                            }} 
+                              const currentManuallySetFlags = [...itemNetWeightManuallySet];
+                              currentManuallySetFlags[index] = true;
+                              setItemNetWeightManuallySet(currentManuallySetFlags);
+                            }}
                             onFocus={() => {
-                               const currentManuallySet = [...itemNetWeightManuallySet];
-                               currentManuallySet[index] = true;
-                               setItemNetWeightManuallySet(currentManuallySet);
+                               const currentManuallySetFlags = [...itemNetWeightManuallySet];
+                               currentManuallySetFlags[index] = true;
+                               setItemNetWeightManuallySet(currentManuallySetFlags);
                             }}
                           /></FormControl>
                           <FormMessage />
@@ -312,9 +311,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <Button type="button" variant="destructive" size="icon" onClick={() => {
                             if (fields.length > 1) {
                                 remove(index);
-                                const currentManuallySet = [...itemNetWeightManuallySet];
-                                currentManuallySet.splice(index, 1);
-                                setItemNetWeightManuallySet(currentManuallySet);
+                                const currentManuallySetFlags = [...itemNetWeightManuallySet];
+                                currentManuallySetFlags.splice(index, 1);
+                                setItemNetWeightManuallySet(currentManuallySetFlags);
                             }
                         }} disabled={fields.length <= 1}>
                           <Trash2 className="h-4 w-4" />
@@ -364,3 +363,4 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
+
