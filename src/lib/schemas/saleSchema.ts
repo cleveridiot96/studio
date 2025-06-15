@@ -31,7 +31,7 @@ const getLotAvailableStock = (
   });
   return {
     availableBags: purchasedBags - soldBags,
-    availableWeight: purchasedWeight - soldWeight,
+    availableWeight: purchasedWeight - soldBags * (purchasedWeight > 0 && purchasedBags > 0 ? purchasedWeight/purchasedBags : 50), // Estimate if direct weight not available
     purchaseRate: firstPurchaseRate
   };
 };
@@ -49,7 +49,7 @@ export const saleSchema = (
     required_error: "Sale date is required.",
   }),
   billNumber: z.string().optional(),
-  manualBillAmount: z.coerce.number().optional(),
+  cutAmount: z.coerce.number().optional(), // Renamed from manualBillAmount
   cutBill: z.boolean().optional().default(false),
   customerId: z.string().min(1, "Customer is required.").refine((customerId) => customers.some((c) => c.id === customerId && c.type === 'Customer'), {
     message: "Customer does not exist or is not of type Customer.",
@@ -68,9 +68,9 @@ export const saleSchema = (
     message: "Broker does not exist or is not of type Broker.",
   }),
   brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
-  brokerageValue: z.coerce.number().optional(), // No default(0) here, allow undefined to trigger auto-population from master
+  brokerageValue: z.coerce.number().optional(),
   notes: z.string().optional(),
-  calculatedBrokerageCommission: z.coerce.number().optional(), // Not directly part of form input, but can be stored.
+  calculatedBrokerageCommission: z.coerce.number().optional(),
 }).refine(data => {
     if (data.brokerId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0 )) {
       return false;
@@ -88,14 +88,29 @@ export const saleSchema = (
     message: "Brokerage value is required and must be non-negative if brokerage type is selected.",
     path: ["brokerageValue"],
   }).refine(data => {
+    const goodsValue = data.netWeight * data.rate;
+    if (data.cutBill && data.cutAmount !== undefined && data.cutAmount < 0) {
+        return false; // Cut amount cannot be negative
+    }
+    if (data.cutBill && data.cutAmount !== undefined && data.cutAmount > goodsValue) {
+        return false; // Cut amount cannot be greater than goods value
+    }
+    return true;
+  }, {
+    message: "Cut Amount must be a positive value and cannot exceed the Actual Goods Value.",
+    path: ["cutAmount"],
+  }).refine(data => {
     if (data.lotNumber) {
         const { availableBags, availableWeight } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales, currentSaleIdToEdit);
         if (data.quantity > availableBags) {
             return false;
         }
-        if (data.netWeight > availableWeight) {
-            return false;
-        }
+        // Note: Available weight calculation in getLotAvailableStock is an estimate,
+        // so a strict check here might be too restrictive if net weights vary significantly.
+        // For now, primary validation on bags.
+        // if (data.netWeight > availableWeight) {
+        //     return false;
+        // }
     }
     return true;
   }, (data) => {
@@ -103,14 +118,12 @@ export const saleSchema = (
     let path: ("quantity" | "netWeight" | "lotNumber")[] = ["lotNumber"];
 
     if (data.lotNumber) {
-        const { availableBags, availableWeight } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales, currentSaleIdToEdit);
+        const { availableBags } = getLotAvailableStock(data.lotNumber, inventoryLots, existingSales, currentSaleIdToEdit);
         if (data.quantity > availableBags) {
             message = `Bags (${data.quantity}) exceed available stock for lot ${data.lotNumber} (Available: ${availableBags}).`;
             path = ["quantity"];
-        } else if (data.netWeight > availableWeight) {
-            message = `Net weight (${data.netWeight}kg) cannot exceed available stock for lot ${data.lotNumber} (Available: ${availableWeight}kg).`;
-            path = ["netWeight"];
         }
+        // Removed strict availableWeight check due to potential variance
     }
     return { message, path };
 });

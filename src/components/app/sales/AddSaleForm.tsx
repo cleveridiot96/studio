@@ -50,8 +50,6 @@ interface AddSaleFormProps {
   saleToEdit?: Sale | null;
 }
 
-const MUMBAI_WAREHOUSE_ID = "mumbai-warehouse-id-placeholder"; 
-
 const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   isOpen,
   onClose,
@@ -80,7 +78,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       return {
         date: new Date(saleToEdit.date),
         billNumber: saleToEdit.billNumber || "",
-        manualBillAmount: saleToEdit.manualBillAmount === undefined || saleToEdit.manualBillAmount === null ? undefined : saleToEdit.manualBillAmount,
+        cutAmount: saleToEdit.cutAmount === undefined || saleToEdit.cutAmount === null ? undefined : saleToEdit.cutAmount,
         cutBill: saleToEdit.cutBill || false,
         customerId: saleToEdit.customerId,
         lotNumber: saleToEdit.lotNumber,
@@ -98,7 +96,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return {
       date: new Date(),
       billNumber: "",
-      manualBillAmount: undefined,
+      cutAmount: undefined,
       cutBill: false,
       customerId: undefined,
       lotNumber: undefined,
@@ -124,7 +122,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     resolver: zodResolver(memoizedSaleSchema),
     defaultValues: memoizedDefaultValues,
   });
-  const { control, watch, reset, setValue, handleSubmit, formState: { errors, dirtyFields } } = methods;
+  const { control, watch, reset, setValue, handleSubmit, formState: { errors } } = methods;
 
 
   React.useEffect(() => {
@@ -145,7 +143,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const quantity = watch("quantity");
   const netWeight = watch("netWeight");
   const rate = watch("rate");
-  const manualBillAmountInput = watch("manualBillAmount"); 
+  const cutAmountInput = watch("cutAmount"); 
   const cutBill = watch("cutBill");
   const transportCostInput = watch("transportCost") || 0;
   const selectedBrokerId = watch("brokerId");
@@ -209,25 +207,24 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [selectedBrokerId, brokers, setValue, brokerageValueManuallySet]);
 
 
-  const actualGoodsValue = React.useMemo(() => {
+  const goodsValueForCalc = React.useMemo(() => {
     const currentNetWeight = parseFloat(String(netWeight || 0));
     const currentRate = parseFloat(String(rate || 0));
     if (isNaN(currentNetWeight) || isNaN(currentRate)) return 0;
     return currentNetWeight * currentRate;
   }, [netWeight, rate]);
 
-  const finalBilledAmount = React.useMemo(() => {
-    if (cutBill && manualBillAmountInput !== undefined && manualBillAmountInput > 0) {
-      return manualBillAmountInput;
+  const finalBilledAmountForDisplay = React.useMemo(() => {
+    if (cutBill && cutAmountInput !== undefined && cutAmountInput >= 0) {
+      return goodsValueForCalc - cutAmountInput;
     }
-    return actualGoodsValue;
-  }, [cutBill, manualBillAmountInput, actualGoodsValue]);
+    return goodsValueForCalc;
+  }, [cutBill, cutAmountInput, goodsValueForCalc]);
 
 
   const calculatedBrokerageCommission = React.useMemo(() => {
     if (!selectedBrokerId || brokerageValue === undefined || brokerageValue < 0) return 0;
-    // Brokerage is calculated on the actual goods value, not the potentially reduced "cut bill" amount.
-    const baseAmountForBrokerage = actualGoodsValue; 
+    const baseAmountForBrokerage = goodsValueForCalc; 
 
     if (brokerageType === "Percentage") {
       return (baseAmountForBrokerage * (brokerageValue / 100));
@@ -235,7 +232,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       return brokerageValue;
     }
     return 0;
-  }, [selectedBrokerId, brokerageType, brokerageValue, actualGoodsValue]);
+  }, [selectedBrokerId, brokerageType, brokerageValue, goodsValueForCalc]);
 
   const costOfGoodsSold = React.useMemo(() => {
     const currentNetWeight = parseFloat(String(netWeight || 0));
@@ -244,9 +241,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [netWeight, purchaseRateForLot]);
 
   const calculatedProfit = React.useMemo(() => {
-    // Profit is based on actualGoodsValue
-    return actualGoodsValue - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission;
-  }, [actualGoodsValue, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission]);
+    return goodsValueForCalc - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission;
+  }, [goodsValueForCalc, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -283,10 +279,12 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const selectedBroker = brokers.find(b => b.id === submissionValues.brokerId);
     const selectedTransporter = transporters.find(t => t.id === submissionValues.transporterId);
 
-
     const currentGoodsValue = finalNetWeightForSubmit * submissionValues.rate;
-    const currentBilledAmount = (submissionValues.cutBill && submissionValues.manualBillAmount !== undefined && submissionValues.manualBillAmount > 0) 
-                                ? submissionValues.manualBillAmount 
+    const currentCutAmount = (submissionValues.cutBill && submissionValues.cutAmount !== undefined && submissionValues.cutAmount >= 0)
+                                ? submissionValues.cutAmount
+                                : undefined; // Store undefined if not applicable
+    const currentBilledAmount = currentCutAmount !== undefined
+                                ? currentGoodsValue - currentCutAmount
                                 : currentGoodsValue;
     
     const currentCostOfGoodsSold = finalNetWeightForSubmit * purchaseRateForLot;
@@ -304,7 +302,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       date: format(submissionValues.date, "yyyy-MM-dd"),
       billNumber: submissionValues.billNumber,
       cutBill: submissionValues.cutBill,
-      manualBillAmount: submissionValues.manualBillAmount,
+      cutAmount: currentCutAmount,
       goodsValue: currentGoodsValue,
       billedAmount: currentBilledAmount,
       customerId: submissionValues.customerId as string,
@@ -333,7 +331,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const availableLotsForDropdown = React.useMemo(() => {
     return inventoryLots
-      // .filter(p => p.locationId === MUMBAI_WAREHOUSE_ID) // Assuming a specific source warehouse if applicable
       .map(p => {
         const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
         const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
@@ -349,7 +346,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
+      <Dialog modal={true} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
           if (!openState && isOpen) { 
             onClose();
           }
@@ -382,9 +379,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)}
                     />
-                     <FormField control={control} name="manualBillAmount" render={({ field }) => (
-                      <FormItem><FormLabel>Manual Bill Amount (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="Enter if Cut Bill" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
+                     <FormField control={control} name="cutAmount" render={({ field }) => ( // Renamed from manualBillAmount
+                      <FormItem><FormLabel>Cut Amount (Reduction ₹)</FormLabel> 
+                      <FormControl><Input type="number" step="0.01" placeholder="Enter reduction amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
                       <FormMessage /></FormItem>)}
                     />
                   </div>
@@ -392,7 +389,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem className="flex flex-row items-center space-x-2 mt-4 pt-4 border-t">
                           <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             <FormLabel className="font-normal cursor-pointer mt-0!">
-                              Is this a "Cut Bill"? (Manual bill amount less than actual goods value)
+                              Is this a "Cut Bill"? (Apply reduction to invoice amount)
                             </FormLabel>
                           <FormMessage />
                       </FormItem>
@@ -534,18 +531,31 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <div className="flex items-center justify-between">
                         <div className="flex items-center text-md font-semibold">
                             <Info className="w-5 h-5 mr-2 text-primary" />
-                            Billed Amount for Customer:
+                            Actual Goods Value:
+                        </div>
+                        <p className="text-lg font-bold text-foreground">
+                        ₹{goodsValueForCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                    </div>
+                    {cutBill && cutAmountInput !== undefined && cutAmountInput >=0 && (
+                       <div className="flex items-center justify-between text-sm text-destructive">
+                            <span>Less: Cut Amount (Reduction):</span>
+                            <span className="font-semibold">
+                                ₹{cutAmountInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    )}
+                     <div className="flex items-center justify-between border-t pt-2 mt-2">
+                        <div className="text-md font-semibold text-primary">
+                            Final Billed Amount for Customer:
                         </div>
                         <p className="text-xl font-bold text-primary">
-                        ₹{finalBilledAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        ₹{finalBilledAmountForDisplay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                     </div>
 
-                    <div className="text-sm text-muted-foreground pl-7 space-y-1">
-                        <div className="flex justify-between">
-                          <span>Actual Goods Value:</span>
-                          <span className="font-semibold">₹{actualGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
+
+                    <div className="text-sm text-muted-foreground pl-7 space-y-1 pt-2 border-t mt-2">
                         <div className="flex justify-between">
                           <span>Less: Cost of Goods Sold:</span> 
                           <span className="font-semibold">₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -561,7 +571,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         )}
                         <hr className="my-1 border-muted-foreground/50" />
                         <div className={`flex justify-between font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            <span>Estimated Net Profit:</span> <span>₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span>Estimated Net Profit (on Goods Value):</span> <span>₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </div>

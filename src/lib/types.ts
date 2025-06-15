@@ -51,9 +51,9 @@ export interface Sale {
   date: string; // ISO string date
   billNumber?: string; // Optional
   cutBill?: boolean; // Is this a "cut bill"?
-  goodsValue: number; // Actual value of goods sold (netWeight * rate). Used for profit.
-  billedAmount: number; // Amount on the invoice. If cutBill, this is manualBillAmount. Else, same as goodsValue.
-  manualBillAmount?: number; // User-entered amount for the cut bill.
+  goodsValue: number; // Actual value of goods sold (netWeight * rate). Used for profit & as basis for billing.
+  cutAmount?: number; // Amount to reduce from goodsValue if cutBill is true.
+  billedAmount: number; // Amount on the invoice. If cutBill, this is goodsValue - cutAmount. Else, same as goodsValue.
   customerId: string;
   customerName?: string;
   brokerId?: string;
