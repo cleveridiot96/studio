@@ -121,10 +121,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen={false} collapsible="icon"> {/* Changed defaultOpen to false */}
+      <SidebarProvider defaultOpen={false} collapsible="icon">
         <AppExitHandler />
-        {/* Root flex container for the entire app layout */}
-        <div className="flex flex-1 bg-background"> {/* Changed from h-screen to flex-1 */}
+        <div className="flex flex-1 bg-background"> 
           <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto print:hidden" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
@@ -138,12 +137,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
-              {/* User profile section removed */}
             </SidebarFooter>
           </Sidebar>
 
-          {/* Main content area */}
-          <div className="flex flex-col flex-1 min-h-0"> {/* Added min-h-0 to ensure flex-1 works within parent flex */}
+          <div className="flex flex-col flex-1 min-h-0"> 
             <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden -ml-2">
@@ -158,10 +155,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </header>
             {isAppLayoutMounted && <LoadingBar />} 
-            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col"> {/* Added flex flex-col to SidebarInset */}
+            <SidebarInset className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col"> 
               <ErrorBoundary>
-                 {/* Ensure this div allows its children (page content) to scroll if they overflow horizontally */}
-                <div className="flex flex-col flex-1 w-full min-w-0"> {/* Added min-w-0 */}
+                <div className="flex flex-col flex-1 w-full min-w-0"> 
                     {children}
                 </div>
               </ErrorBoundary>

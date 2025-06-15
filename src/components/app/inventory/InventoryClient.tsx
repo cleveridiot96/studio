@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Archive, Boxes, Printer, TrendingUp, TrendingDown } from "lucide-react";
+import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,17 +25,18 @@ import {
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear, cn } from "@/lib/utils";
+import { InventoryTable } from "./InventoryTable"; // Import the refactored table
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
-const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; // New Key
+const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
 const SALES_STORAGE_KEY = 'salesData';
-const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; // New Key
+const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; 
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 
 const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
-interface AggregatedInventoryItem {
+export interface AggregatedInventoryItem { // Exporting the type
   lotNumber: string;
   locationId: string;
   locationName: string;
@@ -57,7 +58,7 @@ interface AggregatedInventoryItem {
   purchaseRate?: number;
   daysInStock?: number;
   turnoverRate?: number;
-  isDeadStock?: boolean; // New property
+  isDeadStock?: boolean; 
 }
 
 export function InventoryClient() {
@@ -272,41 +273,3 @@ export function InventoryClient() {
     </div>
   );
 }
-
-interface InventoryTableProps { items: AggregatedInventoryItem[]; onArchive: (item: AggregatedInventoryItem) => void; }
-const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => {
-  if (!items || items.length === 0) return <p className="text-center text-muted-foreground py-8">No inventory for this selection.</p>;
-  return (
-    <ScrollArea className="h-[400px] rounded-md border print:h-auto print:overflow-visible">
-      <Table><TableHeader><TableRow><TableHead>Vakkal/Lot</TableHead><TableHead>Location</TableHead><TableHead className="text-right">Current Bags</TableHead><TableHead className="text-right">Current Wt (kg)</TableHead><TableHead>Last Purch.</TableHead><TableHead className="text-right">Last Rate (₹/kg)</TableHead><TableHead className="text-center">Status</TableHead><TableHead className="text-center no-print">Actions</TableHead></TableRow></TableHeader>
-        <TableBody>
-          {items.map((item) => (<TableRow key={`${item.lotNumber}-${item.locationId}`} 
-            className={cn(
-              item.isDeadStock && "bg-destructive text-destructive-foreground",
-              !item.isDeadStock && item.currentBags <= 0 && "bg-red-50 dark:bg-red-900/30",
-              !item.isDeadStock && item.currentBags > 0 && item.currentBags <= 5 && "bg-yellow-50 dark:bg-yellow-900/30"
-            )}
-          >
-            <TableCell>{item.lotNumber}</TableCell><TableCell>{item.locationName}</TableCell>
-            <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
-            <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>
-            <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
-            <TableCell className="text-right">{item.purchaseRate ? item.purchaseRate.toFixed(2) : 'N/A'}</TableCell>
-            <TableCell className="text-center">
-              {item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
-              item.currentBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) :
-              item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100">Low Stock</Badge>) :
-              (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1"/> Fast</Badge>) :
-              (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1"/> Slow</Badge>) :
-              (<Badge variant="secondary">In Stock</Badge>)}
-            </TableCell>
-            <TableCell className="text-center no-print">{item.currentBags <= 0 && (<Button variant="outline" size="sm" onClick={() => onArchive(item)} title="Archive lot"><Archive className="h-4 w-4 mr-1" /> Archive</Button>)}</TableCell>
-          </TableRow>))}
-        </TableBody>
-      </Table>
-    </ScrollArea>
-  );
-};
-
-
-    
