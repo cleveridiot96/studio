@@ -59,10 +59,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const formSchema = React.useMemo(() => locationTransferSchema(warehouses, availableStock), [warehouses, availableStock]);
 
+  // This function's reference changes ONLY when transferToEdit changes.
   const getDefaultValues = React.useCallback((): LocationTransferFormValues => {
     if (transferToEdit) {
-      // When editing, all net weights are considered "manually set" initially from saved data
-      setItemNetWeightManuallySet(transferToEdit.items.map(() => true));
       return {
           date: new Date(transferToEdit.date),
           fromWarehouseId: transferToEdit.fromWarehouseId,
@@ -76,8 +75,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           })),
         };
     }
-    // For new form, initialize first item as not manually set for net weight
-    setItemNetWeightManuallySet([false]);
     return {
         date: new Date(),
         fromWarehouseId: undefined,
@@ -91,7 +88,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const methods = useForm<LocationTransferFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: getDefaultValues(),
+    defaultValues: getDefaultValues(), // Initial default values
   });
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = methods;
@@ -101,13 +98,18 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   });
 
   const watchedFromWarehouseId = watch("fromWarehouseId");
-  // const watchedItems = watch("items"); // No longer needed for a separate useEffect
 
+  // Effect to reset form and manual flags when isOpen or transferToEdit changes
   React.useEffect(() => {
     if (isOpen) {
-      reset(getDefaultValues());
+      reset(getDefaultValues()); // getDefaultValues is stable unless transferToEdit changes
+      if (transferToEdit) {
+        setItemNetWeightManuallySet(transferToEdit.items.map(() => true));
+      } else {
+        setItemNetWeightManuallySet([false]); // For the initial item in a new form
+      }
     }
-  }, [transferToEdit, reset, isOpen, getDefaultValues]);
+  }, [isOpen, transferToEdit, reset, getDefaultValues]);
 
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
@@ -264,23 +266,22 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               itemField.onChange(bagsVal);
 
                               const currentManuallySetFlags = [...itemNetWeightManuallySet];
-                              currentManuallySetFlags[index] = false;
+                              currentManuallySetFlags[index] = false; // Mark as auto-calculated
                               setItemNetWeightManuallySet(currentManuallySetFlags);
 
-                              if (!currentManuallySetFlags[index]) { // Check the updated flag
-                                const lotValue = watch(`items.${index}.lotNumber`);
-                                const stockInfo = availableStock.find(
-                                  s => s.lotNumber === lotValue && s.locationId === watchedFromWarehouseId
-                                );
-                                const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
-                                let newNetWeight = 0;
-                                if (bagsVal > 0) {
-                                  newNetWeight = parseFloat((bagsVal * avgWeightPerBag).toFixed(2));
-                                }
-                                setValue(`items.${index}.netWeightToTransfer`, newNetWeight, { shouldValidate: true });
+                              // Auto-calculate netWeight if not manually set for this item
+                              const lotValue = watch(`items.${index}.lotNumber`);
+                              const stockInfo = availableStock.find(
+                                s => s.lotNumber === lotValue && s.locationId === watchedFromWarehouseId
+                              );
+                              const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50; // Fallback average
+                              let newNetWeight = 0;
+                              if (bagsVal > 0 && !isNaN(avgWeightPerBag)) {
+                                newNetWeight = parseFloat((bagsVal * avgWeightPerBag).toFixed(2));
                               }
+                              setValue(`items.${index}.netWeightToTransfer`, newNetWeight, { shouldValidate: true });
                             }}
-                            onFocus={() => {
+                            onFocus={() => { // When user focuses, assume they might change it, allow auto-calc
                               const currentManuallySetFlags = [...itemNetWeightManuallySet];
                               currentManuallySetFlags[index] = false;
                               setItemNetWeightManuallySet(currentManuallySetFlags);
@@ -292,13 +293,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Net Wt. (kg)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField}
-                            onChange={e => {
+                            onChange={e => { // When user types in net weight, mark as manually set
                               itemField.onChange(parseFloat(e.target.value) || 0);
                               const currentManuallySetFlags = [...itemNetWeightManuallySet];
                               currentManuallySetFlags[index] = true;
                               setItemNetWeightManuallySet(currentManuallySetFlags);
                             }}
-                            onFocus={() => {
+                            onFocus={() => { // When user focuses, mark as manually set
                                const currentManuallySetFlags = [...itemNetWeightManuallySet];
                                currentManuallySetFlags[index] = true;
                                setItemNetWeightManuallySet(currentManuallySetFlags);
@@ -323,7 +324,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   ))}
                   <Button type="button" variant="outline" onClick={() => {
                       append({ lotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0 });
-                      setItemNetWeightManuallySet(prev => [...prev, false]);
+                      setItemNetWeightManuallySet(prev => [...prev, false]); // New item starts as auto-calculated
                     }} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
                   </Button>
@@ -363,4 +364,4 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
-
+    
