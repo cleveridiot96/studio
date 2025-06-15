@@ -121,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SettingsProvider>
-      <SidebarProvider defaultOpen={true} collapsible="icon"> {/* Changed defaultOpen to true */}
+      <SidebarProvider defaultOpen={false} collapsible="icon"> {/* Changed defaultOpen to false */}
         <AppExitHandler />
         {/* Root flex container for the entire app layout */}
         <div className="flex flex-1 bg-background"> {/* Changed from h-screen to flex-1 */}
