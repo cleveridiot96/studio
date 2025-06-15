@@ -36,7 +36,7 @@ const LOCAL_STORAGE_KEYS = {
 };
 
 
-function AppHeaderContentInternal() { // Renamed to avoid conflict if AppHeaderContent is defined elsewhere
+function AppHeaderContentInternal() {
   return (
     <>
       <Link href="/dashboard">
@@ -61,8 +61,10 @@ function AppHeaderContentInternal() { // Renamed to avoid conflict if AppHeaderC
   );
 }
 
-function LoadingBarInternal() { // Renamed
-  const { isAppHydrating } = useSettings(); // isAppHydrating from SettingsContext controls this
+function LoadingBarInternal() {
+  // This component relies on useSettings, which must be called within SettingsProvider.
+  // The AppLayout's isAppLayoutMounted guard ensures SettingsProvider is rendered before this.
+  const { isAppHydrating } = useSettings();
   if (!isAppHydrating) return null;
   return <div className="w-full h-1 bg-primary animate-pulse" />;
 }
@@ -73,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const AppIcon = APP_ICON;
 
   useEffect(() => {
-    setIsAppLayoutMounted(true); // This will trigger re-render to show full layout
+    setIsAppLayoutMounted(true);
     if (typeof window !== 'undefined') {
       try {
         const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
@@ -105,20 +107,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!isAppLayoutMounted) {
-    // Render a minimal loading state or null during SSR and initial client render
-    // This helps prevent hydration mismatches if providers/hooks rely on client-side state
-    return (
-      <div className="flex items-center justify-center h-screen bg-background text-foreground">
-        <p>Loading Kisan Khata Sahayak...</p>
-      </div>
-    );
+    // Render nothing on the server and during the initial client render pass.
+    // This ensures that the server HTML and the client's first render attempt match perfectly (both are empty for this component slot).
+    // The actual content will be rendered only after client-side mount.
+    return null; 
   }
 
   return (
     <SettingsProvider>
       <SidebarProvider defaultOpen={false} collapsible="icon">
         <AppExitHandler />
-        <div className="flex flex-1 bg-background">
+        <div className="flex flex-1 bg-background"> {/* This was line 126 in the error */}
           <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto print:hidden" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
@@ -164,3 +163,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SettingsProvider>
   );
 }
+    
