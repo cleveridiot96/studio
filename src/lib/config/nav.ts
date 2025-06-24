@@ -41,6 +41,12 @@ export const navItems: NavItem[] = [
     iconColor: 'bg-blue-600', // Matches dashboard tile
   },
   {
+    title: 'Location Transfer',
+    href: '/location-transfer',
+    iconName: 'ArrowRightLeft',
+    iconColor: 'bg-cyan-600', // Matches dashboard tile
+  },
+  {
     title: 'Inventory',
     href: '/inventory',
     iconName: 'Boxes',
@@ -87,12 +93,6 @@ export const navItems: NavItem[] = [
     href: '/masters',
     iconName: 'Users2',
     iconColor: 'bg-sky-600', // Matches dashboard tile
-  },
-  {
-    title: 'Location Transfer',
-    href: '/location-transfer',
-    iconName: 'ArrowRightLeft',
-    iconColor: 'bg-cyan-600', // Matches dashboard tile
   },
   {
     title: 'Backup/Restore',
