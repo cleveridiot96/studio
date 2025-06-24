@@ -38,6 +38,7 @@ const BROKERS_STORAGE_KEY = 'masterBrokers';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 interface AggregatedStockItem {
   lotNumber: string;
@@ -325,3 +326,5 @@ export function SalesClient() {
     </div>
   );
 }
+
+    
