@@ -17,6 +17,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -420,10 +421,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         value={field.value}
                         onChange={field.onChange}
                         options={availableLotsForDropdown}
-                        placeholder="Select Lot"
+                        placeholder="Select Lot from Mumbai"
                         searchPlaceholder="Search lots..."
-                        notFoundMessage="Lot not found or out of stock in Mumbai."
+                        notFoundMessage="Lot not available in Mumbai warehouse."
                       />
+                      <FormDescription>
+                        Only stock from the Mumbai warehouse is available for sale. Use 'Location Transfer' to move stock.
+                      </FormDescription>
                       <FormMessage /></FormItem>)}
                     />
                     <FormField control={control} name="customerId" render={({ field }) => (
@@ -530,7 +534,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               <FormMessage /></FormItem>)}
                           />
                           <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
-                              <FormItem className="sm:col-span-1"><FormLabel>Extra ₹ (per kg)</FormLabel>
+                              <FormItem className="sm:col-span-1"><FormLabel>Extra Brokerage (₹/kg)</FormLabel>
                                <FormControl><Input
                                   type="number" step="0.01" placeholder="Extra per kg" {...field}
                                   value={field.value ?? ''}
