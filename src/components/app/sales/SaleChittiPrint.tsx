@@ -102,7 +102,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
           <p className="mt-8 border-t border-gray-400 pt-1">____________________</p>
         </div>
         <div>
-          <p>For Kisan Khata Sahayak</p>
+          <p>For STOCK MARKET TRACKER</p>
            <p className="mt-8 border-t border-gray-400 pt-1">____________________</p>
         </div>
       </div>

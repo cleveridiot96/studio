@@ -10,8 +10,8 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: "Kisan Khata Sahayak",
-  description: "Your smart agricultural accounting assistant.",
+  title: "STOCK MARKET TRACKER",
+  description: "Track your stock portfolio and analyze market trends.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -132,7 +132,7 @@ export function FormatButton() {
         const href = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = href;
-        link.download = `KisanKhataSahayak_FormatBackup_AllData_${formattedDateForFile}.json`;
+        link.download = `StockMarketTracker_FormatBackup_AllData_${formattedDateForFile}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -244,4 +244,3 @@ export function FormatButton() {
     </AlertDialog>
   );
 }
-

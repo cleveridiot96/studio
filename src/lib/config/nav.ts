@@ -11,14 +11,14 @@ import {
   BookUser,
   Users2,
   DatabaseBackup,
-  Tractor,
+  LineChart,
   ArrowRightLeft,
   Rocket, // Added for consistency with dashboard if it exists
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
-export const APP_NAME = "Kisan Khata";
-export const APP_ICON = Tractor;
+export const APP_NAME = "STOCK MARKET TRACKER";
+export const APP_ICON = LineChart;
 
 // Icon colors will now represent background colors for the icon's circle
 export const navItems: NavItem[] = [
