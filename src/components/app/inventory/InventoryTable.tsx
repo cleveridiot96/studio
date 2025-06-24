@@ -81,7 +81,6 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
                     >
                       <Archive className="mr-2 h-4 w-4" /> Archive
                     </DropdownMenuItem>
-                    {/* Add other actions like "View History" or "Edit Details" here if needed */}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

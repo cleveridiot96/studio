@@ -113,7 +113,6 @@ export function LedgerClient() {
 
     const tempTransactions: LedgerEntry[] = [];
 
-    // Purchases (affect Supplier, Agent, Transporter)
     purchases.forEach(p => {
       if (p.supplierId === selectedPartyId && party.type === 'Supplier') {
         tempTransactions.push({
@@ -147,7 +146,6 @@ export function LedgerClient() {
       }
     });
 
-    // Sales (affect Customer, Broker, Transporter)
     sales.forEach(s => {
       if (s.customerId === selectedPartyId && party.type === 'Customer') {
         tempTransactions.push({
@@ -174,6 +172,15 @@ export function LedgerClient() {
                 transactionAmount: s.calculatedBrokerageCommission
             });
         }
+        if (s.calculatedExtraBrokerage && s.calculatedExtraBrokerage > 0) {
+            tempTransactions.push({
+                id: `sale-extra-brokerage-${s.id}`, relatedDocId: s.id, date: s.date, vchType: 'Extra Brokerage', refNo: s.billNumber || s.id,
+                description: `By Extra Brokerage on Sale (Cust: ${s.customerName || s.customerId}, Bill: ${s.billNumber || s.id})`,
+                credit: s.calculatedExtraBrokerage,
+                customerName: s.customerName || s.customerId,
+                transactionAmount: s.calculatedExtraBrokerage
+            });
+        }
       }
       if (s.transporterId === selectedPartyId && party.type === 'Transporter' && s.transportCost) {
         tempTransactions.push({
@@ -185,7 +192,6 @@ export function LedgerClient() {
       }
     });
 
-    // Payments made by You
     payments.forEach(pm => {
       if (pm.partyId === selectedPartyId) {
         tempTransactions.push({
@@ -197,7 +203,6 @@ export function LedgerClient() {
       }
     });
 
-    // Receipts received by You
     receipts.forEach(rc => {
       if (rc.partyId === selectedPartyId) {
         tempTransactions.push({
@@ -484,11 +489,9 @@ export function LedgerClient() {
                     <TableHead className="print:w-[35%]">Particulars</TableHead>
                     <TableHead className="print:w-[10%]">Vch Type</TableHead>
                     <TableHead className="print:w-[10%]">Ref. No.</TableHead>
-                    {/* On-screen only columns */}
                     <TableHead className="text-right no-print">Rate (₹)</TableHead>
                     <TableHead className="text-right no-print">Net Wt. (kg)</TableHead>
                     <TableHead className="text-right no-print">Trans. Amt. (₹)</TableHead>
-                    {/* Shared columns */}
                     <TableHead className="text-right print:w-[12%]">Debit (₹)</TableHead>
                     <TableHead className="text-right print:w-[12%]">Credit (₹)</TableHead>
                     <TableHead className="text-right no-print">Balance (₹)</TableHead>
@@ -500,7 +503,6 @@ export function LedgerClient() {
                     <TableCell className="text-right print:font-semibold no-print">{/* Rate */}</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Net Wt. */}</TableCell>
                     <TableCell className="text-right print:font-semibold no-print">{/* Trans. Amt. */}</TableCell>
-                     {/* Vch No. for Opening Balance in print view - colspan adjusted */}
                     <TableCell className="text-right print:font-semibold">
                         {ledgerTransactions.openingBalance >= 0 ? ledgerTransactions.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                     </TableCell>
@@ -557,7 +559,6 @@ export function LedgerClient() {
                         <TableCell className="no-print">{/* Rate */}</TableCell>
                         <TableCell className="no-print">{/* Net Wt. */}</TableCell>
                         <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
-                         {/* Vch No. for Total in print view - colspan adjusted */}
                         <TableCell className="text-right border-t border-b border-foreground">
                             {ledgerTransactions.totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
@@ -573,7 +574,6 @@ export function LedgerClient() {
                         <TableCell className="no-print">{/* Rate */}</TableCell>
                         <TableCell className="no-print">{/* Net Wt. */}</TableCell>
                         <TableCell className="no-print">{/* Trans. Amt. */}</TableCell>
-                         {/* Vch No. for Closing in print view - colspan adjusted */}
                         <TableCell className="text-right border-b-2 border-foreground">
                             {ledgerTransactions.closingBalance >= 0 ? Math.abs(ledgerTransactions.closingBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''}
                         </TableCell>
@@ -609,4 +609,3 @@ export function LedgerClient() {
     </div>
   );
 }
-

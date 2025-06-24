@@ -105,10 +105,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!isAppLayoutMounted) {
-    // Render a simple, static placeholder instead of null
-    // This ensures the server and initial client render have *some* identical HTML structure.
     return (
-      <div id="app-layout-hydration-placeholder" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      <div id="app-layout-hydration-placeholder" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
         <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Loading Kisan Khata Sahayak...</p>
         <div style={{ width: '50px', height: '50px', border: '4px solid hsl(var(--primary))', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
         <style>{`

@@ -28,6 +28,7 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FIXED_WAREHOUSES } from "@/app/(app)/masters/page"; // Import fixed warehouses
 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
@@ -76,6 +77,18 @@ export function SalesClient() {
     return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
   }, [saleReturns, financialYear, isAppHydrating, isSalesClientHydrated]);
 
+  const aggregatedStockForSalesForm = React.useMemo(() => {
+    if (isAppHydrating || !isSalesClientHydrated) return [];
+    
+    // Hardcoded Mumbai Warehouse ID as per business logic
+    const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
+    
+    // Filter purchases to only include those in the Mumbai warehouse
+    const mumbaiPurchases = inventorySource.filter(p => p.locationId === MUMBAI_WAREHOUSE_ID);
+    
+    return mumbaiPurchases;
+  }, [inventorySource, isAppHydrating, isSalesClientHydrated]);
+
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -114,19 +127,17 @@ export function SalesClient() {
   const handleAddOrUpdateSaleReturn = React.useCallback((srData: SaleReturn) => {
     setSaleReturns(prevReturns => {
       const isEditing = prevReturns.some(sr => sr.id === srData.id);
-      // TODO: Update inventory for sale returns
       return isEditing ? prevReturns.map(sr => sr.id === srData.id ? srData : sr) : [{ ...srData, id: srData.id || `sr-${Date.now()}` }, ...prevReturns];
     });
     toast({ title: "Success!", description: saleReturns.some(sr => sr.id === srData.id) ? "Sale return updated." : "Sale return added." });
     setIsAddSaleReturnFormOpen(false); setSaleReturnToEdit(null);
   }, [setSaleReturns, toast, saleReturns]);
 
-  const handleEditSaleReturn = React.useCallback((sr: SaleReturn) => { /* setSaleReturnToEdit(sr); setIsAddSaleReturnFormOpen(true); */ toast({title: "Info", description:"Editing sale returns is planned."})}, [toast]);
+  const handleEditSaleReturn = React.useCallback((sr: SaleReturn) => { toast({title: "Info", description:"Editing sale returns is planned."})}, [toast]);
   const handleDeleteSaleReturnAttempt = React.useCallback((srId: string) => { setSaleReturnToDeleteId(srId); setShowDeleteReturnConfirm(true); }, []);
   const confirmDeleteSaleReturn = React.useCallback(() => {
     if (saleReturnToDeleteId) {
       setSaleReturns(prev => prev.filter(sr => sr.id !== saleReturnToDeleteId));
-      // TODO: Revert inventory changes if a sale return is deleted
       toast({ title: "Deleted!", description: "Sale return record removed.", variant: "destructive" });
       setSaleReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
     }
@@ -209,7 +220,7 @@ export function SalesClient() {
       </Tabs>
       
       <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white' }}>{saleForPdf && <SaleChittiPrint sale={saleForPdf} />}</div>
-      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} customers={customers as Customer[]} transporters={transporters as Transporter[]} brokers={brokers} inventoryLots={inventorySource} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
+      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} customers={customers as Customer[]} transporters={transporters as Transporter[]} brokers={brokers} inventoryLots={aggregatedStockForSalesForm} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
       {isAddSaleReturnFormOpen && <AddSaleReturnForm isOpen={isAddSaleReturnFormOpen} onClose={closeAddSaleReturnForm} onSubmit={handleAddOrUpdateSaleReturn} sales={filteredSales} existingSaleReturns={saleReturns} saleReturnToEdit={saleReturnToEdit} />}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -227,5 +238,3 @@ export function SalesClient() {
     </div>
   );
 }
-
-    

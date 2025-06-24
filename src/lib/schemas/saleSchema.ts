@@ -69,6 +69,7 @@ export const saleSchema = (
   }),
   brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
   brokerageValue: z.coerce.number().optional(),
+  extraBrokeragePerKg: z.coerce.number().optional(), // "Mera ₹"
   notes: z.string().optional(),
   calculatedBrokerageCommission: z.coerce.number().optional(),
 }).refine(data => {
@@ -105,12 +106,6 @@ export const saleSchema = (
         if (data.quantity > availableBags) {
             return false;
         }
-        // Note: Available weight calculation in getLotAvailableStock is an estimate,
-        // so a strict check here might be too restrictive if net weights vary significantly.
-        // For now, primary validation on bags.
-        // if (data.netWeight > availableWeight) {
-        //     return false;
-        // }
     }
     return true;
   }, (data) => {
@@ -123,7 +118,6 @@ export const saleSchema = (
             message = `Bags (${data.quantity}) exceed available stock for lot ${data.lotNumber} (Available: ${availableBags}).`;
             path = ["quantity"];
         }
-        // Removed strict availableWeight check due to potential variance
     }
     return { message, path };
 });

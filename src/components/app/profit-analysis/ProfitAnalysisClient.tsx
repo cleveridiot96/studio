@@ -29,16 +29,15 @@ export function ProfitAnalysisClient() {
   
   const { financialYear: currentFinancialYearString } = useSettings();
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
-    // Default to current financial year
     const [startYearStr] = currentFinancialYearString.split('-');
     const startYear = parseInt(startYearStr, 10);
     if (!isNaN(startYear)) {
       return {
-        from: new Date(startYear, 3, 1), // April 1st
-        to: endOfDay(new Date(startYear + 1, 2, 31)) // March 31st
+        from: new Date(startYear, 3, 1),
+        to: endOfDay(new Date(startYear + 1, 2, 31))
       };
     }
-    return undefined; // Fallback if FY string is invalid
+    return undefined;
   });
 
 
@@ -50,9 +49,9 @@ export function ProfitAnalysisClient() {
     if (!hydrated) return { transactions: [], monthlySummary: [] as MonthlyProfitInfo[], overallProfit: 0 };
 
     const filteredSales = sales.filter(sale => {
-      if (!dateRange?.from) return true; // "All Time" if no 'from' date
+      if (!dateRange?.from) return true;
       const saleDate = parseISO(sale.date);
-      const effectiveToDate = dateRange.to || dateRange.from; // Use 'from' if 'to' is not set
+      const effectiveToDate = dateRange.to || dateRange.from;
       return isWithinInterval(saleDate, { start: dateRange.from, end: endOfDay(effectiveToDate) });
     });
 
@@ -65,6 +64,8 @@ export function ProfitAnalysisClient() {
       const purchaseForLot = purchases.find(p => p.lotNumber === sale.lotNumber);
       const purchaseRatePerKg = (purchaseForLot && typeof purchaseForLot.rate === 'number') ? purchaseForLot.rate : 0; 
       const costOfGoodsSold = (typeof sale.netWeight === 'number' ? sale.netWeight : 0) * purchaseRatePerKg;
+      
+      const totalBrokerage = (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
 
       transactions.push({
         saleId: sale.id,
@@ -75,11 +76,11 @@ export function ProfitAnalysisClient() {
         saleQuantityBags: sale.quantity,
         saleNetWeightKg: sale.netWeight,
         saleRatePerKg: sale.rate,
-        saleAmount: sale.billedAmount, // Use billedAmount for "Sale Amount" column
-        goodsValueForProfitCalc: sale.goodsValue, // Use goodsValue for profit context
+        saleAmount: sale.billedAmount,
+        goodsValueForProfitCalc: sale.goodsValue,
         purchaseCostForSalePortion: costOfGoodsSold,
         transportCostOnSale: sale.transportCost,
-        brokerageOnSale: sale.calculatedBrokerageCommission,
+        brokerageOnSale: totalBrokerage,
         netProfit: netProfit,
       });
 
@@ -88,7 +89,7 @@ export function ProfitAnalysisClient() {
         monthlyAgg[monthKey] = { totalProfit: 0, totalSalesValue: 0, totalCostOfGoods: 0 };
       }
       monthlyAgg[monthKey].totalProfit += netProfit;
-      monthlyAgg[monthKey].totalSalesValue += sale.goodsValue; // Sum of actual goods value
+      monthlyAgg[monthKey].totalSalesValue += sale.goodsValue;
       monthlyAgg[monthKey].totalCostOfGoods += costOfGoodsSold;
     });
 
@@ -124,7 +125,7 @@ export function ProfitAnalysisClient() {
             setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
         }
     } else if (type === "allTime") {
-      setDateRange(undefined); // undefined signifies all time
+      setDateRange(undefined);
     }
   };
 

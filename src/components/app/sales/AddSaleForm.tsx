@@ -90,6 +90,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         brokerId: saleToEdit.brokerId || undefined,
         brokerageType: saleToEdit.brokerageType || undefined,
         brokerageValue: saleToEdit.brokerageValue === undefined || saleToEdit.brokerageValue === null ? undefined : saleToEdit.brokerageValue,
+        extraBrokeragePerKg: saleToEdit.extraBrokeragePerKg === undefined || saleToEdit.extraBrokeragePerKg === null ? undefined : saleToEdit.extraBrokeragePerKg,
         notes: saleToEdit.notes || "",
       };
     }
@@ -108,6 +109,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerId: undefined,
       brokerageType: undefined,
       brokerageValue: undefined,
+      extraBrokeragePerKg: undefined,
       notes: "",
     };
   }, [saleToEdit]);
@@ -149,6 +151,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const selectedBrokerId = watch("brokerId");
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
+  const extraBrokeragePerKg = watch("extraBrokeragePerKg") || 0;
   const watchedLotNumber = watch("lotNumber");
 
 
@@ -233,6 +236,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
     return 0;
   }, [selectedBrokerId, brokerageType, brokerageValue, goodsValueForCalc]);
+  
+  const calculatedExtraBrokerage = React.useMemo(() => {
+    if (!selectedBrokerId || extraBrokeragePerKg <= 0 || netWeight <= 0) return 0;
+    return extraBrokeragePerKg * netWeight;
+  }, [selectedBrokerId, extraBrokeragePerKg, netWeight]);
 
   const costOfGoodsSold = React.useMemo(() => {
     const currentNetWeight = parseFloat(String(netWeight || 0));
@@ -241,8 +249,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [netWeight, purchaseRateForLot]);
 
   const calculatedProfit = React.useMemo(() => {
-    return goodsValueForCalc - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission;
-  }, [goodsValueForCalc, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission]);
+    return goodsValueForCalc - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission - calculatedExtraBrokerage;
+  }, [goodsValueForCalc, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -282,7 +290,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const currentGoodsValue = finalNetWeightForSubmit * submissionValues.rate;
     const currentCutAmount = (submissionValues.cutBill && submissionValues.cutAmount !== undefined && submissionValues.cutAmount >= 0)
                                 ? submissionValues.cutAmount
-                                : undefined; // Store undefined if not applicable
+                                : undefined;
     const currentBilledAmount = currentCutAmount !== undefined
                                 ? currentGoodsValue - currentCutAmount
                                 : currentGoodsValue;
@@ -294,8 +302,12 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const currentBrokerageCommission = (submissionValues.brokerId && brokerageValueForSubmit !== undefined && brokerageValueForSubmit >= 0) ?
       (brokerageTypeForSubmit === "Percentage" ? (currentGoodsValue * (brokerageValueForSubmit / 100)) : brokerageValueForSubmit)
       : 0;
+
+    const currentExtraBrokerageAmount = (submissionValues.brokerId && submissionValues.extraBrokeragePerKg && submissionValues.extraBrokeragePerKg > 0)
+        ? submissionValues.extraBrokeragePerKg * finalNetWeightForSubmit
+        : 0;
     
-    const currentProfit = currentGoodsValue - currentCostOfGoodsSold - (submissionValues.transportCost || 0) - currentBrokerageCommission;
+    const currentProfit = currentGoodsValue - currentCostOfGoodsSold - (submissionValues.transportCost || 0) - currentBrokerageCommission - currentExtraBrokerageAmount;
 
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,
@@ -318,7 +330,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transportCost: submissionValues.transportCost,
       brokerageType: submissionValues.brokerageType,
       brokerageValue: submissionValues.brokerageValue,
+      extraBrokeragePerKg: submissionValues.extraBrokeragePerKg,
       calculatedBrokerageCommission: currentBrokerageCommission,
+      calculatedExtraBrokerage: currentExtraBrokerageAmount,
       notes: submissionValues.notes,
       calculatedProfit: currentProfit,
     };
@@ -337,7 +351,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         const availableBags = (p.quantity || 0) - bagsSoldFromLot;
         return {
           value: p.lotNumber,
-          label: `${p.lotNumber} (${p.locationName || p.locationId} - Avl: ${availableBags} bags, Rate: ₹${p.rate.toFixed(2)}/kg)`,
+          label: `${p.lotNumber} (Avl: ${availableBags} bags, Rate: ₹${p.rate.toFixed(2)}/kg)`,
           tooltipContent: `Effective Purchase Rate: ₹${p.effectiveRate?.toFixed(2) || 'N/A'}/kg. Location: ${p.locationName || p.locationId}`,
           isAvailable: availableBags > 0,
         };
@@ -379,7 +393,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)}
                     />
-                     <FormField control={control} name="cutAmount" render={({ field }) => ( // Renamed from manualBillAmount
+                     <FormField control={control} name="cutAmount" render={({ field }) => (
                       <FormItem><FormLabel>Cut Amount (Reduction ₹)</FormLabel> 
                       <FormControl><Input type="number" step="0.01" placeholder="Enter reduction amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
                       <FormMessage /></FormItem>)}
@@ -401,14 +415,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   <h3 className="text-lg font-medium mb-3 text-primary">Product &amp; Customer</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={control} name="lotNumber" render={({ field }) => (
-                      <FormItem><FormLabel>Vakkal / Lot Number</FormLabel>
+                      <FormItem><FormLabel>Vakkal / Lot Number (Mumbai)</FormLabel>
                       <MasterDataCombobox
                         value={field.value}
                         onChange={field.onChange}
                         options={availableLotsForDropdown}
                         placeholder="Select Lot"
                         searchPlaceholder="Search lots..."
-                        notFoundMessage="Lot not found or out of stock."
+                        notFoundMessage="Lot not found or out of stock in Mumbai."
                       />
                       <FormMessage /></FormItem>)}
                     />
@@ -494,16 +508,16 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           />
                           <FormMessage /></FormItem>)}
                       />
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <FormField control={control} name="brokerageType" render={({ field }) => (
-                              <FormItem><FormLabel>Brokerage Type</FormLabel>
+                              <FormItem className="sm:col-span-1"><FormLabel>Brokerage Type</FormLabel>
                               <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false);}} value={field.value} disabled={!selectedBrokerId}>
                                   <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                   <SelectContent><SelectItem value="Fixed">Fixed (₹)</SelectItem><SelectItem value="Percentage">%</SelectItem></SelectContent>
                               </ShadSelect><FormMessage /></FormItem>)}
                           />
                           <FormField control={control} name="brokerageValue" render={({ field }) => (
-                              <FormItem><FormLabel>Brokerage Value</FormLabel>
+                              <FormItem className="sm:col-span-1"><FormLabel>Brokerage Value</FormLabel>
                               <div className="relative">
                                   <FormControl><Input
                                     type="number" step="0.01" placeholder="Value" {...field}
@@ -513,6 +527,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                     disabled={!selectedBrokerId || !brokerageType} className={brokerageType === 'Percentage' ? "pr-8" : ""}/></FormControl>
                                   {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
                               </div>
+                              <FormMessage /></FormItem>)}
+                          />
+                          <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
+                              <FormItem className="sm:col-span-1"><FormLabel>Extra ₹ (per kg)</FormLabel>
+                               <FormControl><Input
+                                  type="number" step="0.01" placeholder="Extra per kg" {...field}
+                                  value={field.value ?? ''}
+                                  onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}
+                                  disabled={!selectedBrokerId}/></FormControl>
                               <FormMessage /></FormItem>)}
                           />
                       </div>
@@ -541,7 +564,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                        <div className="flex items-center justify-between text-sm text-destructive">
                             <span>Less: Cut Amount (Reduction):</span>
                             <span className="font-semibold">
-                                ₹{cutAmountInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                (-) ₹{cutAmountInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                         </div>
                     )}
@@ -567,7 +590,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             <div className="flex justify-between"><span>Less: Transport Cost:</span> <span className="font-semibold">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         )}
                         {calculatedBrokerageCommission > 0 && (
-                            <div className="flex justify-between"><span>Less: Brokerage:</span> <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                            <div className="flex justify-between"><span>Less: Brokerage (% or Fixed):</span> <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        )}
+                         {calculatedExtraBrokerage > 0 && (
+                            <div className="flex justify-between"><span>Less: Extra Brokerage (₹/kg):</span> <span className="font-semibold">₹{calculatedExtraBrokerage.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         )}
                         <hr className="my-1 border-muted-foreground/50" />
                         <div className={`flex justify-between font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
