@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -28,14 +28,26 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FIXED_WAREHOUSES } from "@/app/(app)/masters/page"; // Import fixed warehouses
+import { FIXED_WAREHOUSES } from "@/app/(app)/masters/page";
 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
-const PURCHASES_STORAGE_KEY = 'purchasesData'; // Needed for inventory lots in AddSaleForm
+const PURCHASES_STORAGE_KEY = 'purchasesData';
+const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
+const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+
+interface AggregatedStockItem {
+  lotNumber: string;
+  locationId: string;
+  currentBags: number;
+  currentWeight: number;
+  purchaseRate: number;
+  effectiveRate?: number;
+  locationName?: string;
+}
 
 export function SalesClient() {
   const { toast } = useToast();
@@ -63,7 +75,11 @@ export function SalesClient() {
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
-  const [inventorySource, setInventorySource] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
+  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
+
 
   React.useEffect(() => setIsSalesClientHydrated(true), []);
 
@@ -79,15 +95,86 @@ export function SalesClient() {
 
   const aggregatedStockForSalesForm = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
+
+    const stockMap = new Map<string, AggregatedStockItem>();
+
+    const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+    fyPurchases.forEach(p => {
+        const key = `${p.lotNumber}-${p.locationId}`;
+        let entry = stockMap.get(key) || { lotNumber: p.lotNumber, locationId: p.locationId, currentBags: 0, currentWeight: 0, purchaseRate: p.rate, effectiveRate: p.effectiveRate, locationName: p.locationName };
+        entry.currentBags += p.quantity;
+        entry.currentWeight += p.netWeight;
+        stockMap.set(key, entry);
+    });
+
+    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
+    fyPurchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase) {
+            const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+            let entry = stockMap.get(key);
+            if (entry) {
+                entry.currentBags -= pr.quantityReturned;
+                entry.currentWeight -= pr.netWeightReturned;
+            }
+        }
+    });
     
-    // Hardcoded Mumbai Warehouse ID as per business logic
+    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
+    fySales.forEach(s => {
+        const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
+        if (relatedPurchase) {
+            const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
+            let entry = stockMap.get(key);
+            if (entry) {
+                entry.currentBags -= s.quantity;
+                entry.currentWeight -= s.netWeight;
+            }
+        }
+    });
+
+    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
+    fySaleReturns.forEach(sr => {
+        const originalSale = sales.find(s => s.id === sr.originalSaleId);
+        if (originalSale) {
+            const relatedPurchase = purchases.find(p => p.lotNumber === originalSale.lotNumber);
+            if (relatedPurchase) {
+                const key = `${originalSale.lotNumber}-${relatedPurchase.locationId}`;
+                let entry = stockMap.get(key);
+                if (entry) {
+                    entry.currentBags += sr.quantityReturned;
+                    entry.currentWeight += sr.netWeightReturned;
+                }
+            }
+        }
+    });
+
+    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    fyLocationTransfers.forEach(transfer => {
+        transfer.items.forEach(item => {
+            const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
+            let fromEntry = stockMap.get(fromKey);
+            if (fromEntry) {
+                fromEntry.currentBags -= item.bagsToTransfer;
+                fromEntry.currentWeight -= item.netWeightToTransfer;
+            }
+
+            const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`;
+            let toEntry = stockMap.get(toKey);
+            if (!toEntry) {
+                const originalPurchase = purchases.find(p => p.lotNumber === item.lotNumber);
+                toEntry = { lotNumber: item.lotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0, purchaseRate: originalPurchase?.rate || 0, effectiveRate: originalPurchase?.effectiveRate, locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name };
+            }
+            toEntry.currentBags += item.bagsToTransfer;
+            toEntry.currentWeight += item.netWeightToTransfer;
+            stockMap.set(toKey, toEntry);
+        });
+    });
+
     const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
-    
-    // Filter purchases to only include those in the Mumbai warehouse
-    const mumbaiPurchases = inventorySource.filter(p => p.locationId === MUMBAI_WAREHOUSE_ID);
-    
-    return mumbaiPurchases;
-  }, [inventorySource, isAppHydrating, isSalesClientHydrated]);
+    return Array.from(stockMap.values()).filter(item => item.locationId === MUMBAI_WAREHOUSE_ID && item.currentBags > 0);
+
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear]);
 
 
   const startIndex = (currentPage - 1) * itemsPerPage;

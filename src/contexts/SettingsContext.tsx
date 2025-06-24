@@ -16,6 +16,7 @@ interface SettingsContextType extends Settings {
   getFinancialYearShort: () => string;
   getPreviousFinancialYear: () => string;
   getNextFinancialYear: () => string;
+  isAppHydrating: boolean;
 }
 
 function getDefaultFinancialYear(): string {
@@ -31,24 +32,18 @@ function getDefaultFinancialYear(): string {
 
 const defaultSettings: Settings = {
   fontSize: 16,
-  financialYear: getDefaultFinancialYear(), // Default financial year
+  financialYear: getDefaultFinancialYear(),
+  isFinancialYearHydrated: false,
 };
-const defaultIsAppHydrating = true; // Default to true
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [fontSize, setFontSize] = useState<number>(defaultSettings.fontSize);
-  const [financialYear, setFinancialYear] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const storedFy = localStorage.getItem('appFinancialYear');
-      return storedFy || defaultSettings.financialYear;
-    }
-    return defaultSettings.financialYear;
-  });
-  const [isFontSizeHydrated, setIsFontSizeHydrated] = useState<boolean>(false); // Added state for fontSize hydration
-  const [isFinancialYearHydrated, setIsFinancialYearHydrated] = useState<boolean>(false); // Added state for financialYear hydration
-  const [isAppHydrating, setIsAppHydrating] = useState<boolean>(defaultIsAppHydrating); // Added state for overall app hydration status
+  const [financialYear, setFinancialYear] = useState<string>(defaultSettings.financialYear);
+  const [isFontSizeHydrated, setIsFontSizeHydrated] = useState<boolean>(false);
+  const [isFinancialYearHydrated, setIsFinancialYearHydrated] = useState<boolean>(false);
+  const isAppHydrating = !isFontSizeHydrated || !isFinancialYearHydrated;
 
 
   // Effect for font size
@@ -56,43 +51,36 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       const storedFontSize = localStorage.getItem('appFontSize');
       if (storedFontSize) {
-        const parsedSize = parseFloat(storedFontSize);
-        // Only update if it's different from the initial default to avoid unnecessary sets
-        if (parsedSize !== defaultSettings.fontSize) {
-            setFontSize(parsedSize);
-        }
-      } else { /* No stored value, use default. State is considered hydrated. */ }
-      // Mark font size as hydrated regardless of whether a stored value was found
+        setFontSize(parseFloat(storedFontSize));
+      }
       setIsFontSizeHydrated(true);
       }
-
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      document.documentElement.style.fontSize = `${fontSize}px`;
-      localStorage.setItem('appFontSize', fontSize.toString());
+    if (isFontSizeHydrated) {
+        document.documentElement.style.fontSize = `${fontSize}px`;
+        localStorage.setItem('appFontSize', fontSize.toString());
     }
-  }, [fontSize]);
+  }, [fontSize, isFontSizeHydrated]);
 
   // Effect for financial year
   useEffect(() => {
     if (typeof window !== 'undefined') {
-       // Check if localStorage value is loaded into state.
-       // This effect runs after the initial useState execution
-       // We can also save the latest value here
-       localStorage.setItem('appFinancialYear', financialYear);
+       const storedFy = localStorage.getItem('appFinancialYear');
+       if (storedFy) {
+           setFinancialYear(storedFy);
+       }
        setIsFinancialYearHydrated(true);
     }
+  }, []);
 
-  }, [financialYear]);
-
-  // Effect to determine overall app hydration status for settings
   useEffect(() => {
-    if (isFontSizeHydrated && isFinancialYearHydrated) {
-      setIsAppHydrating(false); // Set hydration to false once both are hydrated
+    if (isFinancialYearHydrated) {
+        localStorage.setItem('appFinancialYear', financialYear);
     }
-  }, [isFontSizeHydrated, isFinancialYearHydrated]);
+  }, [financialYear, isFinancialYearHydrated]);
+
 
   const getFinancialYearShort = useCallback(() => {
     const years = financialYear.split('-');
@@ -140,10 +128,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setFontSize,
       financialYear,
       setFinancialYear,
-      isAppHydrating, // Expose hydrating state to context consumers
-      isFinancialYearHydrated, // Expose hydration state for financial year to context consumers
+      isAppHydrating,
+      isFinancialYearHydrated,
       getFinancialYearShort,
-      getNextFinancialYear
+      getPreviousFinancialYear,
+      getNextFinancialYear,
     }}>
       {children}
     </SettingsContext.Provider>
@@ -157,17 +146,3 @@ export function useSettings() {
   }
   return context;
 }
-
-// Helper to get initial settings from localStorage (can be used outside provider if needed)
-export const getInitialSettings = () => {
-  if (typeof window !== 'undefined') {
-    const storedFontSize = localStorage.getItem('appFontSize');
-    const storedFinancialYear = localStorage.getItem('appFinancialYear');
-
-    return {
-      fontSize: storedFontSize ? parseInt(storedFontSize, 10) : defaultSettings.fontSize,
-      financialYear: storedFinancialYear || defaultSettings.financialYear,
-    };
-  }
-  return defaultSettings;
-};
