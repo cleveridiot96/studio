@@ -38,6 +38,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 
+interface AggregatedStockItemForForm {
+  lotNumber: string;
+  locationId: string;
+  currentBags: number;
+  currentWeight: number;
+  purchaseRate: number;
+  effectiveRate?: number;
+  locationName?: string;
+}
+
 interface AddSaleFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -45,7 +55,7 @@ interface AddSaleFormProps {
   customers: Customer[];
   transporters: Transporter[];
   brokers: Broker[];
-  inventoryLots: Purchase[]; 
+  availableStock: AggregatedStockItemForForm[];
   existingSales: Sale[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   saleToEdit?: Sale | null;
@@ -58,7 +68,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   customers,
   transporters,
   brokers,
-  inventoryLots,
+  availableStock,
   existingSales,
   onMasterDataUpdate,
   saleToEdit,
@@ -118,8 +128,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const memoizedDefaultValues = React.useMemo(() => getDefaultValues(), [getDefaultValues]);
 
   const memoizedSaleSchema = React.useMemo(() =>
-    saleSchema(customers, transporters, brokers, inventoryLots, existingSales, saleToEdit?.id)
-  , [customers, transporters, brokers, inventoryLots, existingSales, saleToEdit]);
+    saleSchema(customers, transporters, brokers, availableStock, existingSales, saleToEdit?.id)
+  , [customers, transporters, brokers, availableStock, existingSales, saleToEdit]);
 
   const methods = useForm<SaleFormValues>({
     resolver: zodResolver(memoizedSaleSchema),
@@ -134,13 +144,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       setNetWeightManuallySet(!!saleToEdit?.netWeight);
       setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue);
       if (saleToEdit && saleToEdit.lotNumber) {
-        const originalPurchase = inventoryLots.find(p => p.lotNumber === saleToEdit.lotNumber);
-        setPurchaseRateForLot(originalPurchase?.rate || 0);
+        const originalStock = availableStock.find(p => p.lotNumber === saleToEdit.lotNumber);
+        setPurchaseRateForLot(originalStock?.purchaseRate || 0);
       } else {
         setPurchaseRateForLot(0);
       }
     }
-  }, [isOpen, saleToEdit, reset, memoizedDefaultValues, inventoryLots]);
+  }, [isOpen, saleToEdit, reset, memoizedDefaultValues, availableStock]);
 
 
   const quantity = watch("quantity");
@@ -164,8 +174,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   React.useEffect(() => {
     if (watchedLotNumber) {
-      const selectedPurchase = inventoryLots.find(p => p.lotNumber === watchedLotNumber);
-      const newPurchaseRate = selectedPurchase?.rate || 0;
+      const selectedStock = availableStock.find(p => p.lotNumber === watchedLotNumber);
+      const newPurchaseRate = selectedStock?.purchaseRate || 0;
       if (newPurchaseRate !== purchaseRateForLot) {
         setPurchaseRateForLot(newPurchaseRate);
       }
@@ -174,7 +184,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           setPurchaseRateForLot(0);
         }
     }
-  }, [watchedLotNumber, inventoryLots, purchaseRateForLot]);
+  }, [watchedLotNumber, availableStock, purchaseRateForLot]);
 
   React.useEffect(() => {
     if (watchedLotNumber && existingSales && existingSales.length > 0) {
@@ -345,19 +355,25 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   if (!isOpen) return null;
 
   const availableLotsForDropdown = React.useMemo(() => {
-    return inventoryLots
+    return availableStock
       .map(p => {
-        const salesForThisLot = existingSales.filter(s => s.lotNumber === p.lotNumber && s.id !== saleToEdit?.id);
-        const bagsSoldFromLot = salesForThisLot.reduce((sum, s) => sum + (s.quantity || 0), 0);
-        const availableBags = (p.quantity || 0) - bagsSoldFromLot;
+        const availableBags = p.currentBags;
+        const rateDisplay = typeof p.purchaseRate === 'number' ? p.purchaseRate.toFixed(2) : 'N/A';
+        const effectiveRateDisplay = typeof p.effectiveRate === 'number' ? p.effectiveRate.toFixed(2) : 'N/A';
+        
+        let tooltipForLot = `Effective Purchase Rate: ₹${effectiveRateDisplay}/kg.`;
+        if (p.locationName) {
+            tooltipForLot += ` Location: ${p.locationName}`;
+        }
+
         return {
           value: p.lotNumber,
-          label: `${p.lotNumber} (Avl: ${availableBags} bags, Rate: ₹${p.rate.toFixed(2)}/kg)`,
-          tooltipContent: `Effective Purchase Rate: ₹${p.effectiveRate?.toFixed(2) || 'N/A'}/kg. Location: ${p.locationName || p.locationId}`,
+          label: `${p.lotNumber} (Avl: ${availableBags} bags, Rate: ₹${rateDisplay}/kg)`,
+          tooltipContent: tooltipForLot,
           isAvailable: availableBags > 0,
         };
       }).filter(opt => opt.isAvailable || opt.value === watchedLotNumber );
-  }, [inventoryLots, existingSales, saleToEdit, watchedLotNumber]);
+  }, [availableStock, watchedLotNumber]);
 
   return (
     <>
