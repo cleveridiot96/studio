@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { doesNameExist } from '@/lib/masterUtils';
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 
 // Storage keys
@@ -31,11 +32,6 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
-export const FIXED_WAREHOUSES: Readonly<MasterItem[]> = [
-  { id: 'fixed-wh-mumbai', name: 'MUMBAI', type: 'Warehouse' },
-  { id: 'fixed-wh-chiplun', name: 'CHIPLUN', type: 'Warehouse' },
-  { id: 'fixed-wh-sawantwadi', name: 'SAWANTWADI', type: 'Warehouse' },
-];
 const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 
 type MasterPageTabKey = MasterItemType | 'All';
@@ -324,3 +320,4 @@ export default function MastersPage() {
 
 
     
+

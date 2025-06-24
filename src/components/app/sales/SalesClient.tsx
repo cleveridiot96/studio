@@ -28,7 +28,7 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FIXED_WAREHOUSES } from "@/app/(app)/masters/page";
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
