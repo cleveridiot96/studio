@@ -28,19 +28,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { MasterItem, MasterItemType } from '@/lib/types';
 import { Percent } from 'lucide-react';
 
-const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolean; }[] = [
-  { value: "Customer", label: "Customer", hasCommission: false },
-  { value: "Supplier", label: "Supplier", hasCommission: false },
-  { value: "Agent", label: "Agent", hasCommission: true },
-  { value: "Transporter", label: "Transporter", hasCommission: false },
-  { value: "Broker", label: "Broker", hasCommission: true },
-  { value: "Warehouse", label: "Warehouse", hasCommission: false },
+const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolean; hasBalance: boolean; }[] = [
+  { value: "Customer", label: "Customer", hasCommission: false, hasBalance: true },
+  { value: "Supplier", label: "Supplier", hasCommission: false, hasBalance: true },
+  { value: "Agent", label: "Agent", hasCommission: true, hasBalance: true },
+  { value: "Transporter", label: "Transporter", hasCommission: false, hasBalance: true },
+  { value: "Broker", label: "Broker", hasCommission: true, hasBalance: true },
+  { value: "Warehouse", label: "Warehouse", hasCommission: false, hasBalance: false },
 ];
 
 const masterItemSchema = z.object({
   name: z.string().min(1, "Name is required."),
   type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse"]),
   commission: z.coerce.number().optional(),
+  openingBalance: z.coerce.number().optional(),
+  openingBalanceType: z.enum(['Dr', 'Cr']).optional(),
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
   if (config?.hasCommission && (data.commission === undefined || data.commission < 0)) {
@@ -53,6 +55,15 @@ const masterItemSchema = z.object({
 }, {
   message: "Commission must be a non-negative number if applicable.",
   path: ["commission"],
+}).refine(data => {
+  // If opening balance has a value, its type must also be selected
+  if (data.openingBalance !== undefined && data.openingBalance > 0 && !data.openingBalanceType) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please select the balance type (To Receive or To Pay).",
+  path: ["openingBalanceType"],
 });
 
 
@@ -64,7 +75,7 @@ interface MasterFormProps {
   onSubmit: (item: MasterItem) => void;
   initialData?: MasterItem | null;
   itemTypeFromButton?: MasterItemType;
-  fixedWarehouseIds?: string[]; // Added to check if editing a fixed warehouse
+  fixedWarehouseIds?: string[];
 }
 
 export const MasterForm: React.FC<MasterFormProps> = ({
@@ -81,6 +92,8 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       name: '',
       type: itemTypeFromButton || 'Customer',
       commission: undefined,
+      openingBalance: undefined,
+      openingBalanceType: undefined,
     },
   });
 
@@ -93,12 +106,16 @@ export const MasterForm: React.FC<MasterFormProps> = ({
             name: initialData.name,
             type: initialData.type,
             commission: initialData.commission,
+            openingBalance: initialData.openingBalance,
+            openingBalanceType: initialData.openingBalanceType,
           });
         } else {
           form.reset({
             name: '',
             type: itemTypeFromButton || 'Customer',
             commission: undefined,
+            openingBalance: undefined,
+            openingBalanceType: undefined,
           });
         }
     }
@@ -107,7 +124,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   const selectedType = form.watch('type');
   const currentTypeConfig = TABS_CONFIG.find(t => t.value === selectedType);
   const showCommissionField = currentTypeConfig?.hasCommission;
-
+  const showBalanceField = currentTypeConfig?.hasBalance;
 
   const handleSubmit = (values: MasterItemFormValues) => {
     const itemToSubmit: MasterItem = {
@@ -117,6 +134,10 @@ export const MasterForm: React.FC<MasterFormProps> = ({
     };
     if (showCommissionField && values.commission !== undefined ) {
       itemToSubmit.commission = values.commission;
+    }
+    if (showBalanceField && values.openingBalance !== undefined) {
+      itemToSubmit.openingBalance = values.openingBalance;
+      itemToSubmit.openingBalanceType = values.openingBalance > 0 ? values.openingBalanceType : undefined;
     }
     onSubmit(itemToSubmit);
   };
@@ -161,9 +182,13 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                         if (!newTypeConfig?.hasCommission) {
                           form.setValue('commission', undefined);
                         }
+                        if (!newTypeConfig?.hasBalance) {
+                            form.setValue('openingBalance', undefined);
+                            form.setValue('openingBalanceType', undefined);
+                        }
                     }}
                     value={field.value}
-                    disabled={isEditingFixedWarehouse} // Disable type change for fixed warehouses
+                    disabled={isEditingFixedWarehouse}
                   >
                     <FormControl>
  <SelectTrigger>
@@ -183,7 +208,61 @@ export const MasterForm: React.FC<MasterFormProps> = ({
               )}
             />
 
-            {showCommissionField && !isEditingFixedWarehouse && ( // Commission field not applicable or editable for fixed warehouses
+            {showBalanceField && !isEditingFixedWarehouse && (
+              <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                 <FormField
+                    control={form.control}
+                    name="openingBalance"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Opening Balance (₹)</FormLabel>
+                        <FormControl>
+                        <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g., 5000"
+                            {...field}
+                            value={field.value === undefined ? '' : field.value}
+                            onChange={e => {
+                                const val = e.target.value;
+                                const numValue = val === '' ? undefined : parseFloat(val);
+                                field.onChange(numValue);
+                            }}
+                        />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="openingBalanceType"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Balance Type</FormLabel>
+                         <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!form.watch('openingBalance') || form.watch('openingBalance') === 0}
+                        >
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Type..." />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="Dr">To Receive (Dr)</SelectItem>
+                                <SelectItem value="Cr">To Pay (Cr)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+            )}
+
+            {showCommissionField && !isEditingFixedWarehouse && (
               <FormField
                 control={form.control}
                 name="commission"
@@ -231,6 +310,3 @@ export const MasterForm: React.FC<MasterFormProps> = ({
     </Dialog>
   );
 };
-
-
-    

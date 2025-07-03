@@ -18,6 +18,8 @@ export interface MasterItem {
   name: string;
   commission?: number; // For Agents and Brokers
   type: MasterItemType;
+  openingBalance?: number;
+  openingBalanceType?: 'Dr' | 'Cr'; // Dr: To Receive (Asset), Cr: To Pay (Liability)
   [key: string]: any; // For additional fields
 }
 

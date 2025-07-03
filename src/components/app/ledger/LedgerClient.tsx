@@ -216,6 +216,11 @@ export function LedgerClient() {
     });
 
     let balance = 0;
+    // Start with the master opening balance
+    if (party.openingBalance && party.openingBalanceType) {
+        balance = party.openingBalanceType === 'Dr' ? party.openingBalance : -party.openingBalance;
+    }
+
     tempTransactions.forEach(t => {
       if (parseISO(t.date) < startOfDay(dateRange.from!)) {
         balance += (t.debit || 0) - (t.credit || 0);
