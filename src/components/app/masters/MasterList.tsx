@@ -16,7 +16,7 @@ import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building, 
 import type { MasterItem, MasterItemType } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"; // Added ScrollArea and ScrollBar
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 
 const typeIconMap: Record<MasterItemType, React.ElementType> = {
@@ -51,12 +51,13 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
 
   const showCommissionColumn = isAllItemsTab || itemType === 'Agent' || itemType === 'Broker';
+  const showBalanceColumn = isAllItemsTab || itemType !== 'Warehouse';
   const showTypeColumn = isAllItemsTab;
 
 
   return (
     <TooltipProvider>
-    <ScrollArea className="rounded-md border shadow-sm h-[50vh] print:h-auto print:overflow-visible"> {/* Replaced div with ScrollArea and added height */}
+    <ScrollArea className="rounded-md border shadow-sm h-[50vh] print:h-auto print:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
@@ -64,12 +65,14 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
             <TableHead className="whitespace-nowrap">Name</TableHead>
             {showTypeColumn && <TableHead className="whitespace-nowrap">Type</TableHead>}
             {showCommissionColumn && <TableHead className="text-right whitespace-nowrap">Commission (%)</TableHead>}
+            {showBalanceColumn && <TableHead className="text-right whitespace-nowrap">Opening Balance (₹)</TableHead>}
             <TableHead className="text-center w-[100px] sm:w-[120px] whitespace-nowrap">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {uniqueMasters.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
+            const itemHasBalance = item.type !== 'Warehouse';
             const TypeIcon = typeIconMap[item.type] || Users;
             const isFixedWarehouse = item.type === 'Warehouse' && fixedWarehouseIds.includes(item.id);
             return (
@@ -91,6 +94,13 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                   <TableCell className="text-right whitespace-nowrap">
                     {itemHasCommission && item.commission !== undefined
                       ? `${item.commission.toLocaleString()}%`
+                      : 'N/A'}
+                  </TableCell>
+                )}
+                {showBalanceColumn && (
+                  <TableCell className="text-right whitespace-nowrap">
+                    {itemHasBalance && item.openingBalance && item.openingBalance > 0
+                      ? `${item.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${item.openingBalanceType || ''}`.trim()
                       : 'N/A'}
                   </TableCell>
                 )}
@@ -122,9 +132,8 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
           No items to display.
         </div>
       )}
-      <ScrollBar orientation="horizontal" /> {/* Added horizontal scrollbar */}
+      <ScrollBar orientation="horizontal" />
     </ScrollArea>
     </TooltipProvider>
   );
 };
-
