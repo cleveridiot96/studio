@@ -61,7 +61,6 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px] sm:w-[150px] whitespace-nowrap">ID</TableHead>
             <TableHead className="whitespace-nowrap">Name</TableHead>
             {showTypeColumn && <TableHead className="whitespace-nowrap">Type</TableHead>}
             {showCommissionColumn && <TableHead className="text-right whitespace-nowrap">Commission (%)</TableHead>}
@@ -77,10 +76,18 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
             const isFixedWarehouse = item.type === 'Warehouse' && fixedWarehouseIds.includes(item.id);
             return (
               <TableRow key={item.id}>
-                <TableCell className="font-mono text-xs whitespace-nowrap">{item.id}</TableCell>
                 <TableCell className="font-medium whitespace-nowrap">
-                  {isFixedWarehouse && <Lock className="h-3 w-3 inline-block mr-1.5 text-muted-foreground" />}
-                  {item.name}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help">
+                        {isFixedWarehouse && <Lock className="h-3 w-3 inline-block mr-1.5 text-muted-foreground" />}
+                        {item.name}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>ID: {item.id}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </TableCell>
                 {showTypeColumn && (
                   <TableCell className="whitespace-nowrap">
