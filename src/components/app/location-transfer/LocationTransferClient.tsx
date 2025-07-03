@@ -38,6 +38,7 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
+import { format as formatDateFn } from 'date-fns';
 
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -185,17 +186,34 @@ export function LocationTransferClient() {
   React.useEffect(() => {
     if (transferForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
-        const elementToCapture = chittiContainerRef.current;
-        if (!elementToCapture || !elementToCapture.hasChildNodes()) {
+        const elementToCapture = chittiContainerRef.current?.querySelector('.print-chitti-styles') as HTMLElement;
+        if (!elementToCapture) {
           toast({ title: "PDF Error", description: "Slip content not ready.", variant: "destructive" });
-          setTransferForPdf(null); return;
+          setTransferForPdf(null);
+          return;
         }
         try {
-          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, windowWidth: 550 });
+          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
           const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-          pdf.save(`TransferSlip_${transferForPdf.id.slice(-4)}.pdf`);
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgProps = pdf.getImageProperties(imgData);
+          const margin = 10;
+          const contentWidth = pdfWidth - 2 * margin;
+          const contentHeight = pdfHeight - 2 * margin;
+          const ratio = imgProps.width / imgProps.height;
+          let imgWidth = contentWidth;
+          let imgHeight = imgWidth / ratio;
+          if (imgHeight > contentHeight) {
+            imgHeight = contentHeight;
+            imgWidth = imgHeight * ratio;
+          }
+          const xOffset = (pdfWidth - imgWidth) / 2;
+          const yOffset = (pdfHeight - imgHeight) / 2;
+          pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+          const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
+          pdf.save(`TransferSlip_${transferForPdf.id.slice(-4)}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Slip for transfer ${transferForPdf.id.slice(-4)} downloaded.` });
         } catch (err) {
           console.error("Error generating PDF:", err);
@@ -204,7 +222,7 @@ export function LocationTransferClient() {
           setTransferForPdf(null);
         }
       };
-      const timer = setTimeout(generatePdf, 250);
+      const timer = setTimeout(generatePdf, 300);
       return () => clearTimeout(timer);
     }
   }, [transferForPdf, toast]);

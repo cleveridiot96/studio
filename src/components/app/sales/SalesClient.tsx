@@ -29,6 +29,8 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { format as formatDateFn } from 'date-fns';
+
 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
@@ -253,16 +255,44 @@ export function SalesClient() {
   React.useEffect(() => {
     if (saleForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
-        const el = chittiContainerRef.current; if (!el || !el.hasChildNodes()) { toast({ title: "PDF Error", variant: "destructive" }); setSaleForPdf(null); return; }
+        const elementToCapture = chittiContainerRef.current?.querySelector('.print-chitti-styles') as HTMLElement;
+        if (!elementToCapture) {
+          toast({ title: "PDF Error", description: "Chitti content not ready.", variant: "destructive" });
+          setSaleForPdf(null);
+          return;
+        }
         try {
-          const canvas = await html2canvas(el, { scale: 2, useCORS: true, width: 550, windowWidth: 550 });
-          const imgData = canvas.toDataURL('image/png'); const pdf = new jsPDF({ o: 'p', u: 'px', f: [canvas.width, canvas.height] });
-          pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height); pdf.save(`SaleChitti_${saleForPdf.billNumber || saleForPdf.id.slice(-4)}.pdf`);
-          toast({ title: "PDF Generated" });
-        } catch (err) { console.error(err); toast({ title: "PDF Failed", variant: "destructive" }); }
-        finally { setSaleForPdf(null); }
+          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgProps = pdf.getImageProperties(imgData);
+          const margin = 10;
+          const contentWidth = pdfWidth - 2 * margin;
+          const contentHeight = pdfHeight - 2 * margin;
+          const ratio = imgProps.width / imgProps.height;
+          let imgWidth = contentWidth;
+          let imgHeight = imgWidth / ratio;
+          if (imgHeight > contentHeight) {
+            imgHeight = contentHeight;
+            imgWidth = imgHeight * ratio;
+          }
+          const xOffset = (pdfWidth - imgWidth) / 2;
+          const yOffset = (pdfHeight - imgHeight) / 2;
+          pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+          const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
+          pdf.save(`SaleChitti_${saleForPdf.billNumber?.replace(/[\/\s.]/g, '_') || saleForPdf.id.slice(-4)}_${timestamp}.pdf`);
+          toast({ title: "PDF Generated", description: `Chitti for ${saleForPdf.billNumber} downloaded.` });
+        } catch (err) {
+          console.error(err);
+          toast({ title: "PDF Failed", variant: "destructive" });
+        } finally {
+          setSaleForPdf(null);
+        }
       };
-      const timer = setTimeout(generatePdf, 250); return () => clearTimeout(timer);
+      const timer = setTimeout(generatePdf, 300);
+      return () => clearTimeout(timer);
     }
   }, [saleForPdf, toast]);
 
