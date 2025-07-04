@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -308,11 +307,11 @@ export function SalesClient() {
       </div>
       
       <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print">
-          <TabsTrigger value="sales" className="py-2.5 text-base">
+        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print bg-transparent p-0 gap-2">
+          <TabsTrigger value="sales" className="py-2.5 text-base text-white bg-green-600 hover:bg-green-700 data-[state=active]:bg-green-800 data-[state=active]:text-white rounded-md transition-all">
             <ListCollapse className="mr-2 h-5 w-5" />Sales
           </TabsTrigger>
-          <TabsTrigger value="saleReturns" className="py-2.5 text-base">
+          <TabsTrigger value="saleReturns" className="py-2.5 text-base text-white bg-red-600 hover:bg-red-700 data-[state=active]:bg-red-800 data-[state=active]:text-white rounded-md transition-all">
             <RotateCcw className="mr-2 h-5 w-5" />Sale Returns
           </TabsTrigger>
         </TabsList>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -210,11 +209,11 @@ export function PurchasesClient() {
       </div>
 
       <Tabs defaultValue="purchases" className="w-full">
-        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print">
-          <TabsTrigger value="purchases" className="py-2.5 text-base">
+        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print bg-transparent p-0 gap-2">
+          <TabsTrigger value="purchases" className="py-2.5 text-base text-white bg-blue-600 hover:bg-blue-700 data-[state=active]:bg-blue-800 data-[state=active]:text-white rounded-md transition-all">
             <ListCollapse className="mr-2 h-5 w-5" />Purchases
           </TabsTrigger>
-          <TabsTrigger value="purchaseReturns" className="py-2.5 text-base">
+          <TabsTrigger value="purchaseReturns" className="py-2.5 text-base text-white bg-orange-600 hover:bg-orange-700 data-[state=active]:bg-orange-800 data-[state=active]:text-white rounded-md transition-all">
             <RotateCcw className="mr-2 h-5 w-5" />Purchase Returns
           </TabsTrigger>
         </TabsList>
