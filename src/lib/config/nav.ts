@@ -59,6 +59,12 @@ export const navItems: NavItem[] = [
     iconColor: 'bg-orange-600', // Matches dashboard tile
   },
   {
+    title: 'Stock Ledger',
+    href: '/ledger',
+    iconName: 'BookUser',
+    iconColor: 'bg-red-800', // Matches dashboard tile
+  },
+  {
     title: 'Payments',
     href: '/payments',
     iconName: 'ArrowRightCircle',
@@ -75,12 +81,6 @@ export const navItems: NavItem[] = [
     href: '/cashbook',
     iconName: 'BookOpen',
     iconColor: 'bg-pink-600', // Matches dashboard tile
-  },
-  {
-    title: 'Stock Ledger',
-    href: '/ledger',
-    iconName: 'BookUser',
-    iconColor: 'bg-gray-700', // Matches dashboard tile
   },
   {
     title: 'Profit Analysis', // Adding Profit Analysis to nav if it exists on dashboard
