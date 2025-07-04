@@ -272,15 +272,14 @@ export function AccountsLedgerClient() {
                 <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
                 <CardContent className="p-0 flex-grow">
                   <Table size="sm"><TableHeader><TableRow>
-                    <TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead>Vakkal</TableHead>
+                    <TableHead>Date</TableHead><TableHead>Vakkal</TableHead>
                     <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead>
                     <TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
                   </TableRow></TableHeader>
                     <TableBody>
-                      {ledgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
+                      {ledgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
                       {ledgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
                         <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                        <TableCell className="truncate max-w-[150px]">{e.particulars}</TableCell>
                         <TableCell>{e.vakkal || '-'}</TableCell>
                         <TableCell className="text-right">{e.bags?.toLocaleString() || '-'}</TableCell>
                         <TableCell className="text-right">{e.kg?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-'}</TableCell>
@@ -289,7 +288,7 @@ export function AccountsLedgerClient() {
                       </TableRow>))}
                     </TableBody>
                     <TableFooter><TableRow className="font-bold bg-orange-50">
-                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell colSpan={2}>Total</TableCell>
                         <TableCell className="text-right">{ledgerData.totalDebitBags.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{ledgerData.totalDebitKg.toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                         <TableCell></TableCell>
@@ -305,15 +304,14 @@ export function AccountsLedgerClient() {
                 <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
                 <CardContent className="p-0 flex-grow">
                    <Table size="sm"><TableHeader><TableRow>
-                    <TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead>Vakkal</TableHead>
+                    <TableHead>Date</TableHead><TableHead>Vakkal</TableHead>
                     <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead>
                     <TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
                   </TableRow></TableHeader>
                     <TableBody>
-                      {ledgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
+                      {ledgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
                       {ledgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
                         <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                        <TableCell className="truncate max-w-[150px]">{e.particulars}</TableCell>
                         <TableCell>{e.vakkal || '-'}</TableCell>
                         <TableCell className="text-right">{e.bags?.toLocaleString() || '-'}</TableCell>
                         <TableCell className="text-right">{e.kg?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-'}</TableCell>
@@ -322,7 +320,7 @@ export function AccountsLedgerClient() {
                       </TableRow>))}
                     </TableBody>
                     <TableFooter><TableRow className="font-bold bg-green-50">
-                       <TableCell colSpan={3}>Total</TableCell>
+                       <TableCell colSpan={2}>Total</TableCell>
                         <TableCell className="text-right">{ledgerData.totalCreditBags.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{ledgerData.totalCreditKg.toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                         <TableCell></TableCell>
