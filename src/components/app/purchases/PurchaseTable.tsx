@@ -104,10 +104,6 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                         <Pencil className="mr-2 h-4 w-4" />
                         <span>Edit</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handlePrintChitti(purchase)}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        <span>Print Chitti</span>
-                      </DropdownMenuItem>
                       {onDownloadPdf && (
                         <DropdownMenuItem onClick={() => onDownloadPdf(purchase)}>
                           <Download className="mr-2 h-4 w-4" />

@@ -109,9 +109,6 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                         <DropdownMenuItem onClick={() => onEdit(sale)}>
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleGenericPrint}>
-                          <Printer className="mr-2 h-4 w-4" /> Print Page
-                        </DropdownMenuItem>
                         {onDownloadPdf && (
                           <DropdownMenuItem onClick={() => onDownloadPdf(sale)}>
                             <Download className="mr-2 h-4 w-4" /> Download Chitti (PDF)

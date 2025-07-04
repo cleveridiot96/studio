@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType } from "@/lib/types";
+import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -26,11 +26,8 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
-// Brokers are no longer relevant for payments as per new instructions
-// const BROKERS_STORAGE_KEY = 'masterBrokers'; 
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
-// Initial data sets - changed to empty arrays for clean slate on format
 const initialPaymentsData: Payment[] = [];
 
 export function PaymentsClient() {
@@ -43,8 +40,6 @@ export function PaymentsClient() {
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  // Brokers are not included in parties eligible for direct payment in this context
-  // const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
@@ -60,7 +55,6 @@ export function PaymentsClient() {
 
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];
-    // Combine only Suppliers, Agents, and Transporters for the payment form's party dropdown
     return [
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
@@ -107,23 +101,16 @@ export function PaymentsClient() {
   }, [paymentToDeleteId, setPayments, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    switch (type) {
-      case "Supplier":
-        setSuppliers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      case "Agent":
-        setAgents(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      // Brokers are not directly paid through this form typically
-      // case "Broker":
-      //   setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-      //   break;
-      case "Transporter":
-        setTransporters(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      default:
+    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { 
+        Supplier: setSuppliers, 
+        Agent: setAgents, 
+        Transporter: setTransporters 
+    };
+    const setter = setters[type];
+    if (setter) {
+        setter(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+    } else {
         toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
-        break;
     }
   }, [setSuppliers, setAgents, setTransporters, toast]);
 
@@ -168,7 +155,7 @@ export function PaymentsClient() {
           isOpen={isAddPaymentFormOpen}
           onClose={closeAddPaymentForm}
           onSubmit={handleAddOrUpdatePayment}
-          parties={allPaymentParties} // Pass the filtered list
+          parties={allPaymentParties}
           onMasterDataUpdate={handleMasterDataUpdate}
           paymentToEdit={paymentToEdit}
         />

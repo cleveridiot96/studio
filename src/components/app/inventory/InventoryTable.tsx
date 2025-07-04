@@ -36,7 +36,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
             <TableHead className="text-right">Current Bags</TableHead>
             <TableHead className="text-right">Current Wt (kg)</TableHead>
             <TableHead>Last Purch.</TableHead>
-            <TableHead className="text-right">Last Rate (₹/kg)</TableHead>
+            <TableHead className="text-right">Landed Cost (₹/kg)</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead className="text-center w-[80px] no-print">Actions</TableHead>
           </TableRow>
@@ -56,7 +56,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
               <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
               <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
-              <TableCell className="text-right">{item.purchaseRate ? item.purchaseRate.toFixed(2) : 'N/A'}</TableCell>
+              <TableCell className="text-right">{item.effectiveRate ? item.effectiveRate.toFixed(2) : 'N/A'}</TableCell>
               <TableCell className="text-center">
                 {item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
                 item.currentBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) :

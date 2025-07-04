@@ -45,10 +45,10 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
               <TableHead className="w-[100px]">Date</TableHead>
               <TableHead>Party Name</TableHead>
               <TableHead>Party Type</TableHead>
-              <TableHead className="text-right">Amount (₹)</TableHead>
               <TableHead>Method</TableHead>
               <TableHead>Reference No.</TableHead>
               <TableHead>Notes</TableHead>
+              <TableHead className="text-right">Amount (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -58,7 +58,6 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
                 <TableCell>{format(new Date(payment.date), "dd-MM-yy")}</TableCell>
                 <TableCell>{payment.partyName || payment.partyId}</TableCell>
                 <TableCell><Badge variant="secondary">{payment.partyType}</Badge></TableCell>
-                <TableCell className="text-right font-semibold">{payment.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell>{payment.paymentMethod}</TableCell>
                 <TableCell>{payment.referenceNo || 'N/A'}</TableCell>
                 <TableCell className="truncate max-w-xs">
@@ -75,6 +74,7 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
                     'N/A'
                   )}
                 </TableCell>
+                <TableCell className="text-right font-semibold">{payment.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -86,9 +86,6 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onEdit(payment)}>
                         <Pencil className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.print()}>
-                        <Printer className="mr-2 h-4 w-4" /> Print Page
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

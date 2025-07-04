@@ -209,7 +209,7 @@ export function LedgerClient() {
                         placeholder="Select Party..."
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
-                        className="w-full md:w-[280px]"
+                        // className="w-full md:w-[280px]"
                     />
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
                      <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
@@ -278,17 +278,19 @@ export function LedgerClient() {
                         <TableHeader><TableRow>
                             <TableHead>Date</TableHead>
                             <TableHead>Customer</TableHead>
+                            <TableHead>Broker</TableHead>
                             <TableHead className="text-right">Bags</TableHead>
                             <TableHead className="text-right">Kg</TableHead>
                             <TableHead className="text-right">Rate</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow></TableHeader>
                         <TableBody>
-                            {creditEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No sales recorded for this party.</TableCell></TableRow>}
+                            {creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales recorded for this party.</TableCell></TableRow>}
                             {creditEntries.map(e => (
                                 <TableRow key={e.id}>
                                     <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
                                     <TableCell>{e.customer}</TableCell>
+                                    <TableCell>{e.broker}</TableCell>
                                     <TableCell className="text-right">{e.saleVakkal}</TableCell>
                                     <TableCell className="text-right">{e.kg.toFixed(2)}</TableCell>
                                     <TableCell className="text-right">{e.rate.toFixed(2)}</TableCell>
@@ -298,7 +300,7 @@ export function LedgerClient() {
                         </TableBody>
                          <TableFooter>
                             <TableRow className="font-bold bg-green-50">
-                                <TableCell colSpan={5}>Total Sales Value</TableCell>
+                                <TableCell colSpan={6}>Total Sales Value</TableCell>
                                 <TableCell className="text-right">{totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>
                         </TableFooter>

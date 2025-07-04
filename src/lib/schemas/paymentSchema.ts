@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import type { MasterItem, MasterItemType } from '@/lib/types';
+import type { MasterItem } from '@/lib/types';
 
 export const paymentSchema = (parties: MasterItem[]) => z.object({
   date: z.date({
@@ -19,5 +19,3 @@ export const paymentSchema = (parties: MasterItem[]) => z.object({
 });
 
 export type PaymentFormValues = z.infer<ReturnType<typeof paymentSchema>>;
-
-    

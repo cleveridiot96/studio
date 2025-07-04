@@ -38,7 +38,7 @@ export interface Purchase {
   netWeight: number; // in KG
   rate: number; // per KG
   totalAmount: number; // (netWeight * rate)
-  effectiveRate: number; // per KG, for purchases this is the same as rate
+  effectiveRate: number; // per KG, for purchases this is the same as rate. This will change upon transfer.
   locationId: string;
   locationName?: string;
 }
@@ -120,7 +120,7 @@ export interface Payment {
   date: string; // ISO string date
   partyId: string;
   partyName?: string; // For display in table
-  partyType: MasterItemType; // Supplier, Agent, Transporter, Broker
+  partyType: MasterItemType; // Supplier, Agent, Transporter
   amount: number;
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   referenceNo?: string;

@@ -123,7 +123,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       date: format(values.date, "yyyy-MM-dd"),
       partyId: values.partyId as string,
       partyName: selectedParty.name,
-      partyType: selectedParty.type,
+      partyType: selectedParty.type as 'Supplier' | 'Agent' | 'Transporter',
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       referenceNo: values.referenceNo,
@@ -138,7 +138,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog modal={true} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>

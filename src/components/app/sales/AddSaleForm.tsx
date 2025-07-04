@@ -44,7 +44,7 @@ interface AggregatedStockItemForForm {
   currentBags: number;
   currentWeight: number;
   purchaseRate: number;
-  effectiveRate?: number;
+  effectiveRate: number;
   locationName?: string;
 }
 
@@ -81,7 +81,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(!!saleToEdit?.netWeight);
   const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(!!saleToEdit?.brokerageValue);
+  
   const [purchaseRateForLot, setPurchaseRateForLot] = React.useState<number>(0);
+  const [effectiveRateForLot, setEffectiveRateForLot] = React.useState<number>(0);
   const [lastSoldRate, setLastSoldRate] = React.useState<number | null>(null);
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
@@ -146,8 +148,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       if (saleToEdit && saleToEdit.lotNumber) {
         const originalStock = availableStock.find(p => p.lotNumber === saleToEdit.lotNumber);
         setPurchaseRateForLot(originalStock?.purchaseRate || 0);
+        setEffectiveRateForLot(originalStock?.effectiveRate || originalStock?.purchaseRate || 0);
       } else {
         setPurchaseRateForLot(0);
+        setEffectiveRateForLot(0);
       }
     }
   }, [isOpen, saleToEdit, reset, memoizedDefaultValues, availableStock]);
@@ -174,17 +178,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   React.useEffect(() => {
     if (watchedLotNumber) {
-      const selectedStock = availableStock.find(p => p.lotNumber === watchedLotNumber);
-      const newPurchaseRate = selectedStock?.purchaseRate || 0;
-      if (newPurchaseRate !== purchaseRateForLot) {
+        const selectedStock = availableStock.find(p => p.lotNumber === watchedLotNumber);
+        const newPurchaseRate = selectedStock?.purchaseRate || 0;
+        const newEffectiveRate = selectedStock?.effectiveRate || newPurchaseRate;
         setPurchaseRateForLot(newPurchaseRate);
-      }
+        setEffectiveRateForLot(newEffectiveRate);
     } else {
-        if (purchaseRateForLot !== 0) {
-          setPurchaseRateForLot(0);
-        }
+        setPurchaseRateForLot(0);
+        setEffectiveRateForLot(0);
     }
-  }, [watchedLotNumber, availableStock, purchaseRateForLot]);
+  }, [watchedLotNumber, availableStock]);
+
 
   React.useEffect(() => {
     if (watchedLotNumber && existingSales && existingSales.length > 0) {
@@ -255,9 +259,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const costOfGoodsSold = React.useMemo(() => {
     const currentNetWeight = parseFloat(String(netWeight || 0));
-    if (isNaN(currentNetWeight) || isNaN(purchaseRateForLot)) return 0;
-    return currentNetWeight * purchaseRateForLot;
-  }, [netWeight, purchaseRateForLot]);
+    if (isNaN(currentNetWeight) || isNaN(effectiveRateForLot)) return 0;
+    return currentNetWeight * effectiveRateForLot;
+  }, [netWeight, effectiveRateForLot]);
 
   const calculatedProfit = React.useMemo(() => {
     return goodsValueForCalc - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission - calculatedExtraBrokerage;
@@ -306,7 +310,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                 ? currentGoodsValue - currentCutAmount
                                 : currentGoodsValue;
     
-    const currentCostOfGoodsSold = finalNetWeightForSubmit * purchaseRateForLot;
+    const currentCostOfGoodsSold = finalNetWeightForSubmit * effectiveRateForLot;
     
     const brokerageTypeForSubmit = submissionValues.brokerageType;
     const brokerageValueForSubmit = submissionValues.brokerageValue;
@@ -358,17 +362,16 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return availableStock
       .map(p => {
         const availableBags = p.currentBags;
-        const rateDisplay = typeof p.purchaseRate === 'number' ? p.purchaseRate.toFixed(2) : 'N/A';
-        const effectiveRateDisplay = typeof p.effectiveRate === 'number' ? p.effectiveRate.toFixed(2) : 'N/A';
+        const rateDisplay = typeof p.effectiveRate === 'number' ? p.effectiveRate.toFixed(2) : 'N/A';
         
-        let tooltipForLot = `Effective Purchase Rate: ₹${effectiveRateDisplay}/kg.`;
+        let tooltipForLot = `Landed Cost Rate: ₹${rateDisplay}/kg.`;
         if (p.locationName) {
             tooltipForLot += ` Location: ${p.locationName}`;
         }
 
         return {
           value: p.lotNumber,
-          label: `${p.lotNumber} (Avl: ${availableBags} bags, Rate: ₹${rateDisplay}/kg)`,
+          label: `${p.lotNumber} (Avl: ${availableBags} bags)`,
           tooltipContent: tooltipForLot,
           isAvailable: availableBags > 0,
         };
@@ -604,7 +607,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <span className="font-semibold">₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="text-xs pl-2">
-                           (Est. Purchase Rate: ₹{purchaseRateForLot.toFixed(2)}/kg × Net Weight: { (parseFloat(String(netWeight || 0))).toFixed(2)} kg)
+                           (Landed Cost Rate: ₹{effectiveRateForLot.toFixed(2)}/kg × Net Weight: { (parseFloat(String(netWeight || 0))).toFixed(2)} kg)
                         </div>
                         {transportCostInput > 0 && (
                             <div className="flex justify-between"><span>Less: Transport Cost:</span> <span className="font-semibold">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>

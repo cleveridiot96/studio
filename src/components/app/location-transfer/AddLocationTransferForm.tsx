@@ -20,6 +20,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 
+const DEFAULT_TRANSPORT_RATE_PER_KG = 17;
+const DEFAULT_MISC_RATE_PER_KG = 6;
+
 interface AggregatedStockItemForForm {
   lotNumber: string;
   locationId: string;
@@ -55,6 +58,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
   const [itemNetWeightManuallySet, setItemNetWeightManuallySet] = React.useState<boolean[]>([]);
+  
+  const [transportCostManuallySet, setTransportCostManuallySet] = React.useState(!!transferToEdit?.transportCharges);
+  const [miscChargesManuallySet, setMiscChargesManuallySet] = React.useState(!!transferToEdit?.miscExpenses);
 
 
   const formSchema = React.useMemo(() => locationTransferSchema(warehouses, transporters, availableStock), [warehouses, transporters, availableStock]);
@@ -105,17 +111,38 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   });
 
   const watchedFromWarehouseId = watch("fromWarehouseId");
+  const watchedItems = watch("items");
 
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
       if (transferToEdit) {
         setItemNetWeightManuallySet(transferToEdit.items.map(() => true));
+        setTransportCostManuallySet(!!transferToEdit.transportCharges);
+        setMiscChargesManuallySet(!!transferToEdit.miscExpenses);
       } else {
         setItemNetWeightManuallySet([false]);
+        setTransportCostManuallySet(false);
+        setMiscChargesManuallySet(false);
       }
     }
   }, [isOpen, transferToEdit, reset, getDefaultValues]);
+
+
+  React.useEffect(() => {
+    const totalWeight = watchedItems.reduce((acc, item) => acc + (item.netWeightToTransfer || 0), 0);
+    if (totalWeight > 0) {
+        if (!transportCostManuallySet) {
+            setValue('transportCharges', parseFloat((totalWeight * DEFAULT_TRANSPORT_RATE_PER_KG).toFixed(2)), { shouldValidate: true });
+        }
+        if (!miscChargesManuallySet) {
+            setValue('miscExpenses', parseFloat((totalWeight * DEFAULT_MISC_RATE_PER_KG).toFixed(2)), { shouldValidate: true });
+        }
+    } else {
+        if (!transportCostManuallySet) setValue('transportCharges', undefined);
+        if (!miscChargesManuallySet) setValue('miscExpenses', undefined);
+    }
+  }, [watchedItems, setValue, transportCostManuallySet, miscChargesManuallySet]);
 
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
@@ -345,10 +372,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormMessage />
                       </FormItem>)}
                     />
-                    <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 800" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 800" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setTransportCostManuallySet(true); }} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={control} name="loadingCharges" render={({ field }) => (<FormItem><FormLabel>Loading (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 200" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setMiscChargesManuallySet(true); }} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
 

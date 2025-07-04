@@ -55,7 +55,8 @@ export interface AggregatedInventoryItem { // Exporting the type
   currentBags: number;
   currentWeight: number;
   purchaseDate?: string;
-  purchaseRate?: number;
+  purchaseRate: number;
+  effectiveRate: number;
   daysInStock?: number;
   turnoverRate?: number;
   isDeadStock?: boolean; 
@@ -101,24 +102,33 @@ export function InventoryClient() {
         totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
         totalTransferredInBags: 0, totalTransferredInWeight: 0,
         currentBags: 0, currentWeight: 0,
-        purchaseDate: p.date, purchaseRate: p.rate,
+        purchaseDate: p.date, 
+        purchaseRate: p.rate,
+        effectiveRate: p.effectiveRate,
       });
     });
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
+      const totalWeightInTransfer = transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
+      const totalExpensesForTransfer = (transfer.transportCharges || 0) + (transfer.packingCharges || 0) + (transfer.loadingCharges || 0) + (transfer.miscExpenses || 0);
+      const perKgExpense = totalWeightInTransfer > 0 ? totalExpensesForTransfer / totalWeightInTransfer : 0;
+
       transfer.items.forEach(item => {
         const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
-        const fromEntry = inventoryMap.get(fromKey);
-        if (fromEntry) {
-          fromEntry.totalTransferredOutBags += item.bagsToTransfer;
-          fromEntry.totalTransferredOutWeight += item.netWeightToTransfer;
+        const fromItem = inventoryMap.get(fromKey);
+        if (fromItem) {
+          fromItem.totalTransferredOutBags += item.bagsToTransfer;
+          fromItem.totalTransferredOutWeight += item.netWeightToTransfer;
         }
 
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
+        const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
+        const baseRate = originalPurchase?.rate || 0;
+        const newEffectiveRate = baseRate + perKgExpense;
+        
         if (!toEntry) {
-          const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
           toEntry = {
             lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
             locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
@@ -130,11 +140,13 @@ export function InventoryClient() {
             totalTransferredInBags: 0, totalTransferredInWeight: 0,
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
-            purchaseRate: originalPurchase?.rate || 0,
+            purchaseRate: baseRate,
+            effectiveRate: newEffectiveRate,
           };
         }
         toEntry.totalTransferredInBags += item.bagsToTransfer;
         toEntry.totalTransferredInWeight += item.netWeightToTransfer;
+        toEntry.effectiveRate = newEffectiveRate; // Ensure it's set/updated on each transfer to this lot
         inventoryMap.set(toKey, toEntry);
       });
     });
@@ -154,7 +166,6 @@ export function InventoryClient() {
 
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
     fySales.forEach(s => {
-      // Sales only from Mumbai warehouse as per current app logic
       const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
       const key = `${s.lotNumber}-${MUMBAI_WAREHOUSE_ID}`;
       const entry = inventoryMap.get(key);
