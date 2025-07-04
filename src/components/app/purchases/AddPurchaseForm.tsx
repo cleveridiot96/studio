@@ -59,6 +59,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -213,7 +214,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       render={({ field }) => (
                         <FormItem className="flex flex-col">
                           <FormLabel>Purchase Date</FormLabel>
-                          <Popover>
+                          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
@@ -226,7 +227,16 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={(date) => {
+                                  field.onChange(date);
+                                  setIsDatePickerOpen(false);
+                                }}
+                                disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                                initialFocus
+                              />
                             </PopoverContent>
                           </Popover>
                           <FormMessage />
