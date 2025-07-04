@@ -2,14 +2,12 @@
 "use client";
 
 import * as React from "react";
+import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn } from "@/lib/types"; // Added PurchaseReturn, SaleReturn
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit, RotateCcw } from "lucide-react";
+import { Archive, Boxes, Printer, MoreVertical, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,23 +22,28 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear, cn } from "@/lib/utils";
-import { InventoryTable } from "./InventoryTable"; // Import the refactored table
+import { isDateInFinancialYear } from "@/lib/utils";
+import { InventoryTable } from "./InventoryTable"; 
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; 
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
 
 const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
-export interface AggregatedInventoryItem { // Exporting the type
+export interface AggregatedInventoryItem {
   lotNumber: string;
   locationId: string;
   locationName: string;
+  supplierId?: string;
+  supplierName?: string;
+  sourceType: 'Purchase' | 'Transfer';
+  sourceDetails?: string;
   totalPurchasedBags: number;
   totalPurchasedWeight: number;
   totalSoldBags: number;
@@ -74,9 +77,9 @@ export function InventoryClient() {
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
+  const [suppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [archivedLotKeys, setArchivedLotKeys] = useLocalStorageState<string[]>(ARCHIVED_LOTS_STORAGE_KEY, []);
-
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
@@ -98,6 +101,8 @@ export function InventoryClient() {
       inventoryMap.set(key, {
         lotNumber: p.lotNumber, locationId: p.locationId,
         locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
+        supplierId: p.supplierId, supplierName: suppliers.find(s => s.id === p.supplierId)?.name || p.supplierName,
+        sourceType: 'Purchase',
         totalPurchasedBags: p.quantity, totalPurchasedWeight: p.netWeight,
         totalSoldBags: 0, totalSoldWeight: 0,
         totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0,
@@ -105,18 +110,12 @@ export function InventoryClient() {
         totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
         totalTransferredInBags: 0, totalTransferredInWeight: 0,
         currentBags: 0, currentWeight: 0,
-        purchaseDate: p.date, 
-        purchaseRate: p.rate,
-        effectiveRate: p.effectiveRate,
+        purchaseDate: p.date, purchaseRate: p.rate, effectiveRate: p.effectiveRate,
       });
     });
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
-      const totalWeightInTransfer = transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
-      const totalExpensesForTransfer = (transfer.transportCharges || 0) + (transfer.packingCharges || 0) + (transfer.loadingCharges || 0) + (transfer.miscExpenses || 0);
-      const perKgExpense = totalWeightInTransfer > 0 ? totalExpensesForTransfer / totalWeightInTransfer : 0;
-
       transfer.items.forEach(item => {
         const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
         const fromItem = inventoryMap.get(fromKey);
@@ -128,13 +127,14 @@ export function InventoryClient() {
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
         const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
-        const baseRate = originalPurchase?.rate || 0;
-        const newEffectiveRate = baseRate + perKgExpense;
         
         if (!toEntry) {
+          const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
           toEntry = {
             lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
             locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
+            supplierId: originalPurchase?.supplierId, supplierName: originalSupplier?.name || originalPurchase?.supplierName,
+            sourceType: 'Transfer', sourceDetails: `From ${transfer.fromWarehouseName}`,
             totalPurchasedBags: 0, totalPurchasedWeight: 0,
             totalSoldBags: 0, totalSoldWeight: 0,
             totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0,
@@ -143,14 +143,13 @@ export function InventoryClient() {
             totalTransferredInBags: 0, totalTransferredInWeight: 0,
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
-            purchaseRate: baseRate,
-            effectiveRate: newEffectiveRate,
+            purchaseRate: originalPurchase?.rate || 0,
+            effectiveRate: 0,
           };
+          inventoryMap.set(toKey, toEntry);
         }
         toEntry.totalTransferredInBags += item.bagsToTransfer;
         toEntry.totalTransferredInWeight += item.netWeightToTransfer;
-        toEntry.effectiveRate = newEffectiveRate; // Ensure it's set/updated on each transfer to this lot
-        inventoryMap.set(toKey, toEntry);
       });
     });
 
@@ -203,15 +202,14 @@ export function InventoryClient() {
       item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
       item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
 
-      // Only show lots that were touched or have remaining stock
       if (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0 || item.currentBags > 0) {
         result.push(item);
       }
     });
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [purchases, purchaseReturns, sales, saleReturns, warehouses, locationTransfers, hydrated, isAppHydrating, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, warehouses, locationTransfers, suppliers, hydrated, isAppHydrating, financialYear]);
   
-  const aggregatedInventory = React.useMemo(() => {
+  const activeInventory = React.useMemo(() => {
     return allAggregatedInventory.filter(item => !archivedLotKeys.includes(`${item.lotNumber}-${item.locationId}`));
   }, [allAggregatedInventory, archivedLotKeys]);
 
@@ -219,31 +217,19 @@ export function InventoryClient() {
     return allAggregatedInventory.filter(item => archivedLotKeys.includes(`${item.lotNumber}-${item.locationId}`));
   }, [allAggregatedInventory, archivedLotKeys]);
 
-  React.useEffect(() => {
-    if (!hydrated || isAppHydrating) return;
-    const newNotified = new Set(notifiedLowStock);
-    aggregatedInventory.forEach(item => {
-      const itemKey = `${item.lotNumber}-${item.locationId}`;
-      if (item.currentBags <= 5 && item.currentBags > 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey) && !item.isDeadStock) {
-        toast({ title: "Low Stock Alert", description: `Lot "${item.lotNumber}" at ${item.locationName} has ${item.currentBags} bags.`, variant: "default", duration: 7000 });
-        newNotified.add(itemKey);
-      } else if (item.currentBags <= 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey + "-zero") && !item.isDeadStock) {
-         toast({ title: "Lot Exhausted", description: `Lot "${item.lotNumber}" at ${item.locationName} is out of stock and ready to archive.`, variant: "default", duration: 7000 });
-        newNotified.add(itemKey + "-zero");
+  const warehouseSummary = React.useMemo(() => {
+    const summary: Record<string, { id: string; name: string; bags: number; netWeight: number }> = {};
+    activeInventory.forEach(item => {
+      if (item.currentBags > 0) {
+        if (!summary[item.locationId]) {
+          summary[item.locationId] = { id: item.locationId, name: item.locationName, bags: 0, netWeight: 0 };
+        }
+        summary[item.locationId].bags += item.currentBags;
+        summary[item.locationId].netWeight += item.currentWeight;
       }
     });
-    if (newNotified.size !== notifiedLowStock.size) setNotifiedLowStock(newNotified);
-  }, [aggregatedInventory, toast, notifiedLowStock, hydrated, isAppHydrating]);
-
-  const inventoryByWarehouse = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return {};
-    const grouped: Record<string, AggregatedInventoryItem[]> = {};
-    aggregatedInventory.forEach(item => {
-      if (!grouped[item.locationId]) grouped[item.locationId] = [];
-      grouped[item.locationId].push(item);
-    });
-    return grouped;
-  }, [aggregatedInventory, isAppHydrating, hydrated]);
+    return Object.values(summary);
+  }, [activeInventory]);
 
   const handleArchiveAttempt = (item: AggregatedInventoryItem) => {
     if (item.currentBags <= 0) { setItemToArchive(item); setShowArchiveConfirm(true); }
@@ -256,15 +242,10 @@ export function InventoryClient() {
       setItemToArchive(null); setShowArchiveConfirm(false);
     }
   };
-
   const handleUnarchiveItem = (item: AggregatedInventoryItem) => {
     setArchivedLotKeys(prev => prev.filter(key => key !== `${item.lotNumber}-${item.locationId}`));
     toast({ title: "Lot Restored", description: `Lot "${item.lotNumber}" has been restored to the active inventory view.` });
   };
-
-  const activeWarehouses = React.useMemo(() =>
-    warehouses.filter(wh => aggregatedInventory.some(item => item.locationId === wh.id && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0 || item.totalSaleReturnedBags > 0)))
-  , [warehouses, aggregatedInventory]);
 
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
@@ -272,23 +253,51 @@ export function InventoryClient() {
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <h1 className="text-3xl font-bold text-foreground">Inventory (FY {financialYear})</h1>
-        <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
+        <h1 className="text-3xl font-bold text-foreground">Inventory Dashboard (FY {financialYear})</h1>
+        <div className="flex items-center gap-2">
+           <Button asChild variant="outline"><Link href="/purchases"><PlusCircle className="mr-2 h-4 w-4" />New Purchase</Link></Button>
+           <Button asChild variant="outline"><Link href="/location-transfer"><ArrowRightLeft className="mr-2 h-4 w-4" />Transfer Stock</Link></Button>
+           <Button asChild><Link href="/sales"><ShoppingCart className="mr-2 h-4 w-4" />Sell Stock</Link></Button>
+           <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
+        </div>
       </div>
-      <Tabs defaultValue="summary" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 h-auto no-print">
-          <TabsTrigger value="summary" className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> All Stock</TabsTrigger>
-          {activeWarehouses.map(wh => (<TabsTrigger key={wh.id} value={wh.id} className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> {wh.name}</TabsTrigger>))}
+      
+      <div className="no-print">
+        <h2 className="text-xl font-semibold text-foreground mb-3">Warehouse Overview</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {warehouseSummary.map(wh => (
+            <Card key={wh.id} className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-2"><CardTitle className="text-lg">{wh.name}</CardTitle></CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{wh.bags.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
+                <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} kg</p>
+              </CardContent>
+            </Card>
+          ))}
+           {warehouseSummary.length === 0 && <p className="text-muted-foreground col-span-full">No active stock in any warehouse.</p>}
+        </div>
+      </div>
+
+      <Tabs defaultValue="active" className="w-full pt-6">
+        <TabsList className="grid w-full grid-cols-2 h-auto no-print">
+          <TabsTrigger value="active" className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Active Stock</TabsTrigger>
           <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived</TabsTrigger>
         </TabsList>
-        <TabsContent value="summary" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Overall Stock Summary</CardTitle></CardHeader><CardContent><InventoryTable items={aggregatedInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
+        <TabsContent value="active" className="mt-6">
+          <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory Details</CardTitle></CardHeader><CardContent><InventoryTable items={activeInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
         </TabsContent>
-        {activeWarehouses.map(wh => (<TabsContent key={wh.id} value={wh.id} className="mt-6"><Card className="shadow-lg"><CardHeader><CardTitle>Stock at {wh.name}</CardTitle></CardHeader><CardContent><InventoryTable items={inventoryByWarehouse[wh.id] || []} onArchive={handleArchiveAttempt} /></CardContent></Card></TabsContent>))}
          <TabsContent value="archived" className="mt-6">
           <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={archivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} /></CardContent></Card>
         </TabsContent>
       </Tabs>
+
+      <div className="mt-8 no-print">
+        <h2 className="text-xl font-semibold text-foreground mb-3">Stock Activity Graph</h2>
+        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[200px] flex items-center justify-center">
+            <p className="text-muted-foreground">Graph section under development.</p>
+        </Card>
+      </div>
+
       {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>This action will hide the lot "<strong>{itemToArchive.lotNumber}</strong>" from the main inventory view. You can view and restore it from the "Archived" tab.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
     </div>
   );

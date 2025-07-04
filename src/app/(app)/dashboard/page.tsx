@@ -50,13 +50,6 @@ export default function DashboardPage() {
       className: "bg-teal-600 hover:bg-teal-700 text-white",
     },
     {
-      title: "Stock Report",
-      description: "Real-time stock analysis",
-      href: "/stock-report",
-      iconName: "FileText",
-      className: "bg-orange-600 hover:bg-orange-700 text-white",
-    },
-    {
       title: "Location Transfer",
       description: "Transfer stock between locations",
       href: "/location-transfer",

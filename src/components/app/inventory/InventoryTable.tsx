@@ -10,11 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit, RotateCcw } from "lucide-react"; // Added MoreVertical, Edit, RotateCcw
+import { Archive, MoreVertical, RotateCcw, TrendingUp, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import type { AggregatedInventoryItem } from "./InventoryClient"; // Assuming type is exported from client
+import type { AggregatedInventoryItem } from "./InventoryClient";
 
 interface InventoryTableProps {
   items: AggregatedInventoryItem[];
@@ -34,11 +34,12 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
         <TableHeader>
           <TableRow>
             <TableHead>Vakkal/Lot</TableHead>
+            <TableHead>Party (Supplier)</TableHead>
             <TableHead>Location</TableHead>
             <TableHead className="text-right">Current Bags</TableHead>
             <TableHead className="text-right">Current Wt (kg)</TableHead>
-            <TableHead>Last Purch.</TableHead>
-            <TableHead className="text-right">Landed Cost (₹/kg)</TableHead>
+            <TableHead>Source</TableHead>
+            <TableHead>Last Updated</TableHead>
             <TableHead className="text-center">Status</TableHead>
             <TableHead className="text-center w-[80px] no-print">Actions</TableHead>
           </TableRow>
@@ -55,11 +56,12 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               )}
             >
               <TableCell>{item.lotNumber}</TableCell>
+              <TableCell>{item.supplierName || 'N/A'}</TableCell>
               <TableCell>{item.locationName}</TableCell>
               <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
               <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+              <TableCell>{item.sourceType === 'Transfer' ? item.sourceDetails : 'Purchase'}</TableCell>
               <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
-              <TableCell className="text-right">{item.effectiveRate ? item.effectiveRate.toFixed(2) : 'N/A'}</TableCell>
               <TableCell className="text-center">
                 {isArchivedView ? (<Badge variant="outline">Archived</Badge>) :
                 item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :

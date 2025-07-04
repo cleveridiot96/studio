@@ -1,6 +1,7 @@
 
-import { StockReportClient } from "@/components/app/stock-report/StockReportClient";
+import { redirect } from 'next/navigation';
 
 export default function StockReportPage() {
-  return <StockReportClient />;
+  redirect('/inventory');
+  return null;
 }

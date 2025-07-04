@@ -20,7 +20,6 @@ import {
   DatabaseBackup,
   LayoutGrid,
   Boxes,
-  FileText,
   Receipt,
   ArrowRightLeft,
   Rocket, // For Profit Analysis
@@ -44,7 +43,6 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   TrendingDown,
   Receipt,
   Boxes,
-  FileText,
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
