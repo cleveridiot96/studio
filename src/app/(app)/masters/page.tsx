@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { doesNameExist } from '@/lib/masterUtils';
 import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { cn } from "@/lib/utils";
 
 
 // Storage keys
@@ -36,14 +37,14 @@ const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 
 type MasterPageTabKey = MasterItemType | 'All';
 
-const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; }[] = [
-  { value: "All", label: "All Parties", icon: List },
-  { value: "Customer", label: "Customers", icon: Users },
-  { value: "Supplier", label: "Suppliers", icon: Truck },
-  { value: "Agent", label: "Agents", icon: UserCheck },
-  { value: "Transporter", label: "Transporters", icon: UserCog },
-  { value: "Broker", label: "Brokers", icon: Handshake },
-  { value: "Warehouse", label: "Warehouses", icon: Building },
+const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; colorClass: string; }[] = [
+  { value: "All", label: "All Parties", icon: List, colorClass: 'bg-gray-500 hover:bg-gray-600 text-white data-[state=active]:bg-gray-700' },
+  { value: "Customer", label: "Customers", icon: Users, colorClass: 'bg-blue-500 hover:bg-blue-600 text-white data-[state=active]:bg-blue-600' },
+  { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600' },
+  { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600' },
+  { value: "Transporter", label: "Transporters", icon: UserCog, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600' },
+  { value: "Broker", label: "Brokers", icon: Handshake, colorClass: 'bg-yellow-400 hover:bg-yellow-500 text-gray-800 data-[state=active]:bg-yellow-500' },
+  { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600' },
 ];
 
 export default function MastersPage() {
@@ -248,9 +249,17 @@ export default function MastersPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 h-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 h-auto rounded-lg overflow-hidden p-1 bg-muted gap-1">
           {TABS_CONFIG.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value} className="py-2 sm:py-3 text-sm sm:text-base flex-wrap">
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className={cn(
+                "py-2 sm:py-3 text-sm sm:text-base flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted",
+                tab.colorClass,
+                tab.value === 'Broker' && 'data-[state=active]:!text-black'
+              )}
+            >
               <tab.icon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> {tab.label}
             </TabsTrigger>
           ))}
@@ -320,4 +329,5 @@ export default function MastersPage() {
 
 
     
+
 
