@@ -97,12 +97,12 @@ export interface SaleReturn {
   originalCustomerId: string;
   originalCustomerName?: string;
   originalLotNumber: string;
+  originalSaleRate: number; // Store for reference
   quantityReturned: number;
   netWeightReturned: number;
   returnReason?: string;
   notes?: string;
   returnAmount: number; // Calculated based on original sale rate
-  originalSaleRate: number; // Store for reference
   restockingFee?: number; // Optional
 }
 

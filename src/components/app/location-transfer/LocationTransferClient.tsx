@@ -159,10 +159,11 @@ export function LocationTransferClient() {
     // 4. Adjust for sales
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
     fySales.forEach(s => {
-        // Sales only from Mumbai warehouse as per app logic
-        const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
-        const key = `${s.lotNumber}-${MUMBAI_WAREHOUSE_ID}`;
-        const entry = stockMap.get(key);
+        // Sales can happen from any lot in any location, theoretically.
+        // We need a robust way to find the source lot for a sale. This is complex.
+        // For now, let's assume the lotNumber is unique across warehouses post-transfer.
+        const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(s.lotNumber));
+        const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
         if (entry) {
             entry.currentBags -= s.quantity;
             entry.currentWeight -= s.netWeight;
@@ -172,10 +173,8 @@ export function LocationTransferClient() {
     // 5. Adjust for sale returns
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
-        // Assume returns go back to Mumbai warehouse
-        const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
-        const key = `${sr.originalLotNumber}-${MUMBAI_WAREHOUSE_ID}`;
-        const entry = stockMap.get(key);
+        const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
+        const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
         if (entry) {
             entry.currentBags += sr.quantityReturned;
             entry.currentWeight += sr.netWeightReturned;

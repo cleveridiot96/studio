@@ -203,8 +203,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       miscExpenses: values.miscExpenses,
       items: values.items.map(item => {
         return {
-          originalLotNumber: item.lotNumber,
-          newLotNumber: `${item.lotNumber}/${item.bagsToTransfer}`, // Create new split lot number
+          originalLotNumber: item.originalLotNumber,
+          newLotNumber: `${item.originalLotNumber}/${item.bagsToTransfer}`, // Create new split lot number
           bagsToTransfer: item.bagsToTransfer,
           netWeightToTransfer: item.netWeightToTransfer,
         };

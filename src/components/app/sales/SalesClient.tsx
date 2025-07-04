@@ -103,58 +103,55 @@ export function SalesClient() {
 
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
     fyPurchases.forEach(p => {
-      const key = `${p.lotNumber}-${p.locationId}`;
-      stockMap.set(key, {
-        lotNumber: p.lotNumber, locationId: p.locationId,
-        currentBags: p.quantity, currentWeight: p.netWeight,
-        purchaseRate: p.rate, effectiveRate: p.effectiveRate,
-        locationName: p.locationName
-      });
+        const key = `${p.lotNumber}-${p.locationId}`;
+        stockMap.set(key, {
+            lotNumber: p.lotNumber, locationId: p.locationId,
+            currentBags: p.quantity, currentWeight: p.netWeight,
+            purchaseRate: p.rate, effectiveRate: p.effectiveRate,
+            locationName: p.locationName
+        });
     });
 
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
     fyPurchaseReturns.forEach(pr => {
-      const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-      if (originalPurchase) {
-        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
-        const entry = stockMap.get(key);
-        if (entry) {
-          entry.currentBags -= pr.quantityReturned;
-          entry.currentWeight -= pr.netWeightReturned;
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase) {
+            const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+            const entry = stockMap.get(key);
+            if (entry) {
+                entry.currentBags -= pr.quantityReturned;
+                entry.currentWeight -= pr.netWeightReturned;
+            }
         }
-      }
     });
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
-      const totalTransferExpenses = (transfer.transportCharges || 0) + (transfer.packingCharges || 0) + (transfer.loadingCharges || 0) + (transfer.miscExpenses || 0);
-      const totalTransferWeight = transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
-      const expenseRatePerKg = totalTransferWeight > 0 ? totalTransferExpenses / totalTransferWeight : 0;
-
       transfer.items.forEach(item => {
-        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
-        const fromEntry = stockMap.get(fromKey);
-        if (fromEntry) {
-          fromEntry.currentBags -= item.bagsToTransfer;
-          fromEntry.currentWeight -= item.netWeightToTransfer;
-        }
+          const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
+          const fromEntry = stockMap.get(fromKey);
+          if (fromEntry) {
+              fromEntry.currentBags -= item.bagsToTransfer;
+              fromEntry.currentWeight -= item.netWeightToTransfer;
+          }
 
-        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
-        let toEntry = stockMap.get(toKey);
-        const sourceEffectiveRate = fromEntry ? fromEntry.effectiveRate : (purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0);
-
-        if (!toEntry) {
-          toEntry = {
-            lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
-            currentBags: 0, currentWeight: 0,
-            purchaseRate: fromEntry?.purchaseRate || 0,
-            effectiveRate: sourceEffectiveRate + expenseRatePerKg,
-            locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
-          };
-        }
-        toEntry.currentBags += item.bagsToTransfer;
-        toEntry.currentWeight += item.netWeightToTransfer;
-        stockMap.set(toKey, toEntry);
+          const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+          let toEntry = stockMap.get(toKey);
+          // Inherit effectiveRate from source, do not add transfer costs
+          const sourceEffectiveRate = fromEntry?.effectiveRate || purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0;
+          
+          if (!toEntry) {
+              toEntry = {
+                  lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
+                  currentBags: 0, currentWeight: 0,
+                  purchaseRate: fromEntry?.purchaseRate || 0,
+                  effectiveRate: sourceEffectiveRate, // Inherited rate
+                  locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
+              };
+          }
+          toEntry.currentBags += item.bagsToTransfer;
+          toEntry.currentWeight += item.netWeightToTransfer;
+          stockMap.set(toKey, toEntry);
       });
     });
     

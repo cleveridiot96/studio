@@ -134,10 +134,6 @@ export function InventoryClient() {
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
-      const totalTransferExpenses = (transfer.transportCharges || 0) + (transfer.packingCharges || 0) + (transfer.loadingCharges || 0) + (transfer.miscExpenses || 0);
-      const totalTransferWeight = transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
-      const expenseRatePerKg = totalTransferWeight > 0 ? totalTransferExpenses / totalTransferWeight : 0;
-      
       transfer.items.forEach(item => {
         const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
         const fromItem = inventoryMap.get(fromKey);
@@ -148,10 +144,11 @@ export function InventoryClient() {
 
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
-        const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
-        const sourceEffectiveRate = fromItem ? fromItem.effectiveRate : (originalPurchase?.effectiveRate || 0);
+        // Inherit effectiveRate from source, DO NOT add transfer costs to it
+        const sourceEffectiveRate = fromItem?.effectiveRate || purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0;
         
         if (!toEntry) {
+          const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
           const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
           toEntry = {
             lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
@@ -167,16 +164,10 @@ export function InventoryClient() {
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
             purchaseRate: originalPurchase?.rate || 0,
-            effectiveRate: sourceEffectiveRate + expenseRatePerKg,
+            effectiveRate: sourceEffectiveRate, // Inherited rate
             cogs: 0,
           };
           inventoryMap.set(toKey, toEntry);
-        } else {
-            // If entry exists, recalculate weighted average effective rate
-            const existingTotalValue = toEntry.effectiveRate * toEntry.totalTransferredInWeight;
-            const newTotalValue = (sourceEffectiveRate + expenseRatePerKg) * item.netWeightToTransfer;
-            const combinedWeight = toEntry.totalTransferredInWeight + item.netWeightToTransfer;
-            toEntry.effectiveRate = combinedWeight > 0 ? (existingTotalValue + newTotalValue) / combinedWeight : 0;
         }
 
         toEntry.totalTransferredInBags += item.bagsToTransfer;
@@ -187,10 +178,6 @@ export function InventoryClient() {
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
     const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
     fySales.forEach(s => {
-      // Find the lot key. Sales can happen from transferred lots too.
-      // We need to find which lot in Mumbai matches the sale's lotNumber.
-      // This part is tricky because multiple transfers can result in lots with same original prefix.
-      // For now, we assume sales are from Mumbai and the lot number is specific enough.
       const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
       const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
       
