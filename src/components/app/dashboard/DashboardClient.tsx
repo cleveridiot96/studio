@@ -11,6 +11,8 @@ import { DollarSign, ShoppingBag, Package, CalendarDays, TrendingUp } from 'luci
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, startOfYear, endOfDay, subMonths } from 'date-fns';
 import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
 import { useSettings } from '@/contexts/SettingsContext';
+import { Separator } from '@/components/ui/separator';
+import { OutstandingSummary } from './OutstandingSummary';
 import { isDateInFinancialYear } from "@/lib/utils";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
@@ -179,6 +181,8 @@ const DashboardClient = () => {
       <Link href="/profit-analysis" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
         <ProfitSummary sales={sales} purchases={purchases} />
       </Link>
+      <Separator className="my-6" />
+      <OutstandingSummary />
     </div>
   );
 };
