@@ -56,7 +56,7 @@ export const navItems: NavItem[] = [
    {
     title: 'Outstanding',
     href: '/outstanding',
-    iconName: 'BookCopy',
+    iconName: 'ClipboardList',
     iconColor: 'bg-yellow-500',
     textColor: 'text-black',
   },

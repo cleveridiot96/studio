@@ -60,7 +60,7 @@ export default function DashboardPage() {
       title: "Outstanding Balances",
       description: "Receivables & Payables",
       href: "/outstanding",
-      iconName: "BookCopy",
+      iconName: "ClipboardList",
       className: "bg-yellow-500 hover:bg-yellow-600 text-black",
     },
     {

@@ -26,6 +26,7 @@ import {
   FileJson,
   UploadCloud,
   BookCopy,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -55,6 +56,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   FileJson,
   UploadCloud,
   BookCopy,
+  ClipboardList,
 };
 
 
