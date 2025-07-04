@@ -24,7 +24,7 @@ const SaleReturnTableComponent: React.FC<SaleReturnTableProps> = ({ data, onEdit
 
   return (
     <TooltipProvider>
-      <ScrollArea className="rounded-md border shadow-sm">
+      <ScrollArea className="rounded-md border shadow-sm h-[60vh]">
         <Table className="min-w-full whitespace-nowrap">
           <TableHeader>
             <TableRow>

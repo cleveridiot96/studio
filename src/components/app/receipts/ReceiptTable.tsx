@@ -38,7 +38,7 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
 
   return (
     <TooltipProvider>
-      <ScrollArea className="rounded-md border shadow-sm">
+      <ScrollArea className="rounded-md border shadow-sm h-[60vh]">
         <Table className="min-w-full whitespace-nowrap">
           <TableHeader>
             <TableRow>

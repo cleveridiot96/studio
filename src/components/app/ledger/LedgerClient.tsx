@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -274,6 +275,7 @@ export function LedgerClient() {
                         <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
+                      <ScrollArea className="h-[50vh]">
                         <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
@@ -306,6 +308,7 @@ export function LedgerClient() {
                                 </TableRow>
                             </TableFooter>
                         </Table>
+                      </ScrollArea>
                     </CardContent>
                 </Card>
             </div>
@@ -316,6 +319,7 @@ export function LedgerClient() {
                         <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
+                      <ScrollArea className="h-[50vh]">
                         <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
@@ -350,6 +354,7 @@ export function LedgerClient() {
                                 </TableRow>
                             </TableFooter>
                         </Table>
+                      </ScrollArea>
                     </CardContent>
                 </Card>
             </div>
