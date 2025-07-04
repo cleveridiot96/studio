@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit } from "lucide-react"; // Added MoreVertical, Edit
+import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit, RotateCcw } from "lucide-react"; // Added MoreVertical, Edit, RotateCcw
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -19,11 +19,13 @@ import type { AggregatedInventoryItem } from "./InventoryClient"; // Assuming ty
 interface InventoryTableProps {
   items: AggregatedInventoryItem[];
   onArchive: (item: AggregatedInventoryItem) => void;
+  onUnarchive?: (item: AggregatedInventoryItem) => void;
+  isArchivedView?: boolean;
 }
 
-export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive }) => {
+export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive, onUnarchive, isArchivedView = false }) => {
   if (!items || items.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No inventory for this selection.</p>;
+    return <p className="text-center text-muted-foreground py-8">{isArchivedView ? 'No archived inventory.' : 'No inventory for this selection.'}</p>;
   }
 
   return (
@@ -46,9 +48,10 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
             <TableRow
               key={`${item.lotNumber}-${item.locationId}`}
               className={cn(
-                item.isDeadStock && "bg-destructive text-destructive-foreground",
-                !item.isDeadStock && item.currentBags <= 0 && "bg-red-50 dark:bg-red-900/30",
-                !item.isDeadStock && item.currentBags > 0 && item.currentBags <= 5 && "bg-yellow-50 dark:bg-yellow-900/30"
+                isArchivedView ? 'bg-muted/40' : '',
+                !isArchivedView && item.isDeadStock && "bg-destructive text-destructive-foreground",
+                !isArchivedView && !item.isDeadStock && item.currentBags <= 0 && "bg-red-50 dark:bg-red-900/30",
+                !isArchivedView && !item.isDeadStock && item.currentBags > 0 && item.currentBags <= 5 && "bg-yellow-50 dark:bg-yellow-900/30"
               )}
             >
               <TableCell>{item.lotNumber}</TableCell>
@@ -58,7 +61,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
               <TableCell className="text-right">{item.effectiveRate ? item.effectiveRate.toFixed(2) : 'N/A'}</TableCell>
               <TableCell className="text-center">
-                {item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
+                {isArchivedView ? (<Badge variant="outline">Archived</Badge>) :
+                item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
                 item.currentBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) :
                 item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100">Low Stock</Badge>) :
                 (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1" /> Fast</Badge>) :
@@ -74,13 +78,19 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => onArchive(item)}
-                      disabled={item.currentBags > 0}
-                      className={item.currentBags <= 0 ? "hover:!bg-blue-100 dark:hover:!bg-blue-800" : ""}
-                    >
-                      <Archive className="mr-2 h-4 w-4" /> Archive
-                    </DropdownMenuItem>
+                    {isArchivedView ? (
+                      <DropdownMenuItem onClick={() => onUnarchive?.(item)} className="hover:!bg-green-100 dark:hover:!bg-green-800">
+                        <RotateCcw className="mr-2 h-4 w-4" /> Restore
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => onArchive(item)}
+                        disabled={item.currentBags > 0}
+                        className={item.currentBags <= 0 ? "hover:!bg-blue-100 dark:hover:!bg-blue-800" : ""}
+                      >
+                        <Archive className="mr-2 h-4 w-4" /> Archive
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>

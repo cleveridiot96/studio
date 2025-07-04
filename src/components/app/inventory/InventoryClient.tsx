@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit } from "lucide-react";
+import { Archive, Boxes, Printer, TrendingUp, TrendingDown, MoreVertical, Edit, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,8 +33,8 @@ const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; 
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
+const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
 
-const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
 export interface AggregatedInventoryItem { // Exporting the type
   lotNumber: string;
@@ -74,6 +74,8 @@ export function InventoryClient() {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
+  const [archivedLotKeys, setArchivedLotKeys] = useLocalStorageState<string[]>(ARCHIVED_LOTS_STORAGE_KEY, []);
+
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
@@ -84,7 +86,7 @@ export function InventoryClient() {
     setHydrated(true);
   }, []);
 
-  const aggregatedInventory = React.useMemo(() => {
+  const allAggregatedInventory = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
 
     const inventoryMap = new Map<string, AggregatedInventoryItem>();
@@ -197,7 +199,7 @@ export function InventoryClient() {
         item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
       }
       const totalInitialBagsForTurnover = item.totalPurchasedBags + item.totalTransferredInBags;
-      item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
+      item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.soldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
       item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
 
       // Only show lots that were touched or have remaining stock
@@ -207,6 +209,14 @@ export function InventoryClient() {
     });
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
   }, [purchases, purchaseReturns, sales, saleReturns, warehouses, locationTransfers, hydrated, isAppHydrating, financialYear]);
+  
+  const aggregatedInventory = React.useMemo(() => {
+    return allAggregatedInventory.filter(item => !archivedLotKeys.includes(`${item.lotNumber}-${item.locationId}`));
+  }, [allAggregatedInventory, archivedLotKeys]);
+
+  const archivedInventory = React.useMemo(() => {
+    return allAggregatedInventory.filter(item => archivedLotKeys.includes(`${item.lotNumber}-${item.locationId}`));
+  }, [allAggregatedInventory, archivedLotKeys]);
 
   React.useEffect(() => {
     if (!hydrated || isAppHydrating) return;
@@ -217,7 +227,7 @@ export function InventoryClient() {
         toast({ title: "Low Stock Alert", description: `Lot "${item.lotNumber}" at ${item.locationName} has ${item.currentBags} bags.`, variant: "default", duration: 7000 });
         newNotified.add(itemKey);
       } else if (item.currentBags <= 0 && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0) && !notifiedLowStock.has(itemKey + "-zero") && !item.isDeadStock) {
-         toast({ title: "Zero Stock", description: `Lot "${item.lotNumber}" at ${item.locationName} is out of stock.`, variant: "default", duration: 7000 });
+         toast({ title: "Lot Exhausted", description: `Lot "${item.lotNumber}" at ${item.locationName} is out of stock and ready to archive.`, variant: "default", duration: 7000 });
         newNotified.add(itemKey + "-zero");
       }
     });
@@ -240,10 +250,17 @@ export function InventoryClient() {
   };
   const confirmArchiveItem = () => {
     if (itemToArchive) {
-      toast({ title: "Lot Archived (Conceptual)", description: `Lot "${itemToArchive.lotNumber}" at ${itemToArchive.locationName} would be archived.` });
+      setArchivedLotKeys(prev => [...prev, `${itemToArchive.lotNumber}-${itemToArchive.locationId}`]);
+      toast({ title: "Lot Archived", description: `Lot "${itemToArchive.lotNumber}" at ${itemToArchive.locationName} has been archived.` });
       setItemToArchive(null); setShowArchiveConfirm(false);
     }
   };
+
+  const handleUnarchiveItem = (item: AggregatedInventoryItem) => {
+    setArchivedLotKeys(prev => prev.filter(key => key !== `${item.lotNumber}-${item.locationId}`));
+    toast({ title: "Lot Restored", description: `Lot "${item.lotNumber}" has been restored to the active inventory view.` });
+  };
+
   const activeWarehouses = React.useMemo(() =>
     warehouses.filter(wh => aggregatedInventory.some(item => item.locationId === wh.id && (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0 || item.totalSaleReturnedBags > 0)))
   , [warehouses, aggregatedInventory]);
@@ -258,16 +275,20 @@ export function InventoryClient() {
         <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
       </div>
       <Tabs defaultValue="summary" className="w-full">
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 h-auto no-print">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 h-auto no-print">
           <TabsTrigger value="summary" className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> All Stock</TabsTrigger>
           {activeWarehouses.map(wh => (<TabsTrigger key={wh.id} value={wh.id} className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> {wh.name}</TabsTrigger>))}
+          <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived</TabsTrigger>
         </TabsList>
         <TabsContent value="summary" className="mt-6">
           <Card className="shadow-lg"><CardHeader><CardTitle>Overall Stock Summary</CardTitle></CardHeader><CardContent><InventoryTable items={aggregatedInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
         </TabsContent>
         {activeWarehouses.map(wh => (<TabsContent key={wh.id} value={wh.id} className="mt-6"><Card className="shadow-lg"><CardHeader><CardTitle>Stock at {wh.name}</CardTitle></CardHeader><CardContent><InventoryTable items={inventoryByWarehouse[wh.id] || []} onArchive={handleArchiveAttempt} /></CardContent></Card></TabsContent>))}
+         <TabsContent value="archived" className="mt-6">
+          <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={archivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} /></CardContent></Card>
+        </TabsContent>
       </Tabs>
-      {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>Lot "<strong>{itemToArchive.lotNumber}</strong>" at <strong>{itemToArchive.locationName}</strong> has zero bags. Archiving is conceptual in this demo.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
+      {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>This action will hide the lot "<strong>{itemToArchive.lotNumber}</strong>" from the main inventory view. You can view and restore it from the "Archived" tab.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
     </div>
   );
 }
