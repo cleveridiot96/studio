@@ -1,8 +1,7 @@
-
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -25,6 +24,7 @@ const MASTERS_KEYS = {
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
+  payments: 'paymentsData',
 };
 
 // Local interfaces for the T-Account ledger view
@@ -63,6 +63,7 @@ export function LedgerClient() {
   const memoizedEmptyArray = React.useMemo(() => [], []);
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
+  const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, memoizedEmptyArray);
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -131,7 +132,6 @@ export function LedgerClient() {
 
     const toDate = dateRange.to || dateRange.from;
 
-    // Debit Side: Purchases where the party is the supplier or agent
     const periodDebitEntries: TAccountPurchaseEntry[] = purchases
       .filter(p => (p.supplierId === party.id || p.agentId === party.id))
       .filter(p => isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
@@ -146,7 +146,6 @@ export function LedgerClient() {
       }))
       .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-    // Credit Side: Sales where the party is the broker
     const periodCreditEntries: TAccountSaleEntry[] = sales
       .filter(s => s.brokerId === party.id)
       .filter(s => isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
@@ -209,7 +208,7 @@ export function LedgerClient() {
                         placeholder="Select Party..."
                         searchPlaceholder="Search parties..."
                         notFoundMessage="No party found."
-                        // className="w-full md:w-[280px]"
+                        className="h-11 text-base"
                     />
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
                      <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">

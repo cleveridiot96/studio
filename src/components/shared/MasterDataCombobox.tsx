@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -30,6 +29,7 @@ interface MasterDataComboboxProps {
   onAddNew?: () => void;
   disabled?: boolean;
   name?: string; // Optional: for external refs or testing, but not for RHF control here
+  className?: string;
 }
 
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
@@ -42,6 +42,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   addNewLabel = "Add New",
   onAddNew,
   disabled,
+  className,
   // name prop is kept if needed for other purposes, but not for useController
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -84,7 +85,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between text-sm", !value && "text-muted-foreground")}
+          className={cn("w-full justify-between text-sm", !value && "text-muted-foreground", className)}
           disabled={disabled}
         >
           <span className="truncate">
