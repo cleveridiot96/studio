@@ -147,7 +147,8 @@ export interface Receipt {
 }
 
 export interface LocationTransferItem {
-  lotNumber: string;
+  originalLotNumber: string; // The lot being transferred from
+  newLotNumber: string; // The new identifier for the transferred stock, e.g. "LOT/10"
   bagsToTransfer: number;
   netWeightToTransfer: number;
 }
@@ -161,7 +162,7 @@ export interface LocationTransfer {
   toWarehouseName?: string;
   transporterId?: string;
   transporterName?: string;
-  items: LocationTransferItem[];
+  items: LocationTransferItem[]; // Use the updated item type
   notes?: string;
 }
 

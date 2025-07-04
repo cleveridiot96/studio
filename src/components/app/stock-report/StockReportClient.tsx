@@ -85,107 +85,106 @@ export function StockReportClient() {
 
   const processedReportData = React.useMemo(() => {
     if (isAppHydrating || !hydrated || !dateRange?.from) return [];
+    
     const reportItemsMap = new Map<string, StockReportItem>();
     const effectiveToDate = dateRange.to || dateRange.from;
 
     const filterByDate = <T extends {date: string}>(items: T[]) => items.filter(i => isWithinInterval(parseISO(i.date), { start: dateRange.from!, end: endOfDay(effectiveToDate) }));
 
-    const fyPurchases = filterByDate(purchases);
-    const fyPurchaseReturns = filterByDate(purchaseReturns);
-    const fySales = filterByDate(sales);
-    const fySaleReturns = filterByDate(saleReturns);
-    const fyLocationTransfers = filterByDate(locationTransfers);
-
-    fyPurchases.forEach(p => {
-      if (lotNumberFilter && !p.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
-      if (locationFilter && p.locationId !== locationFilter) return;
-      const key = `${p.lotNumber}-${p.locationId}`;
-      let item = reportItemsMap.get(key);
-      if (!item) {
-        item = {
-          lotNumber: p.lotNumber, locationId: p.locationId,
-          locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
-          purchaseDate: p.date, purchaseBags: 0, purchaseWeight: 0, purchaseRate: p.rate, purchaseValue: 0,
-          soldBags: 0, soldWeight: 0, soldValue: 0,
-          purchaseReturnedBags: 0, purchaseReturnedWeight: 0, saleReturnedBags: 0, saleReturnedWeight: 0,
-          transferredOutBags: 0, transferredOutWeight: 0, transferredInBags: 0, transferredInWeight: 0,
-          remainingBags: 0, remainingWeight: 0,
-        };
-      }
-      item.purchaseBags += p.quantity; item.purchaseWeight += p.netWeight; item.purchaseValue += p.totalAmount;
-      if (new Date(p.date) < new Date(item.purchaseDate || '9999-12-31')) { item.purchaseDate = p.date; item.purchaseRate = p.rate; }
-      reportItemsMap.set(key, item);
+    // Use all purchases within the FY to establish the base lots, regardless of date filter
+    const fyPurchasesAll = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+    fyPurchasesAll.forEach(p => {
+        const key = `${p.lotNumber}-${p.locationId}`;
+        reportItemsMap.set(key, {
+            lotNumber: p.lotNumber, locationId: p.locationId,
+            locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
+            purchaseDate: p.date, purchaseBags: p.quantity, purchaseWeight: p.netWeight, purchaseRate: p.rate, purchaseValue: p.totalAmount,
+            soldBags: 0, soldWeight: 0, soldValue: 0,
+            purchaseReturnedBags: 0, purchaseReturnedWeight: 0, saleReturnedBags: 0, saleReturnedWeight: 0,
+            transferredOutBags: 0, transferredOutWeight: 0, transferredInBags: 0, transferredInWeight: 0,
+            remainingBags: 0, remainingWeight: 0,
+        });
     });
 
-    fyPurchaseReturns.forEach(pr => {
-      const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-      if (originalPurchase) {
-        if (lotNumberFilter && !originalPurchase.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
-        if (locationFilter && originalPurchase.locationId !== locationFilter) return;
-        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
-        let item = reportItemsMap.get(key);
-        if (item) { item.purchaseReturnedBags += pr.quantityReturned; item.purchaseReturnedWeight += pr.netWeightReturned; }
-      }
-    });
-
-    fySales.forEach(s => {
-      const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
-      if (relatedPurchase) {
-        if (lotNumberFilter && !s.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
-        if (locationFilter && relatedPurchase.locationId !== locationFilter) return;
-        const key = `${s.lotNumber}-${relatedPurchase.locationId}`;
-        let item = reportItemsMap.get(key);
-        if (item) { item.soldBags += s.quantity; item.soldWeight += s.netWeight; item.soldValue += s.billedAmount; } // Use billedAmount for sales value
-      }
-    });
-
-    fySaleReturns.forEach(sr => {
-        const originalSale = sales.find(s => s.id === sr.originalSaleId);
-        if (originalSale) {
-            const relatedPurchase = purchases.find(p => p.lotNumber === originalSale.lotNumber);
-            if (relatedPurchase) {
-                if (lotNumberFilter && !originalSale.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
-                if (locationFilter && relatedPurchase.locationId !== locationFilter) return;
-                const key = `${originalSale.lotNumber}-${relatedPurchase.locationId}`;
-                let item = reportItemsMap.get(key);
-                if (item) { item.saleReturnedBags += sr.quantityReturned; item.saleReturnedWeight += sr.netWeightReturned; }
-            }
+    const fyLocationTransfersAll = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    fyLocationTransfersAll.forEach(transfer => {
+      transfer.items.forEach(item => {
+        // Adjust source lot (which must exist from purchases)
+        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
+        const fromItem = reportItemsMap.get(fromKey);
+        if (fromItem) {
+            fromItem.transferredOutBags += item.bagsToTransfer;
+            fromItem.transferredOutWeight += item.netWeightToTransfer;
         }
-    });
 
-    fyLocationTransfers.forEach(transfer => {
-      transfer.items.forEach(transferItem => {
-        if (lotNumberFilter && !transferItem.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase())) return;
-        if (!locationFilter || transfer.fromWarehouseId === locationFilter) {
-            const fromKey = `${transferItem.lotNumber}-${transfer.fromWarehouseId}`;
-            let fromItem = reportItemsMap.get(fromKey);
-            if (fromItem) { fromItem.transferredOutBags += transferItem.bagsToTransfer; fromItem.transferredOutWeight += transferItem.netWeightToTransfer; }
+        // Create/adjust destination lot
+        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+        let toItem = reportItemsMap.get(toKey);
+        if (!toItem) {
+            const originalPurchaseForLot = purchases.find(p => p.lotNumber === item.originalLotNumber);
+            toItem = {
+                lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
+                locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
+                purchaseDate: originalPurchaseForLot?.date || transfer.date, purchaseBags: 0, purchaseWeight: 0, 
+                purchaseRate: originalPurchaseForLot?.rate || 0, purchaseValue: 0,
+                soldBags: 0, soldWeight: 0, soldValue: 0,
+                purchaseReturnedBags: 0, purchaseReturnedWeight: 0, saleReturnedBags: 0, saleReturnedWeight: 0,
+                transferredOutBags: 0, transferredOutWeight: 0, transferredInBags: 0, transferredInWeight: 0,
+                remainingBags: 0, remainingWeight: 0,
+            };
+            reportItemsMap.set(toKey, toItem);
         }
-        // Ensure item exists or is created for the 'to' location
-        const toKey = `${transferItem.lotNumber}-${transfer.toWarehouseId}`;
-        if (!locationFilter || transfer.toWarehouseId === locationFilter) {
-            let toItem = reportItemsMap.get(toKey);
-            if (!toItem) {
-                // If lot doesn't exist at destination, create a shell. Might need purchaseDate from original source for daysInStock logic.
-                const originalPurchaseForLot = purchases.find(p => p.lotNumber === transferItem.lotNumber);
-                toItem = {
-                    lotNumber: transferItem.lotNumber, locationId: transfer.toWarehouseId,
-                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
-                    purchaseDate: originalPurchaseForLot?.date, purchaseBags: 0, purchaseWeight: 0, purchaseRate: originalPurchaseForLot?.rate || 0, purchaseValue: 0,
-                    soldBags: 0, soldWeight: 0, soldValue: 0,
-                    purchaseReturnedBags: 0, purchaseReturnedWeight: 0, saleReturnedBags: 0, saleReturnedWeight: 0,
-                    transferredOutBags: 0, transferredOutWeight: 0, transferredInBags: 0, transferredInWeight: 0,
-                    remainingBags: 0, remainingWeight: 0,
-                };
-                reportItemsMap.set(toKey, toItem);
-            }
-            toItem.transferredInBags += transferItem.bagsToTransfer; toItem.transferredInWeight += transferItem.netWeightToTransfer;
-        }
+        toItem.transferredInBags += item.bagsToTransfer;
+        toItem.transferredInWeight += item.netWeightToTransfer;
       });
     });
 
-    const result: StockReportItem[] = [];
-    reportItemsMap.forEach(item => {
+    const fySales = filterByDate(sales);
+    fySales.forEach(s => {
+        const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
+        const key = `${s.lotNumber}-${MUMBAI_WAREHOUSE_ID}`;
+        const item = reportItemsMap.get(key);
+        if(item) {
+            item.soldBags += s.quantity;
+            item.soldWeight += s.netWeight;
+            item.soldValue += s.billedAmount;
+        }
+    });
+
+    const fyPurchaseReturns = filterByDate(purchaseReturns);
+    fyPurchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase) {
+            const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+            const item = reportItemsMap.get(key);
+            if (item) {
+                item.purchaseReturnedBags += pr.quantityReturned;
+                item.purchaseReturnedWeight += pr.netWeightReturned;
+            }
+        }
+    });
+
+    const fySaleReturns = filterByDate(saleReturns);
+    fySaleReturns.forEach(sr => {
+        const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
+        const key = `${sr.originalLotNumber}-${MUMBAI_WAREHOUSE_ID}`;
+        const item = reportItemsMap.get(key);
+        if (item) {
+            item.saleReturnedBags += sr.quantityReturned;
+            item.saleReturnedWeight += sr.netWeightReturned;
+        }
+    });
+
+    let result = Array.from(reportItemsMap.values());
+
+    if (lotNumberFilter) {
+        result = result.filter(item => item.lotNumber.toLowerCase().includes(lotNumberFilter.toLowerCase()));
+    }
+    if (locationFilter) {
+        result = result.filter(item => item.locationId === locationFilter);
+    }
+    
+    result.forEach(item => {
       item.remainingBags = item.purchaseBags + item.transferredInBags + item.saleReturnedBags
                           - item.soldBags - item.transferredOutBags - item.purchaseReturnedBags;
       item.remainingWeight = item.purchaseWeight + item.transferredInWeight + item.saleReturnedWeight
@@ -196,12 +195,10 @@ export function StockReportClient() {
       const totalInitialBags = item.purchaseBags + item.transferredInBags;
       item.turnoverRate = totalInitialBags > 0 ? ((item.soldBags + item.transferredOutBags) / totalInitialBags) * 100 : 0;
       item.isDeadStock = item.remainingBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
-      // Include item if it had any activity or has remaining stock.
-      if (item.purchaseBags > 0 || item.transferredInBags > 0 || item.soldBags > 0 || item.transferredOutBags > 0 || item.purchaseReturnedBags > 0 || item.saleReturnedBags > 0 || item.remainingBags > 0) {
-         result.push(item);
-      }
     });
-    return result.sort((a,b) => (a.purchaseDate && b.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
+
+    return result.filter(item => item.purchaseBags > 0 || item.transferredInBags > 0 || item.soldBags > 0 || item.transferredOutBags > 0 || item.remainingBags > 0)
+        .sort((a,b) => (a.purchaseDate && b.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
   }, [purchases, purchaseReturns, sales, saleReturns, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, hydrated, isAppHydrating, financialYear]);
 
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading data...</p></div>;
@@ -254,4 +251,3 @@ export function StockReportClient() {
     </div>
   );
 }
-

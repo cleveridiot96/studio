@@ -69,7 +69,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           transporterId: transferToEdit.transporterId || undefined,
           notes: transferToEdit.notes || "",
           items: transferToEdit.items.map(item => ({
-            lotNumber: item.lotNumber,
+            lotNumber: item.originalLotNumber, // Use originalLotNumber to populate combobox
             bagsToTransfer: item.bagsToTransfer,
             netWeightToTransfer: item.netWeightToTransfer,
           })),
@@ -165,7 +165,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       transporterName: transporter?.name,
       items: values.items.map(item => {
         return {
-          lotNumber: item.lotNumber,
+          originalLotNumber: item.lotNumber,
+          newLotNumber: `${item.lotNumber}/${item.bagsToTransfer}`, // Create new split lot number
           bagsToTransfer: item.bagsToTransfer,
           netWeightToTransfer: item.netWeightToTransfer,
         };
@@ -364,4 +365,3 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
-    

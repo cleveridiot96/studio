@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType } from "@/lib/types";
+import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Building, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -45,7 +45,9 @@ const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
+const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
+const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
 
 // Initial data sets - changed to empty arrays for clean slate on format
 const initialLocationTransfers: LocationTransfer[] = [];
@@ -71,7 +73,10 @@ export function LocationTransferClient() {
   const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
+
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -88,72 +93,99 @@ export function LocationTransferClient() {
 
   const aggregatedStockForForm = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
+
     const stockMap = new Map<string, AggregatedStockItem>();
 
+    // 1. Initial stock from purchases
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
     fyPurchases.forEach(p => {
-      const key = `${p.lotNumber}-${p.locationId}`;
-      let entry = stockMap.get(key);
-      if (!entry) {
-        entry = {
-          lotNumber: p.lotNumber, locationId: p.locationId,
-          locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
-          currentBags: 0, currentWeight: 0,
-          averageWeightPerBag: p.netWeight > 0 && p.quantity > 0 ? p.netWeight / p.quantity : 50,
-        };
-      }
-      entry.currentBags += p.quantity;
-      entry.currentWeight += p.netWeight;
-      if (entry.currentBags > 0 && entry.currentWeight > 0) entry.averageWeightPerBag = entry.currentWeight / entry.currentBags;
-      stockMap.set(key, entry);
+        const key = `${p.lotNumber}-${p.locationId}`;
+        stockMap.set(key, {
+            lotNumber: p.lotNumber,
+            locationId: p.locationId,
+            locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
+            currentBags: p.quantity,
+            currentWeight: p.netWeight,
+            averageWeightPerBag: p.quantity > 0 ? p.netWeight / p.quantity : 50,
+        });
     });
 
-    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
-    fySales.forEach(s => {
-      const relatedPurchaseForSale = purchases.find(p => p.lotNumber === s.lotNumber);
-      if (relatedPurchaseForSale) {
-          const key = `${s.lotNumber}-${relatedPurchaseForSale.locationId}`;
-          const entry = stockMap.get(key);
-          if (entry) {
-          entry.currentBags -= s.quantity;
-          entry.currentWeight -= s.netWeight;
-          if (entry.currentBags > 0 && entry.currentWeight > 0) entry.averageWeightPerBag = entry.currentWeight / entry.currentBags;
-          else if (entry.currentBags <= 0) entry.currentWeight = 0;
-          stockMap.set(key, entry);
-          }
-      }
+    // 2. Adjust for purchase returns
+    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
+    fyPurchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase) {
+            const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+            const entry = stockMap.get(key);
+            if (entry) {
+                entry.currentBags -= pr.quantityReturned;
+                entry.currentWeight -= pr.netWeightReturned;
+            }
+        }
     });
 
+    // 3. Adjust for location transfers (this is the new logic)
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
         transfer.items.forEach(item => {
-            const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`;
+            // Decrement from source
+            const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
             const fromEntry = stockMap.get(fromKey);
             if (fromEntry) {
                 fromEntry.currentBags -= item.bagsToTransfer;
                 fromEntry.currentWeight -= item.netWeightToTransfer;
-                if (fromEntry.currentBags > 0 && fromEntry.currentWeight > 0) fromEntry.averageWeightPerBag = fromEntry.currentWeight / fromEntry.currentBags;
             }
-            const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`;
+
+            // Increment at destination (creating new lot)
+            const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
             let toEntry = stockMap.get(toKey);
-            const sourceLotData = stockMap.get(fromKey) || purchases.find(p => p.lotNumber === item.lotNumber && p.locationId === transfer.fromWarehouseId);
             if (!toEntry) {
                 toEntry = {
-                    lotNumber: item.lotNumber, locationId: transfer.toWarehouseId,
+                    lotNumber: item.newLotNumber,
+                    locationId: transfer.toWarehouseId,
                     locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
-                    currentBags: 0, currentWeight: 0,
-                    averageWeightPerBag: sourceLotData?.averageWeightPerBag || (sourceLotData?.netWeight && sourceLotData?.quantity ? sourceLotData.netWeight/sourceLotData.quantity : 50)
+                    currentBags: 0,
+                    currentWeight: 0,
+                    averageWeightPerBag: item.bagsToTransfer > 0 ? item.netWeightToTransfer / item.bagsToTransfer : 50,
                 };
             }
             toEntry.currentBags += item.bagsToTransfer;
             toEntry.currentWeight += item.netWeightToTransfer;
-            if (toEntry.currentBags > 0 && toEntry.currentWeight > 0) toEntry.averageWeightPerBag = toEntry.currentWeight / toEntry.currentBags;
             stockMap.set(toKey, toEntry);
         });
     });
+
+    // 4. Adjust for sales
+    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
+    fySales.forEach(s => {
+        // Sales only from Mumbai warehouse as per app logic
+        const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
+        const key = `${s.lotNumber}-${MUMBAI_WAREHOUSE_ID}`;
+        const entry = stockMap.get(key);
+        if (entry) {
+            entry.currentBags -= s.quantity;
+            entry.currentWeight -= s.netWeight;
+        }
+    });
+
+    // 5. Adjust for sale returns
+    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
+    fySaleReturns.forEach(sr => {
+        // Assume returns go back to Mumbai warehouse
+        const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
+        const key = `${sr.originalLotNumber}-${MUMBAI_WAREHOUSE_ID}`;
+        const entry = stockMap.get(key);
+        if (entry) {
+            entry.currentBags += sr.quantityReturned;
+            entry.currentWeight += sr.netWeightReturned;
+        }
+    });
+
+
     return Array.from(stockMap.values()).filter(item => item.currentBags > 0)
         .sort((a,b) => a.locationName.localeCompare(b.locationName) || a.lotNumber.localeCompare(b.lotNumber));
-  }, [purchases, sales, locationTransfers, warehouses, hydrated, isAppHydrating, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, hydrated, isAppHydrating, financialYear]);
+
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
@@ -294,8 +326,8 @@ export function LocationTransferClient() {
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell>
-                          <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[200px] inline-block">{transfer.items.map(i => `${i.lotNumber} (${i.bagsToTransfer} bags)`).join(', ')}</span></TooltipTrigger>
-                            <TooltipContent><ul className="list-disc pl-4">{transfer.items.map(i => <li key={i.lotNumber}>{`${i.lotNumber} (${i.bagsToTransfer} bags, ${i.netWeightToTransfer.toFixed(0)}kg)`}</li>)}</ul></TooltipContent>
+                          <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[200px] inline-block">{transfer.items.map(i => `${i.originalLotNumber} (${i.bagsToTransfer} bags)`).join(', ')}</span></TooltipTrigger>
+                            <TooltipContent><ul className="list-disc pl-4">{transfer.items.map(i => <li key={i.newLotNumber}>{`"${i.originalLotNumber}" → "${i.newLotNumber}" (${i.bagsToTransfer} bags)`}</li>)}</ul></TooltipContent>
                           </Tooltip>
                         </TableCell>
                         <TableCell className="truncate max-w-xs">{transfer.notes ? (<Tooltip><TooltipTrigger asChild><span>{transfer.notes}</span></TooltipTrigger><TooltipContent><p>{transfer.notes}</p></TooltipContent></Tooltip>) : 'N/A'}</TableCell>
