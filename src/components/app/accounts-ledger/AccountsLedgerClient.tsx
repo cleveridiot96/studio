@@ -97,6 +97,7 @@ export function AccountsLedgerClient() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
+  const partyIdFromQuery = searchParams.get('partyId');
 
   React.useEffect(() => {
     setHydrated(true);
@@ -135,12 +136,11 @@ export function AccountsLedgerClient() {
         }
       }
       
-      const partyIdFromQuery = searchParams.get('partyId');
       if (partyIdFromQuery && loadedMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
         setSelectedPartyId(partyIdFromQuery);
       }
     }
-  }, [hydrated, currentFinancialYearString, searchParams, dateRange, selectedPartyId]);
+  }, [hydrated, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
@@ -350,17 +350,15 @@ export function AccountsLedgerClient() {
                     <ScrollArea className="h-[50vh]">
                       <Table size="sm"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Particulars</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Amount</TableHead>
                         </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
+                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
                             {financialLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
                               <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{e.vakkal || '-'}</TableCell>
                               <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>))}
                           </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                              <TableCell colSpan={2}>Total</TableCell>
+                              <TableCell>Total</TableCell>
                               <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
                       </ScrollArea>
@@ -371,17 +369,15 @@ export function AccountsLedgerClient() {
                     <ScrollArea className="h-[50vh]">
                       <Table size="sm"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Particulars</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Amount</TableHead>
                         </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
+                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
                             {financialLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
                               <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{e.vakkal || '-'}</TableCell>
                               <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>))}
                           </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                            <TableCell colSpan={2}>Total</TableCell>
+                            <TableCell>Total</TableCell>
                             <TableCell className="text-right">{financialLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
                       </ScrollArea>
@@ -419,3 +415,5 @@ export function AccountsLedgerClient() {
     </div>
   );
 }
+
+    

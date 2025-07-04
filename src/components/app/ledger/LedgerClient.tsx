@@ -80,6 +80,7 @@ export function LedgerClient() {
 
   const searchParams = useSearchParams();
   const router = useRouter();
+  const partyIdFromQuery = searchParams.get('partyId');
 
   React.useEffect(() => {
     setHydrated(true);
@@ -119,12 +120,11 @@ export function LedgerClient() {
         }
       }
       
-      const partyIdFromQuery = searchParams.get('partyId');
       if (partyIdFromQuery && relevantMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
         setSelectedPartyId(partyIdFromQuery);
       }
     }
-  }, [hydrated, currentFinancialYearString, searchParams, dateRange, selectedPartyId]);
+  }, [hydrated, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
@@ -389,3 +389,5 @@ export function LedgerClient() {
     </div>
   );
 }
+
+    
