@@ -383,7 +383,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
         return {
           value: p.lotNumber,
-          label: `${p.lotNumber} (Avl: ${availableBags} bags)`,
+          label: `${p.lotNumber} (Avl: ${availableBags} bags, Rate: ₹${p.purchaseRate.toFixed(2)})`,
           tooltipContent: tooltipForLot,
           isAvailable: availableBags > 0,
         };
