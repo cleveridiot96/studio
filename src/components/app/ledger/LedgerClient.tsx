@@ -232,80 +232,84 @@ export function LedgerClient() {
             </p>
           </CardHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-x-2 space-y-4 md:space-y-0">
-            <Card className="shadow-lg">
-                <CardHeader className="p-0">
-                    <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Purchases via Party)</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader><TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Vakkal (Bags)</TableHead>
-                            <TableHead className="text-right">Kg</TableHead>
-                            <TableHead className="text-right">Rate</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader>
-                        <TableBody>
-                            {debitEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No purchases recorded.</TableCell></TableRow>}
-                            {debitEntries.map(e => (
-                                <TableRow key={e.id}>
-                                    <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                    <TableCell>{e.vakkal} {e.bags ? `(${e.bags})` : ''}</TableCell>
-                                    <TableCell className="text-right">{e.kg ? e.kg.toFixed(2) : '-'}</TableCell>
-                                    <TableCell className="text-right">{e.rate ? e.rate.toFixed(2) : '-'}</TableCell>
-                                    <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-5">
+                <Card className="shadow-lg h-full flex flex-col">
+                    <CardHeader className="p-0">
+                        <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Purchases via Party)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-grow">
+                        <Table>
+                            <TableHeader><TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Vakkal (Bags)</TableHead>
+                                <TableHead className="text-right">Kg</TableHead>
+                                <TableHead className="text-right">Rate</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader>
+                            <TableBody>
+                                {debitEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No purchases recorded.</TableCell></TableRow>}
+                                {debitEntries.map(e => (
+                                    <TableRow key={e.id}>
+                                        <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                                        <TableCell>{e.vakkal} {e.bags ? `(${e.bags})` : ''}</TableCell>
+                                        <TableCell className="text-right">{e.kg ? e.kg.toFixed(2) : '-'}</TableCell>
+                                        <TableCell className="text-right">{e.rate ? e.rate.toFixed(2) : '-'}</TableCell>
+                                        <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                            <TableFooter>
+                                <TableRow className="font-bold bg-orange-50">
+                                    <TableCell colSpan={4}>Total Purchase Value</TableCell>
+                                    <TableCell className="text-right">{totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                        <TableFooter>
-                            <TableRow className="font-bold bg-orange-50">
-                                <TableCell colSpan={4}>Total Purchase Value</TableCell>
-                                <TableCell className="text-right">{totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    </Table>
-                </CardContent>
-            </Card>
+                            </TableFooter>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
 
-            <Card className="shadow-lg">
-                <CardHeader className="p-0">
-                    <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Sales via Party)</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader><TableRow>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Broker</TableHead>
-                            <TableHead className="text-right">Bags</TableHead>
-                            <TableHead className="text-right">Kg</TableHead>
-                            <TableHead className="text-right">Rate</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader>
-                        <TableBody>
-                            {creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales recorded for this party.</TableCell></TableRow>}
-                            {creditEntries.map(e => (
-                                <TableRow key={e.id}>
-                                    <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                    <TableCell>{e.customer}</TableCell>
-                                    <TableCell>{e.broker}</TableCell>
-                                    <TableCell className="text-right">{e.saleVakkal}</TableCell>
-                                    <TableCell className="text-right">{e.kg.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">{e.rate.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+            <div className="md:col-span-7">
+                <Card className="shadow-lg h-full flex flex-col">
+                    <CardHeader className="p-0">
+                        <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Sales via Party)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-grow">
+                        <Table>
+                            <TableHeader><TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Broker</TableHead>
+                                <TableHead className="text-right">Bags</TableHead>
+                                <TableHead className="text-right">Kg</TableHead>
+                                <TableHead className="text-right">Rate</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader>
+                            <TableBody>
+                                {creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales recorded for this party.</TableCell></TableRow>}
+                                {creditEntries.map(e => (
+                                    <TableRow key={e.id}>
+                                        <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                                        <TableCell>{e.customer}</TableCell>
+                                        <TableCell>{e.broker}</TableCell>
+                                        <TableCell className="text-right">{e.saleVakkal}</TableCell>
+                                        <TableCell className="text-right">{e.kg.toFixed(2)}</TableCell>
+                                        <TableCell className="text-right">{e.rate.toFixed(2)}</TableCell>
+                                        <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                            <TableFooter>
+                                <TableRow className="font-bold bg-green-50">
+                                    <TableCell colSpan={6}>Total Sales Value</TableCell>
+                                    <TableCell className="text-right">{totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                         <TableFooter>
-                            <TableRow className="font-bold bg-green-50">
-                                <TableCell colSpan={6}>Total Sales Value</TableCell>
-                                <TableCell className="text-right">{totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    </Table>
-                </CardContent>
-            </Card>
+                            </TableFooter>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
           </div>
         </div>
       ) : (
