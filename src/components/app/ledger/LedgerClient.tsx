@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Payment, MasterItemType } from "@/lib/types";
+import type { MasterItem, Purchase, Payment, MasterItemType, Sale } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,7 @@ const MASTERS_KEYS = {
 };
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
+  sales: 'salesData', // Added sales data source
   payments: 'paymentsData',
 };
 
@@ -31,10 +32,10 @@ const TRANSACTIONS_KEYS = {
 interface TAccountDebitEntry {
   id: string;
   date: string;
-  vakkal: string; // From lotNumber
-  bags: number;
-  kg: number;
-  rate: number;
+  vakkal: string; // From lotNumber or "Commission on Sale..."
+  bags?: number;
+  kg?: number;
+  rate?: number;
   amount: number;
 }
 
@@ -60,6 +61,7 @@ export function LedgerClient() {
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
+  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
   const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, memoizedEmptyArray);
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
@@ -93,7 +95,6 @@ export function LedgerClient() {
           }
         }
       });
-      // Filter for only parties relevant to this ledger view (e.g., Suppliers, Brokers)
       const relevantMasters = loadedMasters.filter(m => m.type === 'Supplier' || m.type === 'Broker' || m.type === 'Agent');
       relevantMasters.sort((a, b) => a.name.localeCompare(b.name));
       setAllMasters(relevantMasters);
@@ -125,14 +126,17 @@ export function LedgerClient() {
 
     let balance = party.openingBalanceType === 'Dr' ? (party.openingBalance || 0) : -(party.openingBalance || 0);
 
-    const periodDebitEntries: TAccountDebitEntry[] = [];
-    const periodCreditEntries: TAccountCreditEntry[] = [];
-    
     // Calculate opening balance for the period
     purchases.forEach(p => {
-      if (p.supplierId === party.id && parseISO(p.date) < startOfDay(dateRange.from!)) {
+      if ((p.supplierId === party.id || p.agentId === party.id) && parseISO(p.date) < startOfDay(dateRange.from!)) {
         balance += p.totalAmount;
       }
+    });
+    sales.forEach(s => {
+        if (s.brokerId === party.id && parseISO(s.date) < startOfDay(dateRange.from!)) {
+            const totalCommission = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+            balance += totalCommission;
+        }
     });
     payments.forEach(pm => {
       if (pm.partyId === party.id && parseISO(pm.date) < startOfDay(dateRange.from!)) {
@@ -140,27 +144,39 @@ export function LedgerClient() {
       }
     });
     const openingBalance = balance;
+
+    const periodDebitEntries: TAccountDebitEntry[] = [];
+    const periodCreditEntries: TAccountCreditEntry[] = [];
     
-    // Filter and map transactions within the date range
+    // Debit Side: Purchases and Sales Commissions
     purchases.forEach(p => {
-      if (p.supplierId === party.id && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) })) {
+      if ((p.supplierId === party.id || p.agentId === party.id) && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) })) {
         periodDebitEntries.push({
-          id: p.id,
-          date: p.date,
-          vakkal: p.lotNumber,
-          bags: p.quantity,
-          kg: p.netWeight,
-          rate: p.rate,
+          id: p.id, date: p.date, vakkal: p.lotNumber,
+          bags: p.quantity, kg: p.netWeight, rate: p.rate,
           amount: p.totalAmount,
         });
       }
     });
 
+    sales.forEach(s => {
+        if(s.brokerId === party.id && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) })) {
+            const totalCommission = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+            if(totalCommission > 0) {
+                periodDebitEntries.push({
+                    id: `comm-${s.id}`, date: s.date,
+                    vakkal: `Commission on Sale to ${s.customerName || 'N/A'}`,
+                    amount: totalCommission,
+                });
+            }
+        }
+    });
+
+    // Credit Side: Payments made to the party
     payments.forEach(pm => {
       if (pm.partyId === party.id && isWithinInterval(parseISO(pm.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to!) })) {
         periodCreditEntries.push({
-          id: pm.id,
-          date: pm.date,
+          id: pm.id, date: pm.date,
           source: `${pm.paymentMethod}${pm.referenceNo ? ` - ${pm.referenceNo}` : ''}`,
           amount: pm.amount,
         });
@@ -182,7 +198,7 @@ export function LedgerClient() {
       totalCredit,
       closingBalance,
     };
-  }, [selectedPartyId, dateRange, purchases, payments, allMasters, hydrated]);
+  }, [selectedPartyId, dateRange, purchases, sales, payments, allMasters, hydrated]);
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
@@ -279,25 +295,25 @@ export function LedgerClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-4 space-y-4 md:space-y-0">
             <Card className="shadow-lg">
                 <CardHeader className="p-0">
-                    <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Goods Received)</CardTitle>
+                    <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Goods Received / Dues)</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader><TableRow>
                             <TableHead>Date</TableHead>
-                            <TableHead>Vakkal (Bags)</TableHead>
+                            <TableHead>Vakkal/Particulars (Bags)</TableHead>
                             <TableHead className="text-right">Kg</TableHead>
                             <TableHead className="text-right">Rate</TableHead>
                             <TableHead className="text-right">Amount</TableHead>
                         </TableRow></TableHeader>
                         <TableBody>
-                            {debitEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No purchases recorded.</TableCell></TableRow>}
+                            {debitEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No purchases or commissions recorded.</TableCell></TableRow>}
                             {debitEntries.map(e => (
                                 <TableRow key={e.id}>
                                     <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                    <TableCell>{e.vakkal} ({e.bags})</TableCell>
-                                    <TableCell className="text-right">{e.kg.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">{e.rate.toFixed(2)}</TableCell>
+                                    <TableCell>{e.vakkal} {e.bags ? `(${e.bags})` : ''}</TableCell>
+                                    <TableCell className="text-right">{e.kg ? e.kg.toFixed(2) : '-'}</TableCell>
+                                    <TableCell className="text-right">{e.rate ? e.rate.toFixed(2) : '-'}</TableCell>
                                     <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                 </TableRow>
                             ))}
