@@ -62,6 +62,8 @@ export interface Sale {
   transporterId?: string;
   transporterName?: string;
   transportCost?: number; // Fixed transport cost for this sale, affects profit
+  packingCost?: number;
+  labourCost?: number;
   brokerageType?: 'Fixed' | 'Percentage';
   brokerageValue?: number;
   extraBrokeragePerKg?: number; // "Mera ₹" or extra commission per kg
@@ -224,11 +226,13 @@ export interface TransactionalProfitInfo {
   saleNetWeightKg: number;
   saleRatePerKg: number;
   saleAmount: number; // This should be the billedAmount
+  goodsValueForProfitCalc: number; // The goodsValue used for profit calculation
   purchaseCostForSalePortion: number;
   transportCostOnSale?: number;
-  brokerageOnSale?: number; // This should now represent the total brokerage (percent + extra)
-  netProfit: number; // Based on goodsValue
-  goodsValueForProfitCalc: number; // The goodsValue used for profit calculation
+  packingCostOnSale?: number;
+  labourCostOnSale?: number;
+  brokerageOnSale?: number;
+  netProfit: number;
 }
 
 export interface MonthlyProfitInfo {

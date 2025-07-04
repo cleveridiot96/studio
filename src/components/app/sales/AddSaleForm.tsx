@@ -101,6 +101,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         rate: saleToEdit.rate,
         transporterId: saleToEdit.transporterId || undefined,
         transportCost: saleToEdit.transportCost === undefined || saleToEdit.transportCost === null ? undefined : saleToEdit.transportCost,
+        packingCost: saleToEdit.packingCost === undefined || saleToEdit.packingCost === null ? undefined : saleToEdit.packingCost,
+        labourCost: saleToEdit.labourCost === undefined || saleToEdit.labourCost === null ? undefined : saleToEdit.labourCost,
         brokerId: saleToEdit.brokerId || undefined,
         brokerageType: saleToEdit.brokerageType || undefined,
         brokerageValue: saleToEdit.brokerageValue === undefined || saleToEdit.brokerageValue === null ? undefined : saleToEdit.brokerageValue,
@@ -120,6 +122,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       rate: 0,
       transporterId: undefined,
       transportCost: undefined,
+      packingCost: undefined,
+      labourCost: undefined,
       brokerId: undefined,
       brokerageType: undefined,
       brokerageValue: undefined,
@@ -164,6 +168,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const cutAmountInput = watch("cutAmount"); 
   const cutBill = watch("cutBill");
   const transportCostInput = watch("transportCost") || 0;
+  const packingCostInput = watch("packingCost") || 0;
+  const labourCostInput = watch("labourCost") || 0;
   const selectedBrokerId = watch("brokerId");
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
@@ -265,8 +271,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [netWeight, effectiveRateForLot]);
 
   const calculatedProfit = React.useMemo(() => {
-    return goodsValueForCalc - costOfGoodsSold - transportCostInput - calculatedBrokerageCommission - calculatedExtraBrokerage;
-  }, [goodsValueForCalc, costOfGoodsSold, transportCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
+    const totalExpenses = costOfGoodsSold + transportCostInput + packingCostInput + labourCostInput + calculatedBrokerageCommission + calculatedExtraBrokerage;
+    return finalBilledAmountForDisplay - totalExpenses;
+  }, [finalBilledAmountForDisplay, costOfGoodsSold, transportCostInput, packingCostInput, labourCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -323,7 +330,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         ? submissionValues.extraBrokeragePerKg * finalNetWeightForSubmit
         : 0;
     
-    const currentProfit = currentGoodsValue - currentCostOfGoodsSold - (submissionValues.transportCost || 0) - currentBrokerageCommission - currentExtraBrokerageAmount;
+    const allSaleExpenses = (submissionValues.transportCost || 0) + (submissionValues.packingCost || 0) + (submissionValues.labourCost || 0) + currentBrokerageCommission + currentExtraBrokerageAmount;
+    const currentProfit = currentBilledAmount - currentCostOfGoodsSold - allSaleExpenses;
+
 
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,
@@ -344,6 +353,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transporterId: submissionValues.transporterId,
       transporterName: selectedTransporter?.name,
       transportCost: submissionValues.transportCost,
+      packingCost: submissionValues.packingCost,
+      labourCost: submissionValues.labourCost,
       brokerageType: submissionValues.brokerageType,
       brokerageValue: submissionValues.brokerageValue,
       extraBrokeragePerKg: submissionValues.extraBrokeragePerKg,
@@ -386,7 +397,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
             onClose();
           }
         }}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
             <DialogDescription>Enter the details for the sale record.</DialogDescription>
@@ -508,8 +519,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Transport &amp; Broker (Optional)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Broker (Optional)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
                       <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem><FormLabel>Transporter</FormLabel>
                           <MasterDataCombobox
@@ -525,11 +536,20 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormMessage /></FormItem>)}
                       />
                       <FormField control={control} name="transportCost" render={({ field }) => (
-                          <FormItem><FormLabel>Transport Cost (₹)</FormLabel>
+                          <FormItem><FormLabel>Transport (₹)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="e.g., 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)}
                       />
+                       <FormField control={control} name="packingCost" render={({ field }) => (
+                          <FormItem><FormLabel>Packing (₹)</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 150" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)}
+                      />
+                       <FormField control={control} name="labourCost" render={({ field }) => (
+                          <FormItem><FormLabel>Labour (₹)</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 100" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)}
+                      />
+
                       <FormField control={control} name="brokerId" render={({ field }) => (
-                          <FormItem><FormLabel>Broker</FormLabel>
+                          <FormItem className="lg:col-span-2"><FormLabel>Broker</FormLabel>
                           <MasterDataCombobox
                             value={field.value}
                             onChange={field.onChange}
@@ -542,7 +562,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           />
                           <FormMessage /></FormItem>)}
                       />
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 lg:col-span-2 gap-2">
                           <FormField control={control} name="brokerageType" render={({ field }) => (
                               <FormItem className="sm:col-span-1"><FormLabel>Brokerage Type</FormLabel>
                               <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false);}} value={field.value} disabled={!selectedBrokerId}>
@@ -564,7 +584,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               <FormMessage /></FormItem>)}
                           />
                           <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
-                              <FormItem className="sm:col-span-1"><FormLabel>Extra Brokerage (₹/kg)</FormLabel>
+                              <FormItem className="sm:col-span-1"><FormLabel>Extra (₹/kg)</FormLabel>
                                <FormControl><Input
                                   type="number" step="0.01" placeholder="Extra per kg" {...field}
                                   value={field.value ?? ''}
@@ -585,36 +605,18 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                 </div>
 
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center text-md font-semibold">
-                            <Info className="w-5 h-5 mr-2 text-primary" />
-                            Actual Goods Value:
-                        </div>
-                        <p className="text-lg font-bold text-foreground">
-                        ₹{goodsValueForCalc.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                    </div>
-                    {cutBill && cutAmountInput !== undefined && cutAmountInput >=0 && (
-                       <div className="flex items-center justify-between text-sm text-destructive">
-                            <span>Less: Cut Amount (Reduction):</span>
-                            <span className="font-semibold">
-                                (-) ₹{cutAmountInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
-                        </div>
-                    )}
-                     <div className="flex items-center justify-between border-t pt-2 mt-2">
+                     <div className="flex items-center justify-between border-b pb-2 mb-2">
                         <div className="text-md font-semibold text-primary">
-                            Final Billed Amount for Customer:
+                            Final Billed Amount:
                         </div>
                         <p className="text-xl font-bold text-primary">
                         ₹{finalBilledAmountForDisplay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                     </div>
 
-
-                    <div className="text-sm text-muted-foreground pl-7 space-y-1 pt-2 border-t mt-2">
-                        <div className="flex justify-between">
-                          <span>Less: Cost of Goods Sold:</span> 
+                    <div className="text-sm text-muted-foreground space-y-1">
+                       <div className="flex justify-between">
+                          <span>Less: Cost of Goods (Landed):</span> 
                           <span className="font-semibold">₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                         <div className="text-xs pl-2">
@@ -623,19 +625,24 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         {transportCostInput > 0 && (
                             <div className="flex justify-between"><span>Less: Transport Cost:</span> <span className="font-semibold">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         )}
+                         {packingCostInput > 0 && (
+                            <div className="flex justify-between"><span>Less: Packing Cost:</span> <span className="font-semibold">₹{packingCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        )}
+                         {labourCostInput > 0 && (
+                            <div className="flex justify-between"><span>Less: Labour Cost:</span> <span className="font-semibold">₹{labourCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                        )}
                         {calculatedBrokerageCommission > 0 && (
-                            <div className="flex justify-between"><span>Less: Brokerage (% or Fixed):</span> <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                            <div className="flex justify-between"><span>Less: Brokerage:</span> <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         )}
                          {calculatedExtraBrokerage > 0 && (
-                            <div className="flex justify-between"><span>Less: Extra Brokerage (₹/kg):</span> <span className="font-semibold">₹{calculatedExtraBrokerage.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                            <div className="flex justify-between"><span>Less: Extra Brokerage (Mera):</span> <span className="font-semibold">₹{calculatedExtraBrokerage.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         )}
                         <hr className="my-1 border-muted-foreground/50" />
                         <div className={`flex justify-between font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            <span>Estimated Net Profit (on Goods Value):</span> <span>₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span>Estimated Net Profit:</span> <span>₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </div>
-
 
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>

@@ -35,6 +35,8 @@ export const saleSchema = (
     message: "Transporter does not exist or is not of type Transporter.",
   }),
   transportCost: z.coerce.number().optional().default(0),
+  packingCost: z.coerce.number().optional(),
+  labourCost: z.coerce.number().optional(),
   brokerId: z.string().optional().refine((brokerId) => !brokerId || brokers.some((b) => b.id === brokerId && b.type === 'Broker'), {
     message: "Broker does not exist or is not of type Broker.",
   }),
