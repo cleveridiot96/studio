@@ -1,12 +1,5 @@
-import { PlaceholderContent } from "@/components/PlaceholderContent";
-import { BookCopy } from "lucide-react";
+import { AccountsLedgerClient } from "@/components/app/accounts-ledger/AccountsLedgerClient";
 
 export default function AccountsLedgerPage() {
-  return (
-    <PlaceholderContent 
-      title="Accounts Ledger" 
-      description="This module will provide a detailed view of financial transactions (debits/credits) for each party. It is currently under development." 
-      icon={BookCopy}
-    />
-  );
+  return <AccountsLedgerClient />;
 }
