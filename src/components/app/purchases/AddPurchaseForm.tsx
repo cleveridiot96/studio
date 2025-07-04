@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Info, Warehouse as WarehouseIcon, Percent } from "lucide-react";
+import { CalendarIcon, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
@@ -78,9 +78,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         quantity: purchaseToEdit.quantity,
         netWeight: purchaseToEdit.netWeight,
         rate: purchaseToEdit.rate,
-        expenses: purchaseToEdit.expenses || undefined,
-        transportRatePerKg: purchaseToEdit.transportRatePerKg || undefined,
-        transporterId: purchaseToEdit.transporterId || undefined,
       };
     }
     return {
@@ -92,9 +89,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       quantity: 0,
       netWeight: 0,
       rate: 0,
-      expenses: undefined,
-      transportRatePerKg: undefined,
-      transporterId: undefined,
     };
   }, [purchaseToEdit]);
 
@@ -140,33 +134,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const netWeight = watch("netWeight");
   const rate = watch("rate");
-  const expenses = watch("expenses") || 0;
-  const transportRatePerKgValue = watch("transportRatePerKg") || 0;
   
-  const calculatedTotalTransportCost = React.useMemo(() => {
-    const bags = parseFloat(String(quantityValue || 0));
-    const transportRateKg = parseFloat(String(transportRatePerKgValue || 0));
-    if (isNaN(bags) || isNaN(transportRateKg) || bags <= 0 || transportRateKg <=0) return 0;
-    const grossWeightForTransport = bags * 50; 
-    return transportRateKg * grossWeightForTransport;
-  }, [quantityValue, transportRatePerKgValue]);
-
-
   const totalAmount = React.useMemo(() => {
     const nw = parseFloat(String(netWeight || 0));
     const r = parseFloat(String(rate || 0));
-    const exp = parseFloat(String(expenses || 0));
-    
     if (isNaN(nw) || isNaN(r)) return 0;
-    return (nw * r) + exp + calculatedTotalTransportCost;
-  }, [netWeight, rate, expenses, calculatedTotalTransportCost]);
+    return nw * r;
+  }, [netWeight, rate]);
 
-
-  const rateAfterExpensesAndTransport = React.useMemo(() => {
-    const nw = parseFloat(String(netWeight || 0));
-    if (nw <= 0) return 0;
-    return totalAmount / nw;
-  }, [netWeight, totalAmount]);
+  const effectiveRate = React.useMemo(() => {
+    return rate || 0;
+  }, [rate]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -180,7 +158,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         if (newItem.type === 'Supplier') methods.setValue('supplierId', newItem.id, { shouldValidate: true });
         if (newItem.type === 'Agent') methods.setValue('agentId', newItem.id, { shouldValidate: true });
         if (newItem.type === 'Warehouse') methods.setValue('locationId', newItem.id, { shouldValidate: true });
-        if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
@@ -190,16 +167,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
-    const finalBags = parseFloat(String(values.quantity || 0));
-    const finalTransportRatePerKg = parseFloat(String(values.transportRatePerKg || 0));
-    const finalGrossWeightForTransport = finalBags * 50;
-    const finalCalculatedTotalTransportCost = finalTransportRatePerKg * finalGrossWeightForTransport;
-
-    const finalTotalAmount = (parseFloat(String(values.netWeight || 0)) * parseFloat(String(values.rate || 0))) + 
-                             (parseFloat(String(values.expenses || 0))) + 
-                             finalCalculatedTotalTransportCost;
-    
-    const finalEffectiveRate = (values.netWeight && values.netWeight > 0) ? finalTotalAmount / values.netWeight : 0;
+    const finalTotalAmount = (parseFloat(String(values.netWeight || 0)) * parseFloat(String(values.rate || 0)));
+    const finalEffectiveRate = values.rate || 0;
 
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
@@ -214,11 +183,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       quantity: values.quantity,
       netWeight: values.netWeight,
       rate: values.rate,
-      expenses: values.expenses,
-      transportRatePerKg: values.transportRatePerKg,
-      transportRate: finalCalculatedTotalTransportCost, 
-      transporterId: values.transporterId,
-      transporterName: transporters.find(t => t.id === values.transporterId)?.name,
       totalAmount: finalTotalAmount,
       effectiveRate: finalEffectiveRate,
     };
@@ -418,59 +382,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Transport</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                          control={control}
-                          name="expenses"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Other Expenses (₹, Optional)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="e.g., Packaging" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
-                      <FormField
-                          control={control}
-                          name="transportRatePerKg"
-                          render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Transport Rate (₹/kg, Optional)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="e.g., 0.50" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                          )}
-                      />
-                      <FormField
-                      control={control}
-                      name="transporterId"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Transporter (Optional)</FormLabel>
-                          <MasterDataCombobox 
-                              value={field.value}
-                              onChange={field.onChange}
-                              options={transporters.filter(t => t.type === "Transporter").map(t => ({ value: t.id, label: t.name }))}
-                              placeholder="Select Transporter" 
-                              searchPlaceholder="Search transporters..." 
-                              notFoundMessage="No transporter found." 
-                              addNewLabel="Add New Transporter"
-                              onAddNew={() => handleOpenMasterForm("Transporter")}
-                              />
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                  </div>
-                </div>
-
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
                       <div className="flex items-center text-md font-semibold">
                           <Info className="w-5 h-5 mr-2 text-primary" />
-                          Calculated Total Purchase Value:
+                          Total Purchase Value:
                       </div>
                       <p className="text-xl font-bold text-primary">
                       ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -478,16 +394,10 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                    {netWeight > 0 && (
                     <p className="text-sm text-muted-foreground pl-7">
-                        Effective Rate (incl. expenses & transport): <span className="font-semibold">₹{rateAfterExpensesAndTransport.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
-                    </p>
-                   )}
-                   {calculatedTotalTransportCost > 0 && (
-                    <p className="text-sm text-muted-foreground pl-7">
-                        Calculated Total Transport Cost: <span className="font-semibold">₹{calculatedTotalTransportCost.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        Effective Rate: <span className="font-semibold">₹{effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
                     </p>
                    )}
                 </div>
-
 
                 <DialogFooter className="pt-4">
                   <DialogClose asChild>

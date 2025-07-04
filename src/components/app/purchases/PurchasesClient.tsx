@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react"; // Removed MoreVertical, Pencil, Trash2 as they are in table
+import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
 import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
@@ -30,14 +30,10 @@ import html2canvas from 'html2canvas';
 import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate' | 'transportRate'> & { transportRatePerKg?: number, expenses?: number, rate: number, netWeight: number, quantity: number }): Purchase => {
-  const transportRatePerKg = p.transportRatePerKg || 0;
-  const quantity = p.quantity || 0;
-  const grossWeightForTransport = quantity * 50;
-  const calculatedTransportRate = transportRatePerKg * grossWeightForTransport;
-  const totalAmount = (p.netWeight * p.rate) + (p.expenses || 0) + calculatedTransportRate;
-  const effectiveRate = p.netWeight > 0 ? totalAmount / p.netWeight : 0;
-  return { ...p, transportRate: calculatedTransportRate, totalAmount, effectiveRate };
+const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate'>): Purchase => {
+  const totalAmount = p.netWeight * p.rate;
+  const effectiveRate = p.rate; // Now it's the same as the base rate
+  return { ...p, totalAmount, effectiveRate };
 };
 
 const initialPurchasesData: Purchase[] = [];
@@ -81,18 +77,7 @@ export function PurchasesClient() {
 
   React.useEffect(() => {
     setIsPurchasesClientHydrated(true);
-    console.info("PurchasesClient: Component hydrated.");
   }, []);
-
-  // Log state changes for debugging
-  React.useEffect(() => {
-    console.info('PurchasesClient: isAddPurchaseFormOpen changed to:', isAddPurchaseFormOpen);
-  }, [isAddPurchaseFormOpen]);
-
-  React.useEffect(() => {
-    console.info('PurchasesClient: purchaseToEdit changed to:', purchaseToEdit ? purchaseToEdit.id : null);
-  }, [purchaseToEdit]);
-
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !isPurchasesClientHydrated) return [];
@@ -105,8 +90,7 @@ export function PurchasesClient() {
   }, [purchaseReturns, financialYear, isAppHydrating, isPurchasesClientHydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
-    console.info('PurchasesClient: handleAddOrUpdatePurchase called with:', JSON.stringify(purchase));
-    const processedPurchase = calculatePurchaseEntry(purchase as any);
+    const processedPurchase = calculatePurchaseEntry(purchase);
     setPurchases(prevPurchases => {
       const isEditing = prevPurchases.some(p => p.id === processedPurchase.id);
       return isEditing ? prevPurchases.map(p => p.id === processedPurchase.id ? processedPurchase : p) : [{ ...processedPurchase, id: processedPurchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
@@ -115,31 +99,18 @@ export function PurchasesClient() {
     toast({ title: "Success!", description: purchases.some(p=>p.id === processedPurchase.id) ? "Purchase updated." : "Purchase added." });
   }, [setPurchases, toast, purchases]);
 
-  // Refs to log current state values inside handleEditPurchase
-  const isAddPurchaseFormOpenRef = React.useRef(isAddPurchaseFormOpen);
-  const purchaseToEditRef = React.useRef(purchaseToEdit);
-  React.useEffect(() => { isAddPurchaseFormOpenRef.current = isAddPurchaseFormOpen; }, [isAddPurchaseFormOpen]);
-  React.useEffect(() => { purchaseToEditRef.current = purchaseToEdit; }, [purchaseToEdit]);
-
-  // Simplified for debugging, removed useCallback temporarily
   const handleEditPurchase = (purchase: Purchase) => {
-    console.info('PurchasesClient: handleEditPurchase called for purchase ID:', purchase.id);
-    console.info('PurchasesClient: Current isAddPurchaseFormOpen (before set):', isAddPurchaseFormOpenRef.current);
-    console.info('PurchasesClient: Current purchaseToEdit (before set):', purchaseToEditRef.current ? purchaseToEditRef.current.id : null);
     setPurchaseToEdit(purchase);
-    setIsAddPurchaseFormOpen(true); // This should trigger the useEffect for isAddPurchaseFormOpen
-    console.info('PurchasesClient: Set isAddPurchaseFormOpen to true. purchaseToEdit is now:', purchase.id);
+    setIsAddPurchaseFormOpen(true);
   };
 
   const handleDeletePurchaseAttempt = React.useCallback((purchaseId: string) => {
-    console.info('PurchasesClient: handleDeletePurchaseAttempt for ID:', purchaseId);
     setPurchaseToDeleteId(purchaseId);
     setShowDeleteConfirm(true);
   }, []);
 
   const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {
-      console.info('PurchasesClient: confirmDeletePurchase for ID:', purchaseToDeleteId);
       setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
       toast({ title: "Deleted!", description: "Purchase record removed.", variant: "destructive" });
       setPurchaseToDeleteId(null); setShowDeleteConfirm(false);
@@ -147,7 +118,6 @@ export function PurchasesClient() {
   }, [purchaseToDeleteId, setPurchases, toast]);
 
   const handleAddOrUpdatePurchaseReturn = React.useCallback((prData: PurchaseReturn) => {
-    console.info('PurchasesClient: handleAddOrUpdatePurchaseReturn called with:', JSON.stringify(prData));
     setPurchaseReturns(prevReturns => {
       const isEditing = prevReturns.some(pr => pr.id === prData.id);
       return isEditing ? prevReturns.map(pr => pr.id === prData.id ? prData : pr) : [{ ...prData, id: prData.id || `pr-${Date.now()}` }, ...prevReturns];
@@ -157,20 +127,17 @@ export function PurchasesClient() {
   }, [setPurchaseReturns, toast, purchaseReturns]);
 
   const handleEditPurchaseReturn = React.useCallback((pr: PurchaseReturn) => {
-    console.info('PurchasesClient: handleEditPurchaseReturn called for PR ID:', pr.id);
     setPurchaseReturnToEdit(pr);
     setIsAddPurchaseReturnFormOpen(true);
   }, []);
 
   const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => {
-    console.info('PurchasesClient: handleDeletePurchaseReturnAttempt for PR ID:', prId);
     setPurchaseReturnToDeleteId(prId);
     setShowDeleteReturnConfirm(true);
   }, []);
 
   const confirmDeletePurchaseReturn = React.useCallback(() => {
     if (purchaseReturnToDeleteId) {
-      console.info('PurchasesClient: confirmDeletePurchaseReturn for PR ID:', purchaseReturnToDeleteId);
       setPurchaseReturns(prev => prev.filter(pr => pr.id !== purchaseReturnToDeleteId));
       toast({ title: "Deleted!", description: "Purchase return record removed.", variant: "destructive" });
       setPurchaseReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
@@ -178,38 +145,32 @@ export function PurchasesClient() {
   }, [purchaseReturnToDeleteId, setPurchaseReturns, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    console.info(`PurchasesClient: handleMasterDataUpdate for type "${type}", item ID: ${newItem.id}`);
     const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { Supplier: setSuppliers, Agent: setAgents, Warehouse: setWarehouses, Transporter: setTransporters };
     const setter = setters[type];
     if (setter) setter(prev => { const newSet = new Map(prev.map(item => [item.id, item])); newSet.set(newItem.id, newItem); return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name)); });
   }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
 
   const openAddPurchaseForm = React.useCallback(() => {
-    console.info('PurchasesClient: openAddPurchaseForm called.');
     setPurchaseToEdit(null);
     setIsAddPurchaseFormOpen(true);
   }, []);
 
   const closeAddPurchaseForm = React.useCallback(() => {
-    console.info('PurchasesClient: closeAddPurchaseForm called.');
     setIsAddPurchaseFormOpen(false);
     setPurchaseToEdit(null);
   }, []);
 
   const openAddPurchaseReturnForm = React.useCallback(() => {
-    console.info('PurchasesClient: openAddPurchaseReturnForm called.');
     setPurchaseReturnToEdit(null);
     setIsAddPurchaseReturnFormOpen(true);
   }, []);
 
   const closeAddPurchaseReturnForm = React.useCallback(() => {
-    console.info('PurchasesClient: closeAddPurchaseReturnForm called.');
     setIsAddPurchaseReturnFormOpen(false);
     setPurchaseReturnToEdit(null);
   }, []);
 
   const triggerDownloadPurchasePdf = React.useCallback((purchase: Purchase) => {
-    console.info('PurchasesClient: triggerDownloadPurchasePdf for purchase ID:', purchase.id);
     setPurchaseForPdf(purchase);
   }, []);
 

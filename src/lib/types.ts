@@ -37,13 +37,8 @@ export interface Purchase {
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // per KG
-  expenses?: number; // Other misc expenses added to cost
-  transportRatePerKg?: number; // Transport cost per KG (user input)
-  transporterId?: string;
-  transporterName?: string;
-  transportRate?: number; // Calculated: transportRatePerKg * (quantity * 50kg assumed per bag or actual weight)
-  totalAmount: number; // (netWeight * rate) + expenses + transportRate
-  effectiveRate?: number; // totalAmount / netWeight
+  totalAmount: number; // (netWeight * rate)
+  effectiveRate: number; // per KG, for purchases this is the same as rate
   locationId: string;
   locationName?: string;
 }
@@ -162,6 +157,10 @@ export interface LocationTransfer {
   toWarehouseName?: string;
   transporterId?: string;
   transporterName?: string;
+  transportCharges?: number;
+  packingCharges?: number;
+  loadingCharges?: number;
+  miscExpenses?: number;
   items: LocationTransferItem[]; // Use the updated item type
   notes?: string;
 }

@@ -12,12 +12,9 @@ interface PurchaseChittiPrintProps {
 export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purchase }) => {
   if (!purchase) return null;
 
-  const itemValue = (purchase.netWeight || 0) * (purchase.rate || 0);
-  const grandTotal = purchase.totalAmount; // This should already include expenses and transport
+  const grandTotal = purchase.totalAmount;
 
   return (
-    // Aiming for A5: 148mm x 210mm.
-    // Using w-[550px] for html2canvas capture target to ensure good resolution for A5.
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
       <style jsx global>{`
         .print-chitti-styles { font-family: Arial, sans-serif; line-height: 1.4; }
@@ -62,12 +59,6 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
           <span className="label-col">Location (Warehouse):</span>
           <span className="value-col font-bold">{purchase.locationName || purchase.locationId}</span>
         </div>
-        {purchase.transporterName && (
-          <div className="flex-between">
-            <span className="label-col">Transporter:</span>
-            <span className="value-col font-bold">{purchase.transporterName}</span>
-          </div>
-        )}
       </div>
       <hr className="mt-2" />
 
@@ -86,32 +77,6 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
             {purchase.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
-      </div>
-      <hr className="mt-2"/>
-      
-      <div className="mt-2 space-y-1">
-        <div className="flex-between">
-          <span className="label-col">Basic Value:</span>
-          <span className="value-col font-bold">
-            {itemValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        </div>
-        {(purchase.expenses || 0) > 0 && (
-          <div className="flex-between">
-            <span className="label-col">Other Expenses:</span>
-            <span className="value-col">
-              {(purchase.expenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-        )}
-        {(purchase.transportRate || 0) > 0 && (
-          <div className="flex-between">
-            <span className="label-col">Transport Charges:</span>
-            <span className="value-col">
-              {(purchase.transportRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </div>
-        )}
       </div>
       
       <hr className="border-black mt-2 mb-1"/>
