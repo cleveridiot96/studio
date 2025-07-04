@@ -7,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, MoreVertical, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon } from "lucide-react";
+import { Archive, Boxes, Printer, MoreVertical, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +63,7 @@ export interface AggregatedInventoryItem {
   purchaseDate?: string;
   purchaseRate: number;
   effectiveRate: number;
+  cogs: number; // Cost of Goods for remaining stock
   daysInStock?: number;
   turnoverRate?: number;
   isDeadStock?: boolean; 
@@ -113,7 +114,7 @@ export function InventoryClient() {
         totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
         totalTransferredInBags: 0, totalTransferredInWeight: 0,
         currentBags: 0, currentWeight: 0,
-        purchaseDate: p.date, purchaseRate: p.rate, effectiveRate: p.effectiveRate,
+        purchaseDate: p.date, purchaseRate: p.rate, effectiveRate: p.effectiveRate, cogs: 0,
       });
     });
 
@@ -147,7 +148,7 @@ export function InventoryClient() {
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
             purchaseRate: originalPurchase?.rate || 0,
-            effectiveRate: 0,
+            effectiveRate: 0, cogs: 0,
           };
           inventoryMap.set(toKey, toEntry);
         }
@@ -198,6 +199,8 @@ export function InventoryClient() {
       item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight
                         - item.totalSoldWeight - item.totalTransferredOutWeight - item.totalPurchaseReturnedWeight;
       
+      item.cogs = item.currentWeight * item.purchaseRate;
+
       if (item.purchaseDate) {
         item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
       }
@@ -221,14 +224,15 @@ export function InventoryClient() {
   }, [allAggregatedInventory, archivedLotKeys]);
 
   const warehouseSummary = React.useMemo(() => {
-    const summary: Record<string, { id: string; name: string; bags: number; netWeight: number }> = {};
+    const summary: Record<string, { id: string; name: string; bags: number; netWeight: number; totalValue: number }> = {};
     activeInventory.forEach(item => {
       if (item.currentBags > 0) {
         if (!summary[item.locationId]) {
-          summary[item.locationId] = { id: item.locationId, name: item.locationName, bags: 0, netWeight: 0 };
+          summary[item.locationId] = { id: item.locationId, name: item.locationName, bags: 0, netWeight: 0, totalValue: 0 };
         }
         summary[item.locationId].bags += item.currentBags;
         summary[item.locationId].netWeight += item.currentWeight;
+        summary[item.locationId].totalValue += item.cogs;
       }
     });
     return Object.values(summary).sort((a,b) => a.name.localeCompare(b.name));
@@ -265,7 +269,6 @@ export function InventoryClient() {
     return warehouses.find(w => w.id === selectedWarehouseId)?.name || "Selected Warehouse";
   };
 
-
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
   return (
@@ -295,6 +298,7 @@ export function InventoryClient() {
                 <div>
                   <p className="text-2xl font-bold">{activeInventory.reduce((sum, item) => sum + item.currentBags, 0).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
                   <p className="text-sm text-muted-foreground">{activeInventory.reduce((sum, item) => sum + item.currentWeight, 0).toLocaleString()} kg</p>
+                  <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{activeInventory.reduce((sum, item) => sum + item.cogs, 0).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                 </div>
             </button>
             {warehouseSummary.map(wh => (
@@ -310,6 +314,7 @@ export function InventoryClient() {
                   <div>
                     <p className="text-2xl font-bold">{wh.bags.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
                     <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} kg</p>
+                    <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{wh.totalValue.toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                   </div>
               </button>
             ))}
@@ -319,8 +324,8 @@ export function InventoryClient() {
 
       <Tabs defaultValue="active" className="w-full pt-6">
         <TabsList className="grid w-full grid-cols-2 h-auto no-print">
-          <TabsTrigger value="active" className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Active Stock</TabsTrigger>
-          <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived</TabsTrigger>
+          <TabsTrigger value="active" className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Vakkal-Wise Stock Table</TabsTrigger>
+          <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived Vakkals</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="mt-6">
           <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle></CardHeader><CardContent><InventoryTable items={filteredActiveInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
@@ -331,9 +336,16 @@ export function InventoryClient() {
       </Tabs>
 
       <div className="mt-8 no-print">
-        <h2 className="text-xl font-semibold text-foreground mb-3">Stock Activity Graph</h2>
+        <h2 className="text-xl font-semibold text-foreground mb-3">Party/Broker Leaderboard</h2>
         <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[200px] flex items-center justify-center">
-            <p className="text-muted-foreground">Graph section under development.</p>
+            <p className="text-muted-foreground">Leaderboard section is under development.</p>
+        </Card>
+      </div>
+
+      <div className="mt-8 no-print">
+        <h2 className="text-xl font-semibold text-foreground mb-3">Stock Activity Feed</h2>
+        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[200px] flex items-center justify-center">
+            <p className="text-muted-foreground">Activity feed section under development.</p>
         </Card>
       </div>
 

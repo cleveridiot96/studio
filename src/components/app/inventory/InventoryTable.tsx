@@ -38,6 +38,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
             <TableHead>Location</TableHead>
             <TableHead className="text-right">Current Bags</TableHead>
             <TableHead className="text-right">Current Wt (kg)</TableHead>
+            <TableHead className="text-right">Rate (₹/kg)</TableHead>
+            <TableHead className="text-right">COGS (₹)</TableHead>
             <TableHead>Source</TableHead>
             <TableHead>Last Updated</TableHead>
             <TableHead className="text-center">Status</TableHead>
@@ -60,6 +62,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               <TableCell>{item.locationName}</TableCell>
               <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
               <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
+              <TableCell className="text-right">{item.purchaseRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+              <TableCell className="text-right font-medium">{item.cogs.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
               <TableCell>{item.sourceType === 'Transfer' ? item.sourceDetails : 'Purchase'}</TableCell>
               <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
               <TableCell className="text-center">
