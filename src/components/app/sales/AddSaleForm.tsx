@@ -366,6 +366,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       calculatedExtraBrokerage: currentExtraBrokerageAmount,
       notes: submissionValues.notes,
       calculatedProfit: currentProfit,
+      costOfGoodsSold: currentCostOfGoodsSold,
     };
     onSubmit(saleData);
     setIsSubmitting(false);

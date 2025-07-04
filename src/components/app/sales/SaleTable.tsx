@@ -67,7 +67,9 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((sale) => (
+            {data.map((sale) => {
+              const grossProfit = sale.goodsValue - (sale.costOfGoodsSold || 0);
+              return (
               <TableRow key={sale.id}>
                 <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
                 <TableCell>
@@ -95,7 +97,19 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                 <TableCell className="text-right font-semibold">{(sale.billedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-right">{(sale.goodsValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                  {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="text-sm">
+                        <p>Gross Profit: <span className="font-bold">₹{grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+                        <p className="text-xs text-muted-foreground">(Goods Value - Landed Cost)</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 </TableCell>
                 <TableCell className="text-center">
                    <DropdownMenu>
@@ -125,7 +139,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
         <ScrollBar orientation="horizontal" />

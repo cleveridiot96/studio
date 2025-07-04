@@ -72,6 +72,7 @@ export interface Sale {
   calculatedExtraBrokerage?: number; // Total amount from extraBrokeragePerKg
   notes?: string;
   calculatedProfit?: number; // Based on goodsValue - COGS - all expenses
+  costOfGoodsSold?: number; // Cost of goods sold at the time of this transaction
 }
 
 export interface PurchaseReturn {
