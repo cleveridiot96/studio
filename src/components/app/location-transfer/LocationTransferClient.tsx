@@ -140,6 +140,7 @@ export function LocationTransferClient() {
             const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
             let toEntry = stockMap.get(toKey);
             if (!toEntry) {
+                const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
                 toEntry = {
                     lotNumber: item.newLotNumber,
                     locationId: transfer.toWarehouseId,
@@ -287,9 +288,19 @@ export function LocationTransferClient() {
       <TooltipProvider>
         <Tabs defaultValue="stockOverview" className="w-full">
           <CardHeader className="p-0">
-            <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none no-print">
-              <TabsTrigger value="stockOverview" className="py-3 text-base"><Boxes className="mr-2 h-5 w-5"/>Stock Overview</TabsTrigger>
-              <TabsTrigger value="transferHistory" className="py-3 text-base"><ListChecks className="mr-2 h-5 w-5"/>Transfer History</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none no-print p-1 bg-muted gap-1">
+              <TabsTrigger
+                value="stockOverview"
+                className="py-3 text-base text-white bg-sky-600 hover:bg-sky-700 data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-md"
+              >
+                <Boxes className="mr-2 h-5 w-5"/>Stock Overview
+              </TabsTrigger>
+              <TabsTrigger
+                value="transferHistory"
+                className="py-3 text-base text-white bg-teal-600 hover:bg-teal-700 data-[state=active]:bg-teal-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-md"
+              >
+                <ListChecks className="mr-2 h-5 w-5"/>Transfer History
+              </TabsTrigger>
             </TabsList>
           </CardHeader>
           <TabsContent value="stockOverview">
