@@ -80,6 +80,18 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      // If no options are available and user hits enter, trigger add new if available
+      if (filteredOptions.length === 0 && search.length > 0 && onAddNew) {
+        e.preventDefault();
+        onAddNew();
+        setOpen(false);
+        setSearch("");
+      }
+    }
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -105,6 +117,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             value={search}
             onValueChange={setSearch}
             autoFocus
+            onKeyDown={handleKeyDown}
             />
           <TooltipProvider>
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
