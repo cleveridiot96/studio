@@ -103,7 +103,7 @@ export default function DashboardPage() {
       description: "View party financial statements",
       href: "/accounts-ledger",
       iconName: "BookCopy",
-      className: "bg-[#a1ff0a] hover:bg-[#a1ff0a]/90 text-black",
+      className: "bg-[#1beec7] hover:bg-[#1beec7]/90 text-black",
     },
     {
       title: "Profit Analysis",

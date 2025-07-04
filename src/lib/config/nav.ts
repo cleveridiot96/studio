@@ -69,7 +69,7 @@ export const navItems: NavItem[] = [
     title: 'Accounts Ledger',
     href: '/accounts-ledger',
     iconName: 'BookCopy',
-    iconColor: 'bg-lime-500',
+    iconColor: 'bg-cyan-500',
   },
   {
     title: 'Payments',
