@@ -270,6 +270,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return currentNetWeight * effectiveRateForLot;
   }, [netWeight, effectiveRateForLot]);
 
+  const grossProfit = React.useMemo(() => {
+    return goodsValueForCalc - costOfGoodsSold;
+  }, [goodsValueForCalc, costOfGoodsSold]);
+
   const calculatedProfit = React.useMemo(() => {
     const totalExpenses = costOfGoodsSold + transportCostInput + packingCostInput + labourCostInput + calculatedBrokerageCommission + calculatedExtraBrokerage;
     return finalBilledAmountForDisplay - totalExpenses;
@@ -374,9 +378,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return availableStock
       .map(p => {
         const availableBags = p.currentBags;
-        const rateDisplay = typeof p.effectiveRate === 'number' ? p.effectiveRate.toFixed(2) : 'N/A';
+        const rateDisplay = typeof p.purchaseRate === 'number' ? p.purchaseRate.toFixed(2) : 'N/A';
         
-        let tooltipForLot = `Landed Cost Rate: ₹${rateDisplay}/kg.`;
+        let tooltipForLot = `Purchase Rate: ₹${rateDisplay}/kg.`;
         if (p.locationName) {
             tooltipForLot += ` Location: ${p.locationName}`;
         }
@@ -622,6 +626,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         <div className="text-xs pl-2">
                            (Landed Cost Rate: ₹{effectiveRateForLot.toFixed(2)}/kg × Net Weight: { (parseFloat(String(netWeight || 0))).toFixed(2)} kg)
                         </div>
+                        
+                        <div className={`flex justify-between font-bold ${grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
+                            <span>Gross Profit (before expenses):</span> <span>₹{grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+
+                        {(transportCostInput > 0 || packingCostInput > 0 || labourCostInput > 0 || calculatedBrokerageCommission > 0 || calculatedExtraBrokerage > 0) && (
+                            <hr className="my-1 border-muted-foreground/50" />
+                        )}
+
                         {transportCostInput > 0 && (
                             <div className="flex justify-between"><span>Less: Transport Cost:</span> <span className="font-semibold">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                         )}
