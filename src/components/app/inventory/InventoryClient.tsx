@@ -35,6 +35,7 @@ const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
 
+const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
 export interface AggregatedInventoryItem { // Exporting the type
   lotNumber: string;
@@ -199,7 +200,7 @@ export function InventoryClient() {
         item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
       }
       const totalInitialBagsForTurnover = item.totalPurchasedBags + item.totalTransferredInBags;
-      item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.soldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
+      item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
       item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
 
       // Only show lots that were touched or have remaining stock
