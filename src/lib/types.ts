@@ -5,7 +5,8 @@ export interface NavItem {
   title: string;
   href: string;
   iconName: string;
-  iconColor?: string; // Added for individual icon colors
+  iconColor?: string; // Background color for the icon's circle
+  textColor?: string; // Optional text color for the icon
   label?: string;
   disabled?: boolean;
   external?: boolean;

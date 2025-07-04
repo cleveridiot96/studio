@@ -70,7 +70,7 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 sidebarState === 'expanded' && "mr-3",
                 isActive 
                     ? "bg-sidebar-primary-foreground text-sidebar-primary"
-                    : item.iconColor ? `${item.iconColor} text-white` : "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : item.iconColor ? `${item.iconColor} ${item.textColor || 'text-white'}` : "bg-sidebar-accent text-sidebar-accent-foreground"
             )}>
               <IconComponent className="h-5 w-5" />
             </div>
