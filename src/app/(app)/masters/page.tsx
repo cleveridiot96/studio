@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, Building, Lock } from "lucide-react";
@@ -38,7 +37,7 @@ const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 type MasterPageTabKey = MasterItemType | 'All';
 
 const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; colorClass: string; }[] = [
-  { value: "All", label: "All Parties", icon: List, colorClass: 'bg-slate-700 hover:bg-slate-800 text-white data-[state=active]:bg-slate-800' },
+  { value: "All", label: "All Parties", icon: List, colorClass: 'bg-red-800 hover:bg-red-900 text-white data-[state=active]:bg-red-900' },
   { value: "Customer", label: "Customers", icon: Users, colorClass: 'bg-blue-500 hover:bg-blue-600 text-white data-[state=active]:bg-blue-600' },
   { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600' },
   { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600' },
@@ -329,6 +328,7 @@ export default function MastersPage() {
 
 
     
+
 
 
 
