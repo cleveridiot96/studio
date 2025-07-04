@@ -235,6 +235,7 @@ export function AccountsLedgerClient() {
             <h1 className="text-3xl font-bold text-foreground">Accounts Ledger</h1>
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <MasterDataCombobox
+                triggerId="accounts-ledger-party-selector"
                 value={selectedPartyId}
                 onChange={(value) => handlePartySelect(value || "")}
                 options={partyOptions}
@@ -343,11 +344,19 @@ export function AccountsLedgerClient() {
           </CardFooter>
         </Card>
       ) : (
-        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print">
-          <div className="text-center"><BookCopy className="h-16 w-16 text-accent mb-4 mx-auto" />
+        <Card
+          className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={() => {
+            const trigger = document.getElementById('accounts-ledger-party-selector');
+            trigger?.click();
+          }}
+        >
+          <div className="text-center">
+            <BookCopy className="h-16 w-16 text-accent mb-4 mx-auto" />
             <p className="text-xl text-muted-foreground">
               {allMasters.length === 0 && hydrated ? "No parties found." : "Please select a party to view their accounts ledger."}
             </p>
+            <p className="text-sm text-muted-foreground mt-2">(Click here to select)</p>
           </div>
         </Card>
       )}
