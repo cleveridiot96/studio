@@ -128,7 +128,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <SidebarProvider defaultOpen={false} collapsible="icon">
         <AppExitHandler />
         <div className="flex flex-col h-screen bg-background">
-          <Sidebar className="border-r border-sidebar-border shadow-lg overflow-y-auto print:hidden" collapsible="icon">
+          <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
                 <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
@@ -137,7 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </h1>
               </Link>
             </SidebarHeader>
-            <SidebarContent className="py-2 overflow-y-auto">
+            <SidebarContent className="py-2">
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-4 border-t border-sidebar-border">
