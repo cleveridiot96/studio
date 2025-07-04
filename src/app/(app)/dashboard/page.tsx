@@ -96,7 +96,7 @@ export default function DashboardPage() {
       description: "View party stock ledgers",
       href: "/ledger",
       iconName: "BookUser",
-      className: "bg-gray-700 hover:bg-gray-800 text-white",
+      className: "bg-red-800 hover:bg-red-900 text-white",
     },
     {
       title: "Profit Analysis",
