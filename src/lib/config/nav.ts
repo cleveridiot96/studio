@@ -14,6 +14,7 @@ import {
   LineChart,
   ArrowRightLeft,
   Rocket, // Added for consistency with dashboard if it exists
+  BookCopy,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -62,7 +63,13 @@ export const navItems: NavItem[] = [
     title: 'Stock Ledger',
     href: '/ledger',
     iconName: 'BookUser',
-    iconColor: 'bg-red-800', // Matches dashboard tile
+    iconColor: 'bg-red-800',
+  },
+  {
+    title: 'Accounts Ledger',
+    href: '/accounts-ledger',
+    iconName: 'BookCopy',
+    iconColor: 'bg-lime-500',
   },
   {
     title: 'Payments',

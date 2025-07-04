@@ -99,6 +99,13 @@ export default function DashboardPage() {
       className: "bg-red-800 hover:bg-red-900 text-white",
     },
     {
+      title: "Accounts Ledger",
+      description: "View party financial statements",
+      href: "/accounts-ledger",
+      iconName: "BookCopy",
+      className: "bg-[#a1ff0a] hover:bg-[#a1ff0a]/90 text-black",
+    },
+    {
       title: "Profit Analysis",
       description: "View profit/loss reports",
       href: "/profit-analysis",

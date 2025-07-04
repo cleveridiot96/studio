@@ -26,6 +26,7 @@ import {
   ArrowRightLeft,
   ClipboardList,
   Rocket,
+  BookCopy,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -45,6 +46,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   ArrowRightLeft,
   ClipboardList,
   Rocket,
+  BookCopy,
 };
 
 interface ClientSidebarMenuProps {
