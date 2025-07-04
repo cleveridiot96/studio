@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import type { Warehouse, Transporter } from '@/lib/types';
+import type { Warehouse, Transporter, LocationTransfer } from '@/lib/types';
 
 interface AggregatedStockItemForSchema {
   lotNumber: string;
@@ -12,7 +12,8 @@ interface AggregatedStockItemForSchema {
 export const locationTransferSchema = (
     warehouses: Warehouse[],
     transporters: Transporter[],
-    availableStock: AggregatedStockItemForSchema[]
+    availableStock: AggregatedStockItemForSchema[],
+    transferToEdit?: LocationTransfer | null
 ) => z.object({
   date: z.date({ required_error: "Transfer date is required." }),
   fromWarehouseId: z.string().min(1, "Source warehouse is required.")
@@ -40,17 +41,28 @@ export const locationTransferSchema = (
     const stockInfo = availableStock.find(
       s => s.lotNumber === item.lotNumber && s.locationId === data.fromWarehouseId
     );
-    if (!stockInfo) {
+    
+    let availableBagsInStock = stockInfo?.currentBags || 0;
+
+    // If editing this transfer, temporarily add back the transferred bags to the available stock for validation
+    if (transferToEdit && transferToEdit.fromWarehouseId === data.fromWarehouseId && item.lotNumber) {
+        const originalItemInTransfer = transferToEdit.items.find(i => i.originalLotNumber === item.lotNumber);
+        if (originalItemInTransfer) {
+            availableBagsInStock += originalItemInTransfer.bagsToTransfer;
+        }
+    }
+
+    if (!stockInfo && availableBagsInStock <= 0) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Lot "${item.lotNumber}" not found or has no stock in the source warehouse.`,
             path: ["items", index, "lotNumber"],
         });
     } else {
-      if (item.bagsToTransfer > stockInfo.currentBags) {
+      if (item.bagsToTransfer > availableBagsInStock) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Bags for lot ${item.lotNumber} (${item.bagsToTransfer}) exceed available stock (${stockInfo.currentBags}).`,
+          message: `Bags (${item.bagsToTransfer}) exceed available stock (${availableBagsInStock}).`,
           path: ["items", index, "bagsToTransfer"],
         });
       }

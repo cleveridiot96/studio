@@ -64,7 +64,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const [miscChargesManuallySet, setMiscChargesManuallySet] = React.useState(!!transferToEdit?.miscExpenses);
 
 
-  const formSchema = React.useMemo(() => locationTransferSchema(warehouses, transporters, availableStock), [warehouses, transporters, availableStock]);
+  const formSchema = React.useMemo(() => locationTransferSchema(warehouses, transporters, availableStock, transferToEdit), [warehouses, transporters, availableStock, transferToEdit]);
 
   const getDefaultValues = React.useCallback((): LocationTransferFormValues => {
     if (transferToEdit) {
