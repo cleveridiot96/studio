@@ -25,7 +25,8 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
 import { cn } from "@/lib/utils";
-
+import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
+import { StockActivityFeed } from "./StockActivityFeed";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
@@ -334,19 +335,10 @@ export function InventoryClient() {
           <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock: {getActiveFilterName()}</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={filteredArchivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} /></CardContent></Card>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-8 no-print">
-        <h2 className="text-xl font-semibold text-foreground mb-3">Party/Broker Leaderboard</h2>
-        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[200px] flex items-center justify-center">
-            <p className="text-muted-foreground">Leaderboard section is under development.</p>
-        </Card>
-      </div>
-
-      <div className="mt-8 no-print">
-        <h2 className="text-xl font-semibold text-foreground mb-3">Stock Activity Feed</h2>
-        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[200px] flex items-center justify-center">
-            <p className="text-muted-foreground">Activity feed section under development.</p>
-        </Card>
+      
+      <div className="mt-8 no-print grid md:grid-cols-2 gap-6">
+        <PartyBrokerLeaderboard items={allAggregatedInventory} />
+        <StockActivityFeed purchases={purchases} sales={sales} locationTransfers={locationTransfers} purchaseReturns={purchaseReturns} saleReturns={saleReturns} />
       </div>
 
       {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>This action will hide the lot "<strong>{itemToArchive.lotNumber}</strong>" from the main inventory view. You can view and restore it from the "Archived" tab.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
