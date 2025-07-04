@@ -33,10 +33,17 @@ export const locationTransferSchema = (
         netWeightToTransfer: z.coerce.number().min(0.01, "Net weight must be > 0."),
     })
   ).min(1, "At least one item must be added to the transfer."),
-}).refine(data => data.fromWarehouseId !== data.toWarehouseId, {
-  message: "Source and destination warehouses cannot be the same.",
-  path: ["toWarehouseId"],
 }).superRefine((data, ctx) => {
+  // Prevent transfer to the same warehouse
+  if (data.fromWarehouseId && data.toWarehouseId && data.fromWarehouseId === data.toWarehouseId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Source and destination warehouses cannot be the same.",
+      path: ["toWarehouseId"],
+    });
+  }
+
+  // Validate items
   data.items.forEach((item, index) => {
     const stockInfo = availableStock.find(
       s => s.lotNumber === item.lotNumber && s.locationId === data.fromWarehouseId
