@@ -7,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, MoreVertical, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart } from "lucide-react";
+import { Archive, Boxes, Printer, MoreVertical, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,8 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
+import { cn } from "@/lib/utils";
+
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
@@ -85,6 +87,7 @@ export function InventoryClient() {
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
   const [notifiedLowStock, setNotifiedLowStock] = React.useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = React.useState(false);
+  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setHydrated(true);
@@ -228,8 +231,18 @@ export function InventoryClient() {
         summary[item.locationId].netWeight += item.currentWeight;
       }
     });
-    return Object.values(summary);
+    return Object.values(summary).sort((a,b) => a.name.localeCompare(b.name));
   }, [activeInventory]);
+
+  const filteredActiveInventory = React.useMemo(() => {
+    if (!selectedWarehouseId) return activeInventory;
+    return activeInventory.filter(item => item.locationId === selectedWarehouseId);
+  }, [activeInventory, selectedWarehouseId]);
+
+  const filteredArchivedInventory = React.useMemo(() => {
+    if (!selectedWarehouseId) return archivedInventory;
+    return archivedInventory.filter(item => item.locationId === selectedWarehouseId);
+  }, [archivedInventory, selectedWarehouseId]);
 
   const handleArchiveAttempt = (item: AggregatedInventoryItem) => {
     if (item.currentBags <= 0) { setItemToArchive(item); setShowArchiveConfirm(true); }
@@ -246,6 +259,12 @@ export function InventoryClient() {
     setArchivedLotKeys(prev => prev.filter(key => key !== `${item.lotNumber}-${item.locationId}`));
     toast({ title: "Lot Restored", description: `Lot "${item.lotNumber}" has been restored to the active inventory view.` });
   };
+
+  const getActiveFilterName = () => {
+    if (!selectedWarehouseId) return "All Warehouses";
+    return warehouses.find(w => w.id === selectedWarehouseId)?.name || "Selected Warehouse";
+  };
+
 
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
@@ -264,16 +283,36 @@ export function InventoryClient() {
       
       <div className="no-print">
         <h2 className="text-xl font-semibold text-foreground mb-3">Warehouse Overview</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {warehouseSummary.map(wh => (
-            <Card key={wh.id} className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2"><CardTitle className="text-lg">{wh.name}</CardTitle></CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{wh.bags.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
-                <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} kg</p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <button
+                onClick={() => setSelectedWarehouseId(null)}
+                className={cn(
+                    "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full",
+                    !selectedWarehouseId ? 'ring-2 ring-primary bg-primary/10' : 'bg-card'
+                )}
+            >
+                <CardTitle className="text-lg flex items-center gap-2"><WarehouseIcon className="h-5 w-5 text-primary"/>All Warehouses</CardTitle>
+                <div>
+                  <p className="text-2xl font-bold">{activeInventory.reduce((sum, item) => sum + item.currentBags, 0).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
+                  <p className="text-sm text-muted-foreground">{activeInventory.reduce((sum, item) => sum + item.currentWeight, 0).toLocaleString()} kg</p>
+                </div>
+            </button>
+            {warehouseSummary.map(wh => (
+              <button
+                key={wh.id}
+                onClick={() => setSelectedWarehouseId(wh.id)}
+                className={cn(
+                    "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full",
+                    selectedWarehouseId === wh.id ? 'ring-2 ring-primary bg-primary/10' : 'bg-card'
+                )}
+              >
+                  <CardTitle className="text-lg">{wh.name}</CardTitle>
+                  <div>
+                    <p className="text-2xl font-bold">{wh.bags.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
+                    <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} kg</p>
+                  </div>
+              </button>
+            ))}
            {warehouseSummary.length === 0 && <p className="text-muted-foreground col-span-full">No active stock in any warehouse.</p>}
         </div>
       </div>
@@ -284,10 +323,10 @@ export function InventoryClient() {
           <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory Details</CardTitle></CardHeader><CardContent><InventoryTable items={activeInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
+          <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle></CardHeader><CardContent><InventoryTable items={filteredActiveInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
         </TabsContent>
          <TabsContent value="archived" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={archivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} /></CardContent></Card>
+          <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock: {getActiveFilterName()}</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={filteredArchivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} /></CardContent></Card>
         </TabsContent>
       </Tabs>
 
