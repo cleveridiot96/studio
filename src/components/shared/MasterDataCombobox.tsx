@@ -30,6 +30,7 @@ interface MasterDataComboboxProps {
   disabled?: boolean;
   name?: string; // Optional: for external refs or testing, but not for RHF control here
   className?: string;
+  triggerId?: string;
 }
 
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
@@ -43,6 +44,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   onAddNew,
   disabled,
   className,
+  triggerId,
   // name prop is kept if needed for other purposes, but not for useController
 }) => {
   const [open, setOpen] = React.useState(false);
@@ -82,6 +84,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={triggerId}
           variant="outline"
           role="combobox"
           aria-expanded={open}
