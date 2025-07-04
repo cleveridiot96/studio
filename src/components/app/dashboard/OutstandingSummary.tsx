@@ -1,14 +1,11 @@
+
 "use client";
 import React, { useMemo, useState } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, ArrowRight } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, differenceInDays, parseISO } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 // All the data keys
 const keys = {
@@ -24,106 +21,6 @@ const keys = {
   brokers: 'masterBrokers',
 };
 
-interface OutstandingEntry {
-  partyId: string;
-  partyName: string;
-  partyType: string;
-  amount: number;
-  lastTransactionDate: string;
-  daysOutstanding: number;
-}
-
-type SortKey = 'partyName' | 'amount' | 'daysOutstanding';
-type SortDirection = 'asc' | 'desc';
-
-const OutstandingTable = ({ title, data, type }: { title: string; data: OutstandingEntry[]; type: 'receivable' | 'payable' }) => {
-    const [sortKey, setSortKey] = useState<SortKey>('daysOutstanding');
-    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-    const router = useRouter();
-
-    const sortedData = useMemo(() => {
-        return [...data].sort((a, b) => {
-            let compareA = a[sortKey];
-            let compareB = b[sortKey];
-            
-            if(sortKey === 'partyName') {
-                return sortDirection === 'asc' ? String(compareA).localeCompare(String(compareB)) : String(compareB).localeCompare(String(compareA));
-            } else {
-                 return sortDirection === 'asc' ? (compareA as number) - (compareB as number) : (compareB as number) - (compareA as number);
-            }
-        });
-    }, [data, sortKey, sortDirection]);
-
-    const handleSort = (key: SortKey) => {
-        if (sortKey === key) {
-            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortKey(key);
-            setSortDirection('desc');
-        }
-    };
-
-    const getSortIcon = (key: SortKey) => {
-        if (sortKey !== key) return <ArrowUpDown className="h-4 w-4 ml-2 opacity-30 inline-block" />;
-        return sortDirection === 'desc' ? '▼' : '▲';
-    }
-
-    if(data.length === 0) {
-        return (
-            <Card>
-                <CardHeader><CardTitle className="text-lg">{title}</CardTitle></CardHeader>
-                <CardContent><p className="text-muted-foreground text-center py-4">No outstanding {type}s.</p></CardContent>
-            </Card>
-        )
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className={`text-lg ${type === 'receivable' ? 'text-green-700' : 'text-red-700'}`}>{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-                <ScrollArea className="h-[300px]">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer hover:bg-muted/50">
-                                    Party Name {getSortIcon('partyName')}
-                                </TableHead>
-                                <TableHead onClick={() => handleSort('amount')} className="cursor-pointer hover:bg-muted/50 text-right">
-                                    Amount Due {getSortIcon('amount')}
-                                </TableHead>
-                                <TableHead onClick={() => handleSort('daysOutstanding')} className="cursor-pointer hover:bg-muted/50 text-right">
-                                    Days Since Last Tx {getSortIcon('daysOutstanding')}
-                                </TableHead>
-                                <TableHead className="text-center w-[80px]">Ledger</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sortedData.map(item => (
-                                <TableRow key={item.partyId} className="cursor-pointer hover:bg-muted/20" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
-                                    <TableCell>
-                                        <div className="font-medium">{item.partyName}</div>
-                                        <div className="text-xs text-muted-foreground">{item.partyType}</div>
-                                    </TableCell>
-                                    <TableCell className="text-right font-semibold">₹{Math.abs(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                    <TableCell className={`text-right ${item.daysOutstanding > 30 ? 'text-destructive font-bold' : item.daysOutstanding > 7 ? 'text-orange-500' : ''}`}>
-                                        {item.daysOutstanding} days
-                                    </TableCell>
-                                    <TableCell className="text-center">
-                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); router.push(`/accounts-ledger?partyId=${item.partyId}`)}}>
-                                            <ArrowRight className="h-4 w-4"/>
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
-            </CardContent>
-        </Card>
-    )
-}
 
 export const OutstandingSummary = () => {
   const [hydrated, setHydrated] = React.useState(false);
@@ -141,79 +38,55 @@ export const OutstandingSummary = () => {
   const [transporters] = useLocalStorageState<MasterItem[]>(keys.transporters, []);
   const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
 
-  const { receivables, payables, totalReceivable, totalPayable } = useMemo(() => {
-        if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0 };
+  const { totalReceivable, totalPayable } = useMemo(() => {
+        if (!hydrated) return { totalReceivable: 0, totalPayable: 0 };
         
         const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers];
-        const balances = new Map<string, { balance: number; lastTxDate: string, name: string, type: string }>();
+        const balances = new Map<string, number>();
 
         allMasters.forEach(m => {
             const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-            balances.set(m.id, { balance: openingBalance, lastTxDate: '1970-01-01', name: m.name, type: m.type });
+            balances.set(m.id, openingBalance);
         });
         
-        const updateBalance = (partyId: string | undefined, amount: number, date: string) => {
-            if (!partyId) return;
-            if (balances.has(partyId)) {
-                const entry = balances.get(partyId)!;
-                entry.balance += amount;
-                if (new Date(date) > new Date(entry.lastTxDate)) {
-                    entry.lastTxDate = date;
-                }
-            }
+        const updateBalance = (partyId: string | undefined, amount: number) => {
+            if (!partyId || !balances.has(partyId)) return;
+            balances.set(partyId, balances.get(partyId)! + amount);
         };
 
-        // Sales increase what is owed to us (positive balance)
-        sales.forEach(s => updateBalance(s.customerId, s.billedAmount, s.date));
-        // Receipts decrease what is owed to us
-        receipts.forEach(r => updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date));
-        
-        // Purchases increase what we owe (negative balance)
-        purchases.forEach(p => updateBalance(p.supplierId, -p.totalAmount, p.date));
-        // Payments decrease what we owe
-        payments.forEach(p => updateBalance(p.partyId, p.amount, p.date));
-
-        // Transport charges are payables
+        sales.forEach(s => updateBalance(s.customerId, s.billedAmount));
+        receipts.forEach(r => updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0))));
+        purchases.forEach(p => updateBalance(p.supplierId, -p.totalAmount));
+        payments.forEach(p => updateBalance(p.partyId, p.amount));
         locationTransfers.forEach(lt => {
             if (lt.transporterId && lt.transportCharges) {
-                updateBalance(lt.transporterId, -lt.transportCharges, lt.date);
+                updateBalance(lt.transporterId, -lt.transportCharges);
             }
         });
 
-        const today = new Date();
-        const outstanding: OutstandingEntry[] = [];
-        balances.forEach((value, key) => {
-            if (Math.abs(value.balance) > 0.01) { // Threshold to avoid floating point issues
-                outstanding.push({
-                    partyId: key,
-                    partyName: value.name,
-                    partyType: value.type,
-                    amount: value.balance,
-                    lastTransactionDate: value.lastTxDate,
-                    daysOutstanding: value.lastTxDate === '1970-01-01' ? 0 : differenceInDays(today, parseISO(value.lastTxDate))
-                });
-            }
+        let totalReceivable = 0;
+        let totalPayable = 0;
+        balances.forEach((balance) => {
+            if (balance > 0) totalReceivable += balance;
+            else if (balance < 0) totalPayable += balance;
         });
 
-        const receivables = outstanding.filter(o => o.amount > 0);
-        const payables = outstanding.filter(o => o.amount < 0);
-        const totalReceivable = receivables.reduce((sum, item) => sum + item.amount, 0);
-        const totalPayable = payables.reduce((sum, item) => sum + item.amount, 0);
-
-        return { receivables, payables, totalReceivable, totalPayable };
+        return { totalReceivable, totalPayable };
 
   }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
-    <div className="space-y-6">
-        <h2 className="text-2xl font-semibold text-foreground">Outstanding Balances</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <Card className="col-span-1 lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="text-2xl font-semibold text-foreground">Outstanding Balances</CardTitle>
+        <CardDescription>A summary of total money to be paid and received.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50">
                 <CardHeader>
                     <CardTitle className="text-green-700 dark:text-green-300">Total Receivables</CardTitle>
-                    <CardDescription>Total money to be collected from all parties.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <p className="text-3xl font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
@@ -222,19 +95,17 @@ export const OutstandingSummary = () => {
              <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50">
                 <CardHeader>
                     <CardTitle className="text-red-700 dark:text-red-300">Total Payables</CardTitle>
-                    <CardDescription>Total money to be paid out to all parties.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
                 </CardContent>
             </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OutstandingTable title="Receivables (To Collect)" data={receivables} type="receivable" />
-            <OutstandingTable title="Payables (To Pay)" data={payables} type="payable" />
-        </div>
-    </div>
+      </CardContent>
+      <CardFooter>
+        <Button asChild className="w-full">
+            <Link href="/outstanding">View Detailed Outstanding Report</Link>
+        </Button>
+      </CardFooter>
+    </Card>
   )
-
 }

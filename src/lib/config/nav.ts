@@ -53,6 +53,13 @@ export const navItems: NavItem[] = [
     iconName: 'Boxes',
     iconColor: 'bg-teal-600', // Matches dashboard tile
   },
+   {
+    title: 'Outstanding',
+    href: '/outstanding',
+    iconName: 'BookCopy',
+    iconColor: 'bg-yellow-500',
+    textColor: 'text-black',
+  },
   {
     title: 'Stock Ledger',
     href: '/ledger',

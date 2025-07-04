@@ -56,6 +56,13 @@ export default function DashboardPage() {
       iconName: "ArrowRightLeft",
       className: "bg-cyan-600 hover:bg-cyan-700 text-white",
     },
+     {
+      title: "Outstanding Balances",
+      description: "Receivables & Payables",
+      href: "/outstanding",
+      iconName: "BookCopy",
+      className: "bg-yellow-500 hover:bg-yellow-600 text-black",
+    },
     {
       title: "Payments",
       description: "Record outgoing payments",
@@ -123,7 +130,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" /> {/* Added here */}
+      <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" />
       <div className="text-left">
         <h1 className="text-3xl font-bold text-foreground">Dashboard Central Hub</h1>
       </div>
