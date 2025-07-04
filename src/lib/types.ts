@@ -39,7 +39,7 @@ export interface Purchase {
   netWeight: number; // in KG
   rate: number; // per KG
   totalAmount: number; // (netWeight * rate)
-  effectiveRate: number; // per KG, for purchases this is the same as rate. This will change upon transfer.
+  effectiveRate: number; // For purchases this is the same as rate. It's the landed cost.
   locationId: string;
   locationName?: string;
 }
@@ -149,6 +149,7 @@ export interface LocationTransferItem {
   newLotNumber: string; // The new identifier for the transferred stock, e.g. "LOT/10"
   bagsToTransfer: number;
   netWeightToTransfer: number;
+  grossWeightToTransfer: number;
 }
 
 export interface LocationTransfer {
@@ -160,6 +161,7 @@ export interface LocationTransfer {
   toWarehouseName?: string;
   transporterId?: string;
   transporterName?: string;
+  transportRatePerKg?: number;
   transportCharges?: number;
   packingCharges?: number;
   loadingCharges?: number;

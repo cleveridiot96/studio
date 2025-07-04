@@ -11,6 +11,10 @@ interface LocationTransferSlipPrintProps {
 
 export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps> = ({ transfer }) => {
   if (!transfer) return null;
+  
+  const totalBags = transfer.items.reduce((sum, item) => sum + item.bagsToTransfer, 0);
+  const totalNetWeight = transfer.items.reduce((sum, item) => sum + item.netWeightToTransfer, 0);
+  const totalGrossWeight = transfer.items.reduce((sum, item) => sum + item.grossWeightToTransfer, 0);
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
@@ -57,18 +61,35 @@ export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps>
             <th>Vakkal/Lot No.</th>
             <th className="text-right">Bags</th>
             <th className="text-right">Net Wt (kg)</th>
+            <th className="text-right">Gross Wt (kg)</th>
           </tr>
         </thead>
         <tbody>
           {transfer.items.map((item, index) => (
             <tr key={index}>
-              <td>{item.lotNumber}</td>
+              <td>{item.newLotNumber}</td>
               <td className="text-right">{item.bagsToTransfer.toLocaleString()}</td>
               <td className="text-right">{item.netWeightToTransfer.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</td>
+              <td className="text-right">{item.grossWeightToTransfer.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</td>
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="font-bold">
+            <td>Total</td>
+            <td className="text-right">{totalBags.toLocaleString()}</td>
+            <td className="text-right">{totalNetWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</td>
+            <td className="text-right">{totalGrossWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</td>
+          </tr>
+        </tfoot>
       </table>
+      
+       {transfer.transportCharges && transfer.transportCharges > 0 && (
+         <div className="mt-4 text-xs font-bold flex-between">
+           <span>Total Transport Charges:</span>
+           <span>₹{transfer.transportCharges.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+         </div>
+       )}
 
       {transfer.notes && (
         <div className="mt-4 text-xs">

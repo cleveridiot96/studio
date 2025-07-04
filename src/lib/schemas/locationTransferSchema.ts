@@ -21,6 +21,7 @@ export const locationTransferSchema = (
   toWarehouseId: z.string().min(1, "Destination warehouse is required.")
     .refine(id => warehouses.some(w => w.id === id), { message: "Invalid destination warehouse." }),
   transporterId: z.string().optional(),
+  transportRatePerKg: z.coerce.number().optional(),
   transportCharges: z.coerce.number().optional(),
   packingCharges: z.coerce.number().optional(),
   loadingCharges: z.coerce.number().optional(),
@@ -31,6 +32,7 @@ export const locationTransferSchema = (
         originalLotNumber: z.string().min(1, "Vakkal/Lot number is required."),
         bagsToTransfer: z.coerce.number().min(0.01, "Bags must be > 0."),
         netWeightToTransfer: z.coerce.number().min(0.01, "Net weight must be > 0."),
+        grossWeightToTransfer: z.coerce.number().min(0.01, "Gross weight must be > 0."),
     })
   ).min(1, "At least one item must be added to the transfer."),
 }).superRefine((data, ctx) => {
