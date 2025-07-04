@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -201,12 +200,14 @@ export function StockReportClient() {
         .sort((a,b) => (a.purchaseDate && b.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
   }, [purchases, purchaseReturns, sales, saleReturns, warehouses, locationTransfers, dateRange, lotNumberFilter, locationFilter, hydrated, isAppHydrating, financialYear]);
 
-  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading data...</p></div>;
-
   const locationOptions = React.useMemo(() => {
     const options = warehouses.map(w => ({ value: w.id, label: w.name }));
     return [{ value: "", label: "All Locations" }, ...options];
   }, [warehouses]);
+
+  if (isAppHydrating || !hydrated) {
+    return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading data...</p></div>;
+  }
 
   return (
     <div className="space-y-6 print-area">
