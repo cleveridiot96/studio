@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -205,9 +206,7 @@ export function StockReportClient() {
     return [{ value: "", label: "All Locations" }, ...options];
   }, [warehouses]);
 
-  if (isAppHydrating || !hydrated) {
-    return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading data...</p></div>;
-  }
+  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading data...</p></div>;
 
   return (
     <div className="space-y-6 print-area">
