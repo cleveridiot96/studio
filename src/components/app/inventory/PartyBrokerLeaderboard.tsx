@@ -13,7 +13,6 @@ interface PartyBrokerLeaderboardProps {
 interface LeaderboardEntry {
   name: string;
   type: string;
-  vakkals: number;
   bags: number;
   kg: number;
   value: number;
@@ -33,7 +32,6 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
         partyMap.set(partyId, {
           name: partyName,
           type: "Supplier",
-          vakkals: 0,
           bags: 0,
           kg: 0,
           value: 0,
@@ -46,23 +44,9 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
       entry.value += (item.totalPurchasedWeight + item.totalTransferredInWeight) * item.purchaseRate;
     });
     
-    const vakkalCounts = items.reduce((acc, item) => {
-        if (item.supplierId) {
-            if (!acc[item.supplierId]) {
-                acc[item.supplierId] = new Set();
-            }
-            acc[item.supplierId].add(item.lotNumber);
-        }
-        return acc;
-    }, {} as Record<string, Set<string>>);
-
-    partyMap.forEach((entry, partyId) => {
-        entry.vakkals = vakkalCounts[partyId]?.size || 0;
-    });
-
     return Array.from(partyMap.values())
       .filter(entry => entry.bags > 0)
-      .sort((a, b) => b.bags - a.value);
+      .sort((a, b) => b.bags - a.bags);
   }, [items]);
 
   if (leaderboardData.length === 0) {
@@ -85,7 +69,6 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
               <TableRow>
                 <TableHead>Rank</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead className="text-center">Vakkals</TableHead>
                 <TableHead className="text-right">Bags</TableHead>
                 <TableHead className="text-right">KG</TableHead>
                 <TableHead className="text-right">Value (₹)</TableHead>
@@ -96,7 +79,6 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
                 <TableRow key={entry.name}>
                   <TableCell className="font-bold">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</TableCell>
                   <TableCell className="font-medium">{entry.name}</TableCell>
-                  <TableCell className="text-center">{entry.vakkals}</TableCell>
                   <TableCell className="text-right">{entry.bags.toLocaleString()}</TableCell>
                   <TableCell className="text-right">{entry.kg.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
                   <TableCell className="text-right">₹{entry.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
