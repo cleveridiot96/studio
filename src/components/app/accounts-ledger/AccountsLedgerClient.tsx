@@ -4,7 +4,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
@@ -33,6 +33,10 @@ interface LedgerEntry {
     id: string;
     date: string;
     particulars: string;
+    vakkal?: string;
+    bags?: number;
+    kg?: number;
+    rate?: number;
     amount: number;
 }
 
@@ -41,6 +45,10 @@ const initialLedgerData = {
   creditEntries: [] as LedgerEntry[],
   totalDebit: 0,
   totalCredit: 0,
+  totalDebitBags: 0,
+  totalCreditBags: 0,
+  totalDebitKg: 0,
+  totalCreditKg: 0,
   openingBalance: 0,
   closingBalance: 0,
   balanceType: 'Dr',
@@ -115,16 +123,12 @@ export function AccountsLedgerClient() {
     const party = allMasters.find(p => p.id === partyId);
     if (!party) return [];
 
-    let transactions: { date: string, type: 'debit' | 'credit', amount: number, particulars: string, id: string }[] = [];
-
-    // Standard Accounting:
-    // DEBIT: Receiver is debited. (Assets increase, Liabilities decrease)
-    // CREDIT: Giver is credited. (Liabilities increase, Assets decrease)
+    let transactions: (LedgerEntry & { type: 'debit' | 'credit' })[] = [];
 
     // Sales (Debit to Customer account)
     if (party.type === 'Customer') {
       sales.filter(s => s.customerId === partyId).forEach(s => {
-        transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, particulars: `Sale Bill: ${s.billNumber || s.id.slice(-4)}` });
+        transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, particulars: `Sale Bill: ${s.billNumber || s.id.slice(-4)}`, vakkal: s.lotNumber, bags: s.quantity, kg: s.netWeight, rate: s.rate });
       });
       receipts.filter(r => r.partyId === partyId).forEach(r => {
         transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, particulars: `Receipt - ${r.paymentMethod}` });
@@ -137,7 +141,7 @@ export function AccountsLedgerClient() {
     // Purchases (Credit to Supplier/Agent account)
     if (party.type === 'Supplier' || party.type === 'Agent') {
       purchases.filter(p => p.supplierId === partyId || p.agentId === partyId).forEach(p => {
-        transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: p.totalAmount, particulars: `Purchase - Lot: ${p.lotNumber}` });
+        transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: p.totalAmount, particulars: `Purchase - Lot: ${p.lotNumber}`, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate });
       });
       payments.filter(p => p.partyId === partyId).forEach(p => {
         transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, particulars: `Payment - ${p.paymentMethod}` });
@@ -149,7 +153,7 @@ export function AccountsLedgerClient() {
       sales.filter(s => s.brokerId === partyId).forEach(s => {
         const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
         if (totalBrokerage > 0) {
-          transactions.push({ id: `broke-${s.id}`, date: s.date, type: 'credit', amount: totalBrokerage, particulars: `Brokerage on Sale: ${s.billNumber || s.id.slice(-4)}` });
+          transactions.push({ id: `broke-${s.id}`, date: s.date, type: 'credit', amount: totalBrokerage, particulars: `Brokerage on Sale: ${s.billNumber || s.id.slice(-4)}`, vakkal: s.lotNumber, kg: s.netWeight });
         }
       });
       payments.filter(p => p.partyId === partyId).forEach(p => {
@@ -168,7 +172,6 @@ export function AccountsLedgerClient() {
     
     const partyTransactions = getPartyTransactions(selectedPartyId);
 
-    // Opening Balance: Positive for Debit (Receivable), Negative for Credit (Payable)
     let openingBalance = party.openingBalance || 0;
     if (party.openingBalanceType === 'Cr') {
         openingBalance = -openingBalance;
@@ -185,15 +188,17 @@ export function AccountsLedgerClient() {
     let debitEntries = periodTransactions.filter(tx => tx.type === 'debit').sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     let creditEntries = periodTransactions.filter(tx => tx.type === 'credit').sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-    const totalDebit = debitEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    const totalCredit = creditEntries.reduce((sum, entry) => sum + entry.amount, 0);
-
     // Add opening balance to the correct side
     if (openingBalance > 0) {
-      debitEntries = [{ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), particulars: 'Opening Balance', amount: openingBalance }, ...debitEntries];
+      debitEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), particulars: 'Opening Balance', amount: openingBalance });
     } else if (openingBalance < 0) {
-      creditEntries = [{ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), particulars: 'Opening Balance', amount: -openingBalance }, ...creditEntries];
+      creditEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), particulars: 'Opening Balance', amount: -openingBalance });
     }
+    
+    const totalDebitBags = debitEntries.reduce((sum, entry) => sum + (entry.bags || 0), 0);
+    const totalDebitKg = debitEntries.reduce((sum, entry) => sum + (entry.kg || 0), 0);
+    const totalCreditBags = creditEntries.reduce((sum, entry) => sum + (entry.bags || 0), 0);
+    const totalCreditKg = creditEntries.reduce((sum, entry) => sum + (entry.kg || 0), 0);
 
     const finalTotalDebit = debitEntries.reduce((sum, e) => sum + e.amount, 0);
     const finalTotalCredit = creditEntries.reduce((sum, e) => sum + e.amount, 0);
@@ -204,6 +209,10 @@ export function AccountsLedgerClient() {
       creditEntries,
       totalDebit: finalTotalDebit,
       totalCredit: finalTotalCredit,
+      totalDebitBags,
+      totalCreditBags,
+      totalDebitKg,
+      totalCreditKg,
       openingBalance,
       closingBalance,
       balanceType: closingBalance >= 0 ? 'Dr' : 'Cr',
@@ -261,12 +270,30 @@ export function AccountsLedgerClient() {
               <Card className="shadow-inner h-full flex flex-col border-orange-300">
                 <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
                 <CardContent className="p-0 flex-grow">
-                  <Table size="sm"><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                  <Table size="sm"><TableHeader><TableRow>
+                    <TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead>Vakkal</TableHead>
+                    <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead>
+                    <TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
+                  </TableRow></TableHeader>
                     <TableBody>
-                      {ledgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
-                      {ledgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}><TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell><TableCell className="truncate max-w-[200px]">{e.particulars}</TableCell><TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow>))}
+                      {ledgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
+                      {ledgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
+                        <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                        <TableCell className="truncate max-w-[150px]">{e.particulars}</TableCell>
+                        <TableCell>{e.vakkal || '-'}</TableCell>
+                        <TableCell className="text-right">{e.bags?.toLocaleString() || '-'}</TableCell>
+                        <TableCell className="text-right">{e.kg?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-'}</TableCell>
+                        <TableCell className="text-right">{e.rate?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-'}</TableCell>
+                        <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      </TableRow>))}
                     </TableBody>
-                    <TableFooter><TableRow className="font-bold bg-orange-50"><TableCell colSpan={2}>Total Debit</TableCell><TableCell className="text-right">{ledgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow></TableFooter>
+                    <TableFooter><TableRow className="font-bold bg-orange-50">
+                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right">{ledgerData.totalDebitBags.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{ledgerData.totalDebitKg.toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-right">{ledgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                    </TableRow></TableFooter>
                   </Table>
                 </CardContent>
               </Card>
@@ -276,12 +303,30 @@ export function AccountsLedgerClient() {
               <Card className="shadow-inner h-full flex flex-col border-green-300">
                 <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
                 <CardContent className="p-0 flex-grow">
-                  <Table size="sm"><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                   <Table size="sm"><TableHeader><TableRow>
+                    <TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead>Vakkal</TableHead>
+                    <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead>
+                    <TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
+                  </TableRow></TableHeader>
                     <TableBody>
-                      {ledgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
-                      {ledgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}><TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell><TableCell className="truncate max-w-[200px]">{e.particulars}</TableCell><TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow>))}
+                      {ledgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
+                      {ledgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
+                        <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                        <TableCell className="truncate max-w-[150px]">{e.particulars}</TableCell>
+                        <TableCell>{e.vakkal || '-'}</TableCell>
+                        <TableCell className="text-right">{e.bags?.toLocaleString() || '-'}</TableCell>
+                        <TableCell className="text-right">{e.kg?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-'}</TableCell>
+                        <TableCell className="text-right">{e.rate?.toLocaleString(undefined, {minimumFractionDigits: 2}) || '-'}</TableCell>
+                        <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      </TableRow>))}
                     </TableBody>
-                    <TableFooter><TableRow className="font-bold bg-green-50"><TableCell colSpan={2}>Total Credit</TableCell><TableCell className="text-right">{ledgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow></TableFooter>
+                    <TableFooter><TableRow className="font-bold bg-green-50">
+                       <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right">{ledgerData.totalCreditBags.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{ledgerData.totalCreditKg.toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-right">{ledgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                    </TableRow></TableFooter>
                   </Table>
                 </CardContent>
               </Card>
