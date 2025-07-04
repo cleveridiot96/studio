@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval } from "date-fns";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { TrendingUp, SlidersHorizontal, Printer, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
@@ -203,6 +203,11 @@ export function StockReportClient() {
 
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading data...</p></div>;
 
+  const locationOptions = React.useMemo(() => {
+    const options = warehouses.map(w => ({ value: w.id, label: w.name }));
+    return [{ value: "", label: "All Locations" }, ...options];
+  }, [warehouses]);
+
   return (
     <div className="space-y-6 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
@@ -214,7 +219,15 @@ export function StockReportClient() {
             <div className="grid gap-6 py-6">
                 <div className="space-y-2"><label htmlFor="dr-stock" className="text-sm font-medium">Date Range</label><DatePickerWithRange date={dateRange} onDateChange={setDateRange} id="dr-stock" /></div>
                 <div className="space-y-2"><label htmlFor="lot-stock" className="text-sm font-medium">Lot No.</label><Input id="lot-stock" placeholder="Enter Lot" value={lotNumberFilter} onChange={(e) => setLotNumberFilter(e.target.value)} /></div>
-                <div className="space-y-2"><label htmlFor="loc-stock" className="text-sm font-medium">Location</label><Select value={locationFilter} onValueChange={setLocationFilter}><SelectTrigger id="loc-stock"><SelectValue placeholder="All Locations"/></SelectTrigger><SelectContent><SelectItem value="">All</SelectItem>{warehouses.map(wh=>(<SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>))}</SelectContent></Select></div>
+                <div className="space-y-2"><label htmlFor="loc-stock" className="text-sm font-medium">Location</label>
+                  <MasterDataCombobox
+                      value={locationFilter}
+                      onChange={(value) => setLocationFilter(value || "")}
+                      options={locationOptions}
+                      placeholder="All Locations"
+                      searchPlaceholder="Search locations..."
+                  />
+                </div>
             </div><SheetFooter><SheetClose asChild><Button>Apply</Button></SheetClose></SheetFooter></SheetContent></Sheet>
             <Button variant="outline" size="icon" onClick={()=>window.print()}><Printer className="h-5 w-5"/><span className="sr-only">Print</span></Button>
         </div>

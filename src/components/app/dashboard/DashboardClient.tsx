@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, Warehouse as MasterWarehouse, LocationTransfer, PurchaseReturn, SaleReturn } from "@/lib/types"; // Added Returns
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DollarSign, ShoppingBag, Package, CalendarDays, TrendingUp } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, startOfYear, endOfDay, subMonths } from 'date-fns';
 import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
@@ -45,7 +45,7 @@ const DashboardClient = () => {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
   const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
-  const [selectedPeriod, setSelectedPeriod] = React.useState<string>(() => format(new Date(), "yyyy-MM"));
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>(() => "currentFY");
 
   React.useEffect(() => setHydrated(true), []);
   React.useEffect(() => {
@@ -54,9 +54,9 @@ const DashboardClient = () => {
       if (selectedPeriod !== "all" && selectedPeriod !== "currentFY" && fyRange) {
         try {
           const selectedMonthDate = parseISO(`${selectedPeriod}-01`);
-          if (!isWithinInterval(selectedMonthDate, { start: fyRange.start, end: fyRange.end })) setSelectedPeriod(format(new Date(), "yyyy-MM"));
-        } catch (e) { setSelectedPeriod(format(new Date(), "yyyy-MM")); }
-      } else if (selectedPeriod !== "all" && selectedPeriod !== "currentFY") setSelectedPeriod(format(new Date(), "yyyy-MM"));
+          if (!isWithinInterval(selectedMonthDate, { start: fyRange.start, end: fyRange.end })) setSelectedPeriod("currentFY");
+        } catch (e) { setSelectedPeriod("currentFY"); }
+      } else if (selectedPeriod !== "all" && selectedPeriod !== "currentFY") setSelectedPeriod("currentFY");
     }
   }, [currentFinancialYearString, hydrated, selectedPeriod]);
 
@@ -129,9 +129,9 @@ const DashboardClient = () => {
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, currentFinancialYearString));
     fyLocationTransfers.forEach(transfer => {
       transfer.items.forEach(item => {
-        const fromKey = `${item.lotNumber}-${transfer.fromWarehouseId}`; const fromEntry = inventoryMap.get(fromKey); if (fromEntry) { fromEntry.currentBags -= item.bagsToTransfer; fromEntry.currentWeight -= item.netWeightToTransfer; }
-        const toKey = `${item.lotNumber}-${transfer.toWarehouseId}`; let toEntry = inventoryMap.get(toKey);
-        if (!toEntry) { toEntry = { lotNumber: item.lotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0 }; inventoryMap.set(toKey, toEntry); }
+        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`; const fromEntry = inventoryMap.get(fromKey); if (fromEntry) { fromEntry.currentBags -= item.bagsToTransfer; fromEntry.currentWeight -= item.netWeightToTransfer; }
+        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`; let toEntry = inventoryMap.get(toKey);
+        if (!toEntry) { toEntry = { lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0 }; inventoryMap.set(toKey, toEntry); }
         toEntry.currentBags += item.bagsToTransfer; toEntry.currentWeight += item.netWeightToTransfer;
       });
     });
@@ -147,14 +147,18 @@ const DashboardClient = () => {
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, hydrated, isAppHydrating, currentFinancialYearString]);
 
   if (isAppHydrating || !hydrated) return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">{[1,2,3].map(i => <Card key={i}><CardHeader><CardTitle>Loading...</CardTitle></CardHeader><CardContent><p>Wait...</p></CardContent></Card>)}</div>;
-  const currentSelectionDisplay = periodOptions.find(opt => opt.value === selectedPeriod)?.label || "Select Period";
-
+  
   return (
     <div className='space-y-6'>
       <div className="flex justify-between items-center"><h2 className="text-2xl font-semibold text-foreground">Summaries</h2>
-        <div className="w-auto sm:w-[220px]"><Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="text-sm"><CalendarDays className="h-4 w-4 mr-2 opacity-70"/><SelectValue placeholder="Select Period">{currentSelectionDisplay}</SelectValue></SelectTrigger>
-            <SelectContent>{periodOptions.map(o=>(<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent></Select>
+        <div className="w-auto sm:w-[220px]">
+          <MasterDataCombobox
+            value={selectedPeriod}
+            onChange={(value) => setSelectedPeriod(value || 'currentFY')}
+            options={periodOptions}
+            placeholder="Select Period"
+            searchPlaceholder="Search periods..."
+          />
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
@@ -179,5 +183,3 @@ const DashboardClient = () => {
   );
 };
 export default DashboardClient;
-
-    

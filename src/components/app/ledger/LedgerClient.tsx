@@ -2,14 +2,14 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Payment, MasterItemType, Sale } from "@/lib/types";
+import type { MasterItem, Purchase, Sale } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
-import { BookUser, CalendarRange, Printer, Download } from "lucide-react";
+import { BookUser, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -48,7 +48,6 @@ interface TAccountSaleEntry {
   rate: number;
   amount: number;
 }
-
 
 const initialLedgerData = {
   debitEntries: [] as TAccountPurchaseEntry[],
@@ -116,6 +115,11 @@ export function LedgerClient() {
       }
     }
   }, [hydrated, currentFinancialYearString, searchParams, dateRange, selectedPartyId]);
+
+  const partyOptions = React.useMemo(() => {
+    return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
+  }, [allMasters]);
+
 
   const ledgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) {
@@ -198,25 +202,15 @@ export function LedgerClient() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-3xl font-bold text-foreground">Stock Ledger</h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                    <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
-                        <SelectTrigger className="w-full md:w-[280px]">
-                            <SelectValue placeholder="Select Party..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectLabel>Suppliers</SelectLabel>
-                            {allMasters.filter(p=>p.type==='Supplier').map(opt => (<SelectItem key={`supp-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
-                          </SelectGroup>
-                           <SelectGroup>
-                            <SelectLabel>Agents</SelectLabel>
-                            {allMasters.filter(p=>p.type==='Agent').map(opt => (<SelectItem key={`agent-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
-                          </SelectGroup>
-                           <SelectGroup>
-                            <SelectLabel>Brokers</SelectLabel>
-                            {allMasters.filter(p=>p.type==='Broker').map(opt => (<SelectItem key={`brok-${opt.id}`} value={opt.id}>{opt.name}</SelectItem>))}
-                          </SelectGroup>
-                        </SelectContent>
-                    </Select>
+                    <MasterDataCombobox
+                        value={selectedPartyId}
+                        onChange={(value) => handlePartySelect(value || "")}
+                        options={partyOptions}
+                        placeholder="Select Party..."
+                        searchPlaceholder="Search parties..."
+                        notFoundMessage="No party found."
+                        className="w-full md:w-[280px]"
+                    />
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
                      <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
                         <Printer className="h-5 w-5" />
@@ -239,7 +233,7 @@ export function LedgerClient() {
             </p>
           </CardHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-2 space-y-4 md:space-y-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-x-2 space-y-4 md:space-y-0">
             <Card className="shadow-lg">
                 <CardHeader className="p-0">
                     <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Purchases via Party)</CardTitle>

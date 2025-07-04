@@ -4,7 +4,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import type { Sale, Purchase, MonthlyProfitInfo } from "@/lib/types";
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,7 +42,7 @@ const getPurchaseDetailsForSaleLot = (lotNumberFromSale: string | undefined | nu
 
 export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesData, purchases }) => {
   const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => format(new Date(), "yyyy-MM")); // Default to current actual month
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -174,8 +174,6 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
     return <Card className="shadow-lg border-primary/30 mt-6"><CardHeader><CardTitle>Loading Profit Data...</CardTitle></CardHeader><CardContent><p>Please wait...</p></CardContent></Card>;
   }
   
-  const currentSelectionLabel = monthOptions.find(opt => opt.value === selectedMonth)?.label || "Select Period";
-
   return (
     <Card className="shadow-lg border-primary/30 mt-6">
       <CardHeader>
@@ -183,20 +181,14 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
           <CardTitle className="text-2xl text-primary flex items-center">
             <DollarSign className="mr-2 h-6 w-6"/> Profit & Loss (FY: {currentFinancialYearString})
           </CardTitle>
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-full sm:w-[220px] text-sm">
-              <SelectValue placeholder="Select Period">
-                {currentSelectionLabel}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {monthOptions.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MasterDataCombobox
+            value={selectedMonth}
+            onChange={(value) => setSelectedMonth(value || "all")}
+            options={monthOptions}
+            placeholder="Select Period"
+            searchPlaceholder="Search periods..."
+            className="w-full sm:w-[220px]"
+          />
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -283,5 +275,3 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
     </Card>
   );
 };
-
-    
