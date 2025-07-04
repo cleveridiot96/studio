@@ -266,6 +266,16 @@ export function LedgerClient() {
               Period: {dateRange?.from ? format(dateRange.from, "dd-MM-yyyy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd-MM-yyyy") : 'End'}
             </p>
           </CardHeader>
+
+          <div className="mb-4 p-3 border rounded-md bg-muted/50">
+            <div className="flex justify-between text-sm font-medium">
+                <span>Opening Balance for Selected Period:</span>
+                <span className={`font-semibold ${openingBalanceDirection === 'Dr' ? 'text-destructive' : 'text-green-800'}`}>
+                    {Math.abs(openingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {openingBalanceDirection}
+                </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-4 space-y-4 md:space-y-0">
             <Card className="shadow-lg">
                 <CardHeader className="p-0">
@@ -335,10 +345,6 @@ export function LedgerClient() {
           </div>
           <Card className="mt-4 shadow-xl">
               <CardContent className="p-4 space-y-2 text-base">
-                  <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Opening Balance:</span>
-                      <span className="font-semibold">{Math.abs(openingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {openingBalanceDirection}</span>
-                  </div>
                   <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Total Debits for Period:</span>
                       <span className="font-semibold text-orange-700">{totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
