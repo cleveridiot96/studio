@@ -79,7 +79,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           miscExpenses: transferToEdit.miscExpenses,
           notes: transferToEdit.notes || "",
           items: transferToEdit.items.map(item => ({
-            lotNumber: item.originalLotNumber,
+            originalLotNumber: item.originalLotNumber,
             bagsToTransfer: item.bagsToTransfer,
             netWeightToTransfer: item.netWeightToTransfer,
           })),
@@ -95,7 +95,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         loadingCharges: undefined,
         miscExpenses: undefined,
         notes: "",
-        items: [{ lotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0 }],
+        items: [{ originalLotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0 }],
       };
   }, [transferToEdit]);
 
@@ -291,11 +291,19 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   <h3 className="text-lg font-medium text-primary">Items to Transfer</h3>
                   {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
-                      <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
+                      <FormField control={control} name={`items.${index}.originalLotNumber`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot No.</FormLabel>
                           <MasterDataCombobox
                             value={itemField.value}
-                            onChange={itemField.onChange}
+                            onChange={(value) => {
+                                itemField.onChange(value);
+                                const selectedStock = getAvailableLotsForSelectedWarehouse().find(lot => lot.value === value);
+                                if (selectedStock && watch(`items.${index}.bagsToTransfer`) > 0) {
+                                    const bags = watch(`items.${index}.bagsToTransfer`);
+                                    const newWeight = bags * selectedStock.averageWeightPerBag;
+                                    setValue(`items.${index}.netWeightToTransfer`, parseFloat(newWeight.toFixed(2)), {shouldValidate: true});
+                                }
+                            }}
                             options={availableLotsOptions}
                             placeholder="Select Lot"
                             disabled={!watchedFromWarehouseId}
@@ -312,7 +320,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               const currentManuallySetFlags = [...itemNetWeightManuallySet];
                               currentManuallySetFlags[index] = false;
                               setItemNetWeightManuallySet(currentManuallySetFlags);
-                              const lotValue = watch(`items.${index}.lotNumber`);
+                              const lotValue = watch(`items.${index}.originalLotNumber`);
                               const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watchedFromWarehouseId);
                               const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
                               let newNetWeight = 0;
@@ -363,7 +371,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     </div>
                   ))}
                   <Button type="button" variant="outline" onClick={() => {
-                      append({ lotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0 });
+                      append({ originalLotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0 });
                       setItemNetWeightManuallySet(prev => [...prev, false]);
                     }} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal

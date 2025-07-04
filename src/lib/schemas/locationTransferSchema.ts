@@ -28,7 +28,7 @@ export const locationTransferSchema = (
   notes: z.string().optional(),
   items: z.array(
     z.object({
-        lotNumber: z.string().min(1, "Vakkal/Lot number is required."),
+        originalLotNumber: z.string().min(1, "Vakkal/Lot number is required."),
         bagsToTransfer: z.coerce.number().min(0.01, "Bags must be > 0."),
         netWeightToTransfer: z.coerce.number().min(0.01, "Net weight must be > 0."),
     })
@@ -46,14 +46,14 @@ export const locationTransferSchema = (
   // Validate items
   data.items.forEach((item, index) => {
     const stockInfo = availableStock.find(
-      s => s.lotNumber === item.lotNumber && s.locationId === data.fromWarehouseId
+      s => s.lotNumber === item.originalLotNumber && s.locationId === data.fromWarehouseId
     );
     
     let availableBagsInStock = stockInfo?.currentBags || 0;
 
     // If editing this transfer, temporarily add back the transferred bags to the available stock for validation
-    if (transferToEdit && transferToEdit.fromWarehouseId === data.fromWarehouseId && item.lotNumber) {
-        const originalItemInTransfer = transferToEdit.items.find(i => i.originalLotNumber === item.lotNumber);
+    if (transferToEdit && transferToEdit.fromWarehouseId === data.fromWarehouseId && item.originalLotNumber) {
+        const originalItemInTransfer = transferToEdit.items.find(i => i.originalLotNumber === item.originalLotNumber);
         if (originalItemInTransfer) {
             availableBagsInStock += originalItemInTransfer.bagsToTransfer;
         }
@@ -62,8 +62,8 @@ export const locationTransferSchema = (
     if (!stockInfo && availableBagsInStock <= 0) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Lot "${item.lotNumber}" not found or has no stock in the source warehouse.`,
-            path: ["items", index, "lotNumber"],
+            message: `Lot "${item.originalLotNumber}" not found or has no stock in the source warehouse.`,
+            path: ["items", index, "originalLotNumber"],
         });
     } else {
       if (item.bagsToTransfer > availableBagsInStock) {

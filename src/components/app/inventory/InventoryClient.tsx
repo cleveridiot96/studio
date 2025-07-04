@@ -26,6 +26,7 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
 import { cn } from "@/lib/utils";
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
@@ -117,9 +118,26 @@ export function InventoryClient() {
         purchaseDate: p.date, purchaseRate: p.rate, effectiveRate: p.effectiveRate, cogs: 0,
       });
     });
+    
+    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
+    fyPurchaseReturns.forEach(pr => {
+      const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+      if (originalPurchase) {
+        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+        const entry = inventoryMap.get(key);
+        if (entry) {
+          entry.totalPurchaseReturnedBags += pr.quantityReturned;
+          entry.totalPurchaseReturnedWeight += pr.netWeightReturned;
+        }
+      }
+    });
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
+      const totalTransferExpenses = (transfer.transportCharges || 0) + (transfer.packingCharges || 0) + (transfer.loadingCharges || 0) + (transfer.miscExpenses || 0);
+      const totalTransferWeight = transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
+      const expenseRatePerKg = totalTransferWeight > 0 ? totalTransferExpenses / totalTransferWeight : 0;
+      
       transfer.items.forEach(item => {
         const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
         const fromItem = inventoryMap.get(fromKey);
@@ -131,6 +149,7 @@ export function InventoryClient() {
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
         const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
+        const sourceEffectiveRate = fromItem ? fromItem.effectiveRate : (originalPurchase?.effectiveRate || 0);
         
         if (!toEntry) {
           const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
@@ -148,33 +167,33 @@ export function InventoryClient() {
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
             purchaseRate: originalPurchase?.rate || 0,
-            effectiveRate: 0, cogs: 0,
+            effectiveRate: sourceEffectiveRate + expenseRatePerKg,
+            cogs: 0,
           };
           inventoryMap.set(toKey, toEntry);
+        } else {
+            // If entry exists, recalculate weighted average effective rate
+            const existingTotalValue = toEntry.effectiveRate * toEntry.totalTransferredInWeight;
+            const newTotalValue = (sourceEffectiveRate + expenseRatePerKg) * item.netWeightToTransfer;
+            const combinedWeight = toEntry.totalTransferredInWeight + item.netWeightToTransfer;
+            toEntry.effectiveRate = combinedWeight > 0 ? (existingTotalValue + newTotalValue) / combinedWeight : 0;
         }
+
         toEntry.totalTransferredInBags += item.bagsToTransfer;
         toEntry.totalTransferredInWeight += item.netWeightToTransfer;
       });
     });
 
-    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
-    fyPurchaseReturns.forEach(pr => {
-      const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-      if (originalPurchase) {
-        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
-        const entry = inventoryMap.get(key);
-        if (entry) {
-          entry.totalPurchaseReturnedBags += pr.quantityReturned;
-          entry.totalPurchaseReturnedWeight += pr.netWeightReturned;
-        }
-      }
-    });
-
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
+    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
     fySales.forEach(s => {
-      const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
-      const key = `${s.lotNumber}-${MUMBAI_WAREHOUSE_ID}`;
-      const entry = inventoryMap.get(key);
+      // Find the lot key. Sales can happen from transferred lots too.
+      // We need to find which lot in Mumbai matches the sale's lotNumber.
+      // This part is tricky because multiple transfers can result in lots with same original prefix.
+      // For now, we assume sales are from Mumbai and the lot number is specific enough.
+      const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
+      
       if (entry) {
         entry.totalSoldBags += s.quantity;
         entry.totalSoldWeight += s.netWeight;
@@ -183,9 +202,9 @@ export function InventoryClient() {
 
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
-      const MUMBAI_WAREHOUSE_ID = 'fixed-wh-mumbai';
-      const key = `${sr.originalLotNumber}-${MUMBAI_WAREHOUSE_ID}`;
-      const entry = inventoryMap.get(key);
+      const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(sr.originalLotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const entry = saleReturnLotKey ? inventoryMap.get(saleReturnLotKey) : undefined;
+
       if (entry) {
         entry.totalSaleReturnedBags += sr.quantityReturned;
         entry.totalSaleReturnedWeight += sr.netWeightReturned;
@@ -199,7 +218,7 @@ export function InventoryClient() {
       item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight
                         - item.totalSoldWeight - item.totalTransferredOutWeight - item.totalPurchaseReturnedWeight;
       
-      item.cogs = item.currentWeight * item.purchaseRate;
+      item.cogs = item.currentWeight * item.effectiveRate;
 
       if (item.purchaseDate) {
         item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));

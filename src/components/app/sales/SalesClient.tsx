@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -47,7 +48,7 @@ interface AggregatedStockItem {
   currentBags: number;
   currentWeight: number;
   purchaseRate: number;
-  effectiveRate?: number;
+  effectiveRate: number; // Changed from optional
   locationName?: string;
 }
 
@@ -126,40 +127,44 @@ export function SalesClient() {
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
-        transfer.items.forEach(item => {
-            const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
-            const fromEntry = stockMap.get(fromKey);
-            if (fromEntry) {
-                fromEntry.currentBags -= item.bagsToTransfer;
-                fromEntry.currentWeight -= item.netWeightToTransfer;
-            }
+      const totalTransferExpenses = (transfer.transportCharges || 0) + (transfer.packingCharges || 0) + (transfer.loadingCharges || 0) + (transfer.miscExpenses || 0);
+      const totalTransferWeight = transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
+      const expenseRatePerKg = totalTransferWeight > 0 ? totalTransferExpenses / totalTransferWeight : 0;
 
-            const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
-            let toEntry = stockMap.get(toKey);
-            if (!toEntry) {
-                const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
-                toEntry = {
-                    lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
-                    currentBags: 0, currentWeight: 0,
-                    purchaseRate: originalPurchase?.rate || 0,
-                    effectiveRate: originalPurchase?.effectiveRate,
-                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
-                };
-            }
-            toEntry.currentBags += item.bagsToTransfer;
-            toEntry.currentWeight += item.netWeightToTransfer;
-            stockMap.set(toKey, toEntry);
-        });
+      transfer.items.forEach(item => {
+        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
+        const fromEntry = stockMap.get(fromKey);
+        if (fromEntry) {
+          fromEntry.currentBags -= item.bagsToTransfer;
+          fromEntry.currentWeight -= item.netWeightToTransfer;
+        }
+
+        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+        let toEntry = stockMap.get(toKey);
+        const sourceEffectiveRate = fromEntry ? fromEntry.effectiveRate : (purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0);
+
+        if (!toEntry) {
+          toEntry = {
+            lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
+            currentBags: 0, currentWeight: 0,
+            purchaseRate: fromEntry?.purchaseRate || 0,
+            effectiveRate: sourceEffectiveRate + expenseRatePerKg,
+            locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
+          };
+        }
+        toEntry.currentBags += item.bagsToTransfer;
+        toEntry.currentWeight += item.netWeightToTransfer;
+        stockMap.set(toKey, toEntry);
+      });
     });
     
-    // Sales and Sale returns are calculated AFTER transfers to get current stock.
     const tempSales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
     const tempSaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
 
     tempSales.forEach(s => {
-      const key = `${s.lotNumber}-${MUMBAI_WAREHOUSE_ID}`;
-      const entry = stockMap.get(key);
+      const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
       if (entry) {
         entry.currentBags -= s.quantity;
         entry.currentWeight -= s.netWeight;
@@ -167,8 +172,8 @@ export function SalesClient() {
     });
 
     tempSaleReturns.forEach(sr => {
-      const key = `${sr.originalLotNumber}-${MUMBAI_WAREHOUSE_ID}`;
-      const entry = stockMap.get(key);
+      const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
       if (entry) {
         entry.currentBags += sr.quantityReturned;
         entry.currentWeight += sr.netWeightReturned;

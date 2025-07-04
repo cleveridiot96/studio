@@ -9,13 +9,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { addDays, format, parseISO, startOfDay, endOfDay, eachDayOfInterval, isSameDay } from "date-fns";
+import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
 import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { AddPaymentForm } from "@/components/app/payments/AddPaymentForm";
 import { AddReceiptForm } from "@/components/app/receipts/AddReceiptForm";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
@@ -25,22 +26,14 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 
-interface CashBookTransaction {
+interface CashLedgerTransaction {
+  id: string;
   date: string; // YYYY-MM-DD
   type: 'Receipt' | 'Payment';
   particulars: string;
-  amount: number;
-  id: string;
-}
-
-interface DailyCashBookEntry {
-  date: string; // YYYY-MM-DD
-  receipts: CashBookTransaction[];
-  payments: CashBookTransaction[];
-  openingBalance: number;
-  closingBalance: number;
-  totalReceipts: number;
-  totalPayments: number;
+  debit: number;
+  credit: number;
+  balance: number;
 }
 
 export function CashbookClient() {
@@ -52,33 +45,26 @@ export function CashbookClient() {
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
   const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
   
-  // Master data states for forms
   const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
   const [suppliers, setSuppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
 
-  const [historicalDateRange, setHistoricalDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
+    from: startOfDay(subMonths(new Date(), 1)),
+    to: endOfDay(new Date()),
+  });
   const [hydrated, setHydrated] = React.useState(false);
 
-  // Form modal states
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
-  // paymentToEdit/receiptToEdit will be null for new entries from cashbook
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
 
-
   React.useEffect(() => {
     setHydrated(true);
-    if (!historicalDateRange) {
-      setHistoricalDateRange({
-          from: startOfDay(addDays(new Date(), -7)), 
-          to: endOfDay(addDays(new Date(), -1)), 
-      });
-    }
-  }, [historicalDateRange]); 
+  }, []); 
 
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];
@@ -99,98 +85,48 @@ export function CashbookClient() {
      .sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, brokers, hydrated]);
 
-
-  const allTransactions = React.useMemo(() => {
-    if (!hydrated) return [];
-    const combined: CashBookTransaction[] = [];
-    receipts.forEach(r => combined.push({
-      id: `rec-${r.id}`,
-      date: r.date,
-      type: 'Receipt',
-      particulars: `From ${r.partyName || r.partyId} (${r.partyType}) ${r.referenceNo ? `- Ref: ${r.referenceNo}` : ''}`,
-      amount: r.amount
-    }));
-    payments.forEach(p => combined.push({
-      id: `pay-${p.id}`,
-      date: p.date,
-      type: 'Payment',
-      particulars: `To ${p.partyName || p.partyId} (${p.partyType}) ${p.referenceNo ? `- Ref: ${p.referenceNo}` : ''}`,
-      amount: p.amount
-    }));
-    return combined.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [payments, receipts, hydrated]);
-
-  const todaysData = React.useMemo(() => {
-    if (!hydrated) return { date: format(new Date(), "yyyy-MM-dd"), receipts: [], payments: [], openingBalance: 0, closingBalance: 0, totalReceipts: 0, totalPayments: 0 };
+  const cashLedgerData = React.useMemo(() => {
+    if (!hydrated || !dateRange?.from) return { entries: [], openingBalance: 0, closingBalance: 0 };
     
-    const todayDateObj = startOfDay(new Date());
-    const todayDateStr = format(todayDateObj, "yyyy-MM-dd");
+    const combinedTransactions = [
+        ...receipts.map(r => ({ ...r, type: 'Receipt' as const })),
+        ...payments.map(p => ({ ...p, type: 'Payment' as const }))
+    ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-    let openingBalanceForToday = 0;
-    allTransactions.forEach(t => {
-      if (parseISO(t.date) < todayDateObj) {
-        openingBalanceForToday += (t.type === 'Receipt' ? t.amount : -t.amount);
-      }
+    let openingBalance = 0;
+    combinedTransactions.forEach(tx => {
+        if (parseISO(tx.date) < startOfDay(dateRange.from!)) {
+            openingBalance += (tx.type === 'Receipt' ? tx.amount : -tx.amount);
+        }
     });
 
-    const todaysReceipts = allTransactions.filter(t => t.date === todayDateStr && t.type === 'Receipt');
-    const todaysPayments = allTransactions.filter(t => t.date === todayDateStr && t.type === 'Payment');
-    
-    const totalTodaysReceipts = todaysReceipts.reduce((sum, r) => sum + r.amount, 0);
-    const totalTodaysPayments = todaysPayments.reduce((sum, p) => sum + p.amount, 0);
-    const closingBalanceForToday = openingBalanceForToday + totalTodaysReceipts - totalTodaysPayments;
+    const periodTransactions = combinedTransactions.filter(tx => 
+        isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) })
+    );
 
-    return {
-      date: todayDateStr,
-      receipts: todaysReceipts,
-      payments: todaysPayments,
-      openingBalance: openingBalanceForToday,
-      closingBalance: closingBalanceForToday,
-      totalReceipts: totalTodaysReceipts,
-      totalPayments: totalTodaysPayments,
-    };
-  }, [allTransactions, hydrated]);
-
-  const historicalCashbookData = React.useMemo(() => {
-    if (!hydrated || !historicalDateRange?.from || !historicalDateRange?.to) {
-        return { dailyEntries: [], overallOpeningBalance: 0, finalClosingBalance: 0, flatTransactions: [] };
-    }
-
-    const days = eachDayOfInterval({ start: historicalDateRange.from, end: historicalDateRange.to });
-    let runningBalance = 0;
-
-    allTransactions.forEach(t => {
-      if (parseISO(t.date) < startOfDay(historicalDateRange.from!)) {
-        runningBalance += (t.type === 'Receipt' ? t.amount : -t.amount);
-      }
-    });
-    const overallOpeningBalance = runningBalance;
-
-    const dailyEntries: DailyCashBookEntry[] = days.map(day => {
-      const dayStr = format(day, "yyyy-MM-dd");
-      const openingBalanceForDay = runningBalance;
-      const dayReceipts = allTransactions.filter(t => t.date === dayStr && t.type === 'Receipt');
-      const dayPayments = allTransactions.filter(t => t.date === dayStr && t.type === 'Payment');
-      const totalDayReceipts = dayReceipts.reduce((sum, r) => sum + r.amount, 0);
-      const totalDayPayments = dayPayments.reduce((sum, p) => sum + p.amount, 0);
-      runningBalance += totalDayReceipts - totalDayPayments;
-      return { date: dayStr, receipts: dayReceipts, payments: dayPayments, openingBalance: openingBalanceForDay, closingBalance: runningBalance, totalReceipts: totalDayReceipts, totalPayments: totalDayPayments };
+    let runningBalance = openingBalance;
+    const entries: CashLedgerTransaction[] = periodTransactions.map(tx => {
+        const credit = tx.type === 'Receipt' ? tx.amount : 0;
+        const debit = tx.type === 'Payment' ? tx.amount : 0;
+        runningBalance = runningBalance + credit - debit;
+        
+        return {
+            id: `${tx.type}-${tx.id}`,
+            date: tx.date,
+            type: tx.type,
+            particulars: `${tx.type === 'Receipt' ? 'From' : 'To'} ${tx.partyName || tx.partyId} (${tx.partyType}) ${tx.referenceNo ? `- Ref: ${tx.referenceNo}` : ''}`,
+            debit,
+            credit,
+            balance: runningBalance,
+        };
     });
 
-    const flatTransactions = dailyEntries.flatMap(dayEntry => 
-        [
-            ...dayEntry.receipts.map(r => ({ ...r, entryDate: dayEntry.date})),
-            ...dayEntry.payments.map(p => ({ ...p, entryDate: dayEntry.date}))
-        ]
-    ).sort((a,b) => parseISO(a.entryDate).getTime() - parseISO(b.entryDate).getTime() || (a.type === 'Receipt' ? -1 : 1) );
+    return { entries, openingBalance, closingBalance: runningBalance };
+  }, [payments, receipts, hydrated, dateRange]);
 
-
-    return { dailyEntries, overallOpeningBalance, finalClosingBalance: runningBalance, flatTransactions };
-  }, [allTransactions, historicalDateRange, hydrated]);
 
   const handleAddPaymentFromCashbook = React.useCallback((payment: Payment) => {
     setPayments(prevPayments => {
-        // Assuming new payment from cashbook always adds, not edits existing ones from here
         return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
     });
     toast({ title: "Success!", description: "Payment added to cashbook and payments." });
@@ -198,7 +134,6 @@ export function CashbookClient() {
 
   const handleAddReceiptFromCashbook = React.useCallback((receipt: Receipt) => {
     setReceipts(prevReceipts => {
-        // Assuming new receipt from cashbook always adds
         return [{ ...receipt, id: receipt.id || `receipt-${Date.now()}` }, ...prevReceipts];
     });
     toast({ title: "Success!", description: "Receipt added to cashbook and receipts." });
@@ -227,121 +162,72 @@ export function CashbookClient() {
   return (
     <div className="space-y-8 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
-      <div className="flex justify-between items-center no-print">
-        <h1 className="text-3xl font-bold text-foreground">Cash Book</h1>
-        <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setPaymentToEdit(null); setIsAddPaymentFormOpen(true); }}>
-                <PlusCircle className="mr-2 h-4 w-4"/> Add Cash Payment
+      <Card className="shadow-xl">
+        <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <CardTitle className="text-2xl text-primary flex items-center">
+            <BookOpen className="mr-3 h-7 w-7"/>Cash Book
+          </CardTitle>
+          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto no-print">
+            <Button variant="outline" size="sm" onClick={() => { setPaymentToEdit(null); setIsAddPaymentFormOpen(true); }} className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4"/> Add Payment
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setReceiptToEdit(null); setIsAddReceiptFormOpen(true); }}>
-                <PlusCircle className="mr-2 h-4 w-4"/> Add Cash Receipt
+            <Button variant="outline" size="sm" onClick={() => { setReceiptToEdit(null); setIsAddReceiptFormOpen(true); }} className="w-full">
+                <PlusCircle className="mr-2 h-4 w-4"/> Add Receipt
             </Button>
-            <Button variant="outline" size="icon" onClick={() => window.print()} className="no-print">
+          </div>
+        </CardHeader>
+        <CardContent>
+           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 no-print">
+            <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="max-w-sm w-full" />
+             <Button variant="outline" size="icon" onClick={() => window.print()}>
                 <Printer className="h-5 w-5" />
                 <span className="sr-only">Print</span>
             </Button>
-        </div>
-      </div>
+          </div>
 
-      {/* Today's Cashbook Section */}
-      <Card className="shadow-xl border-primary/30">
-        <CardHeader>
-          <CardTitle className="text-2xl text-primary flex items-center"><CalendarDays className="mr-3 h-7 w-7"/>Today&apos;s Cash Book ({format(parseISO(todaysData.date), "PPP")})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-3 p-2 border rounded-md bg-muted/30 text-sm">
-            <strong>Opening Balance:</strong> {todaysData.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-            {/* Receipts Side (Dr) */}
-            <div className="pr-3">
-              <h4 className="text-md font-medium text-green-600 mb-1 flex items-center"><TrendingUp className="h-5 w-5 mr-2"/>Receipts (Inflow)</h4>
-              {todaysData.receipts.length > 0 ? (
-                <Table className="text-xs">
-                  <TableHeader><TableRow><TableHead>Particulars</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {todaysData.receipts.map(r => (
-                      <TableRow key={r.id}><TableCell className="truncate max-w-[200px]">{r.particulars}</TableCell><TableCell className="text-right">{r.amount.toFixed(2)}</TableCell></TableRow>
-                    ))}
-                    <TableRow className="font-semibold bg-green-50 dark:bg-green-900/20"><TableCell>Total Receipts</TableCell><TableCell className="text-right">{todaysData.totalReceipts.toFixed(2)}</TableCell></TableRow>
-                  </TableBody>
-                </Table>
-              ) : (<p className="text-xs text-muted-foreground py-2">No receipts today.</p>)}
-            </div>
-            {/* Payments Side (Cr) */}
-            <div className="pl-3 md:border-l">
-              <h4 className="text-md font-medium text-red-600 mb-1 flex items-center"><TrendingDown className="h-5 w-5 mr-2"/>Payments (Outflow)</h4>
-              {todaysData.payments.length > 0 ? (
-                <Table className="text-xs">
-                  <TableHeader><TableRow><TableHead>Particulars</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {todaysData.payments.map(p => (
-                      <TableRow key={p.id}><TableCell className="truncate max-w-[200px]">{p.particulars}</TableCell><TableCell className="text-right">{p.amount.toFixed(2)}</TableCell></TableRow>
-                    ))}
-                    <TableRow className="font-semibold bg-red-50 dark:bg-red-900/20"><TableCell>Total Payments</TableCell><TableCell className="text-right">{todaysData.totalPayments.toFixed(2)}</TableCell></TableRow>
-                  </TableBody>
-                </Table>
-              ) : (<p className="text-xs text-muted-foreground py-2">No payments today.</p>)}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="mt-2 pt-3 border-t">
-          <div className="w-full flex justify-end text-lg font-bold text-primary">
-            <span>Today&apos;s Closing Balance:</span>
-            <span className="ml-4">{todaysData.closingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-        </CardFooter>
-      </Card>
-
-      {/* Historical Transactions Section */}
-      <Card className="shadow-xl">
-        <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <CardTitle className="text-2xl text-primary flex items-center"><BookOpen className="mr-3 h-7 w-7"/>Historical Cash Transactions</CardTitle>
-          <DatePickerWithRange date={historicalDateRange} onDateChange={setHistoricalDateRange} className="max-w-sm w-full md:w-auto no-print" />
-        </CardHeader>
-        <CardContent>
           <div className="mb-4 p-3 border rounded-md bg-muted/50">
             <div className="flex justify-between text-sm font-medium">
-                <span>Opening Balance for Selected Period:</span>
-                <span>{historicalCashbookData?.overallOpeningBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>Opening Balance for Period:</span>
+                <span>{cashLedgerData.openingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           </div>
-          <ScrollArea className="h-[50vh] rounded-md border print:h-auto print:overflow-visible">
+          <ScrollArea className="h-[60vh] rounded-md border print:h-auto print:overflow-visible">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">Date</TableHead>
                   <TableHead>Particulars</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">Receipt Amount (₹)</TableHead>
-                  <TableHead className="text-right">Payment Amount (₹)</TableHead>
+                  <TableHead className="text-right">Debit (Out)</TableHead>
+                  <TableHead className="text-right">Credit (In)</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {historicalCashbookData?.flatTransactions.length === 0 && (
+                {cashLedgerData.entries.length === 0 ? (
                      <TableRow><TableCell colSpan={5} className="text-center h-32 text-muted-foreground">No cash transactions in the selected period.</TableCell></TableRow>
+                ) : (
+                  cashLedgerData.entries.map((tx) => (
+                    <TableRow key={tx.id} className={cn(tx.type === 'Receipt' ? 'bg-green-50/50' : 'bg-red-50/50')}>
+                      <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                      <TableCell className="truncate max-w-sm">{tx.particulars}</TableCell>
+                      <TableCell className="text-right font-mono text-red-600">
+                        {tx.debit > 0 ? tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-green-700">
+                        {tx.credit > 0 ? tx.credit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold font-mono">{tx.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                    </TableRow>
+                  ))
                 )}
-                {historicalCashbookData?.flatTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>{format(parseISO(transaction.entryDate), "dd-MM-yy")}</TableCell>
-                    <TableCell className="truncate max-w-sm">{transaction.particulars}</TableCell>
-                    <TableCell>
-                        <span className={`px-2 py-1 text-xs rounded-full ${transaction.type === 'Receipt' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'}`}>
-                            {transaction.type}
-                        </span>
-                    </TableCell>
-                    <TableCell className="text-right">{transaction.type === 'Receipt' ? transaction.amount.toFixed(2) : '-'}</TableCell>
-                    <TableCell className="text-right">{transaction.type === 'Payment' ? transaction.amount.toFixed(2) : '-'}</TableCell>
-                  </TableRow>
-                ))}
               </TableBody>
             </Table>
           </ScrollArea>
         </CardContent>
         <CardFooter className="mt-4 pt-4 border-t">
             <div className="w-full flex justify-between text-lg font-bold text-primary">
-                <span>Closing Balance for Selected Period:</span>
-                <span>{historicalCashbookData?.finalClosingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span>Closing Balance for Period:</span>
+                <span>{cashLedgerData.closingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
         </CardFooter>
       </Card>
@@ -353,7 +239,7 @@ export function CashbookClient() {
           onSubmit={handleAddPaymentFromCashbook}
           parties={allPaymentParties}
           onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
-          paymentToEdit={paymentToEdit} // Will be null for new entries from cashbook
+          paymentToEdit={paymentToEdit}
         />
       )}
 
@@ -364,10 +250,9 @@ export function CashbookClient() {
           onSubmit={handleAddReceiptFromCashbook}
           parties={allReceiptParties}
           onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
-          receiptToEdit={receiptToEdit} // Will be null for new entries from cashbook
+          receiptToEdit={receiptToEdit}
         />
       )}
     </div>
   );
 }
-
