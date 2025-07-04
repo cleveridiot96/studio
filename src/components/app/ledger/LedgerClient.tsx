@@ -4,7 +4,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
@@ -42,6 +42,7 @@ interface TAccountPurchaseEntry {
 interface TAccountSaleEntry {
   id: string;
   date: string;
+  vakkal: string;
   bags: number;
   customer: string;
   broker: string;
@@ -59,6 +60,8 @@ const initialLedgerData = {
   totalDebitKg: 0,
   totalCreditBags: 0,
   totalCreditKg: 0,
+  closingBags: 0,
+  closingKg: 0,
 };
 
 export function LedgerClient() {
@@ -157,6 +160,7 @@ export function LedgerClient() {
       .map(s => ({
         id: s.id,
         date: s.date,
+        vakkal: s.lotNumber,
         bags: s.quantity,
         customer: s.customerName || s.customerId,
         broker: s.brokerName || s.brokerId || 'N/A',
@@ -174,6 +178,8 @@ export function LedgerClient() {
     const totalCreditBags = periodCreditEntries.reduce((sum, entry) => sum + (entry.bags || 0), 0);
     const totalCreditKg = periodCreditEntries.reduce((sum, entry) => sum + (entry.kg || 0), 0);
 
+    const closingBags = totalDebitBags - totalCreditBags;
+    const closingKg = totalDebitKg - totalCreditKg;
 
     return {
       debitEntries: periodDebitEntries,
@@ -184,6 +190,8 @@ export function LedgerClient() {
       totalDebitKg,
       totalCreditBags,
       totalCreditKg,
+      closingBags,
+      closingKg,
     };
   }, [selectedPartyId, dateRange, purchases, sales, allMasters, hydrated]);
 
@@ -215,7 +223,9 @@ export function LedgerClient() {
     totalDebitBags,
     totalDebitKg,
     totalCreditBags,
-    totalCreditKg
+    totalCreditKg,
+    closingBags,
+    closingKg,
   } = ledgerData;
 
   return (
@@ -245,7 +255,7 @@ export function LedgerClient() {
       </Card>
 
       {selectedPartyId && selectedPartyDetails && hydrated ? (
-        <div id="ledger-t-account">
+        <Card id="ledger-t-account" className="shadow-lg p-4">
           <CardHeader className="text-center">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
             <CardTitle className="text-2xl text-primary flex items-center justify-center">
@@ -258,12 +268,12 @@ export function LedgerClient() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-1">
-                <Card className="shadow-lg h-full flex flex-col">
+                <Card className="shadow-inner h-full flex flex-col border-orange-300">
                     <CardHeader className="p-0">
-                        <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Purchases via Party)</CardTitle>
+                        <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
-                        <Table>
+                        <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Vakkal</TableHead>
@@ -275,7 +285,7 @@ export function LedgerClient() {
                             <TableBody>
                                 {debitEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No purchases recorded.</TableCell></TableRow>}
                                 {debitEntries.map(e => (
-                                    <TableRow key={e.id}>
+                                    <TableRow key={`dr-${e.id}`}>
                                         <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
                                         <TableCell>{e.vakkal}</TableCell>
                                         <TableCell className="text-right">{e.bags?.toLocaleString()}</TableCell>
@@ -300,16 +310,16 @@ export function LedgerClient() {
             </div>
 
             <div className="md:col-span-1">
-                <Card className="shadow-lg h-full flex flex-col">
+                <Card className="shadow-inner h-full flex flex-col border-green-300">
                     <CardHeader className="p-0">
-                        <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Sales via Party)</CardTitle>
+                        <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
-                        <Table>
+                        <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
+                                <TableHead>Vakkal</TableHead>
                                 <TableHead>Customer</TableHead>
-                                <TableHead>Broker</TableHead>
                                 <TableHead className="text-right">Bags</TableHead>
                                 <TableHead className="text-right">Kg</TableHead>
                                 <TableHead className="text-right">Rate</TableHead>
@@ -318,10 +328,10 @@ export function LedgerClient() {
                             <TableBody>
                                 {creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales recorded for this party.</TableCell></TableRow>}
                                 {creditEntries.map(e => (
-                                    <TableRow key={e.id}>
+                                    <TableRow key={`cr-${e.id}`}>
                                         <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                                        <TableCell>{e.vakkal}</TableCell>
                                         <TableCell>{e.customer}</TableCell>
-                                        <TableCell>{e.broker}</TableCell>
                                         <TableCell className="text-right">{e.bags}</TableCell>
                                         <TableCell className="text-right">{e.kg.toFixed(2)}</TableCell>
                                         <TableCell className="text-right">{e.rate.toFixed(2)}</TableCell>
@@ -343,7 +353,16 @@ export function LedgerClient() {
                 </Card>
             </div>
           </div>
-        </div>
+           <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
+            <div className="text-right font-bold text-lg">
+                <span>Closing Stock Balance: </span>
+                <span className="text-primary">
+                    {closingBags.toLocaleString()} Bags / {closingKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })} kg
+                </span>
+                 <p className="text-xs text-muted-foreground font-normal">(Debit - Credit for the selected period)</p>
+            </div>
+          </CardFooter>
+        </Card>
       ) : (
         <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print">
           <div className="text-center">
@@ -357,5 +376,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
-    
