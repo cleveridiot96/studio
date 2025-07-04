@@ -26,7 +26,6 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
 import { cn } from "@/lib/utils";
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
-import { StockActivityFeed } from "./StockActivityFeed";
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
@@ -336,9 +335,8 @@ export function InventoryClient() {
         </TabsContent>
       </Tabs>
       
-      <div className="mt-8 no-print grid md:grid-cols-2 gap-6">
+      <div className="mt-8 no-print">
         <PartyBrokerLeaderboard items={allAggregatedInventory} />
-        <StockActivityFeed purchases={purchases} sales={sales} locationTransfers={locationTransfers} purchaseReturns={purchaseReturns} saleReturns={saleReturns} />
       </div>
 
       {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>This action will hide the lot "<strong>{itemToArchive.lotNumber}</strong>" from the main inventory view. You can view and restore it from the "Archived" tab.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}

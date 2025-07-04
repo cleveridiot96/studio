@@ -63,7 +63,7 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
 
     return Array.from(partyMap.values())
       .filter(entry => entry.bags > 0)
-      .sort((a, b) => b.value - a.value);
+      .sort((a, b) => b.bags - a.value);
   }, [items]);
 
   if (leaderboardData.length === 0) {
@@ -77,7 +77,7 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl">Party/Broker Leaderboard</CardTitle>
+        <CardTitle className="text-xl">Bag Leaderboard</CardTitle>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[250px] rounded-md border">
