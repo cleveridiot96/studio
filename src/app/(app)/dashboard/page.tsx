@@ -92,8 +92,8 @@ export default function DashboardPage() {
       className: "bg-pink-600 hover:bg-pink-700 text-white",
     },
     {
-      title: "Party Ledger",
-      description: "View party balances",
+      title: "Stock Ledger",
+      description: "View party stock ledgers",
       href: "/ledger",
       iconName: "BookUser",
       className: "bg-gray-700 hover:bg-gray-800 text-white",
