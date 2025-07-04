@@ -35,7 +35,7 @@ export const buildSearchData = ({
       id: s.id,
       type: 'sale',
       title: `Sale: ${s.billNumber || s.id} to ${s.customerName || s.customerId}`,
-      searchableText: `sale sales bill ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.lotNumber} ${s.totalAmount} ${s.date} ${s.notes || ''}`,
+      searchableText: `sale sales bill ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${s.lotNumber} ${s.billedAmount} ${s.date} ${s.notes || ''}`,
       href: `/sales#${s.id}`, 
       date: s.date,
     });
@@ -85,12 +85,12 @@ export const buildSearchData = ({
   });
 
   locationTransfers.forEach((lt) => {
-    const itemsDesc = lt.items.map(item => `${item.lotNumber} ${item.bagsToTransfer} bags`).join(', ');
+    const itemsDesc = lt.items.map(item => `${item.originalLotNumber} ${item.newLotNumber} ${item.bagsToTransfer} bags`).join(', ');
     searchableItems.push({
       id: lt.id,
       type: 'location transfer',
       title: `Transfer on ${format(parseISO(lt.date), 'dd-MM-yy')}: ${lt.fromWarehouseName} to ${lt.toWarehouseName}`,
-      searchableText: `location transfer ${lt.fromWarehouseName || lt.fromWarehouseId} ${lt.toWarehouseName || lt.toWarehouseId} ${itemsDesc} ${lt.transporterName || ''} ${lt.date} ${lt.notes || ''}`,
+      searchableText: `location transfer from to ${lt.fromWarehouseName || lt.fromWarehouseId} ${lt.toWarehouseName || lt.toWarehouseId} ${itemsDesc} ${lt.transporterName || ''} ${lt.date} ${lt.notes || ''}`,
       href: `/location-transfer#${lt.id}`,
       date: lt.date,
     });
