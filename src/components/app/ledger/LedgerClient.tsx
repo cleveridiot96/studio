@@ -196,7 +196,7 @@ export function LedgerClient() {
       <Card className="shadow-md no-print">
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h1 className="text-3xl font-bold text-foreground">Party Stock Ledger</h1>
+                <h1 className="text-3xl font-bold text-foreground">Stock Ledger</h1>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <Select onValueChange={handlePartySelect} value={selectedPartyId || ""}>
                         <SelectTrigger className="w-full md:w-[280px]">
@@ -239,7 +239,7 @@ export function LedgerClient() {
             </p>
           </CardHeader>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-4 space-y-4 md:space-y-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 md:gap-2 space-y-4 md:space-y-0">
             <Card className="shadow-lg">
                 <CardHeader className="p-0">
                     <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Purchases via Party)</CardTitle>
@@ -326,4 +326,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
