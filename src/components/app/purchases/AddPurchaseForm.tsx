@@ -67,6 +67,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
   const [transportChargesManuallySet, setTransportChargesManuallySet] = React.useState(false);
+  const [brokerageChargesManuallySet, setBrokerageChargesManuallySet] = React.useState(false);
 
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
@@ -120,10 +121,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       setQuantityManuallySet(!!purchaseToEdit?.quantity); 
       setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
       setTransportChargesManuallySet(!!purchaseToEdit?.transportCharges);
+      setBrokerageChargesManuallySet(!!purchaseToEdit?.brokerageCharges);
     } else {
       setQuantityManuallySet(false);
       setNetWeightManuallySet(false);
       setTransportChargesManuallySet(false);
+      setBrokerageChargesManuallySet(false);
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
@@ -147,12 +150,32 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     if (typeof quantityValue === 'number' && quantityValue > 0 && !netWeightManuallySet && !dirtyFields.netWeight) {
       setValue("netWeight", quantityValue * 50, { shouldValidate: true });
     }
-    // Auto-calculate transport charges
     if (typeof quantityValue === 'number' && quantityValue > 0 && typeof transportRatePerKg === 'number' && transportRatePerKg > 0 && !transportChargesManuallySet) {
-        const grossWeight = quantityValue * 50; // Standard gross weight
+        const grossWeight = quantityValue * 50;
         setValue("transportCharges", grossWeight * transportRatePerKg, { shouldValidate: true });
     }
   }, [quantityValue, transportRatePerKg, setValue, dirtyFields.netWeight, netWeightManuallySet, transportChargesManuallySet]);
+  
+  const watchedAgentId = watch("agentId");
+  const watchedNetWeight = watch("netWeight");
+  const watchedRate = watch("rate");
+
+  React.useEffect(() => {
+    if (watchedAgentId && !brokerageChargesManuallySet && agents) {
+      const agent = agents.find(a => a.id === watchedAgentId);
+      if (agent && typeof agent.commission === 'number' && agent.commission > 0) {
+        const currentGoodsValue = (watchedNetWeight || 0) * (watchedRate || 0);
+        if (currentGoodsValue > 0) {
+          const calculatedBrokerage = currentGoodsValue * (agent.commission / 100);
+          setValue("brokerageCharges", parseFloat(calculatedBrokerage.toFixed(2)), { shouldValidate: true });
+        } else {
+          setValue("brokerageCharges", undefined, { shouldValidate: true });
+        }
+      } else if (!brokerageChargesManuallySet) {
+        setValue("brokerageCharges", undefined, { shouldValidate: true });
+      }
+    }
+  }, [watchedAgentId, watchedNetWeight, watchedRate, brokerageChargesManuallySet, setValue, agents]);
 
 
   const netWeight = watch("netWeight");
@@ -358,7 +381,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setTransportChargesManuallySet(true); }} onFocus={() => setTransportChargesManuallySet(true)} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Packing" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Labour" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="brokerageCharges" render={({ field }) => (<FormItem><FormLabel>Brokerage (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Brokerage" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={control} name="brokerageCharges" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Brokerage (₹)</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} 
+                            onChange={e => {
+                                field.onChange(parseFloat(e.target.value) || undefined);
+                                setBrokerageChargesManuallySet(true);
+                            }} 
+                            onFocus={() => setBrokerageChargesManuallySet(true)} /></FormControl>
+                          <FormMessage />
+                        </FormItem>)} />
                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Misc." {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
