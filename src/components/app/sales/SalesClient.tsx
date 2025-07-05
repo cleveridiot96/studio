@@ -264,9 +264,9 @@ export function SalesClient() {
           return;
         }
         try {
-          const canvas = await html2canvas(elementToCapture, { scale: 2, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+          const canvas = await html2canvas(elementToCapture, { scale: 1.5, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
+          const imgData = canvas.toDataURL('image/jpeg', 0.85);
+          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5', compress: true });
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
           const imgProps = pdf.getImageProperties(imgData);
@@ -282,7 +282,7 @@ export function SalesClient() {
           }
           const xOffset = (pdfWidth - imgWidth) / 2;
           const yOffset = (pdfHeight - imgHeight) / 2;
-          pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+          pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
           const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
           pdf.save(`SaleChitti_${saleForPdf.billNumber?.replace(/[\/\s.]/g, '_') || saleForPdf.id.slice(-4)}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Chitti for ${saleForPdf.billNumber} downloaded.` });
