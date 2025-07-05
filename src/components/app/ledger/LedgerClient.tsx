@@ -141,35 +141,43 @@ export function LedgerClient() {
 
     const toDate = dateRange.to || dateRange.from;
 
-    const periodDebitEntries: TAccountPurchaseEntry[] = purchases
-      .filter(p => (p.supplierId === party.id || p.agentId === party.id))
-      .filter(p => isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-      .map(p => ({
-        id: p.id,
-        date: p.date,
-        vakkal: p.lotNumber,
-        bags: p.quantity,
-        kg: p.netWeight,
-        rate: p.rate,
-        amount: p.totalAmount,
-      }))
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    let periodDebitEntries: TAccountPurchaseEntry[] = [];
+    if (party.type === 'Supplier' || party.type === 'Agent') {
+      periodDebitEntries = purchases
+        .filter(p => {
+            const isMatch = (party.type === 'Supplier' && p.supplierId === party.id) || 
+                          (party.type === 'Agent' && p.agentId === party.id);
+            return isMatch && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
+        })
+        .map(p => ({
+          id: p.id,
+          date: p.date,
+          vakkal: p.lotNumber,
+          bags: p.quantity,
+          kg: p.netWeight,
+          rate: p.rate,
+          amount: p.totalAmount,
+        }))
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    }
 
-    const periodCreditEntries: TAccountSaleEntry[] = sales
-      .filter(s => s.brokerId === party.id)
-      .filter(s => isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-      .map(s => ({
-        id: s.id,
-        date: s.date,
-        vakkal: s.lotNumber,
-        bags: s.quantity,
-        customer: s.customerName || s.customerId,
-        broker: s.brokerName || s.brokerId || 'N/A',
-        kg: s.netWeight,
-        rate: s.rate,
-        amount: s.billedAmount,
-      }))
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    let periodCreditEntries: TAccountSaleEntry[] = [];
+    if (party.type === 'Broker') {
+      periodCreditEntries = sales
+        .filter(s => s.brokerId === party.id && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
+        .map(s => ({
+          id: s.id,
+          date: s.date,
+          vakkal: s.lotNumber,
+          bags: s.quantity,
+          customer: s.customerName || s.customerId,
+          broker: s.brokerName || s.brokerId || 'N/A',
+          kg: s.netWeight,
+          rate: s.rate,
+          amount: s.billedAmount,
+        }))
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    }
       
     const totalDebit = periodDebitEntries.reduce((sum, entry) => sum + entry.amount, 0);
     const totalDebitBags = periodDebitEntries.reduce((sum, entry) => sum + (entry.bags || 0), 0);
@@ -275,7 +283,7 @@ export function LedgerClient() {
                         <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
-                      <ScrollArea className="max-h-[65vh]">
+                      <ScrollArea>
                         <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
@@ -319,7 +327,7 @@ export function LedgerClient() {
                         <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
-                      <ScrollArea className="max-h-[65vh]">
+                      <ScrollArea>
                         <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
