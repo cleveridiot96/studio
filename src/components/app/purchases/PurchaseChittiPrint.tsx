@@ -11,7 +11,9 @@ interface PurchaseChittiPrintProps {
 
 export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purchase }) => {
   if (!purchase) return null;
-
+  
+  const goodsValue = purchase.netWeight * purchase.rate;
+  const totalExpenses = (purchase.transportCharges || 0) + (purchase.packingCharges || 0) + (purchase.labourCharges || 0) + (purchase.brokerageCharges || 0) + (purchase.miscExpenses || 0);
   const grandTotal = purchase.totalAmount;
 
   return (
@@ -77,7 +79,33 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
             {purchase.rate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
+        <div className="flex-between py-1 border-t border-dashed">
+          <span className="label-col font-bold">Goods Value:</span>
+          <span className="value-col font-bold">
+            {goodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
       </div>
+
+      {totalExpenses > 0 && (
+        <>
+          <hr />
+          <div className="mt-1 mb-1">
+            <span className="font-bold">Expenses:</span>
+          </div>
+          <div className="space-y-1">
+            {purchase.transportCharges && purchase.transportCharges > 0 && <div className="flex-between"><span className="label-col">Transport:</span><span className="value-col">{purchase.transportCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
+            {purchase.packingCharges && purchase.packingCharges > 0 && <div className="flex-between"><span className="label-col">Packing:</span><span className="value-col">{purchase.packingCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
+            {purchase.labourCharges && purchase.labourCharges > 0 && <div className="flex-between"><span className="label-col">Labour:</span><span className="value-col">{purchase.labourCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
+            {purchase.brokerageCharges && purchase.brokerageCharges > 0 && <div className="flex-between"><span className="label-col">Brokerage:</span><span className="value-col">{purchase.brokerageCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
+            {purchase.miscExpenses && purchase.miscExpenses > 0 && <div className="flex-between"><span className="label-col">Misc:</span><span className="value-col">{purchase.miscExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
+            <div className="flex-between py-1 border-t border-dashed">
+                <span className="label-col font-bold">Total Expenses:</span>
+                <span className="value-col font-bold">{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        </>
+      )}
       
       <hr className="border-black mt-2 mb-1"/>
       <div className="flex-between font-bold text-base mt-1">

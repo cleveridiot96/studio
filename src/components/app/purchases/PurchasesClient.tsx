@@ -31,8 +31,10 @@ import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate'>): Purchase => {
-  const totalAmount = p.netWeight * p.rate;
-  const effectiveRate = p.rate; // Now it's the same as the base rate
+  const goodsValue = (p.netWeight || 0) * (p.rate || 0);
+  const totalExpenses = (p.transportCharges || 0) + (p.packingCharges || 0) + (p.labourCharges || 0) + (p.brokerageCharges || 0) + (p.miscExpenses || 0);
+  const totalAmount = goodsValue + totalExpenses;
+  const effectiveRate = p.netWeight > 0 ? totalAmount / p.netWeight : 0;
   return { ...p, totalAmount, effectiveRate };
 };
 

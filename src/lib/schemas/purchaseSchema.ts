@@ -25,7 +25,13 @@ export const purchaseSchema = (
   quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."),
   netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."),
   rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."),
-  // Expense and transport fields are removed from here.
+  // Expense Fields
+  transportRatePerKg: z.coerce.number().nonnegative("Rate must be non-negative").optional(),
+  transportCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
+  packingCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
+  labourCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
+  brokerageCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
+  miscExpenses: z.coerce.number().nonnegative("Expenses must be non-negative").optional(),
 });
 
 export type PurchaseFormValues = z.infer<ReturnType<typeof purchaseSchema>>;

@@ -38,8 +38,16 @@ export interface Purchase {
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // per KG
-  totalAmount: number; // (netWeight * rate)
-  effectiveRate: number; // For purchases this is the same as rate. It's the landed cost.
+  // Expenses
+  transportRatePerKg?: number;
+  transportCharges?: number;
+  packingCharges?: number;
+  labourCharges?: number;
+  brokerageCharges?: number;
+  miscExpenses?: number;
+  // Calculated Fields
+  totalAmount: number; // (netWeight * rate) + all expenses
+  effectiveRate: number; // Landed cost per kg: totalAmount / netWeight
   locationId: string;
   locationName?: string;
 }
