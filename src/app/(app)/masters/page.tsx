@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building } from "lucide-react";
+import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,8 @@ import {
 import { doesNameExist } from '@/lib/masterUtils';
 import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { cn } from "@/lib/utils";
+import { ExpenseJournal } from '@/components/app/masters/ExpenseJournal';
+
 
 // Storage keys
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
@@ -34,7 +36,7 @@ const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
 const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 
-type MasterPageTabKey = MasterItemType | 'All';
+type MasterPageTabKey = MasterItemType | 'All' | 'ExpensesJournal';
 
 const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; colorClass: string; }[] = [
   { value: "All", label: "All Parties", icon: List, colorClass: 'text-white bg-red-800 hover:bg-red-900 data-[state=active]:bg-red-900 data-[state=active]:text-white' },
@@ -43,7 +45,8 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
   { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
   { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Transporter", label: "Transporters", icon: Truck, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
+  { value: "Transporter", label: "Transporters", icon: Truck, colorClass: 'bg-indigo-500 hover:bg-indigo-600 text-white data-[state=active]:bg-indigo-600 data-[state=active]:text-white' },
+  { value: "ExpensesJournal", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
 export default function MastersPage() {
@@ -221,7 +224,7 @@ export default function MastersPage() {
   }, []);
 
   const addButtonLabel = useMemo(() => {
-    if (activeTab === 'All') return "Add New Party/Entity";
+    if (activeTab === 'All' || activeTab === 'ExpensesJournal') return "Add New Party/Entity";
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
     const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
     return `Add New ${singularLabel || 'Party/Entity'}`;
@@ -242,13 +245,13 @@ export default function MastersPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Masters</h1>
         </div>
-        <Button onClick={openFormForNewItem} size="lg" className="text-base py-3 px-6 shadow-md">
+        <Button onClick={openFormForNewItem} size="lg" className="text-base py-3 px-6 shadow-md" disabled={activeTab === 'ExpensesJournal'}>
             <PlusCircle className="mr-2 h-5 w-5" /> {addButtonLabel}
         </Button>
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 h-auto rounded-lg overflow-hidden p-1 bg-muted gap-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 h-auto rounded-lg overflow-hidden p-1 bg-muted gap-1">
           {TABS_CONFIG.map(tab => (
             <TabsTrigger
               key={tab.value}
@@ -264,6 +267,20 @@ export default function MastersPage() {
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
+            if (tab.value === 'ExpensesJournal') {
+                 return (
+                    <TabsContent key={tab.value} value={tab.value} className="mt-6">
+                       <Card className="shadow-lg">
+                         <CardHeader>
+                           <CardTitle className="text-2xl text-primary">Expense Journal</CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                           <ExpenseJournal />
+                         </CardContent>
+                       </Card>
+                    </TabsContent>
+                 );
+            }
             const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(tab.value as MasterItemType).data;
             return (
               <TabsContent key={tab.value} value={tab.value} className="mt-6">
@@ -298,7 +315,7 @@ export default function MastersPage() {
           onClose={() => { setIsFormOpen(false); setEditingItem(null); }}
           onSubmit={handleAddOrUpdateMasterItem}
           initialData={editingItem}
-          itemTypeFromButton={editingItem ? editingItem.type : (activeTab !== 'All' ? activeTab as MasterItemType : 'Customer')}
+          itemTypeFromButton={editingItem ? editingItem.type : (activeTab !== 'All' && activeTab !== 'ExpensesJournal' ? activeTab as MasterItemType : 'Customer')}
           fixedWarehouseIds={FIXED_WAREHOUSE_IDS}
         />
       )}
@@ -322,5 +339,3 @@ export default function MastersPage() {
     </div>
   );
 }
-
-    
