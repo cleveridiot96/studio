@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry as LedgerEntryType } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -22,6 +22,7 @@ const MASTERS_KEYS = {
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   brokers: 'masterBrokers',
+  expenses: 'masterExpenses',
 };
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
@@ -150,23 +151,49 @@ export function AccountsLedgerClient() {
     const party = allMasters.find(p => p.id === partyId);
     if (!party) return [];
 
-    let transactions: (LedgerEntry & { type: 'debit' | 'credit' })[] = [];
+    let transactions: (LedgerEntryType & { type: 'debit' | 'credit' })[] = [];
 
     if (party.type === 'Customer') {
-      sales.filter(s => s.customerId === partyId).forEach(s => transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: s.billNumber }));
+      sales.filter(s => s.customerId === partyId).forEach(s => transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: s.billNumber } as any));
       receipts.filter(r => r.partyId === partyId).forEach(r => {
-        transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, vakkal: r.referenceNo });
-        if (r.cashDiscount && r.cashDiscount > 0) transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'credit', amount: r.cashDiscount, vakkal: 'Discount' });
+        transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, vakkal: r.referenceNo } as any);
+        if (r.cashDiscount && r.cashDiscount > 0) transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'credit', amount: r.cashDiscount, vakkal: 'Discount' } as any);
       });
     } else if (party.type === 'Supplier' || party.type === 'Agent') {
-      purchases.filter(p => p.supplierId === partyId || p.agentId === partyId).forEach(p => transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: p.totalAmount, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate }));
-      payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo }));
+      purchases.filter(p => p.supplierId === partyId || p.agentId === partyId).forEach(p => transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: p.totalAmount, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any));
+      payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
     } else if (party.type === 'Broker') {
       sales.filter(s => s.brokerId === partyId).forEach(s => {
         const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-        if (totalBrokerage > 0) transactions.push({ id: `broke-${s.id}`, date: s.date, type: 'credit', amount: totalBrokerage, vakkal: s.lotNumber, kg: s.netWeight });
+        if (totalBrokerage > 0) transactions.push({ id: `broke-${s.id}`, date: s.date, type: 'credit', amount: totalBrokerage, vakkal: s.lotNumber, kg: s.netWeight } as any);
       });
-      payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo }));
+      payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
+    } else if (party.type === 'Expense') {
+        // Credits are charges incurred
+        purchases.forEach(p => {
+            if (party.id === 'fixed-exp-packing' && p.packingCharges && p.packingCharges > 0) {
+                transactions.push({ id: `pur-pack-${p.id}`, date: p.date, type: 'credit', amount: p.packingCharges, vakkal: `Purchase: ${p.lotNumber}` } as any);
+            }
+            if (party.id === 'fixed-exp-labour' && p.labourCharges && p.labourCharges > 0) {
+                transactions.push({ id: `pur-labour-${p.id}`, date: p.date, type: 'credit', amount: p.labourCharges, vakkal: `Purchase: ${p.lotNumber}` } as any);
+            }
+            if (party.id === 'fixed-exp-misc' && p.miscExpenses && p.miscExpenses > 0) {
+                transactions.push({ id: `pur-misc-${p.id}`, date: p.date, type: 'credit', amount: p.miscExpenses, vakkal: `Purchase: ${p.lotNumber}` } as any);
+            }
+        });
+        sales.forEach(s => {
+            if (party.id === 'fixed-exp-packing' && s.packingCost && s.packingCost > 0) {
+                transactions.push({ id: `sale-pack-${s.id}`, date: s.date, type: 'credit', amount: s.packingCost, vakkal: `Sale: ${s.billNumber || s.lotNumber}` } as any);
+            }
+            if (party.id === 'fixed-exp-labour' && s.labourCost && s.labourCost > 0) {
+                transactions.push({ id: `sale-labour-${s.id}`, date: s.date, type: 'credit', amount: s.labourCost, vakkal: `Sale: ${s.billNumber || s.lotNumber}` } as any);
+            }
+        });
+
+        // Debits are payments made against this expense
+        payments.filter(p => p.partyId === partyId).forEach(p => {
+            transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any);
+        });
     }
     return transactions;
   }, [allMasters, sales, purchases, payments, receipts]);
@@ -350,15 +377,17 @@ export function AccountsLedgerClient() {
                     <ScrollArea className="h-[50vh]">
                       <Table size="sm"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Amount</TableHead>
+                          <TableHead>Particulars</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
                         </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
+                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
                             {financialLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
                               <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                              <TableCell>{e.vakkal}</TableCell>
                               <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>))}
                           </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                              <TableCell>Total</TableCell>
+                              <TableCell colSpan={2}>Total</TableCell>
                               <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
                       </ScrollArea>
@@ -369,15 +398,17 @@ export function AccountsLedgerClient() {
                     <ScrollArea className="h-[50vh]">
                       <Table size="sm"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Amount</TableHead>
+                          <TableHead>Particulars</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
                         </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
+                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
                             {financialLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
                               <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                              <TableCell>{e.vakkal}</TableCell>
                               <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>))}
                           </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                            <TableCell>Total</TableCell>
+                            <TableCell colSpan={2}>Total</TableCell>
                             <TableCell className="text-right">{financialLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
                       </ScrollArea>
@@ -415,5 +446,3 @@ export function AccountsLedgerClient() {
     </div>
   );
 }
-
-    

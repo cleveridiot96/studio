@@ -124,7 +124,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       date: format(values.date, "yyyy-MM-dd"),
       partyId: values.partyId as string,
       partyName: selectedParty.name,
-      partyType: selectedParty.type as 'Supplier' | 'Agent' | 'Transporter',
+      partyType: selectedParty.type as MasterItemType,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       referenceNo: values.referenceNo,

@@ -27,6 +27,7 @@ const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
 const initialPaymentsData: Payment[] = [];
 
@@ -41,6 +42,8 @@ export function PaymentsClient() {
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
+
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
@@ -58,10 +61,11 @@ export function PaymentsClient() {
     return [
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
-      ...transporters.filter(t => t.type === 'Transporter')
+      ...transporters.filter(t => t.type === 'Transporter'),
+      ...expenses.filter(e => e.type === 'Expense')
     ].filter(party => party && party.id && party.name && party.type) // Basic validation
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters, hydrated]);
+  }, [suppliers, agents, transporters, expenses, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -104,7 +108,8 @@ export function PaymentsClient() {
     const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { 
         Supplier: setSuppliers, 
         Agent: setAgents, 
-        Transporter: setTransporters 
+        Transporter: setTransporters,
+        Expense: setExpenses,
     };
     const setter = setters[type];
     if (setter) {
@@ -112,7 +117,7 @@ export function PaymentsClient() {
     } else {
         toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
     }
-  }, [setSuppliers, setAgents, setTransporters, toast]);
+  }, [setSuppliers, setAgents, setTransporters, setExpenses, toast]);
 
   const openAddPaymentForm = React.useCallback(() => {
     setPaymentToEdit(null);
