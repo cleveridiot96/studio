@@ -106,6 +106,9 @@ const initialBrokerLedgerData = {
     totalPaymentsDebit: 0,
     openingBalance: 0,
     closingBalance: 0,
+    totalCreditBags: 0,
+    totalCreditKg: 0,
+    totalCreditSaleValue: 0,
 };
 
 export function AccountsLedgerClient() {
@@ -181,7 +184,7 @@ export function AccountsLedgerClient() {
     let transactions: (LedgerEntryType & { type: 'debit' | 'credit' })[] = [];
 
     if (party.type === 'Customer') {
-      sales.filter(s => s.customerId === partyId).forEach(s => transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: s.billNumber } as any));
+      sales.filter(s => s.customerId === partyId).forEach(s => transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: s.billNumber, bags: s.quantity, kg: s.netWeight, rate: s.rate } as any));
       receipts.filter(r => r.partyId === partyId).forEach(r => {
         transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, vakkal: r.referenceNo } as any);
         if (r.cashDiscount && r.cashDiscount > 0) transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'credit', amount: r.cashDiscount, vakkal: 'Discount' } as any);
@@ -294,10 +297,24 @@ export function AccountsLedgerClient() {
 
     const totalBrokerageCredit = creditEntries.reduce((sum, e) => sum + e.brokerageAmount, 0);
     const totalPaymentsDebit = debitEntries.reduce((sum, e) => sum + e.amount, 0);
+    
+    const totalCreditBags = creditEntries.reduce((sum, e) => sum + e.bags, 0);
+    const totalCreditKg = creditEntries.reduce((sum, e) => sum + e.kg, 0);
+    const totalCreditSaleValue = creditEntries.reduce((sum, e) => sum + e.saleValue, 0);
 
     const closingBalance = openingBalance - totalBrokerageCredit + totalPaymentsDebit;
 
-    return { creditEntries, debitEntries, totalBrokerageCredit, totalPaymentsDebit, openingBalance, closingBalance };
+    return { 
+        creditEntries, 
+        debitEntries, 
+        totalBrokerageCredit, 
+        totalPaymentsDebit, 
+        openingBalance, 
+        closingBalance,
+        totalCreditBags,
+        totalCreditKg,
+        totalCreditSaleValue,
+    };
 }, [selectedPartyDetails, selectedPartyId, dateRange, hydrated, sales, payments]);
 
 
@@ -384,7 +401,7 @@ export function AccountsLedgerClient() {
           {selectedPartyDetails.type === 'Broker' ? (
             <div className="flex flex-col flex-grow min-h-0">
                 <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
-                    <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 flex flex-col min-h-0">
                         <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                           <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Paid to Broker)</CardTitle></CardHeader>
                           <CardContent className="p-0 flex-grow min-h-0">
@@ -407,7 +424,7 @@ export function AccountsLedgerClient() {
                             </CardContent>
                           </Card>
                     </div>
-                    <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 flex flex-col min-h-0">
                         <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                           <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable to Broker)</CardTitle></CardHeader>
                           <CardContent className="p-0 flex-grow min-h-0">
@@ -432,8 +449,12 @@ export function AccountsLedgerClient() {
                                         <TableCell className="text-right">{e.brokerageAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                     </TableRow>))}
                                 </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                                    <TableCell colSpan={6}>Total Brokerage Earned</TableCell>
-                                    <TableCell className="text-right">{brokerLedgerData.totalBrokerageCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                    <TableCell colSpan={2}>Total</TableCell>
+                                    <TableCell className="text-right">{brokerLedgerData.totalCreditBags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{brokerLedgerData.totalCreditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell />
+                                    <TableCell className="text-right">{brokerLedgerData.totalCreditSaleValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">{brokerLedgerData.totalBrokerageCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                 </TableRow></TableFooter></Table>
                                <ScrollBar orientation="horizontal" />
                               </ScrollArea>
@@ -509,7 +530,7 @@ export function AccountsLedgerClient() {
           ) : (
             <CardContent className="flex flex-col flex-grow min-h-0">
             <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
-              <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex-1 flex flex-col min-h-0">
                 <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
                   <CardContent className="p-0 flex-grow min-h-0">
@@ -517,16 +538,25 @@ export function AccountsLedgerClient() {
                       <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Particulars</TableHead>
+                          <TableHead className="text-right">Bags</TableHead>
+                          <TableHead className="text-right">Kg</TableHead>
+                          <TableHead className="text-right">Rate</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                         </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
+                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
                             {financialLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
                               <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
                               <TableCell>{e.vakkal}</TableCell>
+                              <TableCell className="text-right">{e.bags?.toLocaleString() ?? ''}</TableCell>
+                              <TableCell className="text-right">{e.kg?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
+                              <TableCell className="text-right">{e.rate?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
                               <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>))}
                           </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
                               <TableCell colSpan={2}>Total</TableCell>
+                              <TableCell className="text-right">{financialLedgerData.totalDebitBags.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">{financialLedgerData.totalDebitKg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                              <TableCell></TableCell>
                               <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
                            <ScrollBar orientation="horizontal" />
@@ -534,7 +564,7 @@ export function AccountsLedgerClient() {
                     </CardContent>
                   </Card>
               </div>
-              <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex-1 flex flex-col min-h-0">
                   <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
                   <CardContent className="p-0 flex-grow min-h-0">
@@ -542,16 +572,25 @@ export function AccountsLedgerClient() {
                       <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Particulars</TableHead>
+                          <TableHead className="text-right">Bags</TableHead>
+                          <TableHead className="text-right">Kg</TableHead>
+                          <TableHead className="text-right">Rate</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                         </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
+                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
                             {financialLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
                               <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
                               <TableCell>{e.vakkal}</TableCell>
+                              <TableCell className="text-right">{e.bags?.toLocaleString() ?? ''}</TableCell>
+                              <TableCell className="text-right">{e.kg?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
+                              <TableCell className="text-right">{e.rate?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
                               <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             </TableRow>))}
                           </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
                             <TableCell colSpan={2}>Total</TableCell>
+                            <TableCell className="text-right">{financialLedgerData.totalCreditBags.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{financialLedgerData.totalCreditKg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                            <TableCell></TableCell>
                             <TableCell className="text-right">{financialLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
                            <ScrollBar orientation="horizontal" />
