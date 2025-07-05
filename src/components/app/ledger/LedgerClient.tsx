@@ -31,22 +31,26 @@ interface LedgerTransaction {
   id: string;
   date: string;
   vakkal: string;
+  party: string; // Customer name for sales, Supplier name for purchases
   bags: number;
   kg: number;
   rate: number;
   amount: number;
-  type: 'Purchase' | 'Sale';
-  party?: string;
 }
 
-const initialLedgerData: { transactions: LedgerTransaction[], partyType: MasterItemType | null, totals: any } = {
-  transactions: [],
-  partyType: null,
+const initialLedgerData = {
+  debitTransactions: [] as LedgerTransaction[],
+  creditTransactions: [] as LedgerTransaction[],
   totals: {
+    debitBags: 0,
+    debitKg: 0,
+    creditBags: 0,
+    creditKg: 0,
+  },
+  closingStock: {
     bags: 0,
     kg: 0,
-    amount: 0,
-  }
+  },
 };
 
 export function LedgerClient() {
@@ -117,10 +121,11 @@ export function LedgerClient() {
     if (!party) return initialLedgerData;
 
     const toDate = dateRange.to || dateRange.from;
-    let transactions: LedgerTransaction[] = [];
+    let debitTransactions: LedgerTransaction[] = [];
+    let creditTransactions: LedgerTransaction[] = [];
 
     if (party.type === 'Supplier' || party.type === 'Agent') {
-      transactions = purchases
+      debitTransactions = purchases
         .filter(p => {
             const isMatch = (party.type === 'Supplier' && p.supplierId === party.id) || (party.type === 'Agent' && p.agentId === party.id);
             return isMatch && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
@@ -128,40 +133,48 @@ export function LedgerClient() {
         .map(p => ({
             id: `pur-${p.id}`,
             date: p.date,
-            type: 'Purchase',
             vakkal: p.lotNumber,
-            party: p.supplierName,
+            party: p.supplierName || 'N/A', // Party here is the supplier
             bags: p.quantity,
             kg: p.netWeight,
             rate: p.rate,
             amount: p.totalAmount
         }))
-        .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-    } else if (party.type === 'Broker') {
-      transactions = sales
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    }
+    
+    if (party.type === 'Broker') {
+      creditTransactions = sales
         .filter(s => s.brokerId === party.id && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
         .map(s => ({
             id: `sal-${s.id}`,
             date: s.date,
-            type: 'Sale',
             vakkal: s.lotNumber,
-            party: s.customerName,
+            party: s.customerName || 'N/A', // Party here is the customer
             bags: s.quantity,
             kg: s.netWeight,
             rate: s.rate,
             amount: s.goodsValue,
         }))
-        .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     }
 
-    const totals = transactions.reduce((acc, tx) => {
-        acc.bags += tx.bags;
-        acc.kg += tx.kg;
-        acc.amount += tx.amount;
-        return acc;
-    }, { bags: 0, kg: 0, amount: 0 });
+    const totals = {
+      debitBags: debitTransactions.reduce((acc, tx) => acc + tx.bags, 0),
+      debitKg: debitTransactions.reduce((acc, tx) => acc + tx.kg, 0),
+      creditBags: creditTransactions.reduce((acc, tx) => acc + tx.bags, 0),
+      creditKg: creditTransactions.reduce((acc, tx) => acc + tx.kg, 0),
+    };
     
-    return { transactions, partyType: party.type, totals };
+    return { 
+      debitTransactions, 
+      creditTransactions, 
+      totals,
+      closingStock: {
+        bags: totals.debitBags - totals.creditBags,
+        kg: totals.debitKg - totals.creditKg
+      }
+    };
   }, [selectedPartyId, dateRange, purchases, sales, allMasters, hydrated]);
 
   const handlePartySelect = React.useCallback((value: string) => {
@@ -175,14 +188,6 @@ export function LedgerClient() {
     return allMasters.find(p => p.id === selectedPartyId);
   }, [selectedPartyId, allMasters]);
 
-  const { transactions, partyType, totals } = ledgerData;
-
-  const getTableTitle = () => {
-      if (partyType === 'Supplier') return 'Stock Purchased from Supplier';
-      if (partyType === 'Agent') return 'Stock Purchased via Agent';
-      if (partyType === 'Broker') return 'Stock Sold via Broker';
-      return 'Transactions';
-  }
 
   if (!hydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading ledger data...</p></div>;
@@ -220,53 +225,74 @@ export function LedgerClient() {
               Period: {dateRange?.from ? format(dateRange.from, "dd-MM-yyyy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd-MM-yyyy") : 'End'}
             </p>
           </CardHeader>
-          <CardContent>
-            <h3 className="text-lg font-semibold mb-3">{getTableTitle()}</h3>
-            <ScrollArea className="border rounded-md">
-              <div className="overflow-auto relative">
-                <Table>
-                  <TableHeader>
-                      <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Vakkal</TableHead>
-                          <TableHead>{partyType === 'Broker' ? 'Customer' : 'Supplier'}</TableHead>
-                          <TableHead className="text-right">Bags</TableHead>
-                          <TableHead className="text-right">Kg</TableHead>
-                          <TableHead className="text-right">Rate</TableHead>
-                          <TableHead className="text-right">Amount (₹)</TableHead>
-                      </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                      {transactions.length === 0 && (
-                          <TableRow><TableCell colSpan={8} className="h-24 text-center">No transactions recorded for this party in the selected period.</TableCell></TableRow>
-                      )}
-                      {transactions.map(tx => (
-                          <TableRow key={tx.id}>
-                              <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{tx.type}</TableCell>
-                              <TableCell>{tx.vakkal}</TableCell>
-                              <TableCell>{tx.party}</TableCell>
-                              <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">{tx.kg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                              <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                              <TableCell className="text-right font-medium">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                          </TableRow>
-                      ))}
-                  </TableBody>
-                   <TableFooter>
-                      <TableRow className="font-bold bg-muted/50">
-                          <TableCell colSpan={4}>Total</TableCell>
-                          <TableCell className="text-right">{totals.bags.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{totals.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                          <TableCell />
-                          <TableCell className="text-right">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                      </TableRow>
-                  </TableFooter>
-                </Table>
-              </div>
-            </ScrollArea>
+          <CardContent className="flex flex-col flex-grow">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
+                {/* Debit Side */}
+                <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-orange-300">
+                    <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle></CardHeader>
+                    <CardContent className="p-0 flex-grow">
+                        <ScrollArea className="h-full">
+                            <Table size="sm"><TableHeader><TableRow>
+                                <TableHead>Date</TableHead><TableHead>Vakkal</TableHead>
+                                <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader><TableBody>
+                                {ledgerData.debitTransactions.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow> :
+                                ledgerData.debitTransactions.map(tx => (<TableRow key={tx.id}>
+                                    <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                    <TableCell>{tx.vakkal}</TableCell>
+                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                </TableRow>))}
+                            </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
+                                <TableCell colSpan={2}>Total</TableCell>
+                                <TableCell className="text-right">{ledgerData.totals.debitBags.toLocaleString()}</TableCell>
+                                <TableCell className="text-right">{ledgerData.totals.debitKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell colSpan={2}></TableCell>
+                            </TableRow></TableFooter></Table>
+                        </ScrollArea>
+                    </CardContent></Card>
+                </div>
+                {/* Credit Side */}
+                <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-green-300">
+                    <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle></CardHeader>
+                    <CardContent className="p-0 flex-grow">
+                        <ScrollArea className="h-full">
+                            <Table size="sm"><TableHeader><TableRow>
+                                <TableHead>Date</TableHead><TableHead>Vakkal</TableHead><TableHead>Customer</TableHead>
+                                <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader><TableBody>
+                                {ledgerData.creditTransactions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow> :
+                                ledgerData.creditTransactions.map(tx => (<TableRow key={tx.id}>
+                                    <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                    <TableCell>{tx.vakkal}</TableCell>
+                                    <TableCell>{tx.party}</TableCell>
+                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                </TableRow>))}
+                            </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
+                                <TableCell colSpan={3}>Total</TableCell>
+                                <TableCell className="text-right">{ledgerData.totals.creditBags.toLocaleString()}</TableCell>
+                                <TableCell className="text-right">{ledgerData.totals.creditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell colSpan={2}></TableCell>
+                            </TableRow></TableFooter></Table>
+                        </ScrollArea>
+                    </CardContent></Card>
+                </div>
+            </div>
           </CardContent>
+          <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
+              <div className="text-right font-bold text-lg">
+                  <span>Closing Stock Balance: </span>
+                  <span className={ledgerData.closingStock.kg >= 0 ? 'text-green-700' : 'text-red-700'}>
+                      {ledgerData.closingStock.bags.toLocaleString()} Bags / {ledgerData.closingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})} kg
+                  </span>
+                  <p className="text-xs text-muted-foreground font-normal">(Debit - Credit for the selected period)</p>
+              </div>
+          </CardFooter>
         </Card>
       ) : (
         <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors"
