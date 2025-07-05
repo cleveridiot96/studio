@@ -36,9 +36,7 @@ interface LedgerTransaction {
   rate: number;
   amount: number;
   type: 'Purchase' | 'Sale';
-  customer?: string;
-  supplier?: string;
-  agent?: string;
+  party?: string;
 }
 
 const initialLedgerData: { transactions: LedgerTransaction[], partyType: MasterItemType | null, totals: any } = {
@@ -127,12 +125,32 @@ export function LedgerClient() {
             const isMatch = (party.type === 'Supplier' && p.supplierId === party.id) || (party.type === 'Agent' && p.agentId === party.id);
             return isMatch && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
         })
-        .map(p => ({ id: p.id, date: p.date, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate, amount: p.totalAmount, type: 'Purchase', supplier: p.supplierName, agent: p.agentName }))
+        .map(p => ({
+            id: `pur-${p.id}`,
+            date: p.date,
+            type: 'Purchase',
+            vakkal: p.lotNumber,
+            party: p.supplierName,
+            bags: p.quantity,
+            kg: p.netWeight,
+            rate: p.rate,
+            amount: p.totalAmount
+        }))
         .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     } else if (party.type === 'Broker') {
       transactions = sales
         .filter(s => s.brokerId === party.id && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-        .map(s => ({ id: s.id, date: s.date, vakkal: s.lotNumber, bags: s.quantity, kg: s.netWeight, rate: s.rate, amount: s.billedAmount, type: 'Sale', customer: s.customerName }))
+        .map(s => ({
+            id: `sal-${s.id}`,
+            date: s.date,
+            type: 'Sale',
+            vakkal: s.lotNumber,
+            party: s.customerName,
+            bags: s.quantity,
+            kg: s.netWeight,
+            rate: s.rate,
+            amount: s.goodsValue,
+        }))
         .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     }
 
@@ -160,8 +178,9 @@ export function LedgerClient() {
   const { transactions, partyType, totals } = ledgerData;
 
   const getTableTitle = () => {
-      if (partyType === 'Supplier' || partyType === 'Agent') return 'Purchase Transactions (Stock Inward)';
-      if (partyType === 'Broker') return 'Sale Transactions (Stock Outward)';
+      if (partyType === 'Supplier') return 'Stock Purchased from Supplier';
+      if (partyType === 'Agent') return 'Stock Purchased via Agent';
+      if (partyType === 'Broker') return 'Stock Sold via Broker';
       return 'Transactions';
   }
 
@@ -204,49 +223,48 @@ export function LedgerClient() {
           <CardContent>
             <h3 className="text-lg font-semibold mb-3">{getTableTitle()}</h3>
             <ScrollArea className="border rounded-md">
-                <div className="overflow-auto" style={{maxHeight: '65vh'}}>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Vakkal</TableHead>
-                                {partyType === 'Broker' && <TableHead>Customer</TableHead>}
-                                {partyType === 'Agent' && <TableHead>Supplier</TableHead>}
-                                <TableHead className="text-right">Bags</TableHead>
-                                <TableHead className="text-right">Kg</TableHead>
-                                <TableHead className="text-right">Rate</TableHead>
-                                <TableHead className="text-right">Amount (₹)</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {transactions.length === 0 && (
-                                <TableRow><TableCell colSpan={partyType === 'Broker' || partyType === 'Agent' ? 7 : 6} className="h-24 text-center">No transactions recorded for this party in the selected period.</TableCell></TableRow>
-                            )}
-                            {transactions.map(tx => (
-                                <TableRow key={tx.id}>
-                                    <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                                    <TableCell>{tx.vakkal}</TableCell>
-                                    {partyType === 'Broker' && <TableCell>{tx.customer}</TableCell>}
-                                    {partyType === 'Agent' && <TableCell>{tx.supplier}</TableCell>}
-                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{tx.kg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right font-medium">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                         <TableFooter>
-                            <TableRow className="font-bold bg-muted/50">
-                                <TableCell colSpan={partyType === 'Broker' || partyType === 'Agent' ? 2 : 1}>Total</TableCell>
-                                {partyType === 'Broker' || partyType === 'Agent' ? <TableCell /> : null}
-                                <TableCell className="text-right">{totals.bags.toLocaleString()}</TableCell>
-                                <TableCell className="text-right">{totals.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                <TableCell />
-                                <TableCell className="text-right">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>
-                        </TableFooter>
-                    </Table>
-                </div>
+              <div className="overflow-auto relative">
+                <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Vakkal</TableHead>
+                          <TableHead>{partyType === 'Broker' ? 'Customer' : 'Supplier'}</TableHead>
+                          <TableHead className="text-right">Bags</TableHead>
+                          <TableHead className="text-right">Kg</TableHead>
+                          <TableHead className="text-right">Rate</TableHead>
+                          <TableHead className="text-right">Amount (₹)</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {transactions.length === 0 && (
+                          <TableRow><TableCell colSpan={8} className="h-24 text-center">No transactions recorded for this party in the selected period.</TableCell></TableRow>
+                      )}
+                      {transactions.map(tx => (
+                          <TableRow key={tx.id}>
+                              <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                              <TableCell>{tx.type}</TableCell>
+                              <TableCell>{tx.vakkal}</TableCell>
+                              <TableCell>{tx.party}</TableCell>
+                              <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">{tx.kg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell className="text-right font-medium">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                          </TableRow>
+                      ))}
+                  </TableBody>
+                   <TableFooter>
+                      <TableRow className="font-bold bg-muted/50">
+                          <TableCell colSpan={4}>Total</TableCell>
+                          <TableCell className="text-right">{totals.bags.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{totals.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                          <TableCell />
+                          <TableCell className="text-right">{totals.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
             </ScrollArea>
           </CardContent>
         </Card>
