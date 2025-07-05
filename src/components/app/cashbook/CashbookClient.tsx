@@ -27,6 +27,7 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
+const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const CASH_OPENING_BALANCE_KEY = 'cashbookBaseOpeningBalance';
 
 interface CashLedgerTransaction {
@@ -53,6 +54,7 @@ export function CashbookClient() {
   const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
 
   const [baseOpeningBalance, setBaseOpeningBalance] = useLocalStorageState<number>(CASH_OPENING_BALANCE_KEY, 0);
   const [tempOpeningBalance, setTempOpeningBalance] = React.useState('0');
@@ -95,10 +97,12 @@ export function CashbookClient() {
     return [
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
-      ...transporters.filter(t => t.type === 'Transporter')
+      ...transporters.filter(t => t.type === 'Transporter'),
+      ...brokers.filter(b => b.type === 'Broker'),
+      ...expenses.filter(e => e.type === 'Expense')
     ].filter(party => party && party.id && party.name && party.type)
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters, hydrated]);
+  }, [suppliers, agents, transporters, brokers, expenses, hydrated]);
 
   const allReceiptParties = React.useMemo(() => {
     if (!hydrated) return [];
@@ -171,9 +175,10 @@ export function CashbookClient() {
       case "Transporter": setTransporters(prev => [newItem as Transporter, ...prev.filter(i => i.id !== newItem.id)]); break;
       case "Customer":    setCustomers(prev => [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)]); break;
       case "Broker":      setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]); break;
+      case "Expense":     setExpenses(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]); break;
       default: toast({title: "Info", description: `Master type ${type} not directly handled here.`}); break;
     }
-  }, [setSuppliers, setAgents, setTransporters, setCustomers, setBrokers, toast]);
+  }, [setSuppliers, setAgents, setTransporters, setCustomers, setBrokers, setExpenses, toast]);
 
 
   if (!hydrated) {

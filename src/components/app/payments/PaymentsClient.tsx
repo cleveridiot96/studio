@@ -27,6 +27,7 @@ const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
 const initialPaymentsData: Payment[] = [];
@@ -42,6 +43,7 @@ export function PaymentsClient() {
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
 
 
@@ -62,10 +64,11 @@ export function PaymentsClient() {
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
       ...transporters.filter(t => t.type === 'Transporter'),
+      ...brokers.filter(b => b.type === 'Broker'),
       ...expenses.filter(e => e.type === 'Expense')
     ].filter(party => party && party.id && party.name && party.type) // Basic validation
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters, expenses, hydrated]);
+  }, [suppliers, agents, transporters, brokers, expenses, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -109,6 +112,7 @@ export function PaymentsClient() {
         Supplier: setSuppliers, 
         Agent: setAgents, 
         Transporter: setTransporters,
+        Broker: setBrokers,
         Expense: setExpenses,
     };
     const setter = setters[type];
@@ -117,7 +121,7 @@ export function PaymentsClient() {
     } else {
         toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
     }
-  }, [setSuppliers, setAgents, setTransporters, setExpenses, toast]);
+  }, [setSuppliers, setAgents, setTransporters, setBrokers, setExpenses, toast]);
 
   const openAddPaymentForm = React.useCallback(() => {
     setPaymentToEdit(null);
