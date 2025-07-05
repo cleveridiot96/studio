@@ -531,7 +531,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <MasterDataCombobox
                             value={field.value}
                             onChange={field.onChange}
-                            options={transporters.map(t => ({ value: t.id, label: t.name }))}
+                            options={transporters.filter(t => t.type === 'Transporter').map(t => ({ value: t.id, label: t.name }))}
                             placeholder="Select Transporter"
                             searchPlaceholder="Search transporters..."
                             notFoundMessage="Transporter not found."
@@ -692,3 +692,5 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
+
+    

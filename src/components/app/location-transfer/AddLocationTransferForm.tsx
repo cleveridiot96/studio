@@ -334,7 +334,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
-                          options={transporters.map(t => ({ value: t.id, label: t.name }))}
+                          options={transporters.filter(t => t.type === 'Transporter').map(t => ({ value: t.id, label: t.name }))}
                           placeholder="Select Transporter"
                           onAddNew={() => handleOpenMasterForm("Transporter")}
                         />
@@ -378,3 +378,5 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
+
+    

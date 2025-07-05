@@ -1,6 +1,7 @@
+
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
+import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
   { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
   { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Transporter", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
+  { value: "Transporter", label: "Transporters", icon: Truck, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
 export default function MastersPage() {
@@ -222,7 +223,6 @@ export default function MastersPage() {
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "Add New Party/Entity";
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
-    if (activeTab === 'Transporter') return "Add New Expense";
     const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
     return `Add New ${singularLabel || 'Party/Entity'}`;
   }, [activeTab]);
@@ -254,7 +254,7 @@ export default function MastersPage() {
               key={tab.value}
               value={tab.value}
               className={cn(
-                "py-3 text-base flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted",
+                "py-3 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
                 tab.colorClass,
                 tab.value === 'Broker' && 'data-[state=active]:!text-black'
               )}
@@ -322,3 +322,5 @@ export default function MastersPage() {
     </div>
   );
 }
+
+    

@@ -362,7 +362,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <FormField control={control} name="transporterId" render={({ field }) => (
                       <FormItem className="col-span-full sm:col-span-2">
                         <FormLabel>Transporter</FormLabel>
-                        <MasterDataCombobox value={field.value} onChange={field.onChange} options={transporters.map((t) => ({ value: t.id, label: t.name }))}
+                        <MasterDataCombobox value={field.value} onChange={field.onChange} 
+                          options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
                           placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
                         />
                         <FormMessage />
@@ -432,3 +433,5 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
+
+    
