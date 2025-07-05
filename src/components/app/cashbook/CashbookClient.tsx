@@ -17,6 +17,8 @@ import { AddPaymentForm } from "@/components/app/payments/AddPaymentForm";
 import { AddReceiptForm } from "@/components/app/receipts/AddReceiptForm";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
@@ -25,6 +27,7 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
+const CASH_OPENING_BALANCE_KEY = 'cashbookBaseOpeningBalance';
 
 interface CashLedgerTransaction {
   id: string;
@@ -51,6 +54,9 @@ export function CashbookClient() {
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
 
+  const [baseOpeningBalance, setBaseOpeningBalance] = useLocalStorageState<number>(CASH_OPENING_BALANCE_KEY, 0);
+  const [tempOpeningBalance, setTempOpeningBalance] = React.useState('0');
+
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
     from: startOfDay(subMonths(new Date(), 1)),
     to: endOfDay(new Date()),
@@ -65,6 +71,24 @@ export function CashbookClient() {
   React.useEffect(() => {
     setHydrated(true);
   }, []); 
+
+  React.useEffect(() => {
+    if (hydrated) {
+        setTempOpeningBalance(String(baseOpeningBalance));
+    }
+  }, [hydrated, baseOpeningBalance]);
+
+  const handleSaveOpeningBalance = () => {
+    const newBalance = parseFloat(tempOpeningBalance);
+    if (!isNaN(newBalance)) {
+        setBaseOpeningBalance(newBalance);
+        toast({ title: 'Base opening balance saved.' });
+    } else {
+        toast({ title: 'Invalid number', description: 'Please enter a valid number for the opening balance.', variant: 'destructive' });
+        setTempOpeningBalance(String(baseOpeningBalance)); // Revert to old value on error
+    }
+  };
+
 
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];
@@ -88,15 +112,16 @@ export function CashbookClient() {
   const cashLedgerData = React.useMemo(() => {
     if (!hydrated || !dateRange?.from) return { entries: [], openingBalance: 0, closingBalance: 0 };
     
+    let calculatedOpeningBalance = baseOpeningBalance;
+
     const combinedTransactions = [
         ...receipts.map(r => ({ ...r, type: 'Receipt' as const })),
         ...payments.map(p => ({ ...p, type: 'Payment' as const }))
     ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-    let openingBalance = 0;
     combinedTransactions.forEach(tx => {
         if (parseISO(tx.date) < startOfDay(dateRange.from!)) {
-            openingBalance += (tx.type === 'Receipt' ? tx.amount : -tx.amount);
+            calculatedOpeningBalance += (tx.type === 'Receipt' ? tx.amount : -tx.amount);
         }
     });
 
@@ -104,7 +129,7 @@ export function CashbookClient() {
         isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) })
     );
 
-    let runningBalance = openingBalance;
+    let runningBalance = calculatedOpeningBalance;
     const entries: CashLedgerTransaction[] = periodTransactions.map(tx => {
         const credit = tx.type === 'Receipt' ? tx.amount : 0;
         const debit = tx.type === 'Payment' ? tx.amount : 0;
@@ -121,8 +146,8 @@ export function CashbookClient() {
         };
     });
 
-    return { entries, openingBalance, closingBalance: runningBalance };
-  }, [payments, receipts, hydrated, dateRange]);
+    return { entries, openingBalance: calculatedOpeningBalance, closingBalance: runningBalance };
+  }, [payments, receipts, hydrated, dateRange, baseOpeningBalance]);
 
 
   const handleAddPaymentFromCashbook = React.useCallback((payment: Payment) => {
@@ -163,18 +188,38 @@ export function CashbookClient() {
     <div className="space-y-8 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <Card className="shadow-xl">
-        <CardHeader className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <CardTitle className="text-2xl text-primary flex items-center">
-            <BookOpen className="mr-3 h-7 w-7"/>Cash Book
-          </CardTitle>
-          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto no-print">
-            <Button variant="outline" size="sm" onClick={() => { setPaymentToEdit(null); setIsAddPaymentFormOpen(true); }} className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4"/> Add Payment
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => { setReceiptToEdit(null); setIsAddReceiptFormOpen(true); }} className="w-full">
-                <PlusCircle className="mr-2 h-4 w-4"/> Add Receipt
-            </Button>
+        <CardHeader>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <CardTitle className="text-2xl text-primary flex items-center">
+              <BookOpen className="mr-3 h-7 w-7"/>Cash Book
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto no-print">
+              <Button variant="outline" size="sm" onClick={() => { setPaymentToEdit(null); setIsAddPaymentFormOpen(true); }} className="w-full">
+                  <PlusCircle className="mr-2 h-4 w-4"/> Add Payment
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => { setReceiptToEdit(null); setIsAddReceiptFormOpen(true); }} className="w-full">
+                  <PlusCircle className="mr-2 h-4 w-4"/> Add Receipt
+              </Button>
+            </div>
           </div>
+          <div className="w-full border-t pt-4 mt-4 flex justify-end items-center gap-2 no-print">
+            <Label htmlFor="opening-balance-input" className="text-sm font-medium whitespace-nowrap">Base Opening Balance (₹):</Label>
+            <Input
+                id="opening-balance-input"
+                type="number"
+                step="0.01"
+                className="w-40 h-9"
+                value={tempOpeningBalance}
+                onChange={(e) => setTempOpeningBalance(e.target.value)}
+                onBlur={handleSaveOpeningBalance}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        handleSaveOpeningBalance();
+                        (e.target as HTMLInputElement).blur();
+                    }
+                }}
+            />
+        </div>
         </CardHeader>
         <CardContent>
            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 no-print">
