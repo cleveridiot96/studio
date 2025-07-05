@@ -197,7 +197,7 @@ export function LedgerClient() {
   }
 
   return (
-    <div className="space-y-6 print-area">
+    <div className="space-y-6 print-area flex flex-col flex-1">
       <Card className="shadow-md no-print">
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -218,7 +218,7 @@ export function LedgerClient() {
       </Card>
 
       {selectedPartyId && selectedPartyDetails && hydrated ? (
-        <Card id="ledger-t-account" className="shadow-lg p-4">
+        <Card id="ledger-t-account" className="shadow-lg p-4 flex flex-col flex-1">
           <CardHeader className="text-center">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
             <CardTitle className="text-2xl text-primary flex items-center justify-center">
@@ -228,16 +228,15 @@ export function LedgerClient() {
               Period: {dateRange?.from ? format(dateRange.from, "dd-MM-yyyy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd-MM-yyyy") : 'End'}
             </p>
           </CardHeader>
-          <CardContent className="flex flex-col flex-grow">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="flex flex-col flex-grow min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
                 {/* Debit Side */}
-                <div className="md:col-span-1">
-                  <Card className="shadow-inner border-orange-300">
+                <div className="md:col-span-1 flex flex-col">
+                  <Card className="shadow-inner border-orange-300 flex flex-col flex-1">
                     <CardHeader className="p-0">
                       <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-0">
-                      <ScrollArea className="h-[60vh]">
+                    <CardContent className="p-0 flex-grow overflow-auto">
                         <Table size="sm" className="whitespace-nowrap">
                           <TableHeader>
                             <TableRow>
@@ -274,19 +273,16 @@ export function LedgerClient() {
                             </TableRow>
                           </TableFooter>
                         </Table>
-                        <ScrollBar orientation="horizontal" />
-                      </ScrollArea>
                     </CardContent>
                   </Card>
                 </div>
                 {/* Credit Side */}
-                <div className="md:col-span-1">
-                  <Card className="shadow-inner border-green-300">
+                <div className="md:col-span-1 flex flex-col">
+                  <Card className="shadow-inner border-green-300 flex flex-col flex-1">
                     <CardHeader className="p-0">
                       <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-0">
-                      <ScrollArea className="h-[60vh]">
+                    <CardContent className="p-0 flex-grow overflow-auto">
                         <Table size="sm" className="whitespace-nowrap">
                           <TableHeader>
                             <TableRow>
@@ -325,8 +321,6 @@ export function LedgerClient() {
                             </TableRow>
                           </TableFooter>
                         </Table>
-                         <ScrollBar orientation="horizontal" />
-                      </ScrollArea>
                     </CardContent>
                   </Card>
                 </div>
