@@ -22,6 +22,9 @@ export const purchaseSchema = (
   agentId: z.string().optional().refine((agentId) => !agentId || agents.some((a) => a.id === agentId), {
     message: "Agent does not exist.",
   }),
+  transporterId: z.string().optional().refine((transporterId) => !transporterId || transporters.some((t) => t.id === transporterId), {
+    message: "Transporter does not exist.",
+  }),
   quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."),
   netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."),
   rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."),

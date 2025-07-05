@@ -57,6 +57,12 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
             <span className="value-col font-bold">{purchase.agentName}</span>
           </div>
         )}
+        {purchase.transporterName && (
+          <div className="flex-between">
+            <span className="label-col">Transporter:</span>
+            <span className="value-col font-bold">{purchase.transporterName}</span>
+          </div>
+        )}
         <div className="flex-between">
           <span className="label-col">Location (Warehouse):</span>
           <span className="value-col font-bold">{purchase.locationName || purchase.locationId}</span>

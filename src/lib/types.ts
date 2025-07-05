@@ -35,6 +35,8 @@ export interface Purchase {
   supplierName?: string; // For display in table
   agentId?: string;
   agentName?: string; // For display in table
+  transporterId?: string;
+  transporterName?: string;
   quantity: number; // Number of Bags
   netWeight: number; // in KG
   rate: number; // per KG
