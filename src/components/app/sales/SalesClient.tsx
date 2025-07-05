@@ -29,7 +29,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
-import { format as formatDateFn } from 'date-fns';
+import { format as formatDateFn, parseISO } from 'date-fns';
 
 
 const SALES_STORAGE_KEY = 'salesData';
@@ -88,7 +88,7 @@ export function SalesClient() {
 
   const filteredSales = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
-    return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
+    return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear)).sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
 
   const filteredSaleReturns = React.useMemo(() => {

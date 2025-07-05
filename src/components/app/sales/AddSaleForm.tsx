@@ -232,24 +232,24 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [selectedBrokerId, brokers, setValue, brokerageValueManuallySet]);
 
 
-  const goodsValueForCalc = React.useMemo(() => {
+  const goodsValue = React.useMemo(() => {
     const currentNetWeight = parseFloat(String(netWeight || 0));
     const currentRate = parseFloat(String(rate || 0));
     if (isNaN(currentNetWeight) || isNaN(currentRate)) return 0;
     return currentNetWeight * currentRate;
   }, [netWeight, rate]);
 
-  const finalBilledAmountForDisplay = React.useMemo(() => {
+  const billedAmount = React.useMemo(() => {
     if (cutBill && cutAmountInput !== undefined && cutAmountInput >= 0) {
-      return goodsValueForCalc - cutAmountInput;
+      return goodsValue - cutAmountInput;
     }
-    return goodsValueForCalc;
-  }, [cutBill, cutAmountInput, goodsValueForCalc]);
+    return goodsValue;
+  }, [cutBill, cutAmountInput, goodsValue]);
 
 
   const calculatedBrokerageCommission = React.useMemo(() => {
     if (!selectedBrokerId || brokerageValue === undefined || brokerageValue < 0) return 0;
-    const baseAmountForBrokerage = goodsValueForCalc; 
+    const baseAmountForBrokerage = goodsValue; 
 
     if (brokerageType === "Percentage") {
       return (baseAmountForBrokerage * (brokerageValue / 100));
@@ -257,7 +257,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       return brokerageValue;
     }
     return 0;
-  }, [selectedBrokerId, brokerageType, brokerageValue, goodsValueForCalc]);
+  }, [selectedBrokerId, brokerageType, brokerageValue, goodsValue]);
   
   const calculatedExtraBrokerage = React.useMemo(() => {
     if (!selectedBrokerId || extraBrokeragePerKg <= 0 || netWeight <= 0) return 0;
@@ -271,13 +271,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [netWeight, effectiveRateForLot]);
 
   const grossProfit = React.useMemo(() => {
-    return goodsValueForCalc - costOfGoodsSold;
-  }, [goodsValueForCalc, costOfGoodsSold]);
+    return goodsValue - costOfGoodsSold;
+  }, [goodsValue, costOfGoodsSold]);
 
-  const calculatedProfit = React.useMemo(() => {
-    const totalExpenses = costOfGoodsSold + transportCostInput + packingCostInput + labourCostInput + calculatedBrokerageCommission + calculatedExtraBrokerage;
-    return finalBilledAmountForDisplay - totalExpenses;
-  }, [finalBilledAmountForDisplay, costOfGoodsSold, transportCostInput, packingCostInput, labourCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
+  const totalSaleSideExpenses = React.useMemo(() => {
+      return transportCostInput + packingCostInput + labourCostInput + calculatedBrokerageCommission + calculatedExtraBrokerage;
+  }, [transportCostInput, packingCostInput, labourCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
+
+  const calculatedNetProfit = React.useMemo(() => {
+    // IMPORTANT: Net profit is based on full goodsValue, not the billed amount after cut.
+    return goodsValue - costOfGoodsSold - totalSaleSideExpenses;
+  }, [goodsValue, costOfGoodsSold, totalSaleSideExpenses]);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -298,75 +302,47 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   };
 
   const processSubmit = (values: SaleFormValues) => {
-    let submissionValues = { ...values };
+    setIsSubmitting(true);
 
-    if (!netWeightManuallySet && submissionValues.quantity > 0 && (!submissionValues.netWeight || submissionValues.netWeight === 0)) {
-      submissionValues.netWeight = submissionValues.quantity * 50;
-    }
-    const finalNetWeightForSubmit = submissionValues.netWeight;
-
-    if (!submissionValues.customerId || !submissionValues.lotNumber) {
+    if (!values.customerId || !values.lotNumber) {
         toast({ title: "Missing Info", description: "Customer and Lot Number are required.", variant: "destructive" });
+        setIsSubmitting(false);
         return;
     }
-    setIsSubmitting(true);
-    const selectedCustomer = customers.find(c => c.id === submissionValues.customerId);
-    const selectedBroker = brokers.find(b => b.id === submissionValues.brokerId);
-    const selectedTransporter = transporters.find(t => t.id === submissionValues.transporterId);
-
-    const currentGoodsValue = finalNetWeightForSubmit * submissionValues.rate;
-    const currentCutAmount = (submissionValues.cutBill && submissionValues.cutAmount !== undefined && submissionValues.cutAmount >= 0)
-                                ? submissionValues.cutAmount
-                                : undefined;
-    const currentBilledAmount = currentCutAmount !== undefined
-                                ? currentGoodsValue - currentCutAmount
-                                : currentGoodsValue;
     
-    const currentCostOfGoodsSold = finalNetWeightForSubmit * effectiveRateForLot;
-    
-    const brokerageTypeForSubmit = submissionValues.brokerageType;
-    const brokerageValueForSubmit = submissionValues.brokerageValue;
-    const currentBrokerageCommission = (submissionValues.brokerId && brokerageValueForSubmit !== undefined && brokerageValueForSubmit >= 0) ?
-      (brokerageTypeForSubmit === "Percentage" ? (currentGoodsValue * (brokerageValueForSubmit / 100)) : brokerageValueForSubmit)
-      : 0;
-
-    const currentExtraBrokerageAmount = (submissionValues.brokerId && submissionValues.extraBrokeragePerKg && submissionValues.extraBrokeragePerKg > 0)
-        ? submissionValues.extraBrokeragePerKg * finalNetWeightForSubmit
-        : 0;
-    
-    const allSaleExpenses = (submissionValues.transportCost || 0) + (submissionValues.packingCost || 0) + (submissionValues.labourCost || 0) + currentBrokerageCommission + currentExtraBrokerageAmount;
-    const currentProfit = currentBilledAmount - currentCostOfGoodsSold - allSaleExpenses;
-
+    const selectedCustomer = customers.find(c => c.id === values.customerId);
+    const selectedBroker = brokers.find(b => b.id === values.brokerId);
+    const selectedTransporter = transporters.find(t => t.id === values.transporterId);
 
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,
-      date: format(submissionValues.date, "yyyy-MM-dd"),
-      billNumber: submissionValues.billNumber,
-      cutBill: submissionValues.cutBill,
-      cutAmount: currentCutAmount,
-      goodsValue: currentGoodsValue,
-      billedAmount: currentBilledAmount,
-      customerId: submissionValues.customerId as string,
+      date: format(values.date, "yyyy-MM-dd"),
+      billNumber: values.billNumber,
+      cutBill: values.cutBill,
+      cutAmount: (values.cutBill && values.cutAmount !== undefined) ? values.cutAmount : undefined,
+      goodsValue: goodsValue,
+      billedAmount: billedAmount,
+      customerId: values.customerId as string,
       customerName: selectedCustomer?.name,
-      brokerId: submissionValues.brokerId,
+      brokerId: values.brokerId,
       brokerName: selectedBroker?.name,
-      lotNumber: submissionValues.lotNumber as string,
-      quantity: submissionValues.quantity,
-      netWeight: finalNetWeightForSubmit,
-      rate: submissionValues.rate,
-      transporterId: submissionValues.transporterId,
+      lotNumber: values.lotNumber as string,
+      quantity: values.quantity,
+      netWeight: values.netWeight,
+      rate: values.rate,
+      transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
-      transportCost: submissionValues.transportCost,
-      packingCost: submissionValues.packingCost,
-      labourCost: submissionValues.labourCost,
-      brokerageType: submissionValues.brokerageType,
-      brokerageValue: submissionValues.brokerageValue,
-      extraBrokeragePerKg: submissionValues.extraBrokeragePerKg,
-      calculatedBrokerageCommission: currentBrokerageCommission,
-      calculatedExtraBrokerage: currentExtraBrokerageAmount,
-      notes: submissionValues.notes,
-      calculatedProfit: currentProfit,
-      costOfGoodsSold: currentCostOfGoodsSold,
+      transportCost: values.transportCost,
+      packingCost: values.packingCost,
+      labourCost: values.labourCost,
+      brokerageType: values.brokerageType,
+      brokerageValue: values.brokerageValue,
+      extraBrokeragePerKg: values.extraBrokeragePerKg,
+      calculatedBrokerageCommission: calculatedBrokerageCommission,
+      calculatedExtraBrokerage: calculatedExtraBrokerage,
+      notes: values.notes,
+      calculatedProfit: calculatedNetProfit,
+      costOfGoodsSold: costOfGoodsSold,
     };
     onSubmit(saleData);
     setIsSubmitting(false);
@@ -450,7 +426,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem className="flex flex-row items-center space-x-2 mt-4 pt-4 border-t">
                           <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             <FormLabel className="font-normal cursor-pointer mt-0!">
-                              Is this a "Cut Bill"? (Apply reduction to invoice amount)
+                              Is this a "Cut Bill"? (Record an unbilled reduction from the total)
                             </FormLabel>
                           <FormMessage />
                       </FormItem>
@@ -613,51 +589,36 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     />
                 </div>
 
-                <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
-                     <div className="flex items-center justify-between border-b pb-2 mb-2">
-                        <div className="text-md font-semibold text-primary">
-                            Final Billed Amount:
-                        </div>
-                        <p className="text-xl font-bold text-primary">
-                        ₹{finalBilledAmountForDisplay.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
+                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
+                     <div className="flex items-center justify-between">
+                        <div className="text-md font-semibold">Goods Value (Qty x Rate):</div>
+                        <p className="text-md font-semibold">₹{goodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                     </div>
-
-                    <div className="text-sm text-muted-foreground space-y-1">
-                       <div className="flex justify-between">
-                          <span>Less: Cost of Goods (Landed):</span> 
-                          <span className="font-semibold">₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                     {cutBill && <div className="flex items-center justify-between text-destructive">
+                        <div className="text-md font-semibold">Less: Cut Amount:</div>
+                        <p className="text-md font-semibold">(-) ₹{(cutAmountInput || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    </div>}
+                     <div className="flex items-center justify-between border-t pt-2 mt-2">
+                        <div className="text-md font-semibold text-primary">Final Billed Amount:</div>
+                        <p className="text-xl font-bold text-primary">₹{billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                    </div>
+                     <div className="text-sm text-muted-foreground space-y-1 pt-4 mt-4 border-t border-dashed">
+                        <h4 className="font-semibold text-foreground">Profit Calculation:</h4>
+                        <div className="flex justify-between"><span>Goods Value:</span> <span>₹{goodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex justify-between">
+                           <span>Less: Landed Cost of Goods:</span>
+                           <span className="font-semibold">(-) ₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="text-xs pl-2">
-                           (Landed Cost Rate: ₹{effectiveRateForLot.toFixed(2)}/kg × Net Weight: { (parseFloat(String(netWeight || 0))).toFixed(2)} kg)
+                         <div className={`flex justify-between font-bold ${grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
+                            <span>Gross Profit:</span> <span>₹{grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        
-                        <div className={`flex justify-between font-bold ${grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
-                            <span>Gross Profit (before expenses):</span> <span>₹{grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-
-                        {(transportCostInput > 0 || packingCostInput > 0 || labourCostInput > 0 || calculatedBrokerageCommission > 0 || calculatedExtraBrokerage > 0) && (
-                            <hr className="my-1 border-muted-foreground/50" />
-                        )}
-
-                        {transportCostInput > 0 && (
-                            <div className="flex justify-between"><span>Less: Transport Cost:</span> <span className="font-semibold">₹{transportCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                        )}
-                         {packingCostInput > 0 && (
-                            <div className="flex justify-between"><span>Less: Packing Cost:</span> <span className="font-semibold">₹{packingCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                        )}
-                         {labourCostInput > 0 && (
-                            <div className="flex justify-between"><span>Less: Labour Cost:</span> <span className="font-semibold">₹{labourCostInput.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                        )}
-                        {calculatedBrokerageCommission > 0 && (
-                            <div className="flex justify-between"><span>Less: Brokerage:</span> <span className="font-semibold">₹{calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                        )}
-                         {calculatedExtraBrokerage > 0 && (
-                            <div className="flex justify-between"><span>Less: Extra Brokerage (Mera):</span> <span className="font-semibold">₹{calculatedExtraBrokerage.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
-                        )}
-                        <hr className="my-1 border-muted-foreground/50" />
-                        <div className={`flex justify-between font-bold ${calculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            <span>Estimated Net Profit:</span> <span>₹{calculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        {totalSaleSideExpenses > 0 && <div className="flex justify-between">
+                           <span>Less: Sale Side Expenses:</span>
+                           <span className="font-semibold">(-) ₹{totalSaleSideExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>}
+                         <hr className="my-1 border-muted-foreground/50" />
+                        <div className={`flex justify-between font-bold text-base ${calculatedNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <span>Estimated Net Profit:</span> <span>₹{calculatedNetProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
                 </div>

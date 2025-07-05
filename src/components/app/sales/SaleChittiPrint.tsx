@@ -2,7 +2,7 @@
 "use client";
 
 import type { Sale } from "@/lib/types";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 
 interface SaleChittiPrintProps {
@@ -29,6 +29,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         .print-chitti-styles .mt-4 { margin-top: 16px; }
         .print-chitti-styles .mb-2 { margin-bottom: 8px; }
         .print-chitti-styles .flex-between { display: flex; justify-content: space-between; }
+        .print-chitti-styles .text-destructive { color: #a12121; }
       `}</style>
 
       <div className="text-center mb-4">
@@ -37,7 +38,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
       </div>
 
       <div className="flex-between mb-2">
-        <span>Date: <strong>{format(new Date(sale.date), "dd-MM-yyyy")}</strong></span>
+        <span>Date: <strong>{format(parseISO(sale.date), "dd-MM-yyyy")}</strong></span>
         <span>Bill No: <strong>{sale.billNumber || sale.id.slice(-6).toUpperCase()}</strong></span>
       </div>
       

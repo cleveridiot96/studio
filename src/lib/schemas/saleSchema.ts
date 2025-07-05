@@ -20,8 +20,8 @@ export const saleSchema = (
     required_error: "Sale date is required.",
   }),
   billNumber: z.string().optional(),
-  cutAmount: z.coerce.number().optional(),
   cutBill: z.boolean().optional().default(false),
+  cutAmount: z.coerce.number().optional(),
   customerId: z.string().min(1, "Customer is required.").refine((customerId) => customers.some((c) => c.id === customerId && c.type === 'Customer'), {
     message: "Customer does not exist or is not of type Customer.",
   }),
@@ -63,6 +63,9 @@ export const saleSchema = (
     path: ["brokerageValue"],
   }).refine(data => {
     const goodsValue = data.netWeight * data.rate;
+    if (data.cutBill && data.cutAmount === undefined) {
+      return false;
+    }
     if (data.cutBill && data.cutAmount !== undefined && data.cutAmount < 0) {
         return false;
     }
@@ -71,7 +74,7 @@ export const saleSchema = (
     }
     return true;
   }, {
-    message: "Cut Amount must be a positive value and cannot exceed the Actual Goods Value.",
+    message: "If 'Cut Bill' is checked, a valid cut amount (positive, not exceeding goods value) is required.",
     path: ["cutAmount"],
   }).superRefine((data, ctx) => {
     if (data.lotNumber) {
