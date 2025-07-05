@@ -315,8 +315,8 @@ export function AccountsLedgerClient() {
 
           {selectedPartyDetails.type === 'Transporter' ? (
              <CardContent className="flex flex-col flex-grow min-h-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
-                  <div className="md:col-span-1 flex flex-col">
+                <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
+                  <div className="flex-1 flex flex-col min-w-0">
                     <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                       <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable to Transporter)</CardTitle></CardHeader>
                       <CardContent className="p-0 flex-grow">
@@ -342,7 +342,7 @@ export function AccountsLedgerClient() {
                         </CardContent>
                       </Card>
                   </div>
-                  <div className="md:col-span-1 flex flex-col">
+                  <div className="flex-1 flex flex-col min-w-0">
                     <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                       <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Paid to Transporter)</CardTitle></CardHeader>
                       <CardContent className="p-0 flex-grow">
@@ -370,8 +370,8 @@ export function AccountsLedgerClient() {
             </CardContent>
           ) : (
             <CardContent className="flex flex-col flex-grow min-h-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
-              <div className="md:col-span-1 flex flex-col">
+            <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
+              <div className="flex-1 flex flex-col min-w-0">
                 <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
                   <CardContent className="p-0 flex-grow">
@@ -396,7 +396,7 @@ export function AccountsLedgerClient() {
                     </CardContent>
                   </Card>
               </div>
-              <div className="md:col-span-1 flex flex-col">
+              <div className="flex-1 flex flex-col min-w-0">
                   <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
                   <CardContent className="p-0 flex-grow">
