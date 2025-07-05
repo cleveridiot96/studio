@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -49,15 +50,15 @@ export function ExpenseJournal() {
     const entries: ExpenseJournalEntry[] = [];
 
     purchases.forEach(p => {
-      if (p.transportCharges && p.transportCharges > 0) entries.push({ id: `${p.id}-transport`, date: p.date, type: 'Transport', partyName: p.supplierName, vakkalNo: p.lotNumber, amount: p.transportCharges, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
+      if (p.transportCharges && p.transportCharges > 0) entries.push({ id: `${p.id}-transport`, date: p.date, type: 'Transport', partyName: p.transporterName || p.supplierName, vakkalNo: p.lotNumber, amount: p.transportCharges, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
       if (p.packingCharges && p.packingCharges > 0) entries.push({ id: `${p.id}-packing`, date: p.date, type: 'Packing', partyName: p.supplierName, vakkalNo: p.lotNumber, amount: p.packingCharges, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
       if (p.labourCharges && p.labourCharges > 0) entries.push({ id: `${p.id}-labour`, date: p.date, type: 'Labour', partyName: p.supplierName, vakkalNo: p.lotNumber, amount: p.labourCharges, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
-      if (p.brokerageCharges && p.brokerageCharges > 0) entries.push({ id: `${p.id}-brokerage`, date: p.date, type: 'Brokerage', partyName: p.supplierName, vakkalNo: p.lotNumber, amount: p.brokerageCharges, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
+      if (p.brokerageCharges && p.brokerageCharges > 0) entries.push({ id: `${p.id}-brokerage`, date: p.date, type: 'Brokerage', partyName: p.agentName || p.supplierName, vakkalNo: p.lotNumber, amount: p.brokerageCharges, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
       if (p.miscExpenses && p.miscExpenses > 0) entries.push({ id: `${p.id}-misc`, date: p.date, type: 'Misc', partyName: p.supplierName, vakkalNo: p.lotNumber, amount: p.miscExpenses, linkedTxnId: p.id, linkedTxnType: 'Purchase', href: `/purchases#${p.id}` });
     });
 
     sales.forEach(s => {
-      if (s.transportCost && s.transportCost > 0) entries.push({ id: `${s.id}-transport`, date: s.date, type: 'Transport', partyName: s.customerName, vakkalNo: s.lotNumber, amount: s.transportCost, linkedTxnId: s.id, linkedTxnType: 'Sale', href: `/sales#${s.id}` });
+      if (s.transportCost && s.transportCost > 0) entries.push({ id: `${s.id}-transport`, date: s.date, type: 'Transport', partyName: s.transporterName || s.customerName, vakkalNo: s.lotNumber, amount: s.transportCost, linkedTxnId: s.id, linkedTxnType: 'Sale', href: `/sales#${s.id}` });
       if (s.packingCost && s.packingCost > 0) entries.push({ id: `${s.id}-packing`, date: s.date, type: 'Packing', partyName: s.customerName, vakkalNo: s.lotNumber, amount: s.packingCost, linkedTxnId: s.id, linkedTxnType: 'Sale', href: `/sales#${s.id}` });
       if (s.labourCost && s.labourCost > 0) entries.push({ id: `${s.id}-labour`, date: s.date, type: 'Labour', partyName: s.customerName, vakkalNo: s.lotNumber, amount: s.labourCost, linkedTxnId: s.id, linkedTxnType: 'Sale', href: `/sales#${s.id}` });
       const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
@@ -71,7 +72,7 @@ export function ExpenseJournal() {
     let result = expenseJournal;
     if (dateRange?.from) {
         const toDate = dateRange.to || dateRange.from;
-        result = result.filter(e => isWithinInterval(parseISO(e.date), { start: dateRange.from!, end: toDate }));
+        result = result.filter(e => isWithinInterval(parseISO(e.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }));
     }
     if (filterType !== 'all') {
         result = result.filter(e => e.type === filterType);
