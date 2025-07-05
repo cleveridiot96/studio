@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   Rocket, // Added for consistency with dashboard if it exists
   BookCopy,
+  DollarSign, // Added for Expenses
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -96,6 +97,12 @@ export const navItems: NavItem[] = [
     href: '/profit-analysis',
     iconName: 'Rocket',
     iconColor: 'bg-green-500', // Matches dashboard tile
+  },
+  {
+    title: 'Expenses',
+    href: '/expenses',
+    iconName: 'DollarSign',
+    iconColor: 'bg-gray-500',
   },
   {
     title: 'Masters',

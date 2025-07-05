@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Rocket,
   BookCopy,
+  DollarSign, // Added for Expenses
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -47,6 +48,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   ClipboardList,
   Rocket,
   BookCopy,
+  DollarSign,
 };
 
 interface ClientSidebarMenuProps {
