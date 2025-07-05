@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -276,7 +276,7 @@ export function AccountsLedgerClient() {
   const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
 
   return (
-    <div className="space-y-6 print-area">
+    <div className="space-y-6 print-area flex flex-col flex-1">
       <Card className="shadow-md no-print">
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -302,7 +302,7 @@ export function AccountsLedgerClient() {
       </Card>
 
       {selectedPartyId && selectedPartyDetails && hydrated ? (
-        <Card id="ledger-t-account" className="shadow-lg p-4">
+        <Card id="ledger-t-account" className="shadow-lg p-4 flex flex-col flex-1">
           <CardHeader className="text-center">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
             <CardTitle className="text-2xl text-primary flex items-center justify-center">
@@ -314,68 +314,69 @@ export function AccountsLedgerClient() {
           </CardHeader>
 
           {selectedPartyDetails.type === 'Transporter' ? (
-            <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-green-300">
-                  <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable to Transporter)</CardTitle></CardHeader>
-                  <CardContent className="p-0 flex-grow">
-                    <ScrollArea className="h-[50vh]">
-                      <Table size="sm"><TableHeader><TableRow>
-                          <TableHead>Date</TableHead><TableHead>Vakkal(s)</TableHead>
-                          <TableHead className="text-right">Weight</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader><TableBody>
-                            {transporterLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No transport charges recorded.</TableCell></TableRow>}
-                            {transporterLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
-                              <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{e.vakkalTransfer}</TableCell>
-                              <TableCell className="text-right">{e.grossWeight.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">{e.rate.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                              <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>))}
-                          </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                              <TableCell colSpan={4}>Total Payable</TableCell>
-                              <TableCell className="text-right">{transporterLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                          </TableRow></TableFooter></Table>
-                      </ScrollArea>
-                    </CardContent></Card></div>
-              <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-orange-300">
-                  <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Paid to Transporter)</CardTitle></CardHeader>
-                  <CardContent className="p-0 flex-grow">
-                    <ScrollArea className="h-[50vh]">
-                      <Table size="sm"><TableHeader><TableRow>
-                          <TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead>Notes</TableHead><TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader><TableBody>
-                            {transporterLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No payments recorded.</TableCell></TableRow>}
-                            {transporterLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
-                              <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{e.mode}</TableCell>
-                              <TableCell>{e.notes}</TableCell>
-                              <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>))}
-                          </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                              <TableCell colSpan={3}>Total Paid</TableCell>
-                              <TableCell className="text-right">{transporterLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                          </TableRow></TableFooter></Table>
-                      </ScrollArea>
-                    </CardContent></Card></div>
-            </div>
-            <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
-              <div className="text-right font-bold text-lg">
-                  <span>Balance Due: </span>
-                  <span className={transporterLedgerData.balance >= 0 ? 'text-green-700' : 'text-red-700'}>
-                      ₹{Math.abs(transporterLedgerData.balance).toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                  </span>
-              </div>
-            </CardFooter>
-            </>
+             <CardContent className="flex flex-col flex-grow min-h-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
+                  <div className="md:col-span-1 flex flex-col">
+                    <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
+                      <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable to Transporter)</CardTitle></CardHeader>
+                      <CardContent className="p-0 flex-grow">
+                        <ScrollArea className="h-full">
+                          <Table size="sm"><TableHeader><TableRow>
+                              <TableHead>Date</TableHead><TableHead>Vakkal(s)</TableHead>
+                              <TableHead className="text-right">Weight</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader><TableBody>
+                                {transporterLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No transport charges recorded.</TableCell></TableRow>}
+                                {transporterLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
+                                  <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                                  <TableCell>{e.vakkalTransfer}</TableCell>
+                                  <TableCell className="text-right">{e.grossWeight.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{e.rate.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                  <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                </TableRow>))}
+                              </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
+                                  <TableCell colSpan={4}>Total Payable</TableCell>
+                                  <TableCell className="text-right">{transporterLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                              </TableRow></TableFooter></Table>
+                               <ScrollBar orientation="horizontal" />
+                          </ScrollArea>
+                        </CardContent>
+                      </Card>
+                  </div>
+                  <div className="md:col-span-1 flex flex-col">
+                    <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
+                      <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Paid to Transporter)</CardTitle></CardHeader>
+                      <CardContent className="p-0 flex-grow">
+                        <ScrollArea className="h-full">
+                          <Table size="sm"><TableHeader><TableRow>
+                              <TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead>Notes</TableHead><TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader><TableBody>
+                                {transporterLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No payments recorded.</TableCell></TableRow>}
+                                {transporterLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
+                                  <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
+                                  <TableCell>{e.mode}</TableCell>
+                                  <TableCell>{e.notes}</TableCell>
+                                  <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                </TableRow>))}
+                              </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
+                                  <TableCell colSpan={3}>Total Paid</TableCell>
+                                  <TableCell className="text-right">{transporterLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                              </TableRow></TableFooter></Table>
+                               <ScrollBar orientation="horizontal" />
+                          </ScrollArea>
+                        </CardContent>
+                      </Card>
+                    </div>
+                </div>
+            </CardContent>
           ) : (
-            <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-orange-300">
+            <CardContent className="flex flex-col flex-grow min-h-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
+              <div className="md:col-span-1 flex flex-col">
+                <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
                   <CardContent className="p-0 flex-grow">
-                    <ScrollArea className="h-[50vh]">
-                      <Table size="sm"><TableHeader><TableRow>
+                    <ScrollArea className="h-full">
+                      <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Particulars</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
@@ -390,13 +391,17 @@ export function AccountsLedgerClient() {
                               <TableCell colSpan={2}>Total</TableCell>
                               <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
+                           <ScrollBar orientation="horizontal" />
                       </ScrollArea>
-                    </CardContent></Card></div>
-              <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-green-300">
+                    </CardContent>
+                  </Card>
+              </div>
+              <div className="md:col-span-1 flex flex-col">
+                  <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
                   <CardContent className="p-0 flex-grow">
-                    <ScrollArea className="h-[50vh]">
-                      <Table size="sm"><TableHeader><TableRow>
+                    <ScrollArea className="h-full">
+                      <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Particulars</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
@@ -411,10 +416,26 @@ export function AccountsLedgerClient() {
                             <TableCell colSpan={2}>Total</TableCell>
                             <TableCell className="text-right">{financialLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                           </TableRow></TableFooter></Table>
+                           <ScrollBar orientation="horizontal" />
                       </ScrollArea>
-                    </CardContent></Card></div>
+                    </CardContent>
+                  </Card>
+              </div>
             </div>
-            <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
+            </CardContent>
+          )}
+
+          {selectedPartyDetails.type === 'Transporter' ? (
+             <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
+              <div className="text-right font-bold text-lg">
+                  <span>Balance Due: </span>
+                  <span className={transporterLedgerData.balance >= 0 ? 'text-green-700' : 'text-red-700'}>
+                      ₹{Math.abs(transporterLedgerData.balance).toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                  </span>
+              </div>
+            </CardFooter>
+          ) : (
+             <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
               <div className="text-right font-bold text-lg">
                   <span>Closing Balance: </span>
                   <span className={financialLedgerData.balanceType === 'Dr' ? 'text-green-700' : 'text-red-700'}>
@@ -423,12 +444,11 @@ export function AccountsLedgerClient() {
                   <p className="text-xs text-muted-foreground font-normal">({financialLedgerData.balanceType === 'Dr' ? 'Receivable from party' : 'Payable to party'})</p>
               </div>
             </CardFooter>
-            </>
           )}
         </Card>
       ) : (
         <Card
-          className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors"
+          className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors flex-1"
           onClick={() => {
             const trigger = document.getElementById('accounts-ledger-party-selector');
             trigger?.click();
