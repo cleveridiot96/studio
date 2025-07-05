@@ -319,7 +319,7 @@ export function AccountsLedgerClient() {
                   <div className="flex-1 flex flex-col min-w-0">
                     <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                       <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable to Transporter)</CardTitle></CardHeader>
-                      <CardContent className="p-0 flex-grow">
+                      <CardContent className="p-0 flex-grow min-h-0">
                         <ScrollArea className="h-full">
                           <Table size="sm"><TableHeader><TableRow>
                               <TableHead>Date</TableHead><TableHead>Vakkal(s)</TableHead>
@@ -345,7 +345,7 @@ export function AccountsLedgerClient() {
                   <div className="flex-1 flex flex-col min-w-0">
                     <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                       <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Paid to Transporter)</CardTitle></CardHeader>
-                      <CardContent className="p-0 flex-grow">
+                      <CardContent className="p-0 flex-grow min-h-0">
                         <ScrollArea className="h-full">
                           <Table size="sm"><TableHeader><TableRow>
                               <TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead>Notes</TableHead><TableHead className="text-right">Amount</TableHead>
@@ -374,7 +374,7 @@ export function AccountsLedgerClient() {
               <div className="flex-1 flex flex-col min-w-0">
                 <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
-                  <CardContent className="p-0 flex-grow">
+                  <CardContent className="p-0 flex-grow min-h-0">
                     <ScrollArea className="h-full">
                       <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
@@ -399,7 +399,7 @@ export function AccountsLedgerClient() {
               <div className="flex-1 flex flex-col min-w-0">
                   <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
                   <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
-                  <CardContent className="p-0 flex-grow">
+                  <CardContent className="p-0 flex-grow min-h-0">
                     <ScrollArea className="h-full">
                       <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
                           <TableHead>Date</TableHead>
