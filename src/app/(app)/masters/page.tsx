@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
@@ -255,12 +254,12 @@ export default function MastersPage() {
               key={tab.value}
               value={tab.value}
               className={cn(
-                "py-2 sm:py-3 text-sm sm:text-base flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted",
+                "py-3 text-base flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted",
                 tab.colorClass,
                 tab.value === 'Broker' && 'data-[state=active]:!text-black'
               )}
             >
-              <tab.icon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> {tab.label}
+              <tab.icon className="w-5 h-5 mr-2" /> {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
