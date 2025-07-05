@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Info } from "lucide-react";
+import { CalendarIcon, Info, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
@@ -378,12 +378,37 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                      <FormField control={control} name="brokerageCharges" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Brokerage (₹)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} 
-                            onChange={e => {
-                                field.onChange(parseFloat(e.target.value) || undefined);
-                                setBrokerageChargesManuallySet(true);
-                            }} 
-                            onFocus={() => setBrokerageChargesManuallySet(true)} /></FormControl>
+                           <div className="relative">
+                            <FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} 
+                              className={cn(brokerageChargesManuallySet && "pr-8")}
+                              onChange={e => {
+                                  field.onChange(parseFloat(e.target.value) || undefined);
+                                  setBrokerageChargesManuallySet(true);
+                              }} 
+                              onFocus={() => setBrokerageChargesManuallySet(true)} /></FormControl>
+                              {brokerageChargesManuallySet && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Reset to automatic calculation"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                                    onClick={() => {
+                                        setBrokerageChargesManuallySet(false);
+                                        const agent = agents.find(a => a.id === watchedAgentId);
+                                        if (agent && typeof agent.commission === 'number' && agent.commission > 0) {
+                                            const currentGoodsValue = (watchedNetWeight || 0) * (watchedRate || 0);
+                                            const calculatedBrokerage = currentGoodsValue * (agent.commission / 100);
+                                            setValue("brokerageCharges", parseFloat(calculatedBrokerage.toFixed(2)), { shouldValidate: true });
+                                        } else {
+                                            setValue("brokerageCharges", undefined, { shouldValidate: true });
+                                        }
+                                    }}
+                                >
+                                    <RotateCcw className="h-4 w-4" />
+                                </Button>
+                            )}
+                          </div>
                           <FormMessage />
                         </FormItem>)} />
                      <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Misc." {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
