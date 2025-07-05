@@ -62,7 +62,10 @@ interface TransporterDebitEntry {
 interface BrokerCreditEntry {
     id: string;
     date: string;
-    particulars: string;
+    vakkal: string;
+    bags: number;
+    kg: number;
+    rate: number;
     saleValue: number;
     brokerageAmount: number;
 }
@@ -260,9 +263,14 @@ export function AccountsLedgerClient() {
       .map(s => {
           const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
           return {
-              id: `sale-${s.id}`, date: s.date,
-              particulars: `Sale to ${s.customerName || 'N/A'} (Lot: ${s.lotNumber})`,
-              saleValue: s.goodsValue, brokerageAmount: totalBrokerage
+              id: `sale-${s.id}`,
+              date: s.date,
+              vakkal: s.lotNumber,
+              bags: s.quantity,
+              kg: s.netWeight,
+              rate: s.rate,
+              saleValue: s.goodsValue,
+              brokerageAmount: totalBrokerage,
           };
       }).sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
@@ -405,18 +413,26 @@ export function AccountsLedgerClient() {
                           <CardContent className="p-0 flex-grow min-h-0">
                             <ScrollArea className="h-full">
                               <Table size="sm"><TableHeader><TableRow>
-                                  <TableHead>Date</TableHead><TableHead>Sale Details</TableHead>
-                                  <TableHead className="text-right">Sale Value (₹)</TableHead><TableHead className="text-right">Brokerage (₹)</TableHead>
+                                  <TableHead>Date</TableHead>
+                                  <TableHead>Vakkal</TableHead>
+                                  <TableHead className="text-right">Bags</TableHead>
+                                  <TableHead className="text-right">Kg</TableHead>
+                                  <TableHead className="text-right">Rate</TableHead>
+                                  <TableHead className="text-right">Sale Value</TableHead>
+                                  <TableHead className="text-right">Brokerage</TableHead>
                                 </TableRow></TableHeader><TableBody>
-                                    {brokerLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No sales recorded via this broker.</TableCell></TableRow>}
+                                    {brokerLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales recorded via this broker.</TableCell></TableRow>}
                                     {brokerLedgerData.creditEntries.map(e => (<TableRow key={`cr-br-${e.id}`}>
                                         <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                        <TableCell>{e.particulars}</TableCell>
+                                        <TableCell>{e.vakkal}</TableCell>
+                                        <TableCell className="text-right">{e.bags.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right">{e.kg.toLocaleString('en-IN', {minimumFractionDigits:2})}</TableCell>
+                                        <TableCell className="text-right">{e.rate.toLocaleString('en-IN', {minimumFractionDigits:2})}</TableCell>
                                         <TableCell className="text-right">{e.saleValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                         <TableCell className="text-right">{e.brokerageAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                     </TableRow>))}
                                 </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                                    <TableCell colSpan={3}>Total Brokerage Earned</TableCell>
+                                    <TableCell colSpan={6}>Total Brokerage Earned</TableCell>
                                     <TableCell className="text-right">{brokerLedgerData.totalBrokerageCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                 </TableRow></TableFooter></Table>
                                <ScrollBar orientation="horizontal" />
