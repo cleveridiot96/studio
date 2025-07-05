@@ -552,8 +552,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormItem><FormLabel>Labour (₹)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="e.g., 100" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)}
                       />
-
-                      <FormField control={control} name="brokerId" render={({ field }) => (
+                  </div>
+                  {/* Brokerage Section */}
+                  <div className="border-t pt-4 mt-4">
+                     <FormField control={control} name="brokerId" render={({ field }) => (
                           <FormItem className="lg:col-span-2"><FormLabel>Broker</FormLabel>
                           <MasterDataCombobox
                             value={field.value}
@@ -567,37 +569,39 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           />
                           <FormMessage /></FormItem>)}
                       />
-                      <div className="grid grid-cols-1 sm:grid-cols-3 lg:col-span-2 gap-2">
-                          <FormField control={control} name="brokerageType" render={({ field }) => (
-                              <FormItem className="sm:col-span-1"><FormLabel>Brokerage Type</FormLabel>
-                              <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false);}} value={field.value} disabled={!selectedBrokerId}>
-                                  <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
-                                  <SelectContent><SelectItem value="Fixed">Fixed (₹)</SelectItem><SelectItem value="Percentage">%</SelectItem></SelectContent>
-                              </ShadSelect><FormMessage /></FormItem>)}
-                          />
-                          <FormField control={control} name="brokerageValue" render={({ field }) => (
-                              <FormItem className="sm:col-span-1"><FormLabel>Brokerage Value</FormLabel>
-                              <div className="relative">
-                                  <FormControl><Input
-                                    type="number" step="0.01" placeholder="Value" {...field}
+                      {selectedBrokerId && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+                            <FormField control={control} name="brokerageType" render={({ field }) => (
+                                <FormItem className="sm:col-span-1"><FormLabel>Brokerage Type</FormLabel>
+                                <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false);}} value={field.value} disabled={!selectedBrokerId}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
+                                    <SelectContent><SelectItem value="Fixed">Fixed (₹)</SelectItem><SelectItem value="Percentage">%</SelectItem></SelectContent>
+                                </ShadSelect><FormMessage /></FormItem>)}
+                            />
+                            <FormField control={control} name="brokerageValue" render={({ field }) => (
+                                <FormItem className="sm:col-span-1"><FormLabel>Brokerage Value</FormLabel>
+                                <div className="relative">
+                                    <FormControl><Input
+                                      type="number" step="0.01" placeholder="Value" {...field}
+                                      value={field.value ?? ''}
+                                      onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setBrokerageValueManuallySet(true); }}
+                                      onFocusCapture={() => setBrokerageValueManuallySet(true)}
+                                      disabled={!selectedBrokerId || !brokerageType} className={brokerageType === 'Percentage' ? "pr-8" : ""}/></FormControl>
+                                    {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                </div>
+                                <FormMessage /></FormItem>)}
+                            />
+                            <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
+                                <FormItem className="sm:col-span-1"><FormLabel>Extra (₹/kg)</FormLabel>
+                                 <FormControl><Input
+                                    type="number" step="0.01" placeholder="Extra per kg" {...field}
                                     value={field.value ?? ''}
-                                    onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setBrokerageValueManuallySet(true); }}
-                                    onFocusCapture={() => setBrokerageValueManuallySet(true)}
-                                    disabled={!selectedBrokerId || !brokerageType} className={brokerageType === 'Percentage' ? "pr-8" : ""}/></FormControl>
-                                  {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                              </div>
-                              <FormMessage /></FormItem>)}
-                          />
-                          <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
-                              <FormItem className="sm:col-span-1"><FormLabel>Extra (₹/kg)</FormLabel>
-                               <FormControl><Input
-                                  type="number" step="0.01" placeholder="Extra per kg" {...field}
-                                  value={field.value ?? ''}
-                                  onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}
-                                  disabled={!selectedBrokerId}/></FormControl>
-                              <FormMessage /></FormItem>)}
-                          />
-                      </div>
+                                    onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}
+                                    disabled={!selectedBrokerId}/></FormControl>
+                                <FormMessage /></FormItem>)}
+                            />
+                        </div>
+                      )}
                   </div>
                 </div>
 
