@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -36,6 +36,7 @@ interface LedgerTransaction {
   kg: number;
   rate: number;
   amount: number;
+  type: 'Purchase' | 'Sale';
 }
 
 const initialLedgerData = {
@@ -134,11 +135,12 @@ export function LedgerClient() {
             id: `pur-${p.id}`,
             date: p.date,
             vakkal: p.lotNumber,
-            party: p.supplierName || 'N/A', // Party here is the supplier
+            party: p.supplierName || 'N/A',
             bags: p.quantity,
             kg: p.netWeight,
             rate: p.rate,
-            amount: p.totalAmount
+            amount: p.totalAmount,
+            type: 'Purchase',
         }))
         .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     }
@@ -150,11 +152,12 @@ export function LedgerClient() {
             id: `sal-${s.id}`,
             date: s.date,
             vakkal: s.lotNumber,
-            party: s.customerName || 'N/A', // Party here is the customer
+            party: s.customerName || 'N/A',
             bags: s.quantity,
             kg: s.netWeight,
             rate: s.rate,
             amount: s.goodsValue,
+            type: 'Sale',
         }))
         .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     }
@@ -226,61 +229,106 @@ export function LedgerClient() {
             </p>
           </CardHeader>
           <CardContent className="flex flex-col flex-grow">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Debit Side */}
-                <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-orange-300">
-                    <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle></CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
-                            <Table size="sm"><TableHeader><TableRow>
-                                <TableHead>Date</TableHead><TableHead>Vakkal</TableHead>
-                                <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
-                            </TableRow></TableHeader><TableBody>
-                                {ledgerData.debitTransactions.length === 0 ? <TableRow><TableCell colSpan={6} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow> :
-                                ledgerData.debitTransactions.map(tx => (<TableRow key={tx.id}>
-                                    <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                                    <TableCell>{tx.vakkal}</TableCell>
-                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                </TableRow>))}
-                            </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                                <TableCell colSpan={2}>Total</TableCell>
-                                <TableCell className="text-right">{ledgerData.totals.debitBags.toLocaleString()}</TableCell>
-                                <TableCell className="text-right">{ledgerData.totals.debitKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                <TableCell colSpan={2}></TableCell>
-                            </TableRow></TableFooter></Table>
-                        </ScrollArea>
-                    </CardContent></Card>
+                <div className="md:col-span-1">
+                  <Card className="shadow-inner border-orange-300">
+                    <CardHeader className="p-0">
+                      <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[60vh]">
+                        <Table size="sm" className="whitespace-nowrap">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Vakkal</TableHead>
+                              <TableHead className="text-right">Bags</TableHead>
+                              <TableHead className="text-right">Kg</TableHead>
+                              <TableHead className="text-right">Rate</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {ledgerData.debitTransactions.length === 0 ? (
+                              <TableRow><TableCell colSpan={6} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow>
+                            ) : (
+                              ledgerData.debitTransactions.map(tx => (
+                                <TableRow key={tx.id}>
+                                  <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                  <TableCell>{tx.vakkal}</TableCell>
+                                  <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                  <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                          <TableFooter>
+                            <TableRow className="font-bold bg-orange-50">
+                              <TableCell colSpan={2}>Total</TableCell>
+                              <TableCell className="text-right">{ledgerData.totals.debitBags.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">{ledgerData.totals.debitKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell colSpan={2}></TableCell>
+                            </TableRow>
+                          </TableFooter>
+                        </Table>
+                        <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
                 </div>
                 {/* Credit Side */}
-                <div className="md:col-span-1"><Card className="shadow-inner h-full flex flex-col border-green-300">
-                    <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle></CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
-                            <Table size="sm"><TableHeader><TableRow>
-                                <TableHead>Date</TableHead><TableHead>Vakkal</TableHead><TableHead>Customer</TableHead>
-                                <TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Kg</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
-                            </TableRow></TableHeader><TableBody>
-                                {ledgerData.creditTransactions.length === 0 ? <TableRow><TableCell colSpan={7} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow> :
-                                ledgerData.creditTransactions.map(tx => (<TableRow key={tx.id}>
-                                    <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                                    <TableCell>{tx.vakkal}</TableCell>
-                                    <TableCell>{tx.party}</TableCell>
-                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                </TableRow>))}
-                            </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                                <TableCell colSpan={3}>Total</TableCell>
-                                <TableCell className="text-right">{ledgerData.totals.creditBags.toLocaleString()}</TableCell>
-                                <TableCell className="text-right">{ledgerData.totals.creditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                <TableCell colSpan={2}></TableCell>
-                            </TableRow></TableFooter></Table>
-                        </ScrollArea>
-                    </CardContent></Card>
+                <div className="md:col-span-1">
+                  <Card className="shadow-inner border-green-300">
+                    <CardHeader className="p-0">
+                      <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[60vh]">
+                        <Table size="sm" className="whitespace-nowrap">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Vakkal</TableHead>
+                              <TableHead>Customer</TableHead>
+                              <TableHead className="text-right">Bags</TableHead>
+                              <TableHead className="text-right">Kg</TableHead>
+                              <TableHead className="text-right">Rate</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {ledgerData.creditTransactions.length === 0 ? (
+                              <TableRow><TableCell colSpan={7} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow>
+                            ) : (
+                              ledgerData.creditTransactions.map(tx => (
+                                <TableRow key={tx.id}>
+                                  <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                  <TableCell>{tx.vakkal}</TableCell>
+                                  <TableCell>{tx.party}</TableCell>
+                                  <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                  <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                          <TableFooter>
+                            <TableRow className="font-bold bg-green-50">
+                              <TableCell colSpan={3}>Total</TableCell>
+                              <TableCell className="text-right">{ledgerData.totals.creditBags.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">{ledgerData.totals.creditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                              <TableCell colSpan={2}></TableCell>
+                            </TableRow>
+                          </TableFooter>
+                        </Table>
+                         <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
                 </div>
             </div>
           </CardContent>
