@@ -24,7 +24,7 @@ export interface MasterItem {
   [key: string]: any; // For additional fields
 }
 
-export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker';
+export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker' | 'Expense';
 
 // Example data types for features
 export interface Purchase {

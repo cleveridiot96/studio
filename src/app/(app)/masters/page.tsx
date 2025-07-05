@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
@@ -20,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { doesNameExist } from '@/lib/masterUtils';
-import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { cn } from "@/lib/utils";
 
 // Storage keys
@@ -30,10 +31,13 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
 const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
+const FIXED_EXPENSE_IDS = FIXED_EXPENSES.map(e => e.id);
+const ALL_FIXED_IDS = [...FIXED_WAREHOUSE_IDS, ...FIXED_EXPENSE_IDS];
 
-type MasterPageTabKey = MasterItemType | 'All' | 'Expenses';
+type MasterPageTabKey = MasterItemType | 'All';
 
 const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; colorClass: string; }[] = [
   { value: "All", label: "All Parties", icon: List, colorClass: 'text-white bg-red-800 hover:bg-red-900 data-[state=active]:bg-red-900 data-[state=active]:text-white' },
@@ -42,7 +46,8 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
   { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
   { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Expenses", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
+  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-gray-500 hover:bg-gray-600 text-white data-[state=active]:bg-gray-600 data-[state=active]:text-white' },
+  { value: "Expense", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
 export default function MastersPage() {
@@ -54,6 +59,8 @@ export default function MastersPage() {
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
+
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
@@ -68,71 +75,68 @@ export default function MastersPage() {
     setHydrated(true);
   }, []);
 
+  const hydrateFixedItems = <T extends MasterItem>(
+    currentItems: T[],
+    fixedItems: readonly T[],
+    setItems: (items: T[]) => void
+  ) => {
+    const itemsMap = new Map(currentItems.map(item => [item.id, item]));
+    let updated = false;
+    fixedItems.forEach(fixedItem => {
+      if (!itemsMap.has(fixedItem.id) || JSON.stringify(itemsMap.get(fixedItem.id)) !== JSON.stringify(fixedItem)) {
+        itemsMap.set(fixedItem.id, fixedItem);
+        updated = true;
+      }
+    });
+    if (updated) {
+      setItems(Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    }
+  };
+
   useEffect(() => {
     if (hydrated) {
-      // Ensure fixed warehouses exist
-      setWarehouses(currentWarehouses => {
-        const warehousesMap = new Map(currentWarehouses.map(wh => [wh.id, wh]));
-        let updated = false;
-        FIXED_WAREHOUSES.forEach(fixedWh => {
-          if (!warehousesMap.has(fixedWh.id)) {
-            warehousesMap.set(fixedWh.id, fixedWh);
-            updated = true;
-          } else {
-            // Ensure name and type are correct if ID exists
-            const existing = warehousesMap.get(fixedWh.id)!;
-            if (existing.name !== fixedWh.name || existing.type !== fixedWh.type) {
-              warehousesMap.set(fixedWh.id, { ...existing, name: fixedWh.name, type: fixedWh.type });
-              updated = true;
-            }
-          }
-        });
-        return updated ? Array.from(warehousesMap.values()).sort((a, b) => a.name.localeCompare(b.name)) : currentWarehouses;
-      });
+      hydrateFixedItems(warehouses, FIXED_WAREHOUSES, setWarehouses);
+      hydrateFixedItems(expenses, FIXED_EXPENSES, setExpenses);
     }
-  }, [hydrated, setWarehouses]);
+  }, [hydrated, setWarehouses, warehouses, setExpenses, expenses]);
 
 
   const allMasterItems = useMemo(() => {
     if (!hydrated) return []; 
-    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses]
+    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses, ...expenses]
       .filter(item => item && item.id && item.name && item.type) 
       .sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, suppliers, agents, transporters, brokers, warehouses, hydrated]);
+  }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, hydrated]);
 
 
-  const getMasterDataState = useCallback((type: MasterItemType | 'All' | 'Expenses') => {
+  const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
     switch (type) {
       case 'Customer': return { data: customers, setData: setCustomers };
       case 'Supplier': return { data: suppliers, setData: setSuppliers };
       case 'Agent': return { data: agents, setData: setAgents };
       case 'Transporter': return { data: transporters, setData: setTransporters };
-      case 'Expenses': return { data: transporters, setData: setTransporters };
       case 'Broker': return { data: brokers, setData: setBrokers };
       case 'Warehouse': return { data: warehouses, setData: setWarehouses };
+      case 'Expense': return { data: expenses, setData: setExpenses };
       case 'All': return { data: allMasterItems, setData: () => {} }; 
       default: return { data: [], setData: () => {} };
     }
-  }, [customers, suppliers, agents, transporters, brokers, warehouses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, allMasterItems]);
+  }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, setExpenses, allMasterItems]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
-    if (FIXED_WAREHOUSE_IDS.includes(item.id) && item.type === 'Warehouse' && editingItem?.id === item.id) {
-      // Allow editing name of fixed warehouse, but not type or deleting
-      const fixedWhConfig = FIXED_WAREHOUSES.find(fw => fw.id === item.id);
-      if (item.name !== fixedWhConfig?.name) {
-         // Update only name, keep other fixed props
-         const updatedItem = { ...item, name: item.name, type: 'Warehouse' as MasterItemType };
-         setWarehouses(prev => prev.map(w => w.id === item.id ? updatedItem : w).sort((a,b) => a.name.localeCompare(b.name)));
-         toast({ title: "Fixed Warehouse Updated", description: `Name for ${item.name} updated.`});
-         setIsFormOpen(false);
-         setEditingItem(null);
-         return;
-      } else if (item.name === fixedWhConfig?.name) {
-         toast({ title: "No Changes", description: `No changes made to fixed warehouse ${item.name}.`});
-         setIsFormOpen(false);
-         setEditingItem(null);
-         return;
-      }
+    if (ALL_FIXED_IDS.includes(item.id) && editingItem?.id === item.id) {
+       const fixedItemConfig = [...FIXED_WAREHOUSES, ...FIXED_EXPENSES].find(fw => fw.id === item.id);
+       if (item.name !== fixedItemConfig?.name) {
+          const { setData } = getMasterDataState(item.type);
+          const updatedItem = { ...item, type: fixedItemConfig.type as MasterItemType };
+          setData(prev => prev.map(i => i.id === item.id ? updatedItem : i).sort((a,b) => a.name.localeCompare(b.name)));
+          toast({ title: `Fixed ${item.type} Updated`, description: `Name for ${item.name} updated.`});
+       } else {
+          toast({ title: "No Changes", description: `No changes made to fixed item ${item.name}.`});
+       }
+       setIsFormOpen(false);
+       setEditingItem(null);
+       return;
     }
 
     const { setData } = getMasterDataState(item.type);
@@ -147,32 +151,23 @@ export default function MastersPage() {
       return;
     }
 
-    let toastMessage = "";
-    let toastDescription = "";
-
     setData(prev => {
       const existingIndex = prev.findIndex(i => i.id === item.id);
       if (existingIndex > -1) {
         const updatedData = [...prev];
         updatedData[existingIndex] = item;
-        toastMessage = `${item.type} updated successfully!`;
-        toastDescription = `Details for ${item.name} saved.`;
+        toast({ title: `${item.type} updated`, description: `Details for ${item.name} saved.` });
         return updatedData.sort((a,b) => a.name.localeCompare(b.name));
       } else {
-        toastMessage = `${item.type} added successfully!`;
-        toastDescription = `${item.name} is now in your masters.`;
+        toast({ title: `${item.type} added`, description: `${item.name} is now in your masters.` });
         return [item, ...prev].sort((a,b) => a.name.localeCompare(b.name));
       }
     });
 
-    if (toastMessage) {
-      toast({ title: toastMessage, description: toastDescription });
-    }
-
     setIsFormOpen(false);
     setEditingItem(null);
 
-  }, [getMasterDataState, allMasterItems, toast, setWarehouses, editingItem]); 
+  }, [getMasterDataState, allMasterItems, toast, editingItem]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
     setEditingItem(item);
@@ -180,10 +175,10 @@ export default function MastersPage() {
   }, []);
 
   const handleDeleteItemAttempt = useCallback((item: MasterItem) => {
-    if (FIXED_WAREHOUSE_IDS.includes(item.id)) {
+    if (ALL_FIXED_IDS.includes(item.id)) {
       toast({
         title: "Deletion Prohibited",
-        description: `${item.name} is a fixed warehouse and cannot be deleted.`,
+        description: `${item.name} is a fixed item and cannot be deleted.`,
         variant: "destructive",
       });
       return;
@@ -194,8 +189,8 @@ export default function MastersPage() {
 
   const confirmDeleteItem = useCallback(() => {
     if (itemToDelete) {
-      if (FIXED_WAREHOUSE_IDS.includes(itemToDelete.id)) {
-        toast({ title: "Error", description: "Fixed warehouses cannot be deleted.", variant: "destructive" });
+      if (ALL_FIXED_IDS.includes(itemToDelete.id)) {
+        toast({ title: "Error", description: "Fixed items cannot be deleted.", variant: "destructive" });
         setItemToDelete(null);
         setShowDeleteConfirm(false);
         return;
@@ -220,10 +215,9 @@ export default function MastersPage() {
 
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "Add New Party/Entity";
-    if (activeTab === 'Expenses') return "Add New Expense Party";
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
     const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
-    return `Add New ${singularLabel || 'Party/Entity'}`;
+    return `Add New ${singularLabel || 'Item'}`;
   }, [activeTab]);
 
 
@@ -247,7 +241,7 @@ export default function MastersPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 h-auto rounded-lg overflow-hidden p-1 bg-muted gap-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 h-auto rounded-lg overflow-hidden p-1 bg-muted gap-1">
           {TABS_CONFIG.map(tab => (
             <TabsTrigger
               key={tab.value}
@@ -263,8 +257,7 @@ export default function MastersPage() {
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
-            const itemTypeForTab = tab.value === 'Expenses' ? 'Transporter' : tab.value;
-            const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(itemTypeForTab as MasterItemType | 'All').data;
+            const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(tab.value as MasterItemType | 'All').data;
             return (
               <TabsContent key={tab.value} value={tab.value} className="mt-6">
                 <Card className="shadow-lg">
@@ -274,16 +267,16 @@ export default function MastersPage() {
                   <CardContent>
                     <MasterList
                       data={currentData} 
-                      itemType={tab.value === 'Expenses' ? 'Transporter' : tab.value as MasterItemType | 'All'}
+                      itemType={tab.value as MasterItemType | 'All'}
                       isAllItemsTab={tab.value === "All"}
                       onEdit={handleEditItem}
                       onDelete={handleDeleteItemAttempt}
-                      fixedWarehouseIds={FIXED_WAREHOUSE_IDS}
+                      fixedItemIds={ALL_FIXED_IDS}
                     />
                   </CardContent>
                   <CardFooter>
                     <p className="text-xs text-muted-foreground">
-                      Total {tab.value === 'All' ? 'parties/entities' : tab.label.toLowerCase()}: {currentData.length}
+                      Total {tab.value === 'All' ? 'items' : tab.label.toLowerCase()}: {currentData.length}
                     </p>
                   </CardFooter>
                 </Card>
@@ -298,8 +291,8 @@ export default function MastersPage() {
           onClose={() => { setIsFormOpen(false); setEditingItem(null); }}
           onSubmit={handleAddOrUpdateMasterItem}
           initialData={editingItem}
-          itemTypeFromButton={editingItem ? editingItem.type : (activeTab === 'Expenses' ? 'Transporter' : (activeTab !== 'All' ? activeTab as MasterItemType : 'Customer'))}
-          fixedWarehouseIds={FIXED_WAREHOUSE_IDS}
+          itemTypeFromButton={editingItem ? editingItem.type : (activeTab !== 'All' ? activeTab as MasterItemType : 'Customer')}
+          fixedIds={ALL_FIXED_IDS}
         />
       )}
 
