@@ -275,7 +275,7 @@ export function LedgerClient() {
                         <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Inward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
-                      <ScrollArea className="h-[50vh]">
+                      <ScrollArea className="max-h-[65vh]">
                         <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
@@ -319,7 +319,7 @@ export function LedgerClient() {
                         <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Outward)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0 flex-grow">
-                      <ScrollArea className="h-[50vh]">
+                      <ScrollArea className="max-h-[65vh]">
                         <Table size="sm">
                             <TableHeader><TableRow>
                                 <TableHead>Date</TableHead>
@@ -389,5 +389,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
-    
