@@ -358,30 +358,23 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Expenses (Optional)</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <FormField
-                      control={control}
-                      name="transporterId"
-                      render={({ field }) => (
-                        <FormItem className="col-span-full sm:col-span-2">
-                          <FormLabel>Transporter</FormLabel>
-                          <MasterDataCombobox
-                            value={field.value}
-                            onChange={field.onChange}
-                            options={transporters.map((t) => ({ value: t.id, label: t.name }))}
-                            placeholder="Select Transporter"
-                            addNewLabel="Add New Transporter"
-                            onAddNew={() => handleOpenMasterForm("Transporter")}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                    <FormField control={control} name="transporterId" render={({ field }) => (
+                      <FormItem className="col-span-full sm:col-span-2">
+                        <FormLabel>Transporter</FormLabel>
+                        <MasterDataCombobox value={field.value} onChange={field.onChange} options={transporters.map((t) => ({ value: t.id, label: t.name }))}
+                          placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                     <FormField control={control} name="transportRatePerKg" render={({ field }) => (<FormItem><FormLabel>Tpt. Rate/kg</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g., 17" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setTransportChargesManuallySet(false); }} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setTransportChargesManuallySet(true); }} onFocus={() => setTransportChargesManuallySet(true)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Packing" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Labour" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="brokerageCharges" render={({ field }) => (
+                  </div>
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
+                     <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Packing Cost" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Labour Cost" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="brokerageCharges" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Brokerage (₹)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} 
@@ -392,8 +385,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             onFocus={() => setBrokerageChargesManuallySet(true)} /></FormControl>
                           <FormMessage />
                         </FormItem>)} />
-                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Misc." {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                  </div>
+                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Misc." {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                   </div>
                 </div>
 
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">

@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Users, Truck, UserCheck, UserCog, Handshake, PlusCircle, List, Building, Lock, DollarSign } from "lucide-react"; // Added DollarSign
+import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
