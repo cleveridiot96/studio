@@ -1,18 +1,15 @@
-
 "use client";
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale } from "@/lib/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval } from "date-fns";
-import { DollarSign, Printer, ArrowRight } from "lucide-react";
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { ArrowRight, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import Link from "next/link";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
@@ -33,7 +30,7 @@ interface ExpenseJournalEntry {
 
 const EXPENSE_TYPES = ['Transport', 'Packing', 'Labour', 'Brokerage', 'Misc'];
 
-export function ExpensesClient() {
+export function ExpenseJournal() {
   const [hydrated, setHydrated] = React.useState(false);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
@@ -91,79 +88,68 @@ export function ExpensesClient() {
   }
 
   return (
-    <div className="space-y-6 print-area">
-      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
-      <Card className="shadow-lg">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <CardTitle className="text-2xl text-primary flex items-center"><DollarSign className="mr-3 h-7 w-7"/>Expense Journal</CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto no-print">
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filter by type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {EXPENSE_TYPES.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full sm:w-auto" />
-              <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
-                <Printer className="h-5 w-5" /><span className="sr-only">Print</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[65vh] rounded-md border print:h-auto print:overflow-visible">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Party</TableHead>
-                  <TableHead>Vakkal No.</TableHead>
-                  <TableHead className="text-right">Amount (₹)</TableHead>
-                  <TableHead className="text-center no-print">Linked Txn</TableHead>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-end items-center gap-2 no-print">
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Filter by type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {EXPENSE_TYPES.map(type => (
+              <SelectItem key={type} value={type}>{type}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full sm:w-auto" />
+        <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
+          <Printer className="h-5 w-5" /><span className="sr-only">Print</span>
+        </Button>
+      </div>
+
+      <ScrollArea className="h-[50vh] rounded-md border print:h-auto print:overflow-visible">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Party</TableHead>
+              <TableHead>Vakkal No.</TableHead>
+              <TableHead className="text-right">Amount (₹)</TableHead>
+              <TableHead className="text-center no-print">Linked Txn</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredExpenses.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="h-24 text-center">No expenses found for the selected filters.</TableCell></TableRow>
+            ) : (
+              filteredExpenses.map(item => (
+                <TableRow key={item.id}>
+                  <TableCell>{format(parseISO(item.date), "dd-MM-yy")}</TableCell>
+                  <TableCell>{item.type}</TableCell>
+                  <TableCell className="truncate max-w-xs">{item.partyName || 'N/A'}</TableCell>
+                  <TableCell>{item.vakkalNo || 'N/A'}</TableCell>
+                  <TableCell className="text-right font-medium">{item.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                  <TableCell className="text-center no-print">
+                    <Button asChild variant="ghost" size="icon">
+                      <Link href={item.href}>
+                        <ArrowRight className="h-4 w-4" />
+                        <span className="sr-only">View {item.linkedTxnType}</span>
+                      </Link>
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredExpenses.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="h-24 text-center">No expenses found for the selected filters.</TableCell></TableRow>
-                ) : (
-                  filteredExpenses.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell>{format(parseISO(item.date), "dd-MM-yy")}</TableCell>
-                      <TableCell>{item.type}</TableCell>
-                      <TableCell className="truncate max-w-xs">{item.partyName || 'N/A'}</TableCell>
-                      <TableCell>{item.vakkalNo || 'N/A'}</TableCell>
-                      <TableCell className="text-right font-medium">{item.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-center no-print">
-                        <Button asChild variant="ghost" size="icon">
-                          <Link href={item.href}>
-                            <ArrowRight className="h-4 w-4" />
-                            <span className="sr-only">View {item.linkedTxnType}</span>
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </CardContent>
-         <CardFooter className="border-t pt-4 mt-4">
-            <div className="w-full flex justify-end text-lg font-bold text-primary">
-                <span>Total for Period:</span>
-                <span className="ml-4">
-                ₹{totalFilteredAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                </span>
-            </div>
-        </CardFooter>
-      </Card>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+      <div className="w-full flex justify-end text-lg font-bold text-primary pt-2 border-t">
+          <span>Total for Period:</span>
+          <span className="ml-4">
+          ₹{totalFilteredAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+          </span>
+      </div>
     </div>
   );
 }

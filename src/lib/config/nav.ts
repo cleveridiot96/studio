@@ -1,4 +1,3 @@
-
 import {
   LayoutGrid,
   ShoppingCart,
@@ -97,12 +96,6 @@ export const navItems: NavItem[] = [
     href: '/profit-analysis',
     iconName: 'Rocket',
     iconColor: 'bg-green-500', // Matches dashboard tile
-  },
-  {
-    title: 'Expenses',
-    href: '/expenses',
-    iconName: 'DollarSign',
-    iconColor: 'bg-gray-500',
   },
   {
     title: 'Masters',
