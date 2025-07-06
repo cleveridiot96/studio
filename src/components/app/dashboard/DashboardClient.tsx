@@ -178,7 +178,7 @@ const DashboardClient = () => {
               <div className="mt-2 space-y-1 text-xs max-h-24 overflow-y-auto">{Object.values(stockSummary.byLocation).map(loc=>(<div key={loc.name} className="flex justify-between"><span className="text-yellow-700 dark:text-yellow-300 truncate pr-2">{loc.name}:</span><span className='font-medium text-yellow-600 dark:text-yellow-400 whitespace-nowrap'>{loc.bags.toLocaleString()} Bags ({loc.netWeight.toLocaleString()} kg)</span></div>))}</div>
             </CardContent></Card></Link>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <ProfitSummary sales={sales} purchases={purchases} locationTransfers={locationTransfers} />
         <OutstandingSummary />
       </div>
