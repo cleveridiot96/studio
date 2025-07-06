@@ -9,9 +9,12 @@ interface AggregatedStockItemForSchema {
 
 const saleItemSchema = (availableStock: AggregatedStockItemForSchema[]) => z.object({
   lotNumber: z.string().min(1, "Vakkal/Lot is required.").refine(lotNum => availableStock.some(item => item.lotNumber === lotNum), { message: "Lot not in stock." }),
-  quantity: z.coerce.number().min(0.01, "Bags must be > 0."),
-  netWeight: z.coerce.number().min(0.01, "Net weight must be > 0."),
-  rate: z.coerce.number().min(0.01, "Rate must be > 0."),
+  quantity: z.coerce.number().min(0.01, "Bags must be > 0.").optional(),
+  netWeight: z.coerce.number().min(0.01, "Net weight must be > 0.").optional(),
+  rate: z.coerce.number().min(0.01, "Rate must be > 0.").optional(),
+}).refine(data => data.quantity && data.netWeight && data.rate, {
+    message: "Bags, Net Weight, and Rate are all required for each item.",
+    path: ["lotNumber"], // Attach error to a field for visibility
 });
 
 export const saleSchema = (
@@ -46,7 +49,9 @@ export const saleSchema = (
   // Validate total quantity for each lot doesn't exceed available stock
   const lotQuantities = new Map<string, number>();
   data.items.forEach(item => {
-    lotQuantities.set(item.lotNumber, (lotQuantities.get(item.lotNumber) || 0) + item.quantity);
+    if (item.quantity) {
+      lotQuantities.set(item.lotNumber, (lotQuantities.get(item.lotNumber) || 0) + item.quantity);
+    }
   });
 
   for (const [lotNumber, totalQuantity] of lotQuantities.entries()) {
@@ -81,7 +86,7 @@ export const saleSchema = (
         path: ["cbAmount"],
       });
     } else {
-        const totalGoodsValue = data.items.reduce((sum, item) => sum + (item.netWeight * item.rate), 0);
+        const totalGoodsValue = data.items.reduce((sum, item) => sum + ((item.netWeight || 0) * (item.rate || 0)), 0);
         if (data.cbAmount > totalGoodsValue) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,

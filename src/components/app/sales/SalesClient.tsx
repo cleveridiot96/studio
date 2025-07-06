@@ -44,7 +44,7 @@ const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 
-interface AggregatedStockItem {
+export interface AggregatedStockItemForForm {
   lotNumber: string;
   currentBags: number;
   effectiveRate: number; 
@@ -96,7 +96,6 @@ export function SalesClient() {
     const enrichedSales = fySales.map(sale => {
         if (!sale || !sale.items) return null;
 
-        // Force recalculation of all derived fields to ensure data consistency
         const totalGoodsValue = sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
         
         const billedAmount = (sale.isCB && sale.cbAmount) 
@@ -117,10 +116,10 @@ export function SalesClient() {
         
         return {
             ...sale,
-            totalGoodsValue, // Overwrite with fresh calculation
-            billedAmount, // Overwrite with fresh calculation
-            totalCostOfGoodsSold, // Overwrite with fresh calculation
-            totalCalculatedProfit, // Overwrite with fresh calculation
+            totalGoodsValue,
+            billedAmount,
+            totalCostOfGoodsSold,
+            totalCalculatedProfit,
         };
     }).filter(Boolean) as Sale[];
 
@@ -133,14 +132,14 @@ export function SalesClient() {
     return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
   }, [saleReturns, financialYear, isAppHydrating, isSalesClientHydrated]);
 
-  const aggregatedStockForSalesForm = React.useMemo(() => {
+  const aggregatedStockForSalesForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
 
     const stockMap = new Map<string, {
         currentBags: number,
+        currentWeight: number,
         effectiveRate: number,
         purchaseRate: number,
-        averageWeightPerBag: number,
         locationName?: string,
     }>();
 
@@ -149,13 +148,13 @@ export function SalesClient() {
     fyPurchases.forEach(p => {
         if (!p || !p.items) return;
         p.items.forEach(item => {
-            stockMap.set(item.lotNumber, {
-                currentBags: item.quantity,
-                effectiveRate: p.effectiveRate,
-                purchaseRate: item.rate,
-                averageWeightPerBag: item.quantity > 0 ? item.netWeight / item.quantity : 50,
-                locationName: p.locationName
-            });
+            const entry = stockMap.get(item.lotNumber) || { currentBags: 0, currentWeight: 0, effectiveRate: p.effectiveRate, purchaseRate: item.rate, locationName: p.locationName };
+            entry.currentBags += item.quantity;
+            entry.currentWeight += item.netWeight;
+            entry.effectiveRate = p.effectiveRate; // Last purchase of a lot overwrites rate info
+            entry.purchaseRate = item.rate;
+            entry.locationName = p.locationName;
+            stockMap.set(item.lotNumber, entry);
         });
     });
 
@@ -164,6 +163,7 @@ export function SalesClient() {
         const entry = stockMap.get(pr.originalLotNumber);
         if (entry) {
             entry.currentBags -= pr.quantityReturned;
+            entry.currentWeight -= pr.netWeightReturned;
         }
     });
 
@@ -174,18 +174,20 @@ export function SalesClient() {
             const fromEntry = stockMap.get(item.originalLotNumber);
             if (fromEntry) {
                 fromEntry.currentBags -= item.bagsToTransfer;
+                fromEntry.currentWeight -= item.netWeightToTransfer;
             }
 
             const toEntry = stockMap.get(item.newLotNumber);
-            const sourceEntry = fromEntry || stockMap.get(item.originalLotNumber);
+            const sourceEntry = fromEntry || stockMap.get(item.originalLotNumber); // Use source for rate info
             if (toEntry) {
                 toEntry.currentBags += item.bagsToTransfer;
+                toEntry.currentWeight += item.netWeightToTransfer;
             } else {
                 stockMap.set(item.newLotNumber, {
                     currentBags: item.bagsToTransfer,
+                    currentWeight: item.netWeightToTransfer,
                     effectiveRate: sourceEntry?.effectiveRate || 0,
                     purchaseRate: sourceEntry?.purchaseRate || 0,
-                    averageWeightPerBag: item.bagsToTransfer > 0 ? item.netWeightToTransfer / item.bagsToTransfer : (sourceEntry?.averageWeightPerBag || 50),
                     locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
                 });
             }
@@ -199,6 +201,7 @@ export function SalesClient() {
             const entry = stockMap.get(item.lotNumber);
             if (entry) {
                 entry.currentBags -= item.quantity;
+                entry.currentWeight -= item.netWeight;
             }
         });
     });
@@ -208,22 +211,26 @@ export function SalesClient() {
       const entry = stockMap.get(sr.originalLotNumber);
       if (entry) {
         entry.currentBags += sr.quantityReturned;
+        entry.currentWeight += sr.netWeightReturned;
       }
     });
 
-    const result: AggregatedStockItem[] = [];
+    const result: AggregatedStockItemForForm[] = [];
     const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
 
     stockMap.forEach((value, key) => {
-        // A bit of a complex check: Is the lot currently in Mumbai?
-        // We find the latest transaction for a lot to determine its current location.
-        // This is simplified; a full ledger per lot would be more robust.
-        // For now, let's assume if it exists in a purchase at Mumbai or transferred to Mumbai, it's there.
         const purchaseAtMumbai = fyPurchases.find(p => p.locationId === MUMBAI_WAREHOUSE_ID && p.items.some(i => i.lotNumber === key));
         const transferredToMumbai = fyLocationTransfers.find(lt => lt.toWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items.some(i => i.newLotNumber === key));
         
         if ((purchaseAtMumbai || transferredToMumbai) && value.currentBags > 0.001) {
-            result.push({ lotNumber: key, ...value });
+            result.push({ 
+                lotNumber: key, 
+                currentBags: value.currentBags,
+                effectiveRate: value.effectiveRate,
+                purchaseRate: value.purchaseRate,
+                averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
+                locationName: value.locationName
+            });
         }
     });
     return result;

@@ -31,21 +31,13 @@ import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema';
-import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter, Purchase, PurchaseReturn, LocationTransfer } from '@/lib/types';
+import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter } from '@/lib/types';
+import type { AggregatedStockItemForForm } from "./SalesClient";
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MasterForm } from '@/components/app/masters/MasterForm';
-
-interface AggregatedStockItemForForm {
-  lotNumber: string;
-  currentBags: number;
-  effectiveRate: number;
-  purchaseRate: number;
-  averageWeightPerBag: number;
-  locationName?: string;
-}
 
 interface AddSaleFormProps {
   isOpen: boolean;
@@ -75,6 +67,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+  const [netWeightManuallySet, setNetWeightManuallySet] = React.useState<Record<number, boolean>>({});
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -139,6 +132,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       reset(memoizedDefaultValues);
+      setNetWeightManuallySet({});
     }
   }, [isOpen, saleToEdit, reset, memoizedDefaultValues]);
 
@@ -197,8 +191,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       }, 0);
   }, [watchedItems, availableStock]);
 
-  const grossProfit = React.useMemo(() => totalGoodsValue - totalCostOfGoodsSold, [totalGoodsValue, totalCostOfGoodsSold]);
-  const totalCalculatedProfit = React.useMemo(() => grossProfit - totalSaleSideExpenses, [grossProfit, totalSaleSideExpenses]);
+  const grossProfitOnLandedCost = React.useMemo(() => totalGoodsValue - totalCostOfGoodsSold, [totalGoodsValue, totalCostOfGoodsSold]);
+  const finalNetProfit = React.useMemo(() => grossProfitOnLandedCost - totalSaleSideExpenses, [grossProfitOnLandedCost, totalSaleSideExpenses]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
@@ -230,6 +224,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       id: saleToEdit?.id || `sale-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
       billNumber: values.billNumber,
+      isCB: values.isCB,
+      cbAmount: values.cbAmount,
       customerId: values.customerId,
       customerName: selectedCustomer?.name,
       brokerId: values.brokerId,
@@ -258,8 +254,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       totalQuantity: values.items.reduce((acc, item) => acc + (item.quantity || 0), 0),
       totalNetWeight: totalNetWeight,
       totalCostOfGoodsSold: totalCostOfGoodsSold,
-      isCB: values.isCB,
-      cbAmount: values.cbAmount,
       transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
       transportCost: values.transportCost,
@@ -271,7 +265,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       calculatedBrokerageCommission: calculatedBrokerageCommission,
       calculatedExtraBrokerage: calculatedExtraBrokerage,
       notes: values.notes,
-      totalCalculatedProfit: totalCalculatedProfit,
+      totalCalculatedProfit: finalNetProfit,
     };
     onSubmit(saleData);
     setIsSubmitting(false);
@@ -317,55 +311,50 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
                 <div className="p-4 border rounded-md shadow-sm space-y-4">
                   <h3 className="text-lg font-medium text-primary">Quantity & Rate</h3>
-                  {fields.map((field, index) => {
-                    const lotNumber = watch(`items.${index}.lotNumber`);
-                    const netWeight = watch(`items.${index}.netWeight`) || 0;
-                    const saleRate = watch(`items.${index}.rate`) || 0;
-                    const stockInfo = availableStock.find(s => s.lotNumber === lotNumber);
-                    const costRate = stockInfo?.effectiveRate || 0;
-                    const itemGrossProfit = netWeight * (saleRate - costRate);
-
-                    return (
+                  {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-3"><FormLabel>Vakkal/Lot</FormLabel>
+                        <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
                           <MasterDataCombobox 
                             value={itemField.value} 
                             onChange={itemField.onChange} 
                             options={availableStock.map(s => {
-                                const fullLabel = `${s.lotNumber} (Rate: ₹${s.effectiveRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
+                                const fullLabel = `${s.lotNumber} (Purch. Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
                                 return {
                                     value: s.lotNumber,
                                     label: fullLabel,
-                                    tooltipContent: `${s.lotNumber} | Available: ${s.currentBags} bags | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Location: ${s.locationName || 'N/A'}`
+                                    tooltipContent: `${s.lotNumber} | Avl: ${s.currentBags} bags | Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Loc: ${s.locationName || 'N/A'}`
                                 };
                             })} 
                             placeholder="Select Lot" />
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-1"><FormLabel>Bags</FormLabel>
+                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
                                 itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
-                                const currentLotNumber = watch(`items.${index}.lotNumber`);
-                                const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
-                                const avgWeight = stockItem?.averageWeightPerBag || 50;
-                                setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
+                                if (!netWeightManuallySet[index]) {
+                                  const currentLotNumber = watch(`items.${index}.lotNumber`);
+                                  const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
+                                  const avgWeight = stockItem?.averageWeightPerBag || 50;
+                                  setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
+                                }
                             }} 
                            /></FormControl>
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-1"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
+                            onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
+                            onFocus={() => setNetWeightManuallySet(prev => ({...prev, [index]: true}))} 
+                        /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                      <div className="md:col-span-2"><FormLabel>Cost Rate</FormLabel><Input readOnly value={costRate > 0 ? costRate.toFixed(2) : 'N/A'} className="bg-muted/50" /></div>
-                      <div className="md:col-span-2"><FormLabel>Gross Profit</FormLabel><Input readOnly value={itemGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })} className={cn("font-bold bg-muted/50", itemGrossProfit >= 0 ? "text-green-600" : "text-destructive")}/></div>
                       <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
-                  )})}
+                  ))}
                   <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                 </div>
 
@@ -435,30 +424,38 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <div className="flex justify-between border-t pt-2 mt-2 text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
                     
                     <div className="text-sm text-muted-foreground space-y-1 pt-4 mt-4 border-t border-dashed">
-                        <h4 className="font-semibold text-foreground">Profit Calculation (Estimated)</h4>
-                        <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                        
-                        <div className="pl-4 border-l-2 border-muted">
+                      <h4 className="font-semibold text-foreground">Profit & Loss Breakdown (Estimated)</h4>
+                      <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                      
+                      <div className="pl-4 border-l-2 border-muted text-xs">
+                        <div className="flex justify-between font-medium"><span>Less: Landed Cost of Goods</span><span>(-) ₹{totalCostOfGoodsSold.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
                         {watchedItems.map((item, index) => {
                             if (!item.lotNumber) return null;
                             const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-                            const cogs = (item.netWeight || 0) * (stock?.effectiveRate || 0);
-                            return <div key={index} className="flex justify-between text-xs"><span>- Cost of "{item.lotNumber}" ({(item.netWeight||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{cogs.toLocaleString('en-IN')}</span></div>
+                            const landedCost = (item.netWeight || 0) * (stock?.effectiveRate || 0);
+                            return <div key={index} className="flex justify-between"><span>- Cost for "{item.lotNumber}" ({(item.netWeight||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{landedCost.toLocaleString('en-IN')}</span></div>
                         })}
-                        </div>
+                      </div>
 
-                        <div className={`flex justify-between font-bold ${grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}><span>Gross Profit:</span> <span>₹{grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                        
-                        <div className="pl-4 border-l-2 border-muted">
-                          {transportCostInput > 0 && <div className="flex justify-between text-xs"><span>- Transport Cost:</span><span>(-) ₹{transportCostInput.toLocaleString('en-IN')}</span></div>}
-                          {packingCostInput > 0 && <div className="flex justify-between text-xs"><span>- Packing Cost:</span><span>(-) ₹{packingCostInput.toLocaleString('en-IN')}</span></div>}
-                          {labourCostInput > 0 && <div className="flex justify-between text-xs"><span>- Labour Cost:</span><span>(-) ₹{labourCostInput.toLocaleString('en-IN')}</span></div>}
-                          {calculatedBrokerageCommission > 0 && <div className="flex justify-between text-xs"><span>- Brokerage:</span><span>(-) ₹{calculatedBrokerageCommission.toLocaleString('en-IN')}</span></div>}
-                          {calculatedExtraBrokerage > 0 && <div className="flex justify-between text-xs"><span>- Extra Brokerage:</span><span>(-) ₹{calculatedExtraBrokerage.toLocaleString('en-IN')}</span></div>}
+                      <div className={`flex justify-between font-bold ${grossProfitOnLandedCost >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
+                          <span>Gross Profit (before sale expenses):</span> <span>₹{grossProfitOnLandedCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      
+                      {totalSaleSideExpenses > 0 && (
+                        <div className="pl-4 border-l-2 border-muted text-xs">
+                          <div className="flex justify-between font-medium"><span>Less: Sale-Side Expenses</span><span>(-) ₹{totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
+                            {calculatedBrokerageCommission > 0 && <div className="flex justify-between"><span>- Brokerage:</span><span>(-) ₹{calculatedBrokerageCommission.toLocaleString('en-IN')}</span></div>}
+                            {calculatedExtraBrokerage > 0 && <div className="flex justify-between"><span>- Extra Brokerage:</span><span>(-) ₹{calculatedExtraBrokerage.toLocaleString('en-IN')}</span></div>}
+                            {transportCostInput > 0 && <div className="flex justify-between"><span>- Transport:</span><span>(-) ₹{transportCostInput.toLocaleString('en-IN')}</span></div>}
+                            {packingCostInput > 0 && <div className="flex justify-between"><span>- Packing:</span><span>(-) ₹{packingCostInput.toLocaleString('en-IN')}</span></div>}
+                            {labourCostInput > 0 && <div className="flex justify-between"><span>- Labour:</span><span>(-) ₹{labourCostInput.toLocaleString('en-IN')}</span></div>}
                         </div>
-                        
-                        <hr className="my-1 border-muted-foreground/50" />
-                        <div className={`flex justify-between font-bold text-base ${totalCalculatedProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}><span>Estimated Net Profit:</span> <span>₹{totalCalculatedProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                      )}
+                      
+                      <hr className="my-1 border-muted-foreground/50" />
+                      <div className={`flex justify-between font-bold text-base ${finalNetProfit >= 0 ? 'text-green-600' : 'text-red-700'}`}>
+                          <span>Estimated Net Profit:</span> <span>₹{finalNetProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
                 </div>
 
