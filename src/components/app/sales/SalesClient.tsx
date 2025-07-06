@@ -96,15 +96,15 @@ export function SalesClient() {
     const enrichedSales = fySales.map(sale => {
         if (!sale || !sale.items) return null;
 
-        const totalGoodsValue = (sale.totalGoodsValue !== undefined) ? sale.totalGoodsValue : sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
+        // Force recalculation of all derived fields to ensure data consistency
+        const totalGoodsValue = sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
         
-        const billedAmount = (sale.billedAmount !== undefined) 
-            ? sale.billedAmount
-            : (sale.isCB && sale.cbAmount) 
-                ? totalGoodsValue - sale.cbAmount 
-                : totalGoodsValue;
+        const billedAmount = (sale.isCB && sale.cbAmount) 
+            ? totalGoodsValue - sale.cbAmount 
+            : totalGoodsValue;
 
-        const totalCostOfGoodsSold = (sale.totalCostOfGoodsSold !== undefined) ? sale.totalCostOfGoodsSold : sale.items.reduce((acc, item) => acc + (item.costOfGoodsSold || 0), 0);
+        const totalCostOfGoodsSold = sale.items.reduce((acc, item) => acc + (item.costOfGoodsSold || 0), 0);
+        
         const grossProfit = totalGoodsValue - totalCostOfGoodsSold;
         
         const totalSaleSideExpenses = (sale.transportCost || 0) + 
@@ -113,12 +113,14 @@ export function SalesClient() {
                                       (sale.calculatedBrokerageCommission || 0) + 
                                       (sale.calculatedExtraBrokerage || 0);
 
-        const totalCalculatedProfit = (sale.totalCalculatedProfit !== undefined) ? sale.totalCalculatedProfit : grossProfit - totalSaleSideExpenses;
+        const totalCalculatedProfit = grossProfit - totalSaleSideExpenses;
         
         return {
             ...sale,
-            billedAmount,
-            totalCalculatedProfit,
+            totalGoodsValue, // Overwrite with fresh calculation
+            billedAmount, // Overwrite with fresh calculation
+            totalCostOfGoodsSold, // Overwrite with fresh calculation
+            totalCalculatedProfit, // Overwrite with fresh calculation
         };
     }).filter(Boolean) as Sale[];
 
