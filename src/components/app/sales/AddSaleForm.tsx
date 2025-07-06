@@ -152,7 +152,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
   }, [selectedBrokerId, brokers, setValue]);
 
-  // --- Live Calculations ---
   const watchedItems = watch("items");
   const isCB = watch("isCB");
   const cbAmountInput = watch("cbAmount") || 0; 
@@ -164,23 +163,25 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageValue");
   const extraBrokeragePerKg = watch("extraBrokeragePerKg") || 0;
 
-  const { totalGoodsValue, totalNetWeight, totalQuantity, totalCostOfGoodsSold } = (watchedItems || []).reduce(
-    (acc, item) => {
-      const itemQuantity = Number(item.quantity) || 0;
-      const itemNetWeight = Number(item.netWeight) || 0;
-      const itemRate = Number(item.rate) || 0;
-      const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
-      const landedCostPerKg = stockInfo?.effectiveRate || 0;
+  const { totalGoodsValue, totalNetWeight, totalQuantity, totalCostOfGoodsSold } = React.useMemo(() => {
+    return (watchedItems || []).reduce(
+      (acc, item) => {
+        const itemQuantity = Number(item.quantity) || 0;
+        const itemNetWeight = Number(item.netWeight) || 0;
+        const itemRate = Number(item.rate) || 0;
+        const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
+        const landedCostPerKg = stockInfo?.effectiveRate || 0;
 
-      acc.totalGoodsValue += itemNetWeight * itemRate;
-      acc.totalNetWeight += itemNetWeight;
-      acc.totalQuantity += itemQuantity;
-      acc.totalCostOfGoodsSold += itemNetWeight * landedCostPerKg;
+        acc.totalGoodsValue += itemNetWeight * itemRate;
+        acc.totalNetWeight += itemNetWeight;
+        acc.totalQuantity += itemQuantity;
+        acc.totalCostOfGoodsSold += itemNetWeight * landedCostPerKg;
 
-      return acc;
-    },
-    { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0, totalCostOfGoodsSold: 0 }
-  );
+        return acc;
+      },
+      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0, totalCostOfGoodsSold: 0 }
+    );
+  }, [watchedItems, availableStock]);
   
   const billedAmount = isCB ? totalGoodsValue - cbAmountInput : totalGoodsValue;
 
@@ -197,7 +198,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const grossProfitOnLandedCost = totalGoodsValue - totalCostOfGoodsSold;
   const finalNetProfit = grossProfitOnLandedCost - totalSaleSideExpenses;
-  // --- End Live Calculations ---
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setIsMasterFormOpen(true);
@@ -282,7 +282,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   return (
     <React.Fragment>
       <TooltipProvider>
-        <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
+        <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) { onClose(); } }}>
           <DialogContent className="sm:max-w-6xl">
             <DialogHeader>
               <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
@@ -493,7 +493,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           </DialogContent>
         </Dialog>
       </TooltipProvider>
-      {isMasterFormOpen && masterFormItemType && (<MasterForm isOpen={isMasterFormOpen} onClose={() => setIsMasterFormOpen(false)} onSubmit={handleMasterFormSubmit} itemTypeFromButton={masterFormItemType}/>)}
+      {isMasterFormOpen && masterFormItemType && (<MasterForm isOpen={isMasterFormOpen} onClose={() => { setIsMasterFormOpen(false); setMasterFormItemType(null); }} onSubmit={handleMasterFormSubmit} itemTypeFromButton={masterFormItemType}/>)}
     </React.Fragment>
   );
 };
