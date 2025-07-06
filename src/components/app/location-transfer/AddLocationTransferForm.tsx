@@ -201,7 +201,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   return (
     <>
-      <Dialog modal={true} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
         <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{transferToEdit ? "Edit Location Transfer" : "New Location Transfer"}</DialogTitle>
@@ -359,7 +359,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     )} />
                     <FormField control={control} name="transportCharges" render={({ field }) => (
                         <FormItem><FormLabel>Total Transport (₹)</FormLabel>
-                            <FormControl><Input type="number" step="0.01" placeholder="Auto-calculated" {...field}
+                            <FormControl><Input type="number" step="0.01" placeholder="Calculated..." {...field}
                                 value={field.value ?? ''}
                                 onChange={e => {
                                     field.onChange(parseFloat(e.target.value) || undefined);
@@ -408,5 +408,3 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
-
-    

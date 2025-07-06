@@ -373,7 +373,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   return (
     <>
-      <Dialog modal={true} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
+      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
           if (!openState && isOpen) { 
             onClose();
           }

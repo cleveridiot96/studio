@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -23,6 +24,11 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
     const partyMap = new Map<string, LeaderboardEntry>();
 
     items.forEach(item => {
+      // IMPORTANT: Only consider original purchases to avoid double-counting from transfers.
+      if (item.sourceType !== 'Purchase') {
+        return;
+      }
+      
       const partyId = item.supplierId;
       const partyName = item.supplierName || 'Unknown';
 
@@ -39,9 +45,14 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
       }
 
       const entry = partyMap.get(partyId)!;
-      entry.bags += item.totalPurchasedBags + item.totalTransferredInBags;
-      entry.kg += item.totalPurchasedWeight + item.totalTransferredInWeight;
-      entry.value += (item.totalPurchasedWeight + item.totalTransferredInWeight) * item.purchaseRate;
+      // Calculate NET bags, weight, and value by subtracting returns.
+      const netBags = item.totalPurchasedBags - item.totalPurchaseReturnedBags;
+      const netWeight = item.totalPurchasedWeight - item.totalPurchaseReturnedWeight;
+      
+      entry.bags += netBags;
+      entry.kg += netWeight;
+      // Value is based on the net weight at the original purchase rate.
+      entry.value += netWeight * item.purchaseRate;
     });
     
     return Array.from(partyMap.values())
@@ -69,8 +80,8 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
               <TableRow>
                 <TableHead>Rank</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead className="text-right">Bags</TableHead>
-                <TableHead className="text-right">KG</TableHead>
+                <TableHead className="text-right">Net Bags</TableHead>
+                <TableHead className="text-right">Net KG</TableHead>
                 <TableHead className="text-right">Value (₹)</TableHead>
               </TableRow>
             </TableHeader>

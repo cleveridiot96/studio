@@ -150,7 +150,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
   }));
 
   return (
-    <Dialog open={isOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
+    <Dialog modal={false} open={isOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{purchaseReturnToEdit ? "Edit Purchase Return" : "New Purchase Return"}</DialogTitle>
