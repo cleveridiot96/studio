@@ -61,11 +61,11 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="whitespace-nowrap">Name</TableHead>
-            {showTypeColumn && <TableHead className="whitespace-nowrap">Type</TableHead>}
-            {showCommissionColumn && <TableHead className="text-right whitespace-nowrap">Commission (%)</TableHead>}
-            {showBalanceColumn && <TableHead className="text-right whitespace-nowrap">Opening Balance (₹)</TableHead>}
-            <TableHead className="text-center w-[100px] sm:w-[120px] whitespace-nowrap">Actions</TableHead>
+            <TableHead className="whitespace-nowrap p-2">Name</TableHead>
+            {showTypeColumn && <TableHead className="whitespace-nowrap p-2">Type</TableHead>}
+            {showCommissionColumn && <TableHead className="text-right whitespace-nowrap p-2">Commission (%)</TableHead>}
+            {showBalanceColumn && <TableHead className="text-right whitespace-nowrap p-2">Opening Balance (₹)</TableHead>}
+            <TableHead className="text-center w-[100px] sm:w-[120px] whitespace-nowrap p-2">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -76,7 +76,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
             const isFixed = fixedItemIds.includes(item.id);
             return (
               <TableRow key={item.id}>
-                <TableCell className="font-medium whitespace-nowrap">
+                <TableCell className="font-medium whitespace-nowrap p-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span className="cursor-help">
@@ -90,7 +90,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                   </Tooltip>
                 </TableCell>
                 {showTypeColumn && (
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="whitespace-nowrap p-2">
                     <Badge variant="secondary" className="text-xs capitalize">
                       <TypeIcon className="w-3 h-3 mr-1.5" />
                       {item.type}
@@ -98,26 +98,26 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                   </TableCell>
                 )}
                 {showCommissionColumn && (
-                  <TableCell className="text-right whitespace-nowrap">
+                  <TableCell className="text-right whitespace-nowrap p-2">
                     {itemHasCommission && item.commission !== undefined
                       ? `${item.commission.toLocaleString()}%`
                       : 'N/A'}
                   </TableCell>
                 )}
                 {showBalanceColumn && (
-                  <TableCell className="text-right whitespace-nowrap">
+                  <TableCell className="text-right whitespace-nowrap p-2">
                     {itemHasBalance && item.openingBalance && item.openingBalance > 0
                       ? `${item.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${item.openingBalanceType || ''}`.trim()
                       : 'N/A'}
                   </TableCell>
                 )}
-                <TableCell className="text-center">
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(item)} className="mr-1 sm:mr-2 hover:text-primary">
+                <TableCell className="text-center p-2">
+                  <Button variant="ghost" size="icon" onClick={() => onEdit(item)} className="mr-1 sm:mr-2 hover:text-primary h-8 w-8">
                     <Pencil className="h-4 w-4" />
                   </Button>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => onDelete(item)} className="hover:text-destructive" disabled={isFixed}>
+                      <Button variant="ghost" size="icon" onClick={() => onDelete(item)} className="hover:text-destructive h-8 w-8" disabled={isFixed}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
