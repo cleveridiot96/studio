@@ -22,10 +22,10 @@ const getPurchaseDetailsForSaleLot = (
   lotNumberFromSale: string | undefined | null,
   purchases: Purchase[],
   locationTransfers: LocationTransfer[]
-): { rate: number; supplierName?: string; agentName?: string } => {
+): { rate: number; supplierName?: string; agentName?: string; effectiveRate: number } => {
   const searchLot = String(lotNumberFromSale || "").toLowerCase().trim();
   if (!searchLot) {
-    return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
+    return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
   }
 
   // First, try a direct match for non-transferred lots.
@@ -33,6 +33,7 @@ const getPurchaseDetailsForSaleLot = (
   if (directMatchPurchase) {
     return {
       rate: directMatchPurchase.rate ?? 0,
+      effectiveRate: directMatchPurchase.effectiveRate ?? 0,
       supplierName: directMatchPurchase.supplierName || directMatchPurchase.supplierId || 'N/A',
       agentName: directMatchPurchase.agentName || directMatchPurchase.agentId || 'N/A',
     };
@@ -40,7 +41,6 @@ const getPurchaseDetailsForSaleLot = (
 
   // If no direct match, it might be a transferred lot. Trace it back.
   let originalLotNumber: string | null = null;
-  // Iterate backwards to find the most recent transfer for a given newLotNumber, which is more robust
   for (let i = locationTransfers.length - 1; i >= 0; i--) {
     const transfer = locationTransfers[i];
     for (const item of transfer.items) {
@@ -53,19 +53,19 @@ const getPurchaseDetailsForSaleLot = (
   }
   
   if (!originalLotNumber) {
-    return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
+    return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
   }
   
-  // Find the purchase using the traced-back originalLotNumber.
   const searchOriginalLot = String(originalLotNumber).toLowerCase().trim();
   const originalPurchase = purchases.find(p => String(p.lotNumber || "").toLowerCase().trim() === searchOriginalLot);
 
   if (!originalPurchase) {
-    return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
+    return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
   }
 
   return {
     rate: originalPurchase.rate ?? 0,
+    effectiveRate: originalPurchase.effectiveRate ?? 0,
     supplierName: originalPurchase.supplierName || originalPurchase.supplierId || 'N/A',
     agentName: originalPurchase.agentName || originalPurchase.agentId || 'N/A',
   };
@@ -101,25 +101,20 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
 
     return salesForCurrentFY.map((sale) => {
       const purchaseDetails = getPurchaseDetailsForSaleLot(sale.lotNumber, purchases, locationTransfers);
-      const purchaseRateValue = purchaseDetails.rate;
       
-      const saleRateNum = typeof sale.rate === 'number' ? sale.rate : 0;
-      const purchaseRateNum = typeof purchaseRateValue === 'number' ? purchaseRateValue : 0;
-      const saleNetWeightNum = typeof sale.netWeight === 'number' ? sale.netWeight : 0;
-      
-      let currentProfit = sale.calculatedProfit; // Prefer pre-calculated profit if available
-      if (currentProfit === undefined || isNaN(currentProfit)) {
-         currentProfit = (saleRateNum * saleNetWeightNum) - (purchaseRateNum * saleNetWeightNum) - (sale.transportCost || 0) - (sale.calculatedBrokerageCommission || 0);
-      }
-      
-      currentProfit = isNaN(currentProfit) ? 0 : currentProfit;
+      const netPurchaseRate = sale.costOfGoodsSold && sale.netWeight > 0 ? sale.costOfGoodsSold / sale.netWeight : purchaseDetails.effectiveRate;
+      const netSaleRate = sale.billedAmount && sale.netWeight > 0 ? sale.billedAmount / sale.netWeight : sale.rate;
+      const grossProfit = sale.goodsValue - (sale.costOfGoodsSold || 0);
 
       return {
         ...sale,
-        profit: currentProfit,
-        purchaseRate: purchaseRateNum,
+        profit: sale.calculatedProfit || 0,
+        purchaseRate: purchaseDetails.rate,
         supplierName: purchaseDetails.supplierName,
         agentName: purchaseDetails.agentName,
+        netPurchaseRate,
+        netSaleRate,
+        grossProfit,
       };
     });
   }, [salesForCurrentFY, purchases, locationTransfers]);
@@ -142,9 +137,8 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
         console.error("Error generating month options for ProfitSummary:", error);
       }
     }
-    // Ensure options are unique if multiple sources add "All Months" or similar
     return Array.from(new Map(options.map(item => [item.value, item])).values())
-      .sort((a,b) => { // Sort: "All Months" first, then by date descending
+      .sort((a,b) => {
           if (a.value === "all") return -1;
           if (b.value === "all") return 1;
           return b.value.localeCompare(a.value);
@@ -175,7 +169,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
           const monthKey = format(startOfMonth(parseISO(item.date)), "yyyy-MM");
           if (!monthlyAgg[monthKey]) {
             monthlyAgg[monthKey] = { 
-                monthKey: monthKey, // Store yyyy-MM
+                monthKey: monthKey,
                 monthYear: format(parseISO(monthKey + "-01"), "MMMM yyyy"),
                 totalProfit: 0, 
                 totalSalesValue: 0, 
@@ -183,8 +177,8 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
             };
           }
           monthlyAgg[monthKey].totalProfit += (item.profit || 0);
-          monthlyAgg[monthKey].totalSalesValue += item.totalAmount;
-          monthlyAgg[monthKey].totalCostOfGoods += (item.purchaseRate || 0) * (item.netWeight || 0) ;
+          monthlyAgg[monthKey].totalSalesValue += item.goodsValue;
+          monthlyAgg[monthKey].totalCostOfGoods += (item.costOfGoodsSold || 0);
         } catch (e) {
           console.error("Error parsing date for monthly aggregation in ProfitSummary:", item.date, e);
         }
@@ -194,7 +188,6 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
     const summaryArray = Object.values(monthlyAgg)
         .sort((a, b) => parseISO(b.monthKey + "-01").getTime() - parseISO(a.monthKey + "-01").getTime());
 
-    // If a specific month is selected, only return that month's summary
     if (selectedMonth !== "all" && summaryArray.length > 0) {
         return summaryArray.filter(s => s.monthKey === selectedMonth);
     }
@@ -234,32 +227,26 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Bill No.</TableHead>
                     <TableHead>Vakkal</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Agent</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Broker</TableHead>
-                    <TableHead className="text-right">Purch. Rate (₹/kg)</TableHead>
-                    <TableHead className="text-right">Sale Rate (₹/kg)</TableHead>
-                    <TableHead className="text-right">Qty (kg)</TableHead>
-                    <TableHead className="text-right">Profit (₹)</TableHead>
+                    <TableHead className="text-right">Net Purch. Rate</TableHead>
+                    <TableHead className="text-right">Net Sale Rate</TableHead>
+                    <TableHead className="text-right">Gross Profit (₹)</TableHead>
+                    <TableHead className="text-right">Net Profit (₹)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProfitTransactions.map((row, i) => (
                     <TableRow key={`${row.id}-${i}`}>
                       <TableCell>{row.date ? format(parseISO(row.date), "dd-MM-yy") : 'N/A'}</TableCell>
-                      <TableCell>{row.billNumber || 'N/A'}</TableCell>
                       <TableCell>{row.lotNumber || "N/A"}</TableCell>
-                      <TableCell className="truncate max-w-[100px]">{row.supplierName}</TableCell>
-                      <TableCell className="truncate max-w-[80px]">{row.agentName || 'N/A'}</TableCell>
-                      <TableCell className="truncate max-w-[100px]">{row.customerName || row.customerId}</TableCell>
-                      <TableCell className="truncate max-w-[80px]">{row.brokerName || row.brokerId || 'N/A'}</TableCell>
-                      <TableCell className="text-right">{(row.purchaseRate || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(row.rate || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{(row.netWeight || 0).toLocaleString()} kg</TableCell>
-                      <TableCell className={`text-right font-medium ${(row.profit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      <TableCell className="truncate max-w-[120px]">{row.customerName || row.customerId}</TableCell>
+                      <TableCell className="text-right">{(row.netPurchaseRate || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{(row.netSaleRate || 0).toFixed(2)}</TableCell>
+                      <TableCell className={`text-right font-medium ${(row.grossProfit || 0) >= 0 ? "text-cyan-600" : "text-orange-600"}`}>
+                        {(row.grossProfit || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell className={`text-right font-bold ${(row.profit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
                         {(row.profit || 0).toFixed(2)}
                       </TableCell>
                     </TableRow>
@@ -273,7 +260,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
         {monthlyProfitsDataForSelectedPeriod.length > 0 && (
           <div>
             <h3 className="text-lg font-semibold mb-3 text-foreground">Month-wise Profit Summary</h3>
-            <ScrollArea className="h-auto max-h-[200px] rounded-md border"> {/* Adjusted height */}
+            <ScrollArea className="h-auto max-h-[200px] rounded-md border">
               <Table size="sm">
                 <TableHeader>
                   <TableRow>
