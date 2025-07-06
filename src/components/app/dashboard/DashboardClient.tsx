@@ -14,6 +14,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { Separator } from '@/components/ui/separator';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { isDateInFinancialYear } from "@/lib/utils";
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; // New
@@ -107,46 +108,130 @@ const DashboardClient = () => {
 
   const stockSummary = React.useMemo<StockSummary>(() => {
     if (isAppHydrating || !hydrated) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
-    const inventoryMap = new Map<string, { lotNumber: string, locationId: string, currentBags: number, currentWeight: number }>();
+
+    type TempInventoryItem = {
+        lotNumber: string;
+        locationId: string;
+        totalPurchasedBags: number;
+        totalPurchasedWeight: number;
+        totalSoldBags: number;
+        totalSoldWeight: number;
+        totalPurchaseReturnedBags: number; 
+        totalPurchaseReturnedWeight: number; 
+        totalSaleReturnedBags: number; 
+        totalSaleReturnedWeight: number; 
+        totalTransferredOutBags: number;
+        totalTransferredOutWeight: number;
+        totalTransferredInBags: number;
+        totalTransferredInWeight: number;
+    };
+    
+    const inventoryMap = new Map<string, TempInventoryItem>();
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, currentFinancialYearString));
+    
     fyPurchases.forEach(p => {
-      const key = `${p.lotNumber}-${p.locationId}`; let entry = inventoryMap.get(key) || { lotNumber: p.lotNumber, locationId: p.locationId, currentBags: 0, currentWeight: 0 };
-      entry.currentBags += p.quantity; entry.currentWeight += p.netWeight; inventoryMap.set(key, entry);
+      const key = `${p.lotNumber}-${p.locationId}`;
+      let entry = inventoryMap.get(key);
+      if (!entry) {
+        entry = {
+            lotNumber: p.lotNumber, locationId: p.locationId,
+            totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
+            totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
+            totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
+        };
+        inventoryMap.set(key, entry);
+      }
+      entry.totalPurchasedBags += p.quantity;
+      entry.totalPurchasedWeight += p.netWeight;
     });
+    
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, currentFinancialYearString));
     fyPurchaseReturns.forEach(pr => {
-        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-        if (originalPurchase) { const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`; let entry = inventoryMap.get(key); if (entry) { entry.currentBags -= pr.quantityReturned; entry.currentWeight -= pr.netWeightReturned;}}
+      const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+      if (originalPurchase) {
+        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+        const entry = inventoryMap.get(key);
+        if (entry) {
+          entry.totalPurchaseReturnedBags += pr.quantityReturned;
+          entry.totalPurchaseReturnedWeight += pr.netWeightReturned;
+        }
+      }
     });
-    const fySales = sales.filter(s => isDateInFinancialYear(s.date, currentFinancialYearString));
-    fySales.forEach(s => {
-      const relatedPurchase = purchases.find(p => p.lotNumber === s.lotNumber);
-      if (relatedPurchase) { const key = `${s.lotNumber}-${relatedPurchase.locationId}`; let entry = inventoryMap.get(key); if (entry) { entry.currentBags -= s.quantity; entry.currentWeight -= s.netWeight;}}
-    });
-    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, currentFinancialYearString));
-    fySaleReturns.forEach(sr => {
-        const originalSale = sales.find(s => s.id === sr.originalSaleId);
-        if(originalSale) { const relatedPurchase = purchases.find(p => p.lotNumber === originalSale.lotNumber); if(relatedPurchase) { const key = `${originalSale.lotNumber}-${relatedPurchase.locationId}`; let entry = inventoryMap.get(key); if(entry) { entry.currentBags += sr.quantityReturned; entry.currentWeight += sr.netWeightReturned;}}}
-    });
+
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, currentFinancialYearString));
     fyLocationTransfers.forEach(transfer => {
       transfer.items.forEach(item => {
-        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`; const fromEntry = inventoryMap.get(fromKey); if (fromEntry) { fromEntry.currentBags -= item.bagsToTransfer; fromEntry.currentWeight -= item.netWeightToTransfer; }
-        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`; let toEntry = inventoryMap.get(toKey);
-        if (!toEntry) { toEntry = { lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0 }; inventoryMap.set(toKey, toEntry); }
-        toEntry.currentBags += item.bagsToTransfer; toEntry.currentWeight += item.netWeightToTransfer;
+        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
+        const fromItem = inventoryMap.get(fromKey);
+        if (fromItem) {
+          fromItem.totalTransferredOutBags += item.bagsToTransfer;
+          fromItem.totalTransferredOutWeight += item.netWeightToTransfer;
+        }
+
+        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+        let toEntry = inventoryMap.get(toKey);
+        if (!toEntry) {
+          toEntry = {
+            lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
+            totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
+            totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
+            totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
+          };
+          inventoryMap.set(toKey, toEntry);
+        }
+        toEntry.totalTransferredInBags += item.bagsToTransfer;
+        toEntry.totalTransferredInWeight += item.netWeightToTransfer;
       });
     });
-    const byLocation: Record<string, { name: string; bags: number; netWeight: number }> = {}; let totalBags=0, totalNetWeight=0;
-    inventoryMap.forEach(item => {
-      if (item.currentBags > 0 || item.currentWeight > 0) {
-        totalBags+=item.currentBags; totalNetWeight+=item.currentWeight; const locName = warehouses.find(w=>w.id===item.locationId)?.name||item.locationId;
-        if(!byLocation[item.locationId]) byLocation[item.locationId]={name:locName,bags:0,netWeight:0};
-        byLocation[item.locationId].bags+=item.currentBags; byLocation[item.locationId].netWeight+=item.currentWeight;
+
+    const fySales = sales.filter(s => isDateInFinancialYear(s.date, currentFinancialYearString));
+    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
+    fySales.forEach(s => {
+      const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
+      
+      if (entry) {
+        entry.totalSoldBags += s.quantity;
+        entry.totalSoldWeight += s.netWeight;
       }
     });
+
+    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, currentFinancialYearString));
+    fySaleReturns.forEach(sr => {
+      const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(sr.originalLotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const entry = saleReturnLotKey ? inventoryMap.get(saleReturnLotKey) : undefined;
+
+      if (entry) {
+        entry.totalSaleReturnedBags += sr.quantityReturned;
+        entry.totalSaleReturnedWeight += sr.netWeightReturned;
+      }
+    });
+
+    const byLocation: Record<string, { name: string; bags: number; netWeight: number }> = {}; 
+    let totalBags = 0;
+    let totalNetWeight = 0;
+
+    inventoryMap.forEach(item => {
+      const currentBags = item.totalPurchasedBags + item.totalTransferredInBags + item.totalSaleReturnedBags
+                        - item.totalSoldBags - item.totalTransferredOutBags - item.totalPurchaseReturnedBags;
+      const currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight
+                        - item.totalSoldWeight - item.totalTransferredOutWeight - item.totalPurchaseReturnedWeight;
+
+      if (currentBags > 0.001 || currentWeight > 0.001) {
+        totalBags += currentBags;
+        totalNetWeight += currentWeight;
+        const locName = warehouses.find(w => w.id === item.locationId)?.name || item.locationId;
+        if (!byLocation[item.locationId]) {
+          byLocation[item.locationId] = { name: locName, bags: 0, netWeight: 0 };
+        }
+        byLocation[item.locationId].bags += currentBags;
+        byLocation[item.locationId].netWeight += currentWeight;
+      }
+    });
+    
     return { totalBags, totalNetWeight, byLocation };
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, hydrated, isAppHydrating, currentFinancialYearString]);
+
 
   if (isAppHydrating || !hydrated) return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">{[1,2,3].map(i => <Card key={i}><CardHeader><CardTitle>Loading...</CardTitle></CardHeader><CardContent><p>Wait...</p></CardContent></Card>)}</div>;
   
