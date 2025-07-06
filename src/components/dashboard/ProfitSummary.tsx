@@ -204,7 +204,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle className="text-2xl text-primary flex items-center">
-            <DollarSign className="mr-2 h-6 w-6"/> Profit & Loss (FY: {currentFinancialYearString})
+            <DollarSign className="mr-2 h-6 w-6"/> Profit &amp; Loss (FY: {currentFinancialYearString})
           </CardTitle>
           <MasterDataCombobox
             value={selectedMonth}
@@ -218,17 +218,24 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold mb-3 text-foreground">Transaction-wise Profit & Loss</h3>
+          <h3 className="text-lg font-semibold mb-3 text-foreground">Transaction-wise Profit &amp; Loss</h3>
           {filteredProfitTransactions.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">No sales data for profit in the selected period.</p>
           ) : (
             <ScrollArea className="h-[300px] rounded-md border">
-              <Table size="sm">
+              <Table size="sm" className="whitespace-nowrap">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Bill No.</TableHead>
                     <TableHead>Vakkal</TableHead>
+                    <TableHead>Supplier</TableHead>
+                    <TableHead>Agent</TableHead>
                     <TableHead>Customer</TableHead>
+                    <TableHead>Broker</TableHead>
+                    <TableHead className="text-right">Qty (kg)</TableHead>
+                    <TableHead className="text-right">Purch. Rate</TableHead>
+                    <TableHead className="text-right">Sale Rate</TableHead>
                     <TableHead className="text-right">Net Purch. Rate</TableHead>
                     <TableHead className="text-right">Net Sale Rate</TableHead>
                     <TableHead className="text-right">Gross Profit (₹)</TableHead>
@@ -239,15 +246,22 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                   {filteredProfitTransactions.map((row, i) => (
                     <TableRow key={`${row.id}-${i}`}>
                       <TableCell>{row.date ? format(parseISO(row.date), "dd-MM-yy") : 'N/A'}</TableCell>
+                      <TableCell>{row.billNumber || 'N/A'}</TableCell>
                       <TableCell>{row.lotNumber || "N/A"}</TableCell>
+                      <TableCell className="truncate max-w-[120px]">{row.supplierName || 'N/A'}</TableCell>
+                      <TableCell className="truncate max-w-[120px]">{row.agentName || 'N/A'}</TableCell>
                       <TableCell className="truncate max-w-[120px]">{row.customerName || row.customerId}</TableCell>
+                      <TableCell className="truncate max-w-[120px]">{row.brokerName || 'N/A'}</TableCell>
+                      <TableCell className="text-right">{row.netWeight.toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right">{(row.purchaseRate || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{(row.rate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.netPurchaseRate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.netSaleRate || 0).toFixed(2)}</TableCell>
                       <TableCell className={`text-right font-medium ${(row.grossProfit || 0) >= 0 ? "text-cyan-600" : "text-orange-600"}`}>
-                        {(row.grossProfit || 0).toFixed(2)}
+                        {(row.grossProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </TableCell>
                       <TableCell className={`text-right font-bold ${(row.profit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {(row.profit || 0).toFixed(2)}
+                        {(row.profit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -273,7 +287,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                     <TableRow key={monthData.monthKey}>
                       <TableCell>{monthData.monthYear}</TableCell>
                       <TableCell className={`text-right font-medium ${monthData.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {monthData.totalProfit.toFixed(2)}
+                        {monthData.totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </TableCell>
                     </TableRow>
                   ))}
