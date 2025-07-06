@@ -66,9 +66,9 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
           </TableHeader>
           <TableBody>
             {data.map((sale) => {
-              const vakkalDisplay = sale.items.length > 1 
+              const vakkalDisplay = (sale.items && sale.items.length > 1) 
                 ? `${sale.items[0].lotNumber} (+${sale.items.length - 1})`
-                : sale.items[0]?.lotNumber || 'N/A';
+                : (sale.items && sale.items[0]?.lotNumber) || 'N/A';
 
               return (
               <TableRow key={sale.id}>
@@ -86,7 +86,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                 <TableCell>
                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{vakkalDisplay}</span></TooltipTrigger>
                     <TooltipContent>
-                        <ul>{sale.items.map(item => <li key={item.lotNumber}>{item.lotNumber} ({item.quantity} bags)</li>)}</ul>
+                        <ul>{sale.items && sale.items.map(item => <li key={item.lotNumber}>{item.lotNumber} ({item.quantity} bags)</li>)}</ul>
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>

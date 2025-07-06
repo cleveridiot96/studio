@@ -39,32 +39,33 @@ export function ProfitAnalysisClient() {
 
   const allProfitTransactionsInFY = React.useMemo(() => {
     if (!hydrated) return [];
-    const fySales = sales.filter(sale => isDateInFinancialYear(sale.date, currentFinancialYearString));
+    const fySales = sales.filter(sale => sale && isDateInFinancialYear(sale.date, currentFinancialYearString));
     
-    // This will now flatten sales with multiple items into multiple profit transaction rows
     const flattenedTransactions: TransactionalProfitInfo[] = [];
     fySales.forEach(sale => {
-      const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
+      if (sale.items && Array.isArray(sale.items)) {
+        const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
 
-      sale.items.forEach(item => {
-        const itemProportion = sale.totalGoodsValue > 0 ? item.goodsValue / sale.totalGoodsValue : 0;
-        const apportionedExpenses = saleLevelExpenses * itemProportion;
-        const netProfit = item.goodsValue - item.costOfGoodsSold - apportionedExpenses;
-        
-        flattenedTransactions.push({
-          saleId: sale.id,
-          date: sale.date,
-          billNumber: sale.billNumber,
-          customerName: sale.customerName,
-          lotNumber: item.lotNumber,
-          saleNetWeightKg: item.netWeight,
-          saleAmount: sale.billedAmount, // Sale-level
-          goodsValueForProfitCalc: item.goodsValue,
-          purchaseCostForSalePortion: item.costOfGoodsSold,
-          totalExpenses: apportionedExpenses,
-          netProfit: netProfit,
+        sale.items.forEach(item => {
+          const itemProportion = sale.totalGoodsValue > 0 ? item.goodsValue / sale.totalGoodsValue : 0;
+          const apportionedExpenses = saleLevelExpenses * itemProportion;
+          const netProfit = item.goodsValue - item.costOfGoodsSold - apportionedExpenses;
+          
+          flattenedTransactions.push({
+            saleId: sale.id,
+            date: sale.date,
+            billNumber: sale.billNumber,
+            customerName: sale.customerName,
+            lotNumber: item.lotNumber,
+            saleNetWeightKg: item.netWeight,
+            saleAmount: sale.billedAmount, // Sale-level
+            goodsValueForProfitCalc: item.goodsValue,
+            purchaseCostForSalePortion: item.costOfGoodsSold,
+            totalExpenses: apportionedExpenses,
+            netProfit: netProfit,
+          });
         });
-      });
+      }
     });
     return flattenedTransactions;
   }, [sales, hydrated, currentFinancialYearString]);
@@ -110,9 +111,11 @@ export function ProfitAnalysisClient() {
       }
     }
 
+    const relevantSales = sales.filter(s => s && s.items && isDateInFinancialYear(s.date, currentFinancialYearString) && isWithinInterval(parseISO(s.date), { start: dateRange?.from!, end: endOfDay(dateRange?.to || dateRange?.from!)}))
+    
     return {
         totalNetProfit,
-        totalSalesValue: sales.filter(s => isDateInFinancialYear(s.date, currentFinancialYearString) && isWithinInterval(parseISO(s.date), { start: dateRange?.from!, end: endOfDay(dateRange?.to || dateRange?.from!)})).reduce((sum, s) => sum + s.billedAmount, 0),
+        totalSalesValue: relevantSales.reduce((sum, s) => sum + s.billedAmount, 0),
         avgProfitPerSale: uniqueSales.size > 0 ? totalNetProfit / uniqueSales.size : 0,
         highestProfitSale,
     };

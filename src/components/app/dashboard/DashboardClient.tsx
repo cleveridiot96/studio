@@ -85,10 +85,10 @@ const DashboardClient = () => {
     if(isAppHydrating||!hydrated) return {totalAmount:0,totalBags:0,totalNetWeight:0};
     const filteredSales = filterByPeriod(sales, selectedPeriod, currentFinancialYearString);
     const netSales = filteredSales.reduce((acc, sale) => {
-        acc.totalAmount += sale.billedAmount || 0; // Corrected property from totalAmount to billedAmount
-        acc.totalBags += sale.quantity || 0; acc.totalNetWeight += sale.netWeight || 0; return acc;
+        acc.totalAmount += sale.billedAmount || 0;
+        acc.totalBags += sale.totalQuantity || 0;
+        acc.totalNetWeight += sale.totalNetWeight || 0; return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-    // Adjust for sale returns
     const relevantSaleReturns = filterByPeriod(saleReturns, selectedPeriod, currentFinancialYearString);
     relevantSaleReturns.forEach(sr => { netSales.totalAmount -= sr.returnAmount; netSales.totalBags -= sr.quantityReturned; netSales.totalNetWeight -= sr.netWeightReturned; });
     return netSales;
@@ -98,9 +98,10 @@ const DashboardClient = () => {
     if(isAppHydrating||!hydrated) return {totalAmount:0,totalBags:0,totalNetWeight:0};
     const filteredPurchases = filterByPeriod(purchases, selectedPeriod, currentFinancialYearString);
     const netPurchases = filteredPurchases.reduce((acc, p) => {
-        acc.totalAmount += p.totalAmount || 0; acc.totalBags += p.quantity || 0; acc.totalNetWeight += p.netWeight || 0; return acc;
+        acc.totalAmount += p.totalAmount || 0;
+        acc.totalBags += p.totalQuantity || 0;
+        acc.totalNetWeight += p.totalNetWeight || 0; return acc;
     }, { totalAmount: 0, totalBags: 0, totalNetWeight: 0 });
-    // Adjust for purchase returns
     const relevantPurchaseReturns = filterByPeriod(purchaseReturns, selectedPeriod, currentFinancialYearString);
     relevantPurchaseReturns.forEach(pr => { netPurchases.totalAmount -= pr.returnAmount; netPurchases.totalBags -= pr.quantityReturned; netPurchases.totalNetWeight -= pr.netWeightReturned; });
     return netPurchases;
@@ -130,26 +131,30 @@ const DashboardClient = () => {
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, currentFinancialYearString));
     
     fyPurchases.forEach(p => {
-      const key = `${p.lotNumber}-${p.locationId}`;
-      let entry = inventoryMap.get(key);
-      if (!entry) {
-        entry = {
-            lotNumber: p.lotNumber, locationId: p.locationId,
-            totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
-            totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
-            totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
-        };
-        inventoryMap.set(key, entry);
+      if (p.items && Array.isArray(p.items)) {
+        p.items.forEach(item => {
+          const key = `${item.lotNumber}-${p.locationId}`;
+          let entry = inventoryMap.get(key);
+          if (!entry) {
+            entry = {
+                lotNumber: item.lotNumber, locationId: p.locationId,
+                totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
+                totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
+                totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
+            };
+            inventoryMap.set(key, entry);
+          }
+          entry.totalPurchasedBags += item.quantity;
+          entry.totalPurchasedWeight += item.netWeight;
+        });
       }
-      entry.totalPurchasedBags += p.quantity;
-      entry.totalPurchasedWeight += p.netWeight;
     });
     
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, currentFinancialYearString));
     fyPurchaseReturns.forEach(pr => {
       const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
       if (originalPurchase) {
-        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+        const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
         const entry = inventoryMap.get(key);
         if (entry) {
           entry.totalPurchaseReturnedBags += pr.quantityReturned;
@@ -187,12 +192,16 @@ const DashboardClient = () => {
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, currentFinancialYearString));
     const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
     fySales.forEach(s => {
-      const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
-      const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
-      
-      if (entry) {
-        entry.totalSoldBags += s.quantity;
-        entry.totalSoldWeight += s.netWeight;
+      if (s.items && Array.isArray(s.items)) {
+        s.items.forEach(item => {
+          const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+          const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
+          
+          if (entry) {
+            entry.totalSoldBags += item.quantity;
+            entry.totalSoldWeight += item.netWeight;
+          }
+        });
       }
     });
 

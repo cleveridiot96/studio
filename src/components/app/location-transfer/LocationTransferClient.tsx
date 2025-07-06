@@ -98,26 +98,28 @@ export function LocationTransferClient() {
 
     const stockMap = new Map<string, AggregatedStockItem>();
 
-    // 1. Initial stock from purchases
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
     fyPurchases.forEach(p => {
-        const key = `${p.lotNumber}-${p.locationId}`;
-        stockMap.set(key, {
-            lotNumber: p.lotNumber,
-            locationId: p.locationId,
-            locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
-            currentBags: p.quantity,
-            currentWeight: p.netWeight,
-            averageWeightPerBag: p.quantity > 0 ? p.netWeight / p.quantity : 50,
+      if (p.items && Array.isArray(p.items)) {
+        p.items.forEach(item => {
+          const key = `${item.lotNumber}-${p.locationId}`;
+          stockMap.set(key, {
+              lotNumber: item.lotNumber,
+              locationId: p.locationId,
+              locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
+              currentBags: item.quantity,
+              currentWeight: item.netWeight,
+              averageWeightPerBag: item.quantity > 0 ? item.netWeight / item.quantity : 50,
+          });
         });
+      }
     });
 
-    // 2. Adjust for purchase returns
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
     fyPurchaseReturns.forEach(pr => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (originalPurchase) {
-            const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+            const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
             const entry = stockMap.get(key);
             if (entry) {
                 entry.currentBags -= pr.quantityReturned;
@@ -126,11 +128,9 @@ export function LocationTransferClient() {
         }
     });
 
-    // 3. Adjust for location transfers (this is the new logic)
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
         transfer.items.forEach(item => {
-            // Decrement from source
             const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
             const fromEntry = stockMap.get(fromKey);
             if (fromEntry) {
@@ -138,11 +138,9 @@ export function LocationTransferClient() {
                 fromEntry.currentWeight -= item.netWeightToTransfer;
             }
 
-            // Increment at destination (creating new lot)
             const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
             let toEntry = stockMap.get(toKey);
             if (!toEntry) {
-                const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
                 toEntry = {
                     lotNumber: item.newLotNumber,
                     locationId: transfer.toWarehouseId,
@@ -158,21 +156,20 @@ export function LocationTransferClient() {
         });
     });
 
-    // 4. Adjust for sales
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
     fySales.forEach(s => {
-        // Sales can happen from any lot in any location, theoretically.
-        // We need a robust way to find the source lot for a sale. This is complex.
-        // For now, let's assume the lotNumber is unique across warehouses post-transfer.
-        const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(s.lotNumber));
-        const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
-        if (entry) {
-            entry.currentBags -= s.quantity;
-            entry.currentWeight -= s.netWeight;
-        }
+      if (s.items && Array.isArray(s.items)) {
+        s.items.forEach(item => {
+            const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
+            const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
+            if (entry) {
+                entry.currentBags -= item.quantity;
+                entry.currentWeight -= item.netWeight;
+            }
+        });
+      }
     });
 
-    // 5. Adjust for sale returns
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
         const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
@@ -211,7 +208,7 @@ export function LocationTransferClient() {
   const handleMasterDataUpdate = React.useCallback((type: "Warehouse" | "Transporter", newItem: MasterItem) => {
     if (type === "Warehouse") setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
     else if (type === "Transporter") setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
-  }, [setWarehouses, setTransporters]); // Add setWarehouses and setTransporters as dependencies
+  }, [setWarehouses, setTransporters]);
 
   const triggerDownloadTransferPdf = React.useCallback((transfer: LocationTransfer) => {
     setTransferForPdf(transfer);

@@ -50,6 +50,39 @@ interface AggregatedStockItem {
   locationName?: string;
 }
 
+const salesMigrator = (storedValue: any): Sale[] => {
+    if (Array.isArray(storedValue)) {
+        return storedValue.map(sale => {
+            if (sale && sale.lotNumber && !sale.items) {
+                const goodsValue = (sale.netWeight || 0) * (sale.rate || 0);
+                const cogs = sale.costOfGoodsSold || 0; 
+                
+                return {
+                    ...sale,
+                    items: [{
+                        lotNumber: sale.lotNumber,
+                        quantity: sale.quantity,
+                        netWeight: sale.netWeight,
+                        rate: sale.rate,
+                        goodsValue: goodsValue,
+                        costOfGoodsSold: cogs
+                    }],
+                    totalGoodsValue: goodsValue,
+                    totalQuantity: sale.quantity,
+                    totalNetWeight: sale.netWeight,
+                    totalCostOfGoodsSold: cogs,
+                };
+            }
+            if (sale && !sale.items) {
+                sale.items = [];
+            }
+            return sale;
+        });
+    }
+    return []; 
+};
+
+
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
@@ -72,7 +105,7 @@ export function SalesClient() {
   const [activeTab, setActiveTab] = React.useState('sales');
 
   const memoizedEmptyArray = React.useMemo(() => [], []);
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
   const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
@@ -107,9 +140,8 @@ export function SalesClient() {
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear) && s.id !== saleToEdit?.id); // Exclude current sale being edited
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
 
-    // Initial stock from purchases
     fyPurchases.forEach(p => {
-        if (p.items && Array.isArray(p.items)) {
+        if (p && p.items && Array.isArray(p.items)) {
             p.items.forEach(item => {
                 stockMap.set(item.lotNumber, {
                     currentBags: item.quantity,
@@ -120,33 +152,39 @@ export function SalesClient() {
         }
     });
     
-    // Process returns, sales, transfers in chronological order might be better, but this is simpler
     fyPurchaseReturns.forEach(pr => {
-        const entry = stockMap.get(pr.originalLotNumber);
-        if (entry) entry.currentBags -= pr.quantityReturned;
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase && originalPurchase.items) {
+          const originalItem = originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber);
+          if (originalItem) {
+            const entry = stockMap.get(pr.originalLotNumber);
+            if (entry) entry.currentBags -= pr.quantityReturned;
+          }
+        }
     });
 
     fyLocationTransfers.forEach(transfer => {
-      transfer.items.forEach(item => {
-          const fromEntry = stockMap.get(item.originalLotNumber);
-          if (fromEntry) fromEntry.currentBags -= item.bagsToTransfer;
+      if (transfer && transfer.items && Array.isArray(transfer.items)) {
+        transfer.items.forEach(item => {
+            const fromEntry = stockMap.get(item.originalLotNumber);
+            if (fromEntry) fromEntry.currentBags -= item.bagsToTransfer;
 
-          const toEntry = stockMap.get(item.newLotNumber);
-          if (toEntry) toEntry.currentBags += item.bagsToTransfer;
-          else {
-              const originalPurchase = purchases.find(p => p.items.some(pi => pi.lotNumber === item.originalLotNumber));
-              stockMap.set(item.newLotNumber, {
-                  currentBags: item.bagsToTransfer,
-                  effectiveRate: originalPurchase?.effectiveRate || 0,
-                  locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
-              });
-          }
-      });
+            const toEntry = stockMap.get(item.newLotNumber);
+            if (toEntry) toEntry.currentBags += item.bagsToTransfer;
+            else {
+                const originalPurchase = purchases.find(p => p.items.some(pi => pi.lotNumber === item.originalLotNumber));
+                stockMap.set(item.newLotNumber, {
+                    currentBags: item.bagsToTransfer,
+                    effectiveRate: originalPurchase?.effectiveRate || 0,
+                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
+                });
+            }
+        });
+      }
     });
 
     fySales.forEach(s => {
-      // FIX: Add defensive check for s.items
-      if (s.items && Array.isArray(s.items)) {
+      if (s && s.items && Array.isArray(s.items)) {
           s.items.forEach(item => {
             const entry = stockMap.get(item.lotNumber);
             if (entry) entry.currentBags -= item.quantity;
@@ -162,7 +200,7 @@ export function SalesClient() {
     const result: AggregatedStockItem[] = [];
     const allMumbaiLots = new Set<string>();
     fyPurchases.forEach(p => { 
-        if(p.locationId === MUMBAI_WAREHOUSE_ID && p.items) {
+        if(p.locationId === MUMBAI_WAREHOUSE_ID && p.items && Array.isArray(p.items)) {
             p.items.forEach(pi => allMumbaiLots.add(pi.lotNumber));
         }
     });

@@ -11,7 +11,7 @@ interface SaleChittiPrintProps {
 
 export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
   if (!sale) return null;
-
+  
   const displayCbDeduction = sale.isCB && sale.cbAmount !== undefined && sale.cbAmount > 0 ? sale.cbAmount : 0;
 
   return (
@@ -50,34 +50,36 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         </div>
       )}
       
-      <table className="text-xs">
-        <thead>
-          <tr>
-            <th>Vakkal / Lot No.</th>
-            <th className="text-right">Bags</th>
-            <th className="text-right">Net Wt (kg)</th>
-            <th className="text-right">Rate (₹/kg)</th>
-            <th className="text-right">Goods Value (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sale.items.map((item, index) => (
-             <tr key={index}>
-              <td>{item.lotNumber}</td>
-              <td className="text-right">{item.quantity.toLocaleString()}</td>
-              <td className="text-right">{item.netWeight.toLocaleString()}</td>
-              <td className="text-right">{item.rate.toFixed(2)}</td>
-              <td className="text-right">{item.goodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      {sale.items && sale.items.length > 0 && (
+        <table className="text-xs">
+          <thead>
+            <tr>
+              <th>Vakkal / Lot No.</th>
+              <th className="text-right">Bags</th>
+              <th className="text-right">Net Wt (kg)</th>
+              <th className="text-right">Rate (₹/kg)</th>
+              <th className="text-right">Goods Value (₹)</th>
             </tr>
-          ))}
-        </tbody>
-        <tfoot>
-            <tr className="font-bold">
-                <td colSpan={4}>Total Goods Value</td>
-                <td className="text-right">{sale.totalGoodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            </tr>
-        </tfoot>
-      </table>
+          </thead>
+          <tbody>
+            {sale.items.map((item, index) => (
+               <tr key={index}>
+                <td>{item.lotNumber}</td>
+                <td className="text-right">{item.quantity.toLocaleString()}</td>
+                <td className="text-right">{item.netWeight.toLocaleString()}</td>
+                <td className="text-right">{item.rate.toFixed(2)}</td>
+                <td className="text-right">{item.goodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+              <tr className="font-bold">
+                  <td colSpan={4}>Total Goods Value</td>
+                  <td className="text-right">{sale.totalGoodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              </tr>
+          </tfoot>
+        </table>
+      )}
 
       <div className="mt-4 space-y-1">
         {displayCbDeduction > 0 && (

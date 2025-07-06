@@ -31,14 +31,6 @@ import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
-const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate'>): Purchase => {
-  const goodsValue = (p.netWeight || 0) * (p.rate || 0);
-  const totalExpenses = (p.transportCharges || 0) + (p.packingCharges || 0) + (p.labourCharges || 0) + (p.brokerageCharges || 0) + (p.miscExpenses || 0);
-  const totalAmount = goodsValue + totalExpenses;
-  const effectiveRate = p.netWeight > 0 ? totalAmount / p.netWeight : 0;
-  return { ...p, totalAmount, effectiveRate };
-};
-
 const initialPurchasesData: Purchase[] = [];
 const initialPurchaseReturnsData: PurchaseReturn[] = [];
 
@@ -49,6 +41,34 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 
+const purchaseMigrator = (storedValue: any): Purchase[] => {
+    if (Array.isArray(storedValue)) {
+        return storedValue.map(p => {
+            if (p && p.lotNumber && !p.items) {
+                const goodsValue = (p.netWeight || 0) * (p.rate || 0);
+                return {
+                    ...p,
+                    items: [{
+                        lotNumber: p.lotNumber,
+                        quantity: p.quantity,
+                        netWeight: p.netWeight,
+                        rate: p.rate,
+                        goodsValue: goodsValue,
+                    }],
+                    totalGoodsValue: goodsValue,
+                    totalQuantity: p.quantity,
+                    totalNetWeight: p.netWeight,
+                };
+            }
+             if (p && !p.items) {
+                p.items = [];
+            }
+            return p;
+        });
+    }
+    return [];
+};
+
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
@@ -57,7 +77,7 @@ export function PurchasesClient() {
   const memoizedInitialPurchaseReturns = React.useMemo(() => initialPurchaseReturnsData, []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
 
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases, purchaseMigrator);
   const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedInitialPurchaseReturns);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
   const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
@@ -94,13 +114,12 @@ export function PurchasesClient() {
   }, [purchaseReturns, financialYear, isAppHydrating, isPurchasesClientHydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
-    const processedPurchase = calculatePurchaseEntry(purchase);
     setPurchases(prevPurchases => {
-      const isEditing = prevPurchases.some(p => p.id === processedPurchase.id);
-      return isEditing ? prevPurchases.map(p => p.id === processedPurchase.id ? processedPurchase : p) : [{ ...processedPurchase, id: processedPurchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
+      const isEditing = prevPurchases.some(p => p.id === purchase.id);
+      return isEditing ? prevPurchases.map(p => p.id === purchase.id ? purchase : p) : [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
     });
     setPurchaseToEdit(null);
-    toast({ title: "Success!", description: purchases.some(p=>p.id === processedPurchase.id) ? "Purchase updated." : "Purchase added." });
+    toast({ title: "Success!", description: purchases.some(p=>p.id === purchase.id) ? "Purchase updated." : "Purchase added." });
   }, [setPurchases, toast, purchases]);
 
   const handleEditPurchase = (purchase: Purchase) => {
@@ -204,8 +223,8 @@ export function PurchasesClient() {
           const xOffset = (pdfWidth - imgWidth) / 2; const yOffset = (pdfHeight - imgHeight) / 2;
           pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
           const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
-          pdf.save(`PurchaseChitti_${purchaseForPdf.lotNumber.replace(/[\/\s.]/g, '_')}_${timestamp}.pdf`);
-          toast({ title: "PDF Generated", description: `Chitti for ${purchaseForPdf.lotNumber} downloaded.` });
+          pdf.save(`PurchaseChitti_${(purchaseForPdf.items[0]?.lotNumber || 'Purchase').replace(/[\/\s.]/g, '_')}_${timestamp}.pdf`);
+          toast({ title: "PDF Generated", description: `Chitti for ${purchaseForPdf.items[0]?.lotNumber || 'Purchase'} downloaded.` });
         } catch (err) { console.error("Error PDF:", err); toast({ title: "PDF Failed", variant: "destructive" }); }
         finally { setPurchaseForPdf(null); }
       };
