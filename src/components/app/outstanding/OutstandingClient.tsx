@@ -146,74 +146,71 @@ export function OutstandingClient() {
   const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
 
   const { receivables, payables, totalReceivable, totalPayable } = useMemo(() => {
-        if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0 };
-        
-        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
-        const balances = new Map<string, { balance: number; lastTxDate: string, name: string, type: string }>();
+    if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0 };
+    
+    const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
+    const balances = new Map<string, { balance: number; lastTxDate: string, name: string, type: string }>();
 
-        allMasters.forEach(m => {
-            const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-            balances.set(m.id, { balance: openingBalance, lastTxDate: '1970-01-01', name: m.name, type: m.type });
-        });
-        
-        const updateBalance = (partyId: string | undefined, amount: number, date: string) => {
-            if (!partyId || !balances.has(partyId)) return;
-            const entry = balances.get(partyId)!;
-            entry.balance += amount;
-            if (new Date(date) > new Date(entry.lastTxDate)) {
-                entry.lastTxDate = date;
-            }
-        };
+    allMasters.forEach(m => {
+        const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
+        balances.set(m.id, { balance: openingBalance, lastTxDate: '1970-01-01', name: m.name, type: m.type });
+    });
+    
+    const updateBalance = (partyId: string | undefined, amount: number, date: string) => {
+        if (!partyId || !balances.has(partyId)) return;
+        const entry = balances.get(partyId)!;
+        entry.balance += amount;
+        if (new Date(date) > new Date(entry.lastTxDate)) {
+            entry.lastTxDate = date;
+        }
+    };
 
-        // --- Corrected Logic ---
-        sales.forEach(s => {
-            const accountablePartyId = s.brokerId || s.customerId;
-            updateBalance(accountablePartyId, s.billedAmount, s.date);
-        });
+    sales.forEach(s => {
+        const accountablePartyId = s.brokerId || s.customerId;
+        updateBalance(accountablePartyId, s.billedAmount, s.date);
+    });
 
-        receipts.forEach(r => {
-            updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
-        });
-        
-        purchases.forEach(p => {
-            const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
-            updateBalance(p.supplierId, -payableToSupplier, p.date);
-            if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
-                updateBalance(p.agentId, -p.brokerageCharges, p.date);
-            }
-        });
+    receipts.forEach(r => {
+        updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
+    });
+    
+    purchases.forEach(p => {
+        const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+        updateBalance(p.supplierId, -payableToSupplier, p.date);
+        if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
+            updateBalance(p.agentId, -p.brokerageCharges, p.date);
+        }
+    });
 
-        payments.forEach(p => {
-            updateBalance(p.partyId, p.amount, p.date);
-        });
+    payments.forEach(p => {
+        updateBalance(p.partyId, p.amount, p.date);
+    });
 
-        locationTransfers.forEach(lt => {
-            if (lt.transporterId && lt.transportCharges) {
-                updateBalance(lt.transporterId, -lt.transportCharges, lt.date);
-            }
-        });
-        // --- End of Corrected Logic ---
+    locationTransfers.forEach(lt => {
+        if (lt.transporterId && lt.transportCharges) {
+            updateBalance(lt.transporterId, -lt.transportCharges, lt.date);
+        }
+    });
 
-        const today = new Date();
-        const outstanding: OutstandingEntry[] = [];
-        balances.forEach((value, key) => {
-            if (Math.abs(value.balance) > 0.01) {
-                outstanding.push({
-                    partyId: key, partyName: value.name, partyType: value.type,
-                    amount: value.balance, lastTransactionDate: value.lastTxDate,
-                    daysOutstanding: value.lastTxDate === '1970-01-01' ? 0 : differenceInDays(today, parseISO(value.lastTxDate))
-                });
-            }
-        });
+    const today = new Date();
+    const outstanding: OutstandingEntry[] = [];
+    balances.forEach((value, key) => {
+        if (Math.abs(value.balance) > 0.01) {
+            outstanding.push({
+                partyId: key, partyName: value.name, partyType: value.type,
+                amount: value.balance, lastTransactionDate: value.lastTxDate,
+                daysOutstanding: value.lastTxDate === '1970-01-01' ? 0 : differenceInDays(today, parseISO(value.lastTxDate))
+            });
+        }
+    });
 
-        const receivablesData = outstanding.filter(o => o.amount > 0);
-        // A broker should never be a payable party. Filter them out from this list if they appear due to advances etc.
-        const payablesData = outstanding.filter(o => o.amount < 0 && o.partyType !== 'Broker');
-        
-        const totalReceivable = receivablesData.reduce((sum, item) => sum + item.amount, 0);
-        const totalPayable = payablesData.reduce((sum, item) => sum + item.amount, 0);
+    const receivablesData = outstanding.filter(o => o.amount > 0);
+    const payablesData = outstanding.filter(o => o.amount < 0 && o.partyType !== 'Broker');
+    
+    const totalReceivable = receivablesData.reduce((sum, item) => sum + item.amount, 0);
+    const totalPayable = payablesData.reduce((sum, item) => sum + item.amount, 0);
 
-        return { receivables: receivablesData, payables: payablesData, totalReceivable, totalPayable };
+    return { receivables: receivablesData, payables: payablesData, totalReceivable, totalPayable };
 
   }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses]);
   

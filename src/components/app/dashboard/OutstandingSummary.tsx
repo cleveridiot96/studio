@@ -42,66 +42,62 @@ export const OutstandingSummary = () => {
   const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
 
   const { totalReceivable, totalPayable } = useMemo(() => {
-        if (!hydrated) return { totalReceivable: 0, totalPayable: 0 };
-        
-        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
-        const balances = new Map<string, number>();
+    if (!hydrated) return { totalReceivable: 0, totalPayable: 0 };
+    
+    const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
+    const balances = new Map<string, number>();
 
-        allMasters.forEach(m => {
-            const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-            balances.set(m.id, openingBalance);
-        });
-        
-        const updateBalance = (partyId: string | undefined, amount: number) => {
-            if (!partyId || !balances.has(partyId)) return;
-            balances.set(partyId, balances.get(partyId)! + amount);
-        };
+    allMasters.forEach(m => {
+        const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
+        balances.set(m.id, openingBalance);
+    });
+    
+    const updateBalance = (partyId: string | undefined, amount: number) => {
+        if (!partyId || !balances.has(partyId)) return;
+        balances.set(partyId, balances.get(partyId)! + amount);
+    };
 
-        // --- Corrected Logic ---
-        sales.forEach(s => {
-            const accountablePartyId = s.brokerId || s.customerId;
-            updateBalance(accountablePartyId, s.billedAmount);
-        });
+    sales.forEach(s => {
+        const accountablePartyId = s.brokerId || s.customerId;
+        updateBalance(accountablePartyId, s.billedAmount);
+    });
 
-        receipts.forEach(r => {
-            updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
-        });
-        
-        purchases.forEach(p => {
-            const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
-            updateBalance(p.supplierId, -payableToSupplier);
-            if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
-                updateBalance(p.agentId, -p.brokerageCharges);
+    receipts.forEach(r => {
+        updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
+    });
+    
+    purchases.forEach(p => {
+        const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+        updateBalance(p.supplierId, -payableToSupplier);
+        if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
+            updateBalance(p.agentId, -p.brokerageCharges);
+        }
+    });
+
+    payments.forEach(p => {
+        updateBalance(p.partyId, p.amount);
+    });
+
+    locationTransfers.forEach(lt => {
+        if (lt.transporterId && lt.transportCharges) {
+            updateBalance(lt.transporterId, -lt.transportCharges);
+        }
+    });
+
+    let totalReceivable = 0;
+    let totalPayable = 0;
+    balances.forEach((balance, partyId) => {
+        const party = allMasters.find(m => m.id === partyId);
+        if (balance > 0) {
+            totalReceivable += balance;
+        } else if (balance < 0) {
+            if (party?.type !== 'Broker') {
+              totalPayable += balance;
             }
-        });
+        }
+    });
 
-        payments.forEach(p => {
-            updateBalance(p.partyId, p.amount);
-        });
-
-        locationTransfers.forEach(lt => {
-            if (lt.transporterId && lt.transportCharges) {
-                updateBalance(lt.transporterId, -lt.transportCharges);
-            }
-        });
-        // --- End of Corrected Logic ---
-
-        let totalReceivable = 0;
-        let totalPayable = 0;
-        balances.forEach((balance, partyId) => {
-            const party = allMasters.find(m => m.id === partyId);
-            if (balance > 0) {
-                totalReceivable += balance;
-            } else if (balance < 0) {
-                // Brokers primarily create receivables; payables to them are rare (like advances) and shouldn't dominate this summary.
-                // We exclude them from the top-level payable summary for clarity, as per user feedback.
-                if (party?.type !== 'Broker') {
-                  totalPayable += balance;
-                }
-            }
-        });
-
-        return { totalReceivable, totalPayable };
+    return { totalReceivable, totalPayable };
 
   }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses]);
   
