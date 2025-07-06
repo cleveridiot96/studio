@@ -150,11 +150,11 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               
               const expandedSubRows = isExpanded && hasMultipleItems ? sale.items.slice(1).map((item, index) => (
                 <TableRow key={`${sale.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                  <TableCell colSpan={3} /> {/* Date, Bill No, Customer */}
-                  <TableCell className="pl-8">↳ {item.lotNumber}</TableCell> {/* Vakkal */}
-                  <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell> {/* Bags */}
-                  <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell> {/* Weight */}
-                  <TableCell colSpan={4} /> {/* Broker, Billed, Profit, Actions */}
+                  <TableCell colSpan={3}>{''}</TableCell>
+                  <TableCell className="pl-8">↳ {item.lotNumber}</TableCell>
+                  <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell>
+                  <TableCell colSpan={4}>{''}</TableCell>
                 </TableRow>
               )) : [];
               

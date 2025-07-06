@@ -165,15 +165,15 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 
               const expandedSubRows = isExpanded && hasMultipleItems ? purchase.items.slice(1).map((item, index) => (
                 <TableRow key={`${purchase.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                    <TableCell /> {/* Date */}
-                    <TableCell className="pl-8">↳ {item.lotNumber}</TableCell> {/* Vakkal */}
-                    <TableCell /> {/* Location */}
-                    <TableCell /> {/* Supplier */}
-                    <TableCell /> {/* Agent */}
-                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell> {/* Bags */}
-                    <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell> {/* Weight */}
-                    <TableCell className="text-right">{item.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell> {/* Rate */}
-                    <TableCell colSpan={3} /> {/* Brokerage, Payable, Actions */}
+                    <TableCell>{''}</TableCell>
+                    <TableCell className="pl-8">↳ {item.lotNumber}</TableCell>
+                    <TableCell>{''}</TableCell>
+                    <TableCell>{''}</TableCell>
+                    <TableCell>{''}</TableCell>
+                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{item.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                    <TableCell colSpan={3}>{''}</TableCell>
                 </TableRow>
               )) : [];
               
