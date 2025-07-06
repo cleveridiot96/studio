@@ -75,6 +75,7 @@ export interface SaleItem {
   rate: number;
   goodsValue: number; // Calculated: netWeight * rate
   costOfGoodsSold: number; // Calculated from purchase effective rate
+  itemProfit?: number;
 }
 
 export interface Sale {

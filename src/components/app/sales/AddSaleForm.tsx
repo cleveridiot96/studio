@@ -144,7 +144,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const selectedBrokerId = watch("brokerId");
 
-  // Automatically set brokerage based on selected broker's master data
   React.useEffect(() => {
     if (selectedBrokerId) {
       const broker = brokers.find(b => b.id === selectedBrokerId);
@@ -172,7 +171,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageValue");
   const extraBrokeragePerKg = watch("extraBrokeragePerKg") || 0;
   
-  // --- Calculation Logic ---
   const totalNetWeight = React.useMemo(() => watchedItems.reduce((acc, item) => acc + (item.netWeight || 0), 0), [watchedItems]);
   const totalGoodsValue = React.useMemo(() => watchedItems.reduce((acc, item) => acc + ((item.netWeight || 0) * (item.rate || 0)), 0), [watchedItems]);
   const billedAmount = React.useMemo(() => isCB && cbAmountInput ? totalGoodsValue - cbAmountInput : totalGoodsValue, [isCB, cbAmountInput, totalGoodsValue]);
@@ -240,6 +238,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
           const itemGoodsValue = (item.netWeight || 0) * (item.rate || 0);
           const itemCOGS = (item.netWeight || 0) * (stock?.effectiveRate || 0);
+
+          const itemProportionOfGoods = totalGoodsValue > 0 ? itemGoodsValue / totalGoodsValue : 0;
+          const apportionedExpenses = totalSaleSideExpenses * itemProportionOfGoods;
+          const itemNetProfit = itemGoodsValue - itemCOGS - apportionedExpenses;
+
           return {
               lotNumber: item.lotNumber,
               quantity: item.quantity || 0,
@@ -247,6 +250,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               rate: item.rate || 0,
               goodsValue: itemGoodsValue,
               costOfGoodsSold: itemCOGS,
+              itemProfit: itemNetProfit,
           };
       }),
       totalGoodsValue: totalGoodsValue,
@@ -279,7 +283,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="sm:max-w-6xl">
           <DialogHeader>
             <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
             <DialogDescription>Create a sale with one or more items.</DialogDescription>
@@ -313,32 +317,40 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
                 <div className="p-4 border rounded-md shadow-sm space-y-4">
                   <h3 className="text-lg font-medium text-primary">Quantity & Rate</h3>
-                  {fields.map((field, index) => (
+                  {fields.map((field, index) => {
+                    const lotNumber = watch(`items.${index}.lotNumber`);
+                    const netWeight = watch(`items.${index}.netWeight`) || 0;
+                    const saleRate = watch(`items.${index}.rate`) || 0;
+                    const stockInfo = availableStock.find(s => s.lotNumber === lotNumber);
+                    const costRate = stockInfo?.effectiveRate || 0;
+                    const itemGrossProfit = netWeight * (saleRate - costRate);
+
+                    return (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
+                        <FormItem className="md:col-span-3"><FormLabel>Vakkal/Lot</FormLabel>
                           <MasterDataCombobox 
                             value={itemField.value} 
                             onChange={itemField.onChange} 
                             options={availableStock.map(s => {
-                                const fullLabel = `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
+                                const fullLabel = `${s.lotNumber} (Rate: ₹${s.effectiveRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
                                 return {
                                     value: s.lotNumber,
                                     label: fullLabel,
-                                    tooltipContent: `${s.lotNumber} | Available: ${s.currentBags} bags | Purchase Rate: ₹${s.purchaseRate.toFixed(2)} | Location: ${s.locationName || 'N/A'}`
+                                    tooltipContent: `${s.lotNumber} | Available: ${s.currentBags} bags | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Location: ${s.locationName || 'N/A'}`
                                 };
                             })} 
                             placeholder="Select Lot" />
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
+                        <FormItem className="md:col-span-1"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
                                 itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
-                                const lotNumber = watch(`items.${index}.lotNumber`);
-                                const stockItem = availableStock.find(s => s.lotNumber === lotNumber);
+                                const currentLotNumber = watch(`items.${index}.lotNumber`);
+                                const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
                                 const avgWeight = stockItem?.averageWeightPerBag || 50;
                                 setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
                             }} 
@@ -346,12 +358,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-1"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                      <div className="md:col-span-2"><FormLabel>Cost Rate</FormLabel><Input readOnly value={costRate > 0 ? costRate.toFixed(2) : 'N/A'} className="bg-muted/50" /></div>
+                      <div className="md:col-span-2"><FormLabel>Gross Profit</FormLabel><Input readOnly value={itemGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })} className={cn("font-bold bg-muted/50", itemGrossProfit >= 0 ? "text-green-600" : "text-destructive")}/></div>
                       <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
-                  ))}
+                  )})}
                   <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                 </div>
 
@@ -396,7 +410,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormField control={control} name="brokerageValue" render={({ field }) => (
                             <FormItem><FormLabel>Value</FormLabel>
                               <div className="relative">
-                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || 0); }}
+                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
                                   className={brokerageType === 'Percentage' ? "pr-8" : ""}
                                 /></FormControl>
                                 {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}

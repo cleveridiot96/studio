@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Sale } from "@/lib/types";
@@ -61,6 +62,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
               <th className="text-right">Net Wt (kg)</th>
               <th className="text-right">Rate (₹/kg)</th>
               <th className="text-right">Goods Value (₹)</th>
+              <th className="text-right">Profit (₹)</th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +73,9 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
                 <td className="text-right">{item.netWeight.toLocaleString()}</td>
                 <td className="text-right">{(item.rate || 0).toFixed(2)}</td>
                 <td className="text-right">{(item.goodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className={`text-right font-medium ${(item.itemProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {(item.itemProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -78,6 +83,9 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
               <tr className="font-bold">
                   <td colSpan={4}>Total Goods Value</td>
                   <td className="text-right">{(sale.totalGoodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className={`text-right font-bold ${(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {(sale.totalCalculatedProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
               </tr>
           </tfoot>
         </table>
