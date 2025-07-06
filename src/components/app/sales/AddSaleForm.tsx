@@ -152,6 +152,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
   }, [selectedBrokerId, brokers, setValue]);
 
+  // --- LIVE CALCULATIONS ---
+  // Watching the entire items array to trigger recalculation on any nested change.
   const watchedItems = watch("items");
   const isCB = watch("isCB");
   const cbAmountInput = watch("cbAmount") || 0; 
@@ -163,26 +165,36 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageValue");
   const extraBrokeragePerKg = watch("extraBrokeragePerKg") || 0;
 
-  const { totalGoodsValue, totalNetWeight, totalQuantity, totalCostOfGoodsSold } = React.useMemo(() => {
+  const {
+    totalGoodsValue,
+    totalNetWeight,
+    totalQuantity,
+    totalLandedCost, // This is based on effectiveRate for Net Profit
+    totalGrossPurchaseCost, // This is based on raw purchaseRate for Gross Profit
+  } = React.useMemo(() => {
     return (watchedItems || []).reduce(
       (acc, item) => {
         const itemQuantity = Number(item.quantity) || 0;
         const itemNetWeight = Number(item.netWeight) || 0;
         const itemRate = Number(item.rate) || 0;
         const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
+        
+        const rawPurchaseRate = stockInfo?.purchaseRate || 0; 
         const landedCostPerKg = stockInfo?.effectiveRate || 0;
 
         acc.totalGoodsValue += itemNetWeight * itemRate;
         acc.totalNetWeight += itemNetWeight;
         acc.totalQuantity += itemQuantity;
-        acc.totalCostOfGoodsSold += itemNetWeight * landedCostPerKg;
+        
+        acc.totalGrossPurchaseCost += itemNetWeight * rawPurchaseRate;
+        acc.totalLandedCost += itemNetWeight * landedCostPerKg;
 
         return acc;
       },
-      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0, totalCostOfGoodsSold: 0 }
+      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0, totalLandedCost: 0, totalGrossPurchaseCost: 0 }
     );
   }, [watchedItems, availableStock]);
-  
+
   const billedAmount = isCB ? totalGoodsValue - cbAmountInput : totalGoodsValue;
 
   const calculatedBrokerageCommission = (() => {
@@ -193,11 +205,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   })();
 
   const calculatedExtraBrokerage = extraBrokeragePerKg * totalNetWeight;
-  
   const totalSaleSideExpenses = transportCostInput + packingCostInput + labourCostInput + calculatedBrokerageCommission + calculatedExtraBrokerage;
+  const additionalLandedCosts = totalLandedCost - totalGrossPurchaseCost;
 
-  const grossProfitOnLandedCost = totalGoodsValue - totalCostOfGoodsSold;
-  const finalNetProfit = grossProfitOnLandedCost - totalSaleSideExpenses;
+  const grossProfit = totalGoodsValue - totalGrossPurchaseCost;
+  const finalNetProfit = grossProfit - additionalLandedCosts - totalSaleSideExpenses;
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setIsMasterFormOpen(true);
@@ -258,7 +270,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       billedAmount: billedAmount,
       totalQuantity: totalQuantity,
       totalNetWeight: totalNetWeight,
-      totalCostOfGoodsSold: totalCostOfGoodsSold,
+      totalCostOfGoodsSold: totalLandedCost, // Use landed cost here
       transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
       transportCost: values.transportCost,
@@ -280,7 +292,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <React.Fragment>
+    <>
       <TooltipProvider>
         <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) { onClose(); } }}>
           <DialogContent className="sm:max-w-6xl">
@@ -336,7 +348,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                   return {
                                       value: s.lotNumber,
                                       label: `${s.lotNumber} (Avl: ${s.currentBags} bags)`,
-                                      tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Avl: ${s.currentBags} bags at ${s.locationName || 'Mumbai'}`
+                                      tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)} | Landed Cost: ₹${s.effectiveRate.toFixed(2)} | Avl: ${s.currentBags} bags at ${s.locationName || 'MUMBAI'}`
                                   };
                               })} 
                               placeholder="Select Lot" />
@@ -452,19 +464,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                         
                         <div className="pl-4 border-l-2 border-muted text-xs">
-                          <div className="flex justify-between font-medium"><span>Less: Landed Cost of Goods</span><span>(-) ₹{totalCostOfGoodsSold.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
-                          {(watchedItems || []).map((item, index) => {
-                              if (!item.lotNumber) return null;
-                              const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-                              const landedCost = (Number(item.netWeight) || 0) * (stock?.effectiveRate || 0);
-                              return <div key={index} className="flex justify-between"><span>- Cost for "{item.lotNumber}" ({(Number(item.netWeight)||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{landedCost.toLocaleString('en-IN')}</span></div>
-                          })}
+                          <div className="flex justify-between font-medium"><span>Less: Gross Purchase Cost</span><span>(-) ₹{totalGrossPurchaseCost.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
                         </div>
 
-                        <div className={`flex justify-between font-bold ${grossProfitOnLandedCost >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
-                            <span>Gross Profit (before sale expenses):</span> <span>₹{grossProfitOnLandedCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <div className={`flex justify-between font-bold ${grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
+                            <span>Gross Profit:</span> <span>₹{grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
                         
+                        {additionalLandedCosts > 0 && 
+                          <div className="flex justify-between text-xs text-muted-foreground"><span>Less: Add. Landed Costs</span><span>(-) ₹{additionalLandedCosts.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                        }
+
                         {totalSaleSideExpenses > 0 && (
                           <div className="pl-4 border-l-2 border-muted text-xs">
                             <div className="flex justify-between font-medium"><span>Less: Sale-Side Expenses</span><span>(-) ₹{totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
@@ -494,8 +504,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         </Dialog>
       </TooltipProvider>
       {isMasterFormOpen && masterFormItemType && (<MasterForm isOpen={isMasterFormOpen} onClose={() => { setIsMasterFormOpen(false); setMasterFormItemType(null); }} onSubmit={handleMasterFormSubmit} itemTypeFromButton={masterFormItemType}/>)}
-    </React.Fragment>
+    </>
   );
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
+
+    

@@ -117,6 +117,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
+  // --- LIVE CALCULATIONS ---
+  // Watching individual fields and the items array to ensure live updates
   const watchedItems = watch("items");
   const watchedAgentId = watch("agentId");
   const brokerageType = watch("brokerageType");
@@ -126,22 +128,22 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const labourCharges = watch("labourCharges") || 0;
   const miscExpenses = watch("miscExpenses") || 0;
 
-  // --- Live Calculations ---
-  // These are now calculated on every render to ensure they are always live.
-  const { totalGoodsValue, totalNetWeight, totalQuantity } = (watchedItems || []).reduce(
-    (acc, item) => {
-      const itemQuantity = Number(item.quantity) || 0;
-      const itemNetWeight = Number(item.netWeight) || 0;
-      const itemRate = Number(item.rate) || 0;
-      acc.totalGoodsValue += itemNetWeight * itemRate;
-      acc.totalNetWeight += itemNetWeight;
-      acc.totalQuantity += itemQuantity;
-      return acc;
-    },
-    { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
-  );
+  const { totalGoodsValue, totalNetWeight, totalQuantity } = React.useMemo(() => {
+    return (watchedItems || []).reduce(
+      (acc, item) => {
+        const itemQuantity = Number(item.quantity) || 0;
+        const itemNetWeight = Number(item.netWeight) || 0;
+        const itemRate = Number(item.rate) || 0;
+        acc.totalGoodsValue += itemNetWeight * itemRate;
+        acc.totalNetWeight += itemNetWeight;
+        acc.totalQuantity += itemQuantity;
+        return acc;
+      },
+      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
+    );
+  }, [watchedItems]);
 
-  const calculatedBrokerageCharges = (() => {
+  const calculatedBrokerageCharges = React.useMemo(() => {
     if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
     if (brokerageType === "Percentage") {
       return (totalGoodsValue * (brokerageValue / 100));
@@ -149,7 +151,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       return brokerageValue;
     }
     return 0;
-  })();
+  }, [watchedAgentId, brokerageType, brokerageValue, totalGoodsValue]);
 
   const totalExpenses = transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses;
   const totalAmount = totalGoodsValue + totalExpenses;
@@ -278,7 +280,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || undefined;
                                 itemField.onChange(bagsVal);
-                                const currentNetWeight = watch(`items.${index}.netWeight`);
                                 // Auto-calculate weight based on bags, assuming 50kg/bag
                                 setValue(`items.${index}.netWeight`, (bagsVal || 0) * 50, { shouldValidate: true });
                             }} /></FormControl>
@@ -441,3 +442,5 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
+
+    
