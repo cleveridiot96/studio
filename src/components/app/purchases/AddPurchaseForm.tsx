@@ -68,8 +68,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
   const [transportChargesManuallySet, setTransportChargesManuallySet] = React.useState(false);
-  const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(false);
-
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -124,12 +122,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       setQuantityManuallySet(!!purchaseToEdit?.quantity); 
       setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
       setTransportChargesManuallySet(!!purchaseToEdit?.transportCharges);
-      setBrokerageValueManuallySet(!!purchaseToEdit?.brokerageValue);
-    } else {
-      setQuantityManuallySet(false);
-      setNetWeightManuallySet(false);
-      setTransportChargesManuallySet(false);
-      setBrokerageValueManuallySet(false);
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
@@ -160,26 +152,29 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   }, [quantityValue, transportRatePerKg, setValue, dirtyFields.netWeight, netWeightManuallySet, transportChargesManuallySet]);
   
   const watchedAgentId = watch("agentId");
-  const watchedNetWeight = watch("netWeight");
-  const watchedRate = watch("rate");
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
 
   React.useEffect(() => {
-    if (watchedAgentId && !brokerageValueManuallySet && agents) {
+    // This effect runs only when the selected agent changes.
+    // It populates the brokerage fields from master data.
+    // Manual edits by the user will persist until the agent is changed again.
+    if (watchedAgentId && agents) {
       const agent = agents.find(a => a.id === watchedAgentId);
-      if (agent && typeof agent.commission === 'number' && agent.commission > 0) {
-          setValue("brokerageType", "Percentage", { shouldValidate: true });
-          setValue("brokerageValue", agent.commission, { shouldValidate: true });
-      } else if (!brokerageValueManuallySet) {
+      if (agent && typeof agent.commission === 'number' && agent.commission >= 0) {
+        setValue("brokerageType", "Percentage");
+        setValue("brokerageValue", agent.commission);
+      } else {
+        // If agent has no commission details, clear the fields
         setValue("brokerageType", undefined);
         setValue("brokerageValue", undefined);
       }
-    } else if (!watchedAgentId && !brokerageValueManuallySet) {
-        setValue("brokerageType", undefined);
-        setValue("brokerageValue", undefined);
+    } else if (!watchedAgentId) {
+      // If agent is deselected, clear the fields
+      setValue("brokerageType", undefined);
+      setValue("brokerageValue", undefined);
     }
-  }, [watchedAgentId, setValue, agents, brokerageValueManuallySet]);
+  }, [watchedAgentId, agents, setValue]);
 
 
   const netWeight = watch("netWeight");
@@ -397,7 +392,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <>
                           <FormField control={control} name="brokerageType" render={({ field }) => (
                             <FormItem><FormLabel>Brokerage Type</FormLabel>
-                              <Select onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false); }} value={field.value} disabled={!watchedAgentId}>
+                              <Select onValueChange={field.onChange} value={field.value} disabled={!watchedAgentId}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   <SelectItem value="Fixed">Fixed (₹)</SelectItem>
@@ -411,8 +406,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             <FormItem><FormLabel>Value</FormLabel>
                               <div className="relative">
                                 <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
-                                  onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setBrokerageValueManuallySet(true); }}
-                                  onFocusCapture={() => setBrokerageValueManuallySet(true)}
+                                  onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
                                   disabled={!watchedAgentId || !brokerageType}
                                   className={brokerageType === 'Percentage' ? "pr-8" : ""}
                                 /></FormControl>
