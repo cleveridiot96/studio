@@ -263,15 +263,15 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Rate</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
                           <FormMessage /></FormItem>)} />
                       <div className="md:col-span-1 flex items-end justify-end">
                         <Button type="button" variant="destructive" size="icon" onClick={() => (fields.length > 1 ? remove(index) : null)} disabled={fields.length <= 1}>

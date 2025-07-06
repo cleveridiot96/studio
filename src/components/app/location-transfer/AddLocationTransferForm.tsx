@@ -287,6 +287,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       <FormField control={control} name={`items.${index}.bagsToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField}
+                            value={itemField.value || ''}
                             onChange={e => {
                               const bagsVal = parseFloat(e.target.value) || 0;
                               itemField.onChange(bagsVal);
@@ -306,13 +307,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
