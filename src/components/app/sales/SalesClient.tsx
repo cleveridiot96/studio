@@ -51,6 +51,7 @@ export interface AggregatedStockItemForForm {
   effectiveRate: number; 
   purchaseRate: number;
   averageWeightPerBag: number;
+  locationId: string;
   locationName?: string;
 }
 
@@ -113,14 +114,25 @@ export function SalesClient() {
                                       (sale.calculatedBrokerageCommission || 0) + 
                                       (sale.calculatedExtraBrokerage || 0);
 
-        const totalCalculatedProfit = grossProfit - totalSaleSideExpenses;
+        const netProfit = grossProfit - totalSaleSideExpenses;
         
+        const itemLevelProfits = sale.items.map(item => {
+            const itemGrossProfit = (item.goodsValue || 0) - (item.costOfGoodsSold || 0);
+            return {
+                ...item,
+                itemProfit: itemGrossProfit, // Simplified to just gross for line item display
+            };
+        });
+
         return {
             ...sale,
+            items: itemLevelProfits,
             totalGoodsValue,
             billedAmount,
             totalCostOfGoodsSold,
-            totalCalculatedProfit,
+            totalGrossProfit: grossProfit,
+            totalExpenses: totalSaleSideExpenses,
+            netProfit,
         };
     }).filter(Boolean) as Sale[];
 
@@ -141,6 +153,7 @@ export function SalesClient() {
         currentWeight: number,
         effectiveRate: number,
         purchaseRate: number,
+        locationId: string,
         locationName?: string,
     }>();
 
@@ -149,11 +162,12 @@ export function SalesClient() {
     fyPurchases.forEach(p => {
         if (!p || !p.items) return;
         p.items.forEach(item => {
-            const entry = stockMap.get(item.lotNumber) || { currentBags: 0, currentWeight: 0, effectiveRate: p.effectiveRate, purchaseRate: item.rate, locationName: p.locationName };
+            const entry = stockMap.get(item.lotNumber) || { currentBags: 0, currentWeight: 0, effectiveRate: p.effectiveRate, purchaseRate: item.rate, locationId: p.locationId, locationName: p.locationName };
             entry.currentBags += item.quantity;
             entry.currentWeight += item.netWeight;
-            entry.effectiveRate = p.effectiveRate; // Last purchase of a lot overwrites rate info
+            entry.effectiveRate = p.effectiveRate;
             entry.purchaseRate = item.rate;
+            entry.locationId = p.locationId;
             entry.locationName = p.locationName;
             stockMap.set(item.lotNumber, entry);
         });
@@ -161,10 +175,16 @@ export function SalesClient() {
 
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
     fyPurchaseReturns.forEach(pr => {
-        const entry = stockMap.get(pr.originalLotNumber);
-        if (entry) {
-            entry.currentBags -= pr.quantityReturned;
-            entry.currentWeight -= pr.netWeightReturned;
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase) {
+          const originalItem = originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber);
+          if (originalItem) {
+            const entry = stockMap.get(originalItem.lotNumber);
+            if (entry) {
+                entry.currentBags -= pr.quantityReturned;
+                entry.currentWeight -= pr.netWeightReturned;
+            }
+          }
         }
     });
 
@@ -179,7 +199,7 @@ export function SalesClient() {
             }
 
             const toEntry = stockMap.get(item.newLotNumber);
-            const sourceEntry = fromEntry || stockMap.get(item.originalLotNumber); // Use source for rate info
+            const sourceEntry = fromEntry || stockMap.get(item.originalLotNumber);
             if (toEntry) {
                 toEntry.currentBags += item.bagsToTransfer;
                 toEntry.currentWeight += item.netWeightToTransfer;
@@ -189,6 +209,7 @@ export function SalesClient() {
                     currentWeight: item.netWeightToTransfer,
                     effectiveRate: sourceEntry?.effectiveRate || 0,
                     purchaseRate: sourceEntry?.purchaseRate || 0,
+                    locationId: transfer.toWarehouseId,
                     locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
                 });
             }
@@ -226,11 +247,19 @@ export function SalesClient() {
                 effectiveRate: value.effectiveRate,
                 purchaseRate: value.purchaseRate,
                 averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
+                locationId: value.locationId,
                 locationName: value.locationName
             });
         }
     });
-    return result;
+
+    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
+    if (!MUMBAI_WAREHOUSE_ID) {
+        console.warn("Mumbai warehouse ID not found in constants. Cannot filter stock for sales.");
+        return result; 
+    }
+
+    return result.filter(item => item.locationId === MUMBAI_WAREHOUSE_ID);
 
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
 
