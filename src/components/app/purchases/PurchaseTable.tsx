@@ -36,11 +36,6 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
     return <p className="text-center text-muted-foreground py-8">No purchases recorded yet.</p>;
   }
 
-  const handlePrintChitti = (purchase: Purchase) => {
-    console.log('Print Chitti (Purchase) clicked for ID:', purchase.id);
-    window.print();
-  };
-
   return (
     <TooltipProvider>
       <ScrollArea className="rounded-md border shadow-sm h-[60vh]">
@@ -56,7 +51,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead className="text-right">Net Wt.(kg)</TableHead>
               <TableHead className="text-right">Rate (₹/kg)</TableHead>
               <TableHead className="text-right">Brokerage (₹)</TableHead>
-              <TableHead className="text-right">Goods Value (₹)</TableHead>
+              <TableHead className="text-right">Payable Value (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,8 +79,8 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 </TableCell>
                 <TableCell>
                   <Tooltip>
-                    <TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || purchase.agentId || ''}</span></TooltipTrigger>
-                    <TooltipContent><p>{purchase.agentName || purchase.agentId || 'N/A'}</p></TooltipContent>
+                    <TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || 'N/A'}</span></TooltipTrigger>
+                    <TooltipContent><p>{purchase.agentName || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-right">{purchase.quantity}</TableCell>

@@ -190,7 +190,6 @@ export function AccountsLedgerClient() {
       });
     } else if (party.type === 'Supplier') {
       purchases.filter(p => p.supplierId === partyId).forEach(p => {
-        // Credit for goods and other non-brokerage expenses.
         const goodsAndExpensesPayable = (p.totalAmount || 0) - (p.brokerageCharges || 0);
         transactions.push({ id: `pur-goods-${p.id}`, date: p.date, type: 'credit', amount: goodsAndExpensesPayable, vakkal: `Purchase: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any);
         // If this supplier is also the agent, add their brokerage as a separate credit line for clarity.
@@ -200,13 +199,18 @@ export function AccountsLedgerClient() {
       });
       payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
     } else if (party.type === 'Agent') {
-       purchases.filter(p => p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0).forEach(p => {
-        // Only add brokerage if agent is NOT the supplier, as that case is handled in the 'Supplier' block.
-        if (p.agentId !== p.supplierId) {
+       purchases.filter(p => p.agentId === partyId).forEach(p => {
+        if (p.brokerageCharges && p.brokerageCharges > 0) {
           transactions.push({ id: `brok-${p.id}`, date: p.date, type: 'credit', amount: p.brokerageCharges, vakkal: `Brokerage: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.brokerageValue } as any);
         }
       });
       payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
+    } else if (party.type === 'Broker') {
+      sales.filter(s => s.brokerId === partyId).forEach(s => transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: s.lotNumber, bags: s.quantity, kg: s.netWeight, rate: s.rate } as any));
+      receipts.filter(r => r.partyId === partyId).forEach(r => {
+        transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, vakkal: 'Receipt' } as any);
+        if (r.cashDiscount && r.cashDiscount > 0) transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'credit', amount: r.cashDiscount, vakkal: 'Discount' } as any);
+      });
     } else if (party.type === 'Expense') {
         purchases.forEach(p => {
             if (party.id === 'fixed-exp-packing' && p.packingCharges && p.packingCharges > 0) {
@@ -237,7 +241,8 @@ export function AccountsLedgerClient() {
   const financialLedgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialFinancialLedgerData;
     const party = allMasters.find(p => p.id === selectedPartyId);
-    if (!party || party.type === 'Transporter' || party.type === 'Broker') return initialFinancialLedgerData;
+    if (!party || party.type === 'Transporter') return initialFinancialLedgerData; // Transporter handled separately
+    
     const partyTransactions = getPartyTransactions(selectedPartyId);
     let openingBalance = party.openingBalance || 0;
     if (party.openingBalanceType === 'Cr') openingBalance = -openingBalance;
@@ -254,8 +259,8 @@ export function AccountsLedgerClient() {
     const totalDebitDuringPeriod = debitEntries.reduce((sum, e) => sum + e.amount, 0);
     const totalCreditDuringPeriod = creditEntries.reduce((sum, e) => sum + e.amount, 0);
 
-    if (openingBalance > 0) debitEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), amount: openingBalance, vakkal: 'Opening Balance' });
-    else if (openingBalance < 0) creditEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), amount: -openingBalance, vakkal: 'Opening Balance' });
+    if (openingBalance > 0) debitEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), amount: openingBalance, vakkal: 'Opening Balance' } as any);
+    else if (openingBalance < 0) creditEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), amount: -openingBalance, vakkal: 'Opening Balance' } as any);
     
     return {
       debitEntries, creditEntries,
@@ -271,65 +276,6 @@ export function AccountsLedgerClient() {
   }, [selectedPartyId, dateRange, hydrated, getPartyTransactions, allMasters]);
   
   const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
-
-  const brokerLedgerData = React.useMemo(() => {
-    if (selectedPartyDetails?.type !== 'Broker' || !dateRange?.from || !hydrated) return initialBrokerLedgerData;
-    const toDate = dateRange.to || dateRange.from;
-
-    const creditEntries: BrokerCreditEntry[] = sales
-      .filter(s => s.brokerId === selectedPartyId && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-      .map(s => {
-          const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-          return {
-              id: `sale-${s.id}`,
-              date: s.date,
-              vakkal: s.lotNumber,
-              bags: s.quantity,
-              kg: s.netWeight,
-              rate: s.rate,
-              saleValue: s.goodsValue,
-              brokerageAmount: totalBrokerage,
-          };
-      }).sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-    const debitEntries: BrokerDebitEntry[] = receipts // Receipts are debits for a Broker's receivable ledger
-      .filter(p => p.partyId === selectedPartyId && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-      .map(p => ({
-          id: `receipt-${p.id}`, date: p.date,
-          particulars: p.referenceNo || `Receipt via ${p.paymentMethod}`, amount: p.amount + (p.cashDiscount || 0)
-      })).sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-    let openingBalance = selectedPartyDetails.openingBalance || 0;
-    if (selectedPartyDetails.openingBalanceType === 'Cr') openingBalance = -openingBalance;
-
-    // Calculate opening balance based on full sale value
-    sales.filter(s => s.brokerId === selectedPartyId && isBefore(parseISO(s.date), startOfDay(dateRange.from!))).forEach(s => {
-        openingBalance += s.billedAmount; // Receivables are positive
-    });
-    receipts.filter(p => p.partyId === selectedPartyId && isBefore(parseISO(p.date), startOfDay(dateRange.from!))).forEach(p => {
-        openingBalance -= (p.amount + (p.cashDiscount || 0)); // Payments reduce balance
-    });
-
-    const totalSaleValueCredit = creditEntries.reduce((sum, e) => sum + e.saleValue, 0);
-    const totalPaymentsDebit = debitEntries.reduce((sum, e) => sum + e.amount, 0);
-    
-    const totalCreditBags = creditEntries.reduce((sum, e) => sum + e.bags, 0);
-    const totalCreditKg = creditEntries.reduce((sum, e) => sum + e.kg, 0);
-
-    const closingBalance = openingBalance + totalSaleValueCredit - totalPaymentsDebit;
-
-    return { 
-        creditEntries, 
-        debitEntries, 
-        totalSaleValueCredit, 
-        totalPaymentsDebit, 
-        openingBalance, 
-        closingBalance,
-        totalCreditBags,
-        totalCreditKg,
-    };
-}, [selectedPartyDetails, selectedPartyId, dateRange, hydrated, sales, receipts]);
-
 
   const transporterLedgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialTransporterLedgerData;
@@ -370,9 +316,6 @@ export function AccountsLedgerClient() {
     router.push(value ? `/accounts-ledger?partyId=${value}` : '/accounts-ledger', { scroll: false });
   };
   
-  const balanceTypeForBroker = (brokerLedgerData.closingBalance || 0) >= 0 ? 'Dr' : 'Cr';
-  const closingBrokerageBalance = Math.abs(brokerLedgerData.closingBalance || 0);
-
   return (
     <div className="space-y-6 print-area flex flex-col flex-1">
       <Card className="shadow-md no-print">
@@ -411,81 +354,7 @@ export function AccountsLedgerClient() {
             </p>
           </CardHeader>
 
-          {selectedPartyDetails.type === 'Broker' ? (
-            <div className="flex flex-col flex-grow min-h-0">
-                <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
-                    <div className="flex-1 flex flex-col min-h-0">
-                        <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
-                          <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Received from Broker)</CardTitle></CardHeader>
-                          <CardContent className="p-0 flex-grow min-h-0">
-                            <ScrollArea className="h-full">
-                              <Table size="sm"><TableHeader><TableRow>
-                                  <TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead className="text-right">Amount</TableHead>
-                                </TableRow></TableHeader><TableBody>
-                                    {brokerLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={3} className="h-24 text-center">No receipts recorded.</TableCell></TableRow>}
-                                    {brokerLedgerData.debitEntries.map(e => (<TableRow key={`dr-br-${e.id}`}>
-                                        <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                        <TableCell>{e.particulars}</TableCell>
-                                        <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                    </TableRow>))}
-                                </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                                    <TableCell colSpan={2}>Total Received</TableCell>
-                                    <TableCell className="text-right">{brokerLedgerData.totalPaymentsDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                </TableRow></TableFooter></Table>
-                               <ScrollBar orientation="horizontal" />
-                              </ScrollArea>
-                            </CardContent>
-                          </Card>
-                    </div>
-                    <div className="flex-1 flex flex-col min-h-0">
-                        <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
-                          <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Receivable from Broker)</CardTitle></CardHeader>
-                          <CardContent className="p-0 flex-grow min-h-0">
-                            <ScrollArea className="h-full">
-                              <Table size="sm"><TableHeader><TableRow>
-                                  <TableHead>Date</TableHead>
-                                  <TableHead>Vakkal</TableHead>
-                                  <TableHead className="text-right">Bags</TableHead>
-                                  <TableHead className="text-right">Kg</TableHead>
-                                  <TableHead className="text-right">Rate</TableHead>
-                                  <TableHead className="text-right">Sale Value</TableHead>
-                                  <TableHead className="text-right">Brokerage</TableHead>
-                                </TableRow></TableHeader><TableBody>
-                                    {brokerLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={7} className="h-24 text-center">No sales recorded via this broker.</TableCell></TableRow>}
-                                    {brokerLedgerData.creditEntries.map(e => (<TableRow key={`cr-br-${e.id}`}>
-                                        <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                        <TableCell>{e.vakkal}</TableCell>
-                                        <TableCell className="text-right">{e.bags.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">{e.kg.toLocaleString('en-IN', {minimumFractionDigits:2})}</TableCell>
-                                        <TableCell className="text-right">{e.rate.toLocaleString('en-IN', {minimumFractionDigits:2})}</TableCell>
-                                        <TableCell className="text-right">{e.saleValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                        <TableCell className="text-right">{e.brokerageAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    </TableRow>))}
-                                </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                                    <TableCell colSpan={2}>Total</TableCell>
-                                    <TableCell className="text-right">{brokerLedgerData.totalCreditBags.toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{brokerLedgerData.totalCreditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell />
-                                    <TableCell className="text-right">{brokerLedgerData.totalSaleValueCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell />
-                                </TableRow></TableFooter></Table>
-                               <ScrollBar orientation="horizontal" />
-                              </ScrollArea>
-                            </CardContent>
-                          </Card>
-                    </div>
-                </div>
-                <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
-                    <div className="text-right font-bold text-lg">
-                        <span>Closing Balance: </span>
-                        <span className={balanceTypeForBroker === 'Dr' ? 'text-green-700' : 'text-red-700'}>
-                            ₹{closingBrokerageBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})} {balanceTypeForBroker}
-                        </span>
-                        <p className="text-xs text-muted-foreground font-normal">(Receivable from broker)</p>
-                    </div>
-                </CardFooter>
-            </div>
-          ) : selectedPartyDetails.type === 'Transporter' ? (
+          {selectedPartyDetails.type === 'Transporter' ? (
              <CardContent className="flex flex-col flex-grow min-h-0">
                 <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
                   <div className="flex-1 flex flex-col min-w-0">
@@ -624,8 +493,6 @@ export function AccountsLedgerClient() {
                   </span>
               </div>
             </CardFooter>
-          ) : selectedPartyDetails.type === 'Broker' ? (
-            null // Footer is now inside the broker's conditional render
           ) : (
              <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
               <div className="text-right font-bold text-lg">

@@ -24,6 +24,7 @@ const keys = {
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   brokers: 'masterBrokers',
+  expenses: 'masterExpenses',
 };
 
 interface OutstandingEntry {
@@ -136,6 +137,7 @@ export function OutstandingClient() {
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
+  const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
 
   const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
   const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
@@ -146,7 +148,7 @@ export function OutstandingClient() {
   const { receivables, payables, totalReceivable, totalPayable } = useMemo(() => {
         if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0 };
         
-        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers];
+        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
         const balances = new Map<string, { balance: number; lastTxDate: string, name: string, type: string }>();
 
         allMasters.forEach(m => {
@@ -164,18 +166,15 @@ export function OutstandingClient() {
         };
 
         // --- Corrected Logic ---
-        // Sales create receivables. Accountable party is broker, fallback to customer.
         sales.forEach(s => {
             const accountablePartyId = s.brokerId || s.customerId;
             updateBalance(accountablePartyId, s.billedAmount, s.date);
         });
 
-        // Receipts reduce receivables.
         receipts.forEach(r => {
             updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
         });
         
-        // Purchases create payables to supplier and agent separately.
         purchases.forEach(p => {
             const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
             updateBalance(p.supplierId, -payableToSupplier, p.date);
@@ -184,12 +183,10 @@ export function OutstandingClient() {
             }
         });
 
-        // Payments reduce payables.
         payments.forEach(p => {
             updateBalance(p.partyId, p.amount, p.date);
         });
 
-        // Transport charges are also payables to the transporter.
         locationTransfers.forEach(lt => {
             if (lt.transporterId && lt.transportCharges) {
                 updateBalance(lt.transporterId, -lt.transportCharges, lt.date);
@@ -218,7 +215,7 @@ export function OutstandingClient() {
 
         return { receivables: receivablesData, payables: payablesData, totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers]);
+  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses]);
   
   if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 

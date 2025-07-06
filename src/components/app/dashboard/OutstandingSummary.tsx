@@ -20,6 +20,7 @@ const keys = {
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   brokers: 'masterBrokers',
+  expenses: 'masterExpenses',
 };
 
 
@@ -38,11 +39,12 @@ export const OutstandingSummary = () => {
   const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
   const [transporters] = useLocalStorageState<MasterItem[]>(keys.transporters, []);
   const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
+  const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
 
   const { totalReceivable, totalPayable } = useMemo(() => {
         if (!hydrated) return { totalReceivable: 0, totalPayable: 0 };
         
-        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers];
+        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
         const balances = new Map<string, number>();
 
         allMasters.forEach(m => {
@@ -55,26 +57,53 @@ export const OutstandingSummary = () => {
             balances.set(partyId, balances.get(partyId)! + amount);
         };
 
-        sales.forEach(s => updateBalance(s.customerId, s.billedAmount));
-        receipts.forEach(r => updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0))));
-        purchases.forEach(p => updateBalance(p.supplierId, -p.totalAmount));
-        payments.forEach(p => updateBalance(p.partyId, p.amount));
+        // --- Corrected Logic ---
+        sales.forEach(s => {
+            const accountablePartyId = s.brokerId || s.customerId;
+            updateBalance(accountablePartyId, s.billedAmount);
+        });
+
+        receipts.forEach(r => {
+            updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
+        });
+        
+        purchases.forEach(p => {
+            const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+            updateBalance(p.supplierId, -payableToSupplier);
+            if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
+                updateBalance(p.agentId, -p.brokerageCharges);
+            }
+        });
+
+        payments.forEach(p => {
+            updateBalance(p.partyId, p.amount);
+        });
+
         locationTransfers.forEach(lt => {
             if (lt.transporterId && lt.transportCharges) {
                 updateBalance(lt.transporterId, -lt.transportCharges);
             }
         });
+        // --- End of Corrected Logic ---
 
         let totalReceivable = 0;
         let totalPayable = 0;
-        balances.forEach((balance) => {
-            if (balance > 0) totalReceivable += balance;
-            else if (balance < 0) totalPayable += balance;
+        balances.forEach((balance, partyId) => {
+            const party = allMasters.find(m => m.id === partyId);
+            if (balance > 0) {
+                totalReceivable += balance;
+            } else if (balance < 0) {
+                // Brokers primarily create receivables; payables to them are rare (like advances) and shouldn't dominate this summary.
+                // We exclude them from the top-level payable summary for clarity, as per user feedback.
+                if (party?.type !== 'Broker') {
+                  totalPayable += balance;
+                }
+            }
         });
 
         return { totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers]);
+  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
