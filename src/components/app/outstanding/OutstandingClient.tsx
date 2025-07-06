@@ -219,9 +219,9 @@ export function OutstandingClient() {
 
   return (
     <div className="space-y-6 print-area">
-        <div className="flex justify-between items-center no-print">
-            <h1 className="flex items-center gap-4">
-                💰 Outstanding Dashboard
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+            <h1 className="text-3xl font-bold text-foreground">
+                Outstanding Dashboard
             </h1>
             <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
                 <Printer className="h-5 w-5" /><span className="sr-only">Print</span>
