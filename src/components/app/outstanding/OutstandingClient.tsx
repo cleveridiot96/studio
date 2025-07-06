@@ -175,13 +175,16 @@ export function OutstandingClient() {
             updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
         });
         
-        // Purchases create payables. Accountable party is agent, fallback to supplier.
+        // Purchases create payables to supplier and agent separately.
         purchases.forEach(p => {
-            const accountablePartyId = p.agentId || p.supplierId;
-            updateBalance(accountablePartyId, -p.totalAmount, p.date);
+            const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+            updateBalance(p.supplierId, -payableToSupplier, p.date);
+            if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
+                updateBalance(p.agentId, -p.brokerageCharges, p.date);
+            }
         });
 
-        // Payments reduce payables. A payment TO a party increases their balance (from negative towards zero).
+        // Payments reduce payables.
         payments.forEach(p => {
             updateBalance(p.partyId, p.amount, p.date);
         });
@@ -264,4 +267,3 @@ export function OutstandingClient() {
     </div>
   )
 }
-    

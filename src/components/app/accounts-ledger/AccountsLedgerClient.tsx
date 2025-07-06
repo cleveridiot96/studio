@@ -183,22 +183,21 @@ export function AccountsLedgerClient() {
     let transactions: (LedgerEntryType & { type: 'debit' | 'credit' })[] = [];
 
     if (party.type === 'Customer') {
-      // Direct sales to a customer (no broker)
       sales.filter(s => s.customerId === partyId && !s.brokerId).forEach(s => transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: s.billNumber, bags: s.quantity, kg: s.netWeight, rate: s.rate } as any));
-      // Receipts from this customer
       receipts.filter(r => r.partyId === partyId).forEach(r => {
         transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, vakkal: r.referenceNo } as any);
         if (r.cashDiscount && r.cashDiscount > 0) transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'credit', amount: r.cashDiscount, vakkal: 'Discount' } as any);
       });
     } else if (party.type === 'Supplier') {
-      // Direct purchases from a supplier (no agent)
-      purchases.filter(p => p.supplierId === partyId && !p.agentId).forEach(p => transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: p.totalAmount, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any));
-      // Payments to this supplier
+      purchases.filter(p => p.supplierId === partyId).forEach(p => {
+        const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+        transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: payableToSupplier, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any);
+      });
       payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
     } else if (party.type === 'Agent') {
-      // Purchases via this agent
-      purchases.filter(p => p.agentId === partyId).forEach(p => transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: p.totalAmount, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any));
-      // Payments to this agent
+      purchases.filter(p => p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0).forEach(p => {
+        transactions.push({ id: `brok-${p.id}`, date: p.date, type: 'credit', amount: p.brokerageCharges, vakkal: `Brokerage: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.brokerageValue } as any);
+      });
       payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
     } else if (party.type === 'Expense') {
         purchases.forEach(p => {
@@ -451,8 +450,8 @@ export function AccountsLedgerClient() {
                                         <TableCell className="text-right">{e.bags.toLocaleString()}</TableCell>
                                         <TableCell className="text-right">{e.kg.toLocaleString('en-IN', {minimumFractionDigits:2})}</TableCell>
                                         <TableCell className="text-right">{e.rate.toLocaleString('en-IN', {minimumFractionDigits:2})}</TableCell>
-                                        <TableCell className="text-right">{e.saleValue.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                        <TableCell className="text-right">{e.brokerageAmount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                        <TableCell className="text-right">{e.saleValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                        <TableCell className="text-right">{e.brokerageAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                     </TableRow>))}
                                 </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
                                     <TableCell colSpan={2}>Total</TableCell>
