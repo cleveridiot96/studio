@@ -92,10 +92,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
 
   const handleClear = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.stopPropagation(); // Stop event from bubbling to the PopoverTrigger
+    e.preventDefault();   // Prevent any default button behavior
     onChange(undefined);
-    setOpen(false);
+    setOpen(false);       // Explicitly close the popover
   };
 
   return (
@@ -115,7 +115,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           {value ? (
             <X
               className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
-              onMouseDown={handleClear}
+              onClick={handleClear}
             />
           ) : (
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
