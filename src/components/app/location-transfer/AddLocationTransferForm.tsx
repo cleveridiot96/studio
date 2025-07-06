@@ -367,9 +367,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                 }}
                                 onFocus={() => setTransportChargesManuallySet(true)}
                             /></FormControl>
-                            <FormDescription className="text-xs">
-                              Calculated from weight & rate. Can be overridden.
-                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )} />
