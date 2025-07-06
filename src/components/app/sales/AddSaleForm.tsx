@@ -153,10 +153,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         const quantity = Number(item.quantity) || 0;
 
         const lineSaleValue = netWeight * saleRate;
-        const linePurchaseValue = netWeight * purchaseRate;
+        const linePurchaseValue = netWeight * purchaseRate; // Using raw purchase rate for gross profit
         
         totalGoodsValue += lineSaleValue;
-        totalLandedCost += netWeight * landedCostPerKg;
+        totalLandedCost += netWeight * landedCostPerKg; // Using landed cost for COGS
         totalNetWeight += netWeight;
         totalQuantity += quantity;
         totalGrossProfit += (lineSaleValue - linePurchaseValue);
@@ -174,13 +174,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totalNetWeight;
     const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
     
-    const purchaseSideExpensesIncurred = totalLandedCost - (items || []).reduce((acc, item) => {
-        const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
-        const purchaseRate = stockInfo?.purchaseRate || 0;
-        return acc + (Number(item.netWeight) || 0) * purchaseRate;
-    }, 0);
-
-    const netProfit = totalGrossProfit - purchaseSideExpensesIncurred - totalSaleSideExpenses;
+    // Net profit is based on landed cost
+    const netProfit = totalGoodsValue - totalLandedCost - totalSaleSideExpenses;
 
     return { 
       totalGoodsValue,
@@ -209,8 +204,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (selectedBrokerId) {
       const broker = brokers.find(b => b.id === selectedBrokerId);
-      if (broker && typeof broker.commission === 'number' && broker.commission >= 0) {
-        setValue("brokerageType", "Percentage", { shouldValidate: true });
+      if (broker) {
+        setValue("brokerageType", broker.commissionType, { shouldValidate: true });
         setValue("brokerageValue", broker.commission, { shouldValidate: true });
       }
     } else {
@@ -272,8 +267,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       totalQuantity: summary.totalQuantity,
       totalNetWeight: summary.totalNetWeight,
       totalCostOfGoodsSold: summary.totalLandedCost,
-      totalExpenses: summary.totalSaleSideExpenses,
-      netProfit: summary.netProfit,
+      totalGrossProfit: summary.totalGrossProfit,
+      totalCalculatedProfit: summary.netProfit,
       transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
       transportCost: values.transportCost,
@@ -459,15 +454,29 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <h3 className="text-lg font-semibold text-primary mb-2">Transaction Summary</h3>
                       <div className="text-sm text-muted-foreground space-y-1">
                         <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{summary.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                        <div className="flex justify-between text-cyan-600"><span>Less: Raw Purchase Cost:</span><span>(-) ₹{(summary.totalLandedCost - (summary.totalLandedCost - summary.totalGoodsValue)).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
+                        
                         <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            <span>Gross Profit:</span> <span>₹{summary.totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <span>Gross Profit:</span> 
+                             <Tooltip>
+                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
+                                <TooltipContent><p>(Goods Value) - (Raw Purchase Cost)</p></TooltipContent>
+                            </Tooltip>
                         </div>
-                        <hr className="my-1 border-muted-foreground/50" />
-                        <div className="flex justify-between text-red-600"><span>Less: All Expenses:</span><span>(-) ₹{((summary.totalLandedCost - summary.totalGoodsValue) + summary.totalSaleSideExpenses).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
+
+                        <div className="flex justify-between text-red-600">
+                           <span>Less: All Expenses:</span>
+                            <Tooltip>
+                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">(-) ₹{summary.totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></TooltipTrigger>
+                                <TooltipContent><p>Transport, Packing, Labour, Brokerage etc.</p></TooltipContent>
+                            </Tooltip>
+                        </div>
                          <hr className="my-1 border-muted-foreground/50" />
                         <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            <span>Estimated Net Profit:</span> <span>₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <span>Net Profit:</span> 
+                            <Tooltip>
+                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
+                                <TooltipContent><p>(Goods Value) - (Landed Cost) - (Sale Expenses)</p></TooltipContent>
+                            </Tooltip>
                         </div>
                       </div>
 

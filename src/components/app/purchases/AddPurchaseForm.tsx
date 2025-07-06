@@ -29,7 +29,7 @@ import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType, PurchaseItem } from "@/lib/types";
+import type { MasterItem, Purchase, MasterItemType, PurchaseItem, Agent } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
@@ -42,7 +42,7 @@ interface AddPurchaseFormProps {
   onClose: () => void;
   onSubmit: (purchase: Purchase) => void;
   suppliers: MasterItem[];
-  agents: MasterItem[];
+  agents: Agent[];
   warehouses: MasterItem[];
   transporters: MasterItem[];
   onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
@@ -150,7 +150,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     const totalNonBrokerageExpenses = (Number(transportCharges) || 0) + (Number(packingCharges) || 0) + (Number(labourCharges) || 0) + (Number(miscExpenses) || 0);
     const totalExpenses = totalNonBrokerageExpenses + calculatedBrokerageCharges;
     const totalAmount = totalGoodsValue + totalExpenses;
-    const overallEffectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
     
     const expensesPerKg = totalNetWeight > 0 ? totalNonBrokerageExpenses / totalNetWeight : 0;
     
@@ -164,7 +163,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         totalGoodsValue,
         totalExpenses,
         totalAmount,
-        overallEffectiveRate: parseFloat(overallEffectiveRate.toFixed(2)),
         totalNetWeight,
         totalQuantity,
         calculatedBrokerageCharges,
@@ -182,8 +180,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   React.useEffect(() => {
     if (watchedAgentId) {
       const agent = agents.find(a => a.id === watchedAgentId);
-      if (agent && typeof agent.commission === 'number') {
-        setValue("brokerageType", "Percentage", { shouldValidate: true });
+      if (agent) {
+        setValue("brokerageType", agent.commissionType, { shouldValidate: true });
         setValue("brokerageValue", agent.commission, { shouldValidate: true });
       }
     }
@@ -210,6 +208,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
+    const totalAmount = summary.totalAmount;
+    const effectiveRate = summary.totalNetWeight > 0 ? totalAmount / summary.totalNetWeight : 0;
+
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
@@ -238,8 +239,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       brokerageValue: values.brokerageValue,
       brokerageCharges: summary.calculatedBrokerageCharges,
       miscExpenses: values.miscExpenses,
-      totalAmount: summary.totalAmount,
-      effectiveRate: summary.overallEffectiveRate,
+      totalAmount,
+      effectiveRate,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
@@ -443,9 +444,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       <div className="flex items-center text-lg font-semibold text-primary"><Info className="w-5 h-5 mr-2" />Total Purchase Value:</div>
                       <p className="text-xl font-bold text-primary">₹{summary.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                   </div>
-                  {summary.totalNetWeight > 0 && (
+                  {summary.totalNetWeight > 0 && summary.itemsWithLandedCost.length > 0 && (
                      <div className="pt-4 border-t mt-4">
-                        <h4 className="font-semibold mb-2 text-muted-foreground">Per-Item Landed Cost</h4>
+                        <h4 className="font-semibold mb-2 text-muted-foreground">Per-Vakkal Landed Cost</h4>
                         <ScrollArea className="h-24">
                            <Table size="sm">
                             <TableHeader>
@@ -464,9 +465,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             </TableBody>
                            </Table>
                         </ScrollArea>
-                        <p className="text-sm text-muted-foreground text-right mt-2">
-                            Overall Landed Rate: <span className="font-semibold">₹{summary.overallEffectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg</span>
-                        </p>
                     </div>
                    )}
                 </div>

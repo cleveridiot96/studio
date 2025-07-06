@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn } from "@/lib/types";
+import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn, Sale, LocationTransfer } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { PurchaseChittiPrint } from "./PurchaseChittiPrint";
@@ -38,6 +38,8 @@ const initialPurchaseReturnsData: PurchaseReturn[] = [];
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
+const SALES_STORAGE_KEY = 'salesData'; // For checking dependencies
+const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData'; // For checking dependencies
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
@@ -50,11 +52,14 @@ export function PurchasesClient() {
   const memoizedInitialPurchases = React.useMemo(() => initialPurchasesData, []);
   const memoizedInitialPurchaseReturns = React.useMemo(() => initialPurchaseReturnsData, []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
+  const memoizedEmptyArray = React.useMemo(() => [], []);
 
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases, purchaseMigrator);
   const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedInitialPurchaseReturns);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
+  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
 
@@ -120,9 +125,41 @@ export function PurchasesClient() {
   };
 
   const handleDeletePurchaseAttempt = React.useCallback((purchaseId: string) => {
+    const purchaseToDelete = purchases.find(p => p.id === purchaseId);
+    if (!purchaseToDelete) return;
+
+    const lotNumbersInPurchase = purchaseToDelete.items.map(item => item.lotNumber);
+
+    const isUsedInSales = sales.some(sale => 
+        sale.items.some(item => lotNumbersInPurchase.includes(item.lotNumber))
+    );
+
+    if (isUsedInSales) {
+        toast({
+            title: "Deletion Prohibited",
+            description: "Cannot delete. Stock from this purchase has been used in a sale.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    const isUsedInTransfers = locationTransfers.some(transfer => 
+        transfer.items.some(item => lotNumbersInPurchase.includes(item.originalLotNumber))
+    );
+
+    if (isUsedInTransfers) {
+        toast({
+            title: "Deletion Prohibited",
+            description: "Cannot delete. Stock from this purchase has been transferred.",
+            variant: "destructive",
+        });
+        return;
+    }
+
     setPurchaseToDeleteId(purchaseId);
     setShowDeleteConfirm(true);
-  }, []);
+}, [purchases, sales, locationTransfers, toast]);
+
 
   const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {

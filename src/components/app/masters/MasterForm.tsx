@@ -42,20 +42,19 @@ const masterItemSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),
   type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse", "Expense"]),
   commission: z.coerce.number().optional(),
+  commissionType: z.enum(['Percentage', 'Fixed']).optional(),
   openingBalance: z.coerce.number().optional(),
   openingBalanceType: z.enum(['Dr', 'Cr']).optional(),
 }).refine(data => {
   const config = TABS_CONFIG.find(t => t.value === data.type);
-  if (config?.hasCommission && (data.commission === undefined || data.commission < 0)) {
-    return false;
-  }
-  if (config?.hasCommission && data.commission !== undefined && data.commission === 0) {
-    return true;
+  if (config?.hasCommission && (data.commission !== undefined && data.commission >= 0)) {
+    // If commission has a value, its type must also be selected
+    if (!data.commissionType) return false;
   }
   return true;
 }, {
-  message: "Commission must be a non-negative number if applicable.",
-  path: ["commission"],
+  message: "Commission type is required when a value is entered.",
+  path: ["commissionType"],
 }).refine(data => {
   // If opening balance has a value, its type must also be selected
   if (data.openingBalance !== undefined && data.openingBalance > 0 && !data.openingBalanceType) {
@@ -93,6 +92,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       name: '',
       type: itemTypeFromButton || 'Customer',
       commission: undefined,
+      commissionType: undefined,
       openingBalance: undefined,
       openingBalanceType: undefined,
     },
@@ -107,6 +107,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
             name: initialData.name,
             type: initialData.type,
             commission: initialData.commission,
+            commissionType: initialData.commissionType,
             openingBalance: initialData.openingBalance,
             openingBalanceType: initialData.openingBalanceType,
           });
@@ -115,6 +116,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
             name: '',
             type: itemTypeFromButton || 'Customer',
             commission: undefined,
+            commissionType: undefined,
             openingBalance: undefined,
             openingBalanceType: undefined,
           });
@@ -135,6 +137,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
     };
     if (showCommissionField && values.commission !== undefined ) {
       itemToSubmit.commission = values.commission;
+      itemToSubmit.commissionType = values.commissionType;
     }
     if (showBalanceField && values.openingBalance !== undefined) {
       itemToSubmit.openingBalance = values.openingBalance;
@@ -182,6 +185,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
                         const newTypeConfig = TABS_CONFIG.find(t => t.value === value);
                         if (!newTypeConfig?.hasCommission) {
                           form.setValue('commission', undefined);
+                          form.setValue('commissionType', undefined);
                         }
                         if (!newTypeConfig?.hasBalance) {
                             form.setValue('openingBalance', undefined);
@@ -264,38 +268,61 @@ export const MasterForm: React.FC<MasterFormProps> = ({
             )}
 
             {showCommissionField && !isEditingFixedItem && (
-              <FormField
-                control={form.control}
-                name="commission"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Commission Percentage</FormLabel>
-                    <div className="relative">
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="e.g., 2.5 for 2.5%"
-                        {...field}
-                        value={field.value === undefined ? '' : field.value}
-                        onChange={e => {
-                            const val = e.target.value;
-                            const numValue = val === '' ? undefined : parseFloat(val);
-                            if (numValue !== undefined && numValue < 0) {
-                                field.onChange(0);
-                            } else {
-                                field.onChange(numValue);
-                            }
-                        }}
-                        className="pr-8"
-                      />
-                    </FormControl>
-                    <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+               <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                  <FormField
+                    control={form.control}
+                    name="commissionType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commission Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Type..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Percentage">%</SelectItem>
+                            <SelectItem value="Fixed">Fixed (₹)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="commission"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commission Value</FormLabel>
+                        <div className="relative">
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g., 2.5"
+                            {...field}
+                            value={field.value === undefined ? '' : field.value}
+                            onChange={e => {
+                                const val = e.target.value;
+                                const numValue = val === '' ? undefined : parseFloat(val);
+                                if (numValue !== undefined && numValue < 0) {
+                                    field.onChange(0);
+                                } else {
+                                    field.onChange(numValue);
+                                }
+                            }}
+                            className={form.watch('commissionType') === 'Percentage' ? "pr-8" : ""}
+                          />
+                        </FormControl>
+                        {form.watch('commissionType') === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
             )}
             <DialogFooter className="pt-4">
               <DialogClose asChild>

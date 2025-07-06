@@ -1,5 +1,4 @@
 
-
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -19,6 +18,7 @@ export interface MasterItem {
   id: string;
   name: string;
   commission?: number; // For Agents and Brokers
+  commissionType?: 'Percentage' | 'Fixed'; // For Agents and Brokers
   type: MasterItemType;
   openingBalance?: number;
   openingBalanceType?: 'Dr' | 'Cr'; // Dr: To Receive (Asset), Cr: To Pay (Liability)
@@ -78,8 +78,8 @@ export interface SaleItem {
   
   // New fields for profit calculation
   purchaseRate: number; // The raw purchase rate for this lot.
-  costOfGoods: number; // Calculated: netWeight * purchaseRate
-  grossProfit: number; // Calculated: goodsValue - costOfGoods
+  costOfGoodsSold: number; // The full landed cost for this portion of goods.
+  itemProfit?: number; // Optional profit calculation per item
 }
 
 export interface Sale {
@@ -103,10 +103,9 @@ export interface Sale {
   totalNetWeight: number;
   
   // New profit fields
-  totalCostOfGoods: number; // Sum of items' costOfGoods
-  totalGrossProfit: number; // totalGoodsValue - totalCostOfGoods
-  totalExpenses: number; // Sum of all sale-side expenses
-  netProfit: number; // totalGrossProfit - totalExpenses
+  totalCostOfGoodsSold: number; // Sum of items' costOfGoods
+  totalGrossProfit?: number; // Optional: totalGoodsValue - totalCostOfGoodsSold before sale-side expenses
+  totalCalculatedProfit?: number; // This is the final Net Profit
   
   // Expenses for the entire sale
   transporterId?: string;
@@ -262,12 +261,14 @@ export interface Party {
 export interface Supplier extends MasterItem {}
 export interface Agent extends MasterItem {
   commission?: number;
+  commissionType?: 'Percentage' | 'Fixed';
 }
 export interface Transporter extends MasterItem {}
 export interface Warehouse extends MasterItem {} // Represents a Location
 export interface Customer extends MasterItem {}
 export interface Broker extends MasterItem {
   commission?: number;
+  commissionType?: 'Percentage' | 'Fixed';
 }
 
 // For Profit Analysis
