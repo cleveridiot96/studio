@@ -81,9 +81,9 @@ const OutstandingTable = ({ data }: { data: OutstandingEntry[] }) => {
                 </TableHeader>
                 <TableBody>
                     {sortedData.map(item => (
-                        <TableRow key={item.partyId} className="cursor-pointer hover:bg-muted/20 text-lg" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
+                        <TableRow key={item.partyId} className="cursor-pointer hover:bg-muted/20" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
                             <TableCell>
-                                <div className="font-medium text-base">{item.partyName}</div>
+                                <div className="font-medium">{item.partyName}</div>
                                 <div className="text-xs text-muted-foreground">{item.partyType}</div>
                             </TableCell>
                             <TableCell className="text-right font-semibold">₹{Math.abs(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
@@ -107,12 +107,12 @@ const Leaderboard = ({ title, data }: { title: string, data: OutstandingEntry[] 
 
     return (
         <Card>
-            <CardHeader><CardTitle className="text-xl font-semibold">{title}</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
             <CardContent>
                 <Table>
                     <TableBody>
                         {topParties.map((party, index) => (
-                            <TableRow key={party.partyId} className="text-base">
+                            <TableRow key={party.partyId}>
                                 <TableCell className="font-bold w-8">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</TableCell>
                                 <TableCell>{party.partyName}</TableCell>
                                 <TableCell className="text-right font-semibold">₹{Math.abs(party.amount).toLocaleString('en-IN', {minimumFractionDigits: 0})}</TableCell>
@@ -218,22 +218,25 @@ export function OutstandingClient() {
   if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 
   return (
-    <div className="space-y-8 print-area">
-        <div className="text-center mb-6 no-print">
-            <h1 className="text-4xl font-extrabold tracking-tight flex items-center justify-center gap-4">
+    <div className="space-y-6 print-area">
+        <div className="flex justify-between items-center no-print">
+            <h1 className="flex items-center gap-4">
                 💰 Outstanding Dashboard
             </h1>
+            <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
+                <Printer className="h-5 w-5" /><span className="sr-only">Print</span>
+            </Button>
         </div>
         <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-6">
+            <div className="space-y-4">
                 <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50">
                     <CardHeader>
-                        <CardTitle className="text-green-700 dark:text-green-300 text-2xl flex items-center gap-3">
+                        <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-3">
                             <ArrowDownCircle /> Receivables (To Collect)
                         </CardTitle>
-                        <CardDescription className="text-lg">
+                        <CardDescription>
                             Total: <span className="font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
                         </CardDescription>
                     </CardHeader>
@@ -241,13 +244,13 @@ export function OutstandingClient() {
                 </Card>
                 <Leaderboard title="📈 Top Receivables" data={receivables} />
             </div>
-             <div className="space-y-6">
+             <div className="space-y-4">
                 <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50">
                     <CardHeader>
-                        <CardTitle className="text-red-700 dark:text-red-300 text-2xl flex items-center gap-3">
+                        <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-3">
                            <ArrowUpCircle /> Payables (To Pay)
                         </CardTitle>
-                         <CardDescription className="text-lg">
+                         <CardDescription>
                            Total: <span className="font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
                         </CardDescription>
                     </CardHeader>
@@ -259,4 +262,3 @@ export function OutstandingClient() {
     </div>
   )
 }
-
