@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, MasterItemType, Purchase, Sale } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -25,6 +25,8 @@ const MASTERS_KEYS = {
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
+  purchaseReturns: 'purchaseReturnsData',
+  saleReturns: 'saleReturnsData',
 };
 
 interface LedgerTransaction {
@@ -36,7 +38,7 @@ interface LedgerTransaction {
   kg: number;
   rate: number;
   amount: number;
-  type: 'Purchase' | 'Sale';
+  type: 'Purchase' | 'Sale' | 'Purchase Return' | 'Sale Return';
 }
 
 const initialLedgerData = {
@@ -61,6 +63,8 @@ export function LedgerClient() {
   const memoizedEmptyArray = React.useMemo(() => [], []);
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(TRANSACTIONS_KEYS.saleReturns, memoizedEmptyArray);
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -125,43 +129,64 @@ export function LedgerClient() {
     let debitTransactions: LedgerTransaction[] = [];
     let creditTransactions: LedgerTransaction[] = [];
 
+    // INWARD (Debit)
     if (party.type === 'Supplier' || party.type === 'Agent') {
-      debitTransactions = purchases
+      debitTransactions.push(...purchases
         .filter(p => {
             const isMatch = (party.type === 'Supplier' && p.supplierId === party.id) || (party.type === 'Agent' && p.agentId === party.id);
             return isMatch && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
         })
         .map(p => ({
-            id: `pur-${p.id}`,
-            date: p.date,
-            vakkal: p.lotNumber,
-            party: p.supplierName || 'N/A',
-            bags: p.quantity,
-            kg: p.netWeight,
-            rate: p.rate,
-            amount: p.totalAmount,
-            type: 'Purchase',
-        }))
-        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+            id: `pur-${p.id}`, date: p.date, vakkal: p.lotNumber, party: p.supplierName || 'N/A',
+            bags: p.quantity, kg: p.netWeight, rate: p.rate, amount: p.totalAmount, type: 'Purchase',
+        })));
     }
-    
     if (party.type === 'Broker') {
-      creditTransactions = sales
+      creditTransactions.push(...sales
         .filter(s => s.brokerId === party.id && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
         .map(s => ({
-            id: `sal-${s.id}`,
-            date: s.date,
-            vakkal: s.lotNumber,
-            party: s.customerName || 'N/A',
-            bags: s.quantity,
-            kg: s.netWeight,
-            rate: s.rate,
-            amount: s.goodsValue,
-            type: 'Sale',
-        }))
-        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+            id: `sal-${s.id}`, date: s.date, vakkal: s.lotNumber, party: s.customerName || 'N/A',
+            bags: s.quantity, kg: s.netWeight, rate: s.rate, amount: s.goodsValue, type: 'Sale',
+        })));
+        
+      // Sale Returns are Inward for the Broker
+      debitTransactions.push(...saleReturns
+        .filter(sr => {
+          const originalSale = sales.find(s => s.id === sr.originalSaleId);
+          return originalSale?.brokerId === party.id && isWithinInterval(parseISO(sr.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
+        })
+        .map(sr => {
+          const originalSale = sales.find(s => s.id === sr.originalSaleId)!;
+          return {
+            id: `sr-${sr.id}`, date: sr.date, vakkal: sr.originalLotNumber, party: sr.originalCustomerName || 'N/A',
+            bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.rate, amount: sr.returnAmount, type: 'Sale Return',
+          };
+        }));
     }
 
+    // OUTWARD (Credit)
+    if (party.type === 'Supplier' || party.type === 'Agent') {
+      // Purchase Returns are Outward for Supplier/Agent
+      creditTransactions.push(...purchaseReturns
+        .filter(pr => {
+          const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+          if (!originalPurchase) return false;
+          const isMatch = (party.type === 'Supplier' && originalPurchase.supplierId === party.id) || (party.type === 'Agent' && originalPurchase.agentId === party.id);
+          return isMatch && isWithinInterval(parseISO(pr.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
+        })
+        .map(pr => {
+          const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId)!;
+          return {
+            id: `pr-${pr.id}`, date: pr.date, vakkal: pr.originalLotNumber, party: pr.originalSupplierName || 'N/A',
+            bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.rate, amount: pr.returnAmount, type: 'Purchase Return',
+          };
+        }));
+    }
+    
+    // Sort transactions by date
+    debitTransactions.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    creditTransactions.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    
     const totals = {
       debitBags: debitTransactions.reduce((acc, tx) => acc + tx.bags, 0),
       debitKg: debitTransactions.reduce((acc, tx) => acc + tx.kg, 0),
@@ -178,7 +203,7 @@ export function LedgerClient() {
         kg: totals.debitKg - totals.creditKg
       }
     };
-  }, [selectedPartyId, dateRange, purchases, sales, allMasters, hydrated]);
+  }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, allMasters, hydrated]);
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
@@ -243,34 +268,31 @@ export function LedgerClient() {
                                 <TableRow>
                                   <TableHead>Date</TableHead>
                                   <TableHead>Vakkal</TableHead>
+                                  <TableHead>Party</TableHead>
                                   <TableHead className="text-right">Bags</TableHead>
                                   <TableHead className="text-right">Kg</TableHead>
-                                  <TableHead className="text-right">Rate</TableHead>
-                                  <TableHead className="text-right">Amount</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {ledgerData.debitTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={6} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow>
+                                  <TableRow><TableCell colSpan={5} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.debitTransactions.map(tx => (
                                     <TableRow key={tx.id}>
                                       <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
+                                      <TableCell>{tx.party}</TableCell>
                                       <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
                                       <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
-                                      <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                      <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                     </TableRow>
                                   ))
                                 )}
                               </TableBody>
                               <TableFooter>
                                 <TableRow className="font-bold bg-orange-50">
-                                  <TableCell colSpan={2}>Total</TableCell>
+                                  <TableCell colSpan={3}>Total</TableCell>
                                   <TableCell className="text-right">{ledgerData.totals.debitBags.toLocaleString()}</TableCell>
                                   <TableCell className="text-right">{ledgerData.totals.debitKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                  <TableCell colSpan={2}></TableCell>
                                 </TableRow>
                               </TableFooter>
                             </Table>
@@ -292,16 +314,14 @@ export function LedgerClient() {
                                 <TableRow>
                                   <TableHead>Date</TableHead>
                                   <TableHead>Vakkal</TableHead>
-                                  <TableHead>Customer</TableHead>
+                                  <TableHead>Party</TableHead>
                                   <TableHead className="text-right">Bags</TableHead>
                                   <TableHead className="text-right">Kg</TableHead>
-                                  <TableHead className="text-right">Rate</TableHead>
-                                  <TableHead className="text-right">Amount</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {ledgerData.creditTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={7} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow>
+                                  <TableRow><TableCell colSpan={5} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.creditTransactions.map(tx => (
                                     <TableRow key={tx.id}>
@@ -310,8 +330,6 @@ export function LedgerClient() {
                                       <TableCell>{tx.party}</TableCell>
                                       <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
                                       <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
-                                      <TableCell className="text-right">{tx.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                      <TableCell className="text-right">{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                     </TableRow>
                                   ))
                                 )}
@@ -321,7 +339,6 @@ export function LedgerClient() {
                                   <TableCell colSpan={3}>Total</TableCell>
                                   <TableCell className="text-right">{ledgerData.totals.creditBags.toLocaleString()}</TableCell>
                                   <TableCell className="text-right">{ledgerData.totals.creditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                  <TableCell colSpan={2}></TableCell>
                                 </TableRow>
                               </TableFooter>
                             </Table>
@@ -355,5 +372,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
-    
