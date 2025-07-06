@@ -294,7 +294,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={control} name="date" render={({ field }) => (
                       <FormItem className="flex flex-col"><FormLabel>Sale Date</FormLabel>
                         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
-                          <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={(date) => date > new Date()}>
+                          <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button></FormControl></PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(d) => { field.onChange(d); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
@@ -321,7 +321,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             value={itemField.value} 
                             onChange={itemField.onChange} 
                             options={availableStock.map(s => {
-                                const fullLabel = `${s.lotNumber} (Avl: ${s.currentBags} bags)`;
+                                const fullLabel = `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
                                 return {
                                     value: s.lotNumber,
                                     label: fullLabel,
