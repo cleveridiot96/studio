@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -15,6 +16,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { salesMigrator } from '@/lib/dataMigrators';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SALES_STORAGE_KEY = 'salesData';
 
@@ -178,53 +180,86 @@ export function ProfitAnalysisClient() {
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Sale</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground">Profit: ₹{(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</p></CardContent></Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1"><CardHeader><CardTitle className="text-lg">Monthly Summary (FY {currentFinancialYearString})</CardTitle></CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[400px]">
-                <Table><TableHeader><TableRow><TableHead>Month</TableHead><TableHead className="text-right">Transactions</TableHead><TableHead className="text-right">Net Profit</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {monthlySummaryForFY.map(m => (
-                      <TableRow key={m.monthKey} onClick={() => handleMonthClick(m.monthKey)} className="cursor-pointer hover:bg-muted">
-                        <TableCell className="font-medium">{m.monthYear}</TableCell>
-                        <TableCell className="text-right">{m.transactionCount}</TableCell>
-                        <TableCell className={`text-right font-semibold ${(m.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{(m.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2"><CardHeader><CardTitle className="text-lg">Transactional Profit (Selected Period)</CardTitle></CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[400px]">
-                <Table size="sm"><TableHeader><TableRow>
-                  <TableHead>Date</TableHead><TableHead>Vakkal</TableHead><TableHead>Customer</TableHead>
-                  <TableHead className="text-right">Value (₹)</TableHead><TableHead className="text-right">Cost (₹)</TableHead>
-                  <TableHead className="text-right">Expenses (₹)</TableHead><TableHead className="text-right">Net Profit (₹)</TableHead>
-                </TableRow></TableHeader>
-                  <TableBody>
-                    {filteredTransactionsForPeriod.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center h-24">No transactions for this period.</TableCell></TableRow> :
-                     filteredTransactionsForPeriod.map(tx => (
-                      <TableRow key={`${tx.saleId}-${tx.lotNumber}`}>
-                        <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                        <TableCell>{tx.lotNumber}</TableCell>
-                        <TableCell className="truncate max-w-[120px]">{tx.customerName}</TableCell>
-                        <TableCell className="text-right">{(tx.goodsValueForProfitCalc || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                        <TableCell className="text-right">{(tx.purchaseCostForSalePortion || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                        <TableCell className="text-right">{(tx.totalExpenses || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                        <TableCell className={`text-right font-bold ${(tx.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{(tx.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                      </TableRow>
-                     ))
-                    }
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+        <Tabs defaultValue="transactional" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="transactional" className="text-base"><BarChart3 className="mr-2 h-5 w-5"/>Transactional Details</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-base"><CalendarDays className="mr-2 h-5 w-5"/>Monthly Summary</TabsTrigger>
+            </TabsList>
+            <TabsContent value="transactional" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Transactional Profit Details (Selected Period)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                         {filteredTransactionsForPeriod.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-10">No transactions for this period.</p>
+                         ) : (
+                            <ScrollArea className="h-[60vh] rounded-md">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="px-2 py-2 text-xs">Date</TableHead>
+                                            <TableHead className="px-2 py-2 text-xs">Vakkal</TableHead>
+                                            <TableHead className="px-2 py-2 text-xs">Customer</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs">Value (₹)</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs">Cost (₹)</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs">Expenses (₹)</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs">Net Profit (₹)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredTransactionsForPeriod.map((tx, index) => (
+                                            <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`}>
+                                                <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                                <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
+                                                <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{(tx.goodsValueForProfitCalc || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{(tx.purchaseCostForSalePortion || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{(tx.totalExpenses || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                                <TableCell className={`text-right font-bold px-2 py-1 text-xs ${(tx.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{(tx.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                         )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="monthly" className="mt-4">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Monthly Summary (FY {currentFinancialYearString})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                         {monthlySummaryForFY.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-10">No monthly data to summarize.</p>
+                         ) : (
+                            <ScrollArea className="h-[60vh] rounded-md">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="px-2 py-2 text-xs">Month</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs">Transactions</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs">Net Profit</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {monthlySummaryForFY.map(m => (
+                                            <TableRow key={m.monthKey} onClick={() => handleMonthClick(m.monthKey)} className="cursor-pointer hover:bg-muted">
+                                                <TableCell className="font-medium px-2 py-1 text-xs">{m.monthYear}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{m.transactionCount}</TableCell>
+                                                <TableCell className={`text-right font-semibold px-2 py-1 text-xs ${(m.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{(m.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                         )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
       </div>
     </TooltipProvider>
   );
