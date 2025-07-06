@@ -138,7 +138,6 @@ export function OutstandingClient() {
   const [sales] = useLocalStorageState<Sale[]>(keys.sales, []);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
@@ -169,7 +168,15 @@ export function OutstandingClient() {
         }
     };
 
-    // Sales: DEBIT broker if present, otherwise customer.
+    // DEBIT(+) means party owes us. CREDIT(-) means we owe party.
+    
+    // Purchases: If agent exists, liability is with agent. Otherwise, supplier.
+    purchases.forEach(p => {
+        const accountablePartyId = p.agentId || p.supplierId;
+        updateBalance(accountablePartyId, -p.totalAmount, p.date);
+    });
+
+    // Sales: If broker exists, receivable is from broker. Otherwise, customer.
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
         updateBalance(accountablePartyId, s.billedAmount, s.date);
@@ -184,33 +191,27 @@ export function OutstandingClient() {
     receipts.forEach(r => {
         updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
     });
-    
-    // Purchases: CREDIT supplier and agent separately.
-    purchases.forEach(p => {
-        const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
-        updateBalance(p.supplierId, -payableToSupplier, p.date);
-        if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
-            updateBalance(p.agentId, -p.brokerageCharges, p.date);
-        }
-    });
 
     // Payments: DEBIT the party who was paid.
     payments.forEach(p => {
         updateBalance(p.partyId, p.amount, p.date);
     });
     
-    // Sale Returns: CREDIT broker/customer.
+    // Purchase Returns: DEBIT against the accountable party.
+    purchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (!originalPurchase) return;
+        const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
+        updateBalance(accountablePartyId, pr.returnAmount, pr.date);
+    });
+
+    // Sale Returns: CREDIT the accountable party for the return amount.
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if(originalSale) {
             const accountablePartyId = originalSale.brokerId || originalSale.customerId;
             updateBalance(accountablePartyId, -sr.returnAmount, sr.date);
         }
-    });
-
-    // Purchase Returns: DEBIT supplier.
-    purchaseReturns.forEach(pr => {
-        updateBalance(pr.originalSupplierId, pr.returnAmount, pr.date);
     });
 
     const today = new Date();
@@ -226,7 +227,7 @@ export function OutstandingClient() {
     });
 
     const receivablesData = outstanding.filter(o => o.amount > 0);
-    // Payables are owed to anyone EXCEPT brokers (whose balance is a net of receivables and commissions)
+    // Payables are owed to anyone EXCEPT brokers (whose balance is a net figure).
     const payablesData = outstanding.filter(o => o.amount < 0 && o.partyType !== 'Broker');
     
     const totalReceivable = receivablesData.reduce((sum, item) => sum + item.amount, 0);
@@ -234,7 +235,7 @@ export function OutstandingClient() {
 
     return { receivables: receivablesData, payables: payablesData, totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
+  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
   
   if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 

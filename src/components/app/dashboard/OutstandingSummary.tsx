@@ -36,7 +36,6 @@ export const OutstandingSummary = () => {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
 
   const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
   const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
@@ -63,7 +62,13 @@ export const OutstandingSummary = () => {
 
     // DEBIT(+) means party owes us. CREDIT(-) means we owe party.
     
-    // Sales: DEBIT broker if present, otherwise customer.
+    // Purchases: If agent exists, liability is with agent. Otherwise, supplier.
+    purchases.forEach(p => {
+        const accountablePartyId = p.agentId || p.supplierId;
+        updateBalance(accountablePartyId, -p.totalAmount);
+    });
+
+    // Sales: If broker exists, receivable is from broker. Otherwise, customer.
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
         updateBalance(accountablePartyId, s.billedAmount);
@@ -79,18 +84,18 @@ export const OutstandingSummary = () => {
         updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
     });
     
-    // Purchases: CREDIT supplier and agent separately.
-    purchases.forEach(p => {
-        const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
-        updateBalance(p.supplierId, -payableToSupplier);
-        if (p.agentId && p.brokerageCharges && p.brokerageCharges > 0) {
-            updateBalance(p.agentId, -p.brokerageCharges);
-        }
-    });
-
     // Payments: DEBIT the party who was paid.
     payments.forEach(p => {
         updateBalance(p.partyId, p.amount);
+    });
+
+    // Purchase Returns: DEBIT the accountable party for the return amount.
+    purchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if(originalPurchase) {
+            const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
+            updateBalance(accountablePartyId, pr.returnAmount);
+        }
     });
 
     // Sale Returns: CREDIT the accountable party for the return amount.
@@ -100,11 +105,6 @@ export const OutstandingSummary = () => {
             const accountablePartyId = originalSale.brokerId || originalSale.customerId;
             updateBalance(accountablePartyId, -sr.returnAmount);
         }
-    });
-
-    // Purchase Returns: DEBIT the supplier for the return amount.
-    purchaseReturns.forEach(pr => {
-        updateBalance(pr.originalSupplierId, pr.returnAmount);
     });
 
     let totalReceivable = 0;
@@ -123,7 +123,7 @@ export const OutstandingSummary = () => {
 
     return { totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
+  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 

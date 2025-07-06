@@ -128,53 +128,38 @@ export function AccountsLedgerClient() {
     // --- DEBIT(+): Amount the party owes us (or we paid them) ---
     // --- CREDIT(-): Amount we owe the party (or they paid us) ---
 
-    // Process Purchases
+    // Process Purchases: If agent exists, liability is with agent. Otherwise, supplier.
     purchases.forEach(p => {
-        // If party is the SUPPLIER, we owe them for goods (less brokerage)
-        if (p.supplierId === partyId) {
-            const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+        const accountablePartyId = p.agentId || p.supplierId;
+        if (accountablePartyId === partyId) {
             transactions.push({
                 id: `pur-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase: ${p.lotNumber}`,
-                debit: 0, credit: payableToSupplier
-            });
-        }
-        // If party is the AGENT, we owe them for brokerage
-        if (p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0) {
-            transactions.push({
-                id: `brok-${p.id}`, date: p.date, type: 'Brokerage',
-                particulars: `Brokerage on ${p.lotNumber} from ${p.supplierName}`,
-                debit: 0, credit: p.brokerageCharges
+                particulars: `Purchase: ${p.lotNumber} from ${p.supplierName}`,
+                debit: 0, credit: p.totalAmount // Credit the full purchase value
             });
         }
     });
 
-    // Process Sales
+    // Process Sales: If broker exists, receivable is from broker. Otherwise, customer.
     sales.forEach(s => {
-        // If party is the BROKER, they owe us for the sale
-        if (s.brokerId === partyId) {
+        const accountablePartyId = s.brokerId || s.customerId;
+        if (accountablePartyId === partyId) {
             transactions.push({
                 id: `sale-${s.id}`, date: s.date, type: 'Sale',
                 particulars: `Sale to ${s.customerName} (${s.lotNumber})`,
                 debit: s.billedAmount, credit: 0
             });
-            // ...but we owe them commission
-            const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-            if (totalBrokerage > 0) {
-                transactions.push({
-                    id: `brok-${s.id}`, date: s.date, type: 'Brokerage',
-                    particulars: `Brokerage on ${s.lotNumber}`,
-                    debit: 0, credit: totalBrokerage
-                });
+            // Brokerage is a credit to the broker (we owe them)
+            if (s.brokerId === partyId) {
+                const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+                if (totalBrokerage > 0) {
+                    transactions.push({
+                        id: `brok-${s.id}`, date: s.date, type: 'Brokerage',
+                        particulars: `Commission on ${s.lotNumber}`,
+                        debit: 0, credit: totalBrokerage
+                    });
+                }
             }
-        }
-        // If party is the CUSTOMER and there's NO broker, they owe us
-        if (s.customerId === partyId && !s.brokerId) {
-            transactions.push({
-                id: `sale-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale: ${s.billNumber || s.lotNumber}`,
-                debit: s.billedAmount, credit: 0
-            });
         }
     });
 
@@ -203,16 +188,21 @@ export function AccountsLedgerClient() {
         }
     });
 
-    // Process Purchase Returns
-    purchaseReturns.filter(pr => pr.originalSupplierId === partyId).forEach(pr => {
-        transactions.push({
-            id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return',
-            particulars: `Return of ${pr.originalLotNumber}`,
-            debit: pr.returnAmount, credit: 0
-        });
+    // Process Purchase Returns: This is a DEBIT against the accountable party.
+    purchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (!originalPurchase) return;
+        const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
+        if (accountablePartyId === partyId) {
+            transactions.push({
+                id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return',
+                particulars: `Return of ${pr.originalLotNumber}`,
+                debit: pr.returnAmount, credit: 0
+            });
+        }
     });
 
-    // Process Sale Returns
+    // Process Sale Returns: This is a CREDIT against the accountable party.
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if (!originalSale) return;
@@ -445,5 +435,3 @@ export function AccountsLedgerClient() {
     </div>
   );
 }
-
-    
