@@ -25,8 +25,6 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { format as formatDateFn, parseISO } from 'date-fns';
@@ -254,6 +252,7 @@ export function SalesClient() {
   const closeAddSaleReturnForm = React.useCallback(() => { setIsAddSaleReturnFormOpen(false); setSaleReturnToEdit(null); }, []);
 
   const triggerDownloadSalePdf = React.useCallback((sale: Sale) => setSaleForPdf(sale), []);
+  
   React.useEffect(() => {
     if (saleForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
@@ -264,6 +263,9 @@ export function SalesClient() {
           return;
         }
         try {
+          const { default: jsPDF } = await import('jspdf');
+          const { default: html2canvas } = await import('html2canvas');
+
           const canvas = await html2canvas(elementToCapture, { scale: 1.5, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
           const imgData = canvas.toDataURL('image/jpeg', 0.85);
           const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5', compress: true });
