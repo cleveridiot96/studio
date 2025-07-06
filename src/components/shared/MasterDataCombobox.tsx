@@ -96,7 +96,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           id={triggerId}

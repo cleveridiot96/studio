@@ -146,7 +146,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
   if (!isOpen) return null;
 
   return (
-    <Dialog modal={false} open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initialData ? `Edit ${initialData.type}` : `Add New Master Item`}</DialogTitle>
@@ -310,4 +310,4 @@ export const MasterForm: React.FC<MasterFormProps> = ({
       </DialogContent>
     </Dialog>
   );
-}
+};

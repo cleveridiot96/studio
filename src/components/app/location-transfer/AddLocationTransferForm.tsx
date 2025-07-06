@@ -127,7 +127,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const rate = watchedTransportRate || 0;
     if (totalGrossWeight > 0 && rate > 0) {
         setValue('transportCharges', parseFloat((totalGrossWeight * rate).toFixed(2)), { shouldValidate: true });
-    } else {
+    } else if (!transportChargesManuallySet) { // Only clear if not manually set
         setValue('transportCharges', undefined);
     }
   }, [watchedItems, watchedTransportRate, setValue, transportChargesManuallySet]);
@@ -201,7 +201,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
+      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
         <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{transferToEdit ? "Edit Location Transfer" : "New Location Transfer"}</DialogTitle>
