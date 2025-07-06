@@ -176,6 +176,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                               field.onChange(date);
                               setIsDatePickerOpen(false);
                             }}
+                            disabled={(date) => date > new Date()}
                             initialFocus
                           />
                         </PopoverContent>

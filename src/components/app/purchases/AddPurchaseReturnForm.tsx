@@ -179,6 +179,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
                           field.onChange(date);
                           setIsDatePickerOpen(false);
                         }}
+                        disabled={(date) => date > new Date()}
                         initialFocus
                       />
                     </PopoverContent>

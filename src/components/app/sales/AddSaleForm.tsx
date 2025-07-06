@@ -399,6 +399,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                 field.onChange(date);
                                 setIsDatePickerOpen(false);
                               }}
+                              disabled={(date) => date > new Date()}
                               initialFocus
                             />
                           </PopoverContent>

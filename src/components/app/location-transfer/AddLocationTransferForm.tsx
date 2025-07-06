@@ -233,6 +233,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                 field.onChange(date);
                                 setIsDatePickerOpen(false);
                               }}
+                              disabled={(date) => date > new Date()}
                               initialFocus
                             />
                           </PopoverContent>

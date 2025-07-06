@@ -174,6 +174,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
                           field.onChange(date);
                           setIsDatePickerOpen(false);
                         }}
+                        disabled={(date) => date > new Date()}
                         initialFocus
                       />
                     </PopoverContent>

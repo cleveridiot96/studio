@@ -183,6 +183,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                               field.onChange(date);
                               setIsDatePickerOpen(false);
                             }}
+                            disabled={(date) => date > new Date()}
                             initialFocus
                           />
                         </PopoverContent>
