@@ -9,10 +9,12 @@ import { Check, Plus, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Option {
   value: string;
   label: string;
+  tooltipContent?: React.ReactNode;
 }
 
 interface MasterDataComboboxProps {
@@ -90,11 +92,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
 
   const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent the popover from opening when clearing
+    e.stopPropagation();
     onChange(undefined);
     setOpen(false);
   };
-
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -129,51 +130,61 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             onValueChange={setSearch}
             autoFocus
           />
-          <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
-            {filteredOptions.length === 0 && search.length > 0 ? (
-              <CommandEmpty>
-                {notFoundMessage}
-                {onAddNew && (
-                  <div
-                    onClick={handleAddNew}
-                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                    role="button"
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                  </div>
-                )}
-              </CommandEmpty>
-            ) : (
-              <>
-                {filteredOptions.map((option) => (
-                   <div
-                      key={option.value}
-                      onClick={() => handleSelect(option.value)}
-                      className={cn(
-                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                        value === option.value && "font-semibold"
-                      )}
-                      role="option"
-                      aria-selected={value === option.value}
-                    >
-                      <Check
-                          className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
-                      />
-                      <span className="flex-grow truncate">{option.label}</span>
-                  </div>
-                ))}
-                {onAddNew && (
-                  <div
+          <TooltipProvider>
+            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
+              {filteredOptions.length === 0 && search.length > 0 ? (
+                <CommandEmpty>
+                  {notFoundMessage}
+                  {onAddNew && (
+                    <div
                       onClick={handleAddNew}
-                      className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground mt-1 border-t"
+                      className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
                       role="button"
-                  >
-                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                  </div>
-                )}
-              </>
-            )}
-          </CommandList>
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                    </div>
+                  )}
+                </CommandEmpty>
+              ) : (
+                <>
+                  {filteredOptions.map((option) => (
+                    <Tooltip key={option.value} delayDuration={300}>
+                      <TooltipTrigger asChild>
+                        <div
+                          onClick={() => handleSelect(option.value)}
+                          className={cn(
+                            "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                            value === option.value && "font-semibold"
+                          )}
+                          role="option"
+                          aria-selected={value === option.value}
+                        >
+                          <Check
+                              className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
+                          />
+                          <span className="flex-grow truncate">{option.label}</span>
+                        </div>
+                      </TooltipTrigger>
+                      {option.tooltipContent && (
+                        <TooltipContent side="right" align="start">
+                          {option.tooltipContent}
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  ))}
+                  {onAddNew && (
+                    <div
+                        onClick={handleAddNew}
+                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground mt-1 border-t"
+                        role="button"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                    </div>
+                  )}
+                </>
+              )}
+            </CommandList>
+          </TooltipProvider>
         </Command>
       </PopoverContent>
     </Popover>

@@ -31,7 +31,7 @@ import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema';
-import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter } from '@/lib/types';
+import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter, Purchase, PurchaseReturn, LocationTransfer } from '@/lib/types';
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -317,13 +317,20 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <MasterDataCombobox 
                             value={itemField.value} 
                             onChange={itemField.onChange} 
-                            options={availableStock.map(s => ({ value: s.lotNumber, label: `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`}))} 
+                            options={availableStock.map(s => {
+                                const fullLabel = `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
+                                return {
+                                    value: s.lotNumber,
+                                    label: fullLabel,
+                                    tooltipContent: fullLabel
+                                };
+                            })} 
                             placeholder="Select Lot" />
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value === 0 ? '' : itemField.value}
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
                                 itemField.onChange(bagsVal);
@@ -336,9 +343,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                       <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
                   ))}
@@ -349,7 +356,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   <h3 className="text-lg font-medium mb-3 text-primary">Cut Bill (CB)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                     <FormField control={control} name="billNumber" render={({ field }) => (
-                      <FormItem><FormLabel>Bill Number (Optional)</FormLabel><FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormItem><FormLabel>Bill Number (Optional)</FormLabel><FormControl><Input placeholder="e.g., INV-001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                     <div className="flex items-center space-x-2 pt-6">
                       <FormField control={control} name="isCB" render={({ field }) => (
                         <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} id="isCB-checkbox" /></FormControl><FormLabel htmlFor="isCB-checkbox" className="!mt-0">CB (Cut Bill)</FormLabel></FormItem>)} />
@@ -386,7 +393,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormField control={control} name="brokerageValue" render={({ field }) => (
                             <FormItem><FormLabel>Value</FormLabel>
                               <div className="relative">
-                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value === 0 ? '' : field.value} onChange={e => { field.onChange(parseFloat(e.target.value) || 0); }}
+                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || 0); }}
                                   className={brokerageType === 'Percentage' ? "pr-8" : ""}
                                 /></FormControl>
                                 {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
@@ -402,7 +409,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                 </div>
                 
                 <FormField control={control} name="notes" render={({ field }) => (
-                    <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                     <h3 className="text-lg font-semibold text-primary mb-2">Transaction Summary</h3>
