@@ -126,24 +126,22 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const labourCharges = watch("labourCharges") || 0;
   const miscExpenses = watch("miscExpenses") || 0;
 
-  const { totalGoodsValue, totalNetWeight, totalQuantity } = React.useMemo(() => {
-    return (watchedItems || []).reduce(
-      (acc, item) => {
-        const itemQuantity = Number(item.quantity) || 0;
-        const itemNetWeight = Number(item.netWeight) || 0;
-        const itemRate = Number(item.rate) || 0;
+  // --- Live Calculations ---
+  // These are now calculated on every render to ensure they are always live.
+  const { totalGoodsValue, totalNetWeight, totalQuantity } = (watchedItems || []).reduce(
+    (acc, item) => {
+      const itemQuantity = Number(item.quantity) || 0;
+      const itemNetWeight = Number(item.netWeight) || 0;
+      const itemRate = Number(item.rate) || 0;
+      acc.totalGoodsValue += itemNetWeight * itemRate;
+      acc.totalNetWeight += itemNetWeight;
+      acc.totalQuantity += itemQuantity;
+      return acc;
+    },
+    { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
+  );
 
-        acc.totalGoodsValue += itemNetWeight * itemRate;
-        acc.totalNetWeight += itemNetWeight;
-        acc.totalQuantity += itemQuantity;
-        
-        return acc;
-      },
-      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
-    );
-  }, [watchedItems]);
-  
-  const calculatedBrokerageCharges = React.useMemo(() => {
+  const calculatedBrokerageCharges = (() => {
     if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
     if (brokerageType === "Percentage") {
       return (totalGoodsValue * (brokerageValue / 100));
@@ -151,11 +149,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       return brokerageValue;
     }
     return 0;
-  }, [watchedAgentId, brokerageType, brokerageValue, totalGoodsValue]);
+  })();
 
-  const totalExpenses = React.useMemo(() => transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses, [transportCharges, packingCharges, labourCharges, calculatedBrokerageCharges, miscExpenses]);
-  const totalAmount = React.useMemo(() => totalGoodsValue + totalExpenses, [totalGoodsValue, totalExpenses]);
-  const effectiveRate = React.useMemo(() => (totalNetWeight > 0 ? totalAmount / totalNetWeight : 0), [totalAmount, totalNetWeight]);
+  const totalExpenses = transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses;
+  const totalAmount = totalGoodsValue + totalExpenses;
+  const effectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
+  // --- End Live Calculations ---
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
@@ -280,10 +279,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                 const bagsVal = parseFloat(e.target.value) || undefined;
                                 itemField.onChange(bagsVal);
                                 const currentNetWeight = watch(`items.${index}.netWeight`);
-                                // Only auto-calculate if weight is not manually set or is zero
-                                if (currentNetWeight === undefined || currentNetWeight === 0) {
-                                  setValue(`items.${index}.netWeight`, (bagsVal || 0) * 50, { shouldValidate: true });
-                                }
+                                // Auto-calculate weight based on bags, assuming 50kg/bag
+                                setValue(`items.${index}.netWeight`, (bagsVal || 0) * 50, { shouldValidate: true });
                             }} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
@@ -307,7 +304,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
-                    {totalGoodsValue > 0 && (
+                    {(totalGoodsValue > 0 || totalNetWeight > 0) && (
                       <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
                         <div className="flex justify-between font-semibold">
                             <span>Total Goods Value:</span>
@@ -377,6 +374,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               <FormMessage />
                             </FormItem>
                           )} />
+                          {calculatedBrokerageCharges > 0 && (
+                            <div className="text-sm text-muted-foreground pt-7">
+                                = ₹{calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </div>
+                           )}
                         </>
                       )}
                   </div>
