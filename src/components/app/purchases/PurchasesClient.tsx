@@ -29,6 +29,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 const calculatePurchaseEntry = (p: Omit<Purchase, 'totalAmount' | 'effectiveRate'>): Purchase => {
   const goodsValue = (p.netWeight || 0) * (p.rate || 0);
@@ -76,6 +77,7 @@ export function PurchasesClient() {
   const [purchaseForPdf, setPurchaseForPdf] = React.useState<Purchase | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
   const [isPurchasesClientHydrated, setIsPurchasesClientHydrated] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('purchases');
 
   React.useEffect(() => {
     setIsPurchasesClientHydrated(true);
@@ -176,6 +178,16 @@ export function PurchasesClient() {
     setPurchaseForPdf(purchase);
   }, []);
 
+  const addButtonDynamicClass = React.useMemo(() => {
+    if (activeTab === 'purchases') {
+        return 'bg-blue-600 hover:bg-blue-700 text-white';
+    }
+    if (activeTab === 'purchaseReturns') {
+        return 'bg-orange-600 hover:bg-orange-700 text-white';
+    }
+    return 'bg-primary hover:bg-primary/90'; // Fallback
+  }, [activeTab]);
+
   React.useEffect(() => {
     if (purchaseForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
@@ -211,7 +223,7 @@ export function PurchasesClient() {
         <h1 className="text-3xl font-bold text-foreground">Purchases & Returns (FY {financialYear})</h1>
       </div>
 
-      <Tabs defaultValue="purchases" className="w-full">
+      <Tabs defaultValue="purchases" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print bg-transparent p-0 gap-2">
           <TabsTrigger value="purchases" className="py-2.5 text-base text-white bg-blue-600 hover:bg-blue-700 data-[state=active]:bg-blue-800 data-[state=active]:text-white rounded-md transition-all">
             <ListCollapse className="mr-2 h-5 w-5" />Purchases
@@ -223,7 +235,7 @@ export function PurchasesClient() {
 
         <TabsContent value="purchases">
           <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddPurchaseForm} size="lg" className="text-base py-3 px-6 shadow-md">
+            <Button onClick={openAddPurchaseForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-5 w-5" /> Add Purchase
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -233,7 +245,7 @@ export function PurchasesClient() {
 
         <TabsContent value="purchaseReturns">
           <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddPurchaseReturnForm} size="lg" className="text-base py-3 px-6 shadow-md">
+            <Button onClick={openAddPurchaseReturnForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-5 w-5" /> Add Purchase Return
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>

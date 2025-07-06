@@ -28,6 +28,7 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { format as formatDateFn, parseISO } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 
 const SALES_STORAGE_KEY = 'salesData';
@@ -69,6 +70,7 @@ export function SalesClient() {
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage] = React.useState(10);
+  const [activeTab, setActiveTab] = React.useState('sales');
 
   const memoizedEmptyArray = React.useMemo(() => [], []);
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
@@ -253,6 +255,16 @@ export function SalesClient() {
 
   const triggerDownloadSalePdf = React.useCallback((sale: Sale) => setSaleForPdf(sale), []);
   
+  const addButtonDynamicClass = React.useMemo(() => {
+    if (activeTab === 'sales') {
+        return 'bg-green-600 hover:bg-green-700 text-white';
+    }
+    if (activeTab === 'saleReturns') {
+        return 'bg-red-600 hover:bg-red-700 text-white';
+    }
+    return 'bg-primary hover:bg-primary/90'; // Fallback
+  }, [activeTab]);
+
   React.useEffect(() => {
     if (saleForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
@@ -310,7 +322,7 @@ export function SalesClient() {
         <h1 className="text-3xl font-bold text-foreground">Sales & Returns (FY {financialYear})</h1>
       </div>
       
-      <Tabs defaultValue="sales" className="w-full">
+      <Tabs defaultValue="sales" className="w-full" onValueChange={setActiveTab}>
         <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print bg-transparent p-0 gap-2">
           <TabsTrigger value="sales" className="py-2.5 text-base text-white bg-green-600 hover:bg-green-700 data-[state=active]:bg-green-800 data-[state=active]:text-white rounded-md transition-all">
             <ListCollapse className="mr-2 h-5 w-5" />Sales
@@ -322,7 +334,7 @@ export function SalesClient() {
 
         <TabsContent value="sales">
           <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddSaleForm} size="lg" className="text-base py-3 px-6 shadow-md">
+            <Button onClick={openAddSaleForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -332,7 +344,7 @@ export function SalesClient() {
 
         <TabsContent value="saleReturns">
            <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddSaleReturnForm} size="lg" className="text-base py-3 px-6 shadow-md">
+            <Button onClick={openAddSaleReturnForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-5 w-5" /> Add Sale Return
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
