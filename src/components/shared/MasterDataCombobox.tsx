@@ -7,20 +7,21 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
 
+// Note: Removed tooltips from individual items to ensure reliable keyboard/mouse selection.
+// Complex nested components within cmdk items can interfere with event handling.
 
 interface Option {
   value: string;
   label: string;
-  tooltipContent?: React.ReactNode;
+  tooltipContent?: React.ReactNode; // Kept in interface for future compatibility if a non-interfering solution is found
 }
 
 interface MasterDataComboboxProps {
-  value: string | undefined; // Controlled component: value from parent
-  onChange: (value: string | undefined) => void; // Controlled component: onChange handler from parent
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -28,14 +29,13 @@ interface MasterDataComboboxProps {
   addNewLabel?: string;
   onAddNew?: () => void;
   disabled?: boolean;
-  name?: string; // Optional: for external refs or testing, but not for RHF control here
   className?: string;
   triggerId?: string;
 }
 
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
-  value, // Use prop
-  onChange, // Use prop
+  value,
+  onChange,
   options,
   placeholder = "Select an option",
   searchPlaceholder = "Search...",
@@ -45,7 +45,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   disabled,
   className,
   triggerId,
-  // name prop is kept if needed for other purposes, but not for useController
 }) => {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -82,7 +81,12 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (filteredOptions.length === 0 && search.length > 0 && onAddNew) {
+      if (filteredOptions.length > 0) {
+        // Let the default cmdk behavior handle Enter on a selected item
+        return;
+      }
+      // If no options, but we can add new, trigger add new
+      if (search.length > 0 && onAddNew) {
         e.preventDefault();
         onAddNew();
         setOpen(false);
@@ -117,80 +121,63 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             onValueChange={setSearch}
             autoFocus
             onKeyDown={handleKeyDown}
-            />
-          <TooltipProvider>
-            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
-              {filteredOptions.length === 0 && search.length > 0 ? (
-                <CommandEmpty>
-                  {notFoundMessage}
-                  {onAddNew && (
-                    <div
-                      onClick={() => {
+          />
+          <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
+            {filteredOptions.length === 0 && search.length > 0 ? (
+              <CommandEmpty>
+                {notFoundMessage}
+                {onAddNew && (
+                  <CommandItem
+                    onSelect={() => {
+                      onAddNew?.();
+                      setOpen(false);
+                      setSearch("");
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                  </CommandItem>
+                )}
+              </CommandEmpty>
+            ) : (
+              <>
+                {filteredOptions.map((option) => (
+                   <CommandItem
+                      key={option.value}
+                      value={option.label} // Use label for cmdk internal matching
+                      onSelect={() => {
+                          onChange(option.value);
+                          setOpen(false);
+                          setSearch("");
+                      }}
+                      className={cn(
+                        "cursor-pointer",
+                        value === option.value && "font-semibold"
+                      )}
+                    >
+                      <Check
+                          className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
+                      />
+                      <span className="flex-grow truncate">{option.label}</span>
+                  </CommandItem>
+                ))}
+                {onAddNew && (
+                  <CommandItem
+                      onSelect={() => {
                         onAddNew?.();
                         setOpen(false);
                         setSearch("");
                       }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm"
-                      role="button"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </div>
-                  )}
-                </CommandEmpty>
-              ) : (
-                <>
-                  {filteredOptions.map((option) => (
-                     <CommandItem
-                        key={option.value}
-                        value={option.label}
-                        onSelect={() => {
-                            onChange(option.value);
-                            setOpen(false);
-                            setSearch("");
-                        }}
-                        className={cn(
-                          "p-0 relative cursor-pointer",
-                          value === option.value && "font-semibold"
-                        )}
-                      >
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className="flex items-center w-full px-4 py-2">
-                                <Check
-                                    className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
-                                />
-                                <span className="flex-grow truncate">{option.label}</span>
-                            </div>
-                        </TooltipTrigger>
-                        {option.tooltipContent && (
-                          <TooltipContent side="right" align="start" className="z-[99999]">
-                            {option.tooltipContent}
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </CommandItem>
-                  ))}
-                  {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
-                    <div
-                       onClick={() => {
-                        onAddNew?.();
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t"
-                      role="button"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </div>
-                  )}
-                </>
-              )}
-            </CommandList>
-          </TooltipProvider>
+                      className="cursor-pointer mt-1 border-t"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                  </CommandItem>
+                )}
+              </>
+            )}
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
   );
 };
-
-    
