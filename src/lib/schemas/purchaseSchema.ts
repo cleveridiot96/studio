@@ -33,8 +33,17 @@ export const purchaseSchema = (
   transportCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
   packingCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
   labourCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
-  brokerageCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
+  brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
+  brokerageValue: z.coerce.number().optional(),
   miscExpenses: z.coerce.number().nonnegative("Expenses must be non-negative").optional(),
+}).refine(data => {
+    if (data.agentId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0 )) {
+      return false;
+    }
+    return true;
+  }, {
+    message: "Brokerage type and a valid value (non-negative) are required if an agent is selected.",
+    path: ["brokerageValue"],
 });
 
 export type PurchaseFormValues = z.infer<ReturnType<typeof purchaseSchema>>;

@@ -45,6 +45,8 @@ export interface Purchase {
   transportCharges?: number;
   packingCharges?: number;
   labourCharges?: number;
+  brokerageType?: 'Fixed' | 'Percentage';
+  brokerageValue?: number;
   brokerageCharges?: number;
   miscExpenses?: number;
   // Calculated Fields

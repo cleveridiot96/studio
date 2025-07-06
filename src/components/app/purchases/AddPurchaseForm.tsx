@@ -25,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Info, RotateCcw } from "lucide-react";
+import { CalendarIcon, Info, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
@@ -33,6 +33,7 @@ import type { MasterItem, Purchase, MasterItemType } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AddPurchaseFormProps {
   isOpen: boolean;
@@ -67,7 +68,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
   const [transportChargesManuallySet, setTransportChargesManuallySet] = React.useState(false);
-  const [brokerageChargesManuallySet, setBrokerageChargesManuallySet] = React.useState(false);
+  const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(false);
 
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
@@ -86,7 +87,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         transportCharges: purchaseToEdit.transportCharges,
         packingCharges: purchaseToEdit.packingCharges,
         labourCharges: purchaseToEdit.labourCharges,
-        brokerageCharges: purchaseToEdit.brokerageCharges,
+        brokerageType: purchaseToEdit.brokerageType,
+        brokerageValue: purchaseToEdit.brokerageValue,
         miscExpenses: purchaseToEdit.miscExpenses,
       };
     }
@@ -104,7 +106,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       transportCharges: undefined,
       packingCharges: undefined,
       labourCharges: undefined,
-      brokerageCharges: undefined,
+      brokerageType: undefined,
+      brokerageValue: undefined,
       miscExpenses: undefined,
     };
   }, [purchaseToEdit]);
@@ -121,12 +124,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       setQuantityManuallySet(!!purchaseToEdit?.quantity); 
       setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
       setTransportChargesManuallySet(!!purchaseToEdit?.transportCharges);
-      setBrokerageChargesManuallySet(!!purchaseToEdit?.brokerageCharges);
+      setBrokerageValueManuallySet(!!purchaseToEdit?.brokerageValue);
     } else {
       setQuantityManuallySet(false);
       setNetWeightManuallySet(false);
       setTransportChargesManuallySet(false);
-      setBrokerageChargesManuallySet(false);
+      setBrokerageValueManuallySet(false);
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
@@ -159,23 +162,24 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const watchedAgentId = watch("agentId");
   const watchedNetWeight = watch("netWeight");
   const watchedRate = watch("rate");
+  const brokerageType = watch("brokerageType");
+  const brokerageValue = watch("brokerageValue");
 
   React.useEffect(() => {
-    if (watchedAgentId && !brokerageChargesManuallySet && agents) {
+    if (watchedAgentId && !brokerageValueManuallySet && agents) {
       const agent = agents.find(a => a.id === watchedAgentId);
       if (agent && typeof agent.commission === 'number' && agent.commission > 0) {
-        const currentGoodsValue = (watchedNetWeight || 0) * (watchedRate || 0);
-        if (currentGoodsValue > 0) {
-          const calculatedBrokerage = currentGoodsValue * (agent.commission / 100);
-          setValue("brokerageCharges", parseFloat(calculatedBrokerage.toFixed(2)), { shouldValidate: true });
-        } else {
-          setValue("brokerageCharges", undefined, { shouldValidate: true });
-        }
-      } else if (!brokerageChargesManuallySet) {
-        setValue("brokerageCharges", undefined, { shouldValidate: true });
+          setValue("brokerageType", "Percentage", { shouldValidate: true });
+          setValue("brokerageValue", agent.commission, { shouldValidate: true });
+      } else if (!brokerageValueManuallySet) {
+        setValue("brokerageType", undefined);
+        setValue("brokerageValue", undefined);
       }
+    } else if (!watchedAgentId && !brokerageValueManuallySet) {
+        setValue("brokerageType", undefined);
+        setValue("brokerageValue", undefined);
     }
-  }, [watchedAgentId, watchedNetWeight, watchedRate, brokerageChargesManuallySet, setValue, agents]);
+  }, [watchedAgentId, setValue, agents, brokerageValueManuallySet]);
 
 
   const netWeight = watch("netWeight");
@@ -183,11 +187,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const transportCharges = watch("transportCharges") || 0;
   const packingCharges = watch("packingCharges") || 0;
   const labourCharges = watch("labourCharges") || 0;
-  const brokerageCharges = watch("brokerageCharges") || 0;
   const miscExpenses = watch("miscExpenses") || 0;
 
   const goodsValue = React.useMemo(() => (netWeight || 0) * (rate || 0), [netWeight, rate]);
-  const totalExpenses = React.useMemo(() => transportCharges + packingCharges + labourCharges + brokerageCharges + miscExpenses, [transportCharges, packingCharges, labourCharges, brokerageCharges, miscExpenses]);
+  
+  const calculatedBrokerageCharges = React.useMemo(() => {
+    if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
+    if (brokerageType === "Percentage") {
+      return (goodsValue * (brokerageValue / 100));
+    } else if (brokerageType === "Fixed") {
+      return brokerageValue;
+    }
+    return 0;
+  }, [watchedAgentId, brokerageType, brokerageValue, goodsValue]);
+
+  const totalExpenses = React.useMemo(() => transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses, [transportCharges, packingCharges, labourCharges, calculatedBrokerageCharges, miscExpenses]);
   const totalAmount = React.useMemo(() => goodsValue + totalExpenses, [goodsValue, totalExpenses]);
   const effectiveRate = React.useMemo(() => (netWeight > 0 ? totalAmount / netWeight : 0), [totalAmount, netWeight]);
 
@@ -213,7 +227,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     setIsSubmitting(true);
     
     const calculatedGoodsValue = (values.netWeight || 0) * (values.rate || 0);
-    const calculatedTotalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + (values.brokerageCharges || 0) + (values.miscExpenses || 0);
+    const finalBrokerageCharges = calculatedBrokerageCharges;
+    const calculatedTotalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + finalBrokerageCharges + (values.miscExpenses || 0);
     const calculatedTotalAmount = calculatedGoodsValue + calculatedTotalExpenses;
     const calculatedEffectiveRate = values.netWeight > 0 ? calculatedTotalAmount / values.netWeight : 0;
     const transporter = transporters.find(t => t.id === values.transporterId);
@@ -237,7 +252,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
-      brokerageCharges: values.brokerageCharges,
+      brokerageType: values.brokerageType,
+      brokerageValue: values.brokerageValue,
+      brokerageCharges: finalBrokerageCharges,
       miscExpenses: values.miscExpenses,
       totalAmount: calculatedTotalAmount,
       effectiveRate: calculatedEffectiveRate,
@@ -375,42 +392,38 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
                      <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Packing Cost" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Labour Cost" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={control} name="brokerageCharges" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Brokerage (₹)</FormLabel>
-                           <div className="relative">
-                            <FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} 
-                              className={cn(brokerageChargesManuallySet && "pr-8")}
-                              onChange={e => {
-                                  field.onChange(parseFloat(e.target.value) || undefined);
-                                  setBrokerageChargesManuallySet(true);
-                              }} 
-                              onFocus={() => setBrokerageChargesManuallySet(true)} /></FormControl>
-                              {brokerageChargesManuallySet && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    title="Reset to automatic calculation"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                                    onClick={() => {
-                                        setBrokerageChargesManuallySet(false);
-                                        const agent = agents.find(a => a.id === watchedAgentId);
-                                        if (agent && typeof agent.commission === 'number' && agent.commission > 0) {
-                                            const currentGoodsValue = (watchedNetWeight || 0) * (watchedRate || 0);
-                                            const calculatedBrokerage = currentGoodsValue * (agent.commission / 100);
-                                            setValue("brokerageCharges", parseFloat(calculatedBrokerage.toFixed(2)), { shouldValidate: true });
-                                        } else {
-                                            setValue("brokerageCharges", undefined, { shouldValidate: true });
-                                        }
-                                    }}
-                                >
-                                    <RotateCcw className="h-4 w-4" />
-                                </Button>
-                            )}
-                          </div>
-                          <FormMessage />
-                        </FormItem>)} />
+                     <div className="col-span-2 grid grid-cols-2 gap-2 items-end">
+                      {watchedAgentId && (
+                        <>
+                          <FormField control={control} name="brokerageType" render={({ field }) => (
+                            <FormItem><FormLabel>Brokerage Type</FormLabel>
+                              <Select onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false); }} value={field.value} disabled={!watchedAgentId}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Fixed">Fixed (₹)</SelectItem>
+                                  <SelectItem value="Percentage">%</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={control} name="brokerageValue" render={({ field }) => (
+                            <FormItem><FormLabel>Value</FormLabel>
+                              <div className="relative">
+                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
+                                  onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setBrokerageValueManuallySet(true); }}
+                                  onFocusCapture={() => setBrokerageValueManuallySet(true)}
+                                  disabled={!watchedAgentId || !brokerageType}
+                                  className={brokerageType === 'Percentage' ? "pr-8" : ""}
+                                /></FormControl>
+                                {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </>
+                      )}
+                     </div>
                      <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Misc." {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                    </div>
                 </div>
