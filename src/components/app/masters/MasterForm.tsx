@@ -39,7 +39,7 @@ const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolea
 ];
 
 const masterItemSchema = z.object({
-  name: z.string().min(1, "Name is required."),
+  name: z.string().trim().min(1, "Name is required."),
   type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse", "Expense"]),
   commission: z.coerce.number().optional(),
   openingBalance: z.coerce.number().optional(),

@@ -102,8 +102,28 @@ export function SalesClient() {
     if (isAppHydrating || !isSalesClientHydrated) return [];
 
     const stockMap = new Map<string, AggregatedStockItem>();
+    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
+    
+    // Create a mutable copy of sales and saleReturns to adjust for editing
+    const tempSales = [...sales];
+    const tempSaleReturns = [...saleReturns];
 
+    if (saleToEdit) {
+      // When editing a sale, remove it from tempSales to correctly calculate available stock
+      const index = tempSales.findIndex(s => s.id === saleToEdit.id);
+      if (index > -1) {
+        tempSales.splice(index, 1);
+      }
+    }
+    
+    // All transactions within the current financial year
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
+    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    const fySales = tempSales.filter(s => isDateInFinancialYear(s.date, financialYear));
+    const fySaleReturns = tempSaleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
+
+    // 1. Initial stock from purchases
     fyPurchases.forEach(p => {
         const key = `${p.lotNumber}-${p.locationId}`;
         stockMap.set(key, {
@@ -114,7 +134,7 @@ export function SalesClient() {
         });
     });
 
-    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
+    // 2. Adjust for purchase returns
     fyPurchaseReturns.forEach(pr => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (originalPurchase) {
@@ -127,7 +147,7 @@ export function SalesClient() {
         }
     });
 
-    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    // 3. Adjust for location transfers
     fyLocationTransfers.forEach(transfer => {
       transfer.items.forEach(item => {
           const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
@@ -139,7 +159,6 @@ export function SalesClient() {
 
           const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
           let toEntry = stockMap.get(toKey);
-          // Inherit effectiveRate from source, do not add transfer costs
           const sourceEffectiveRate = fromEntry?.effectiveRate || purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0;
           
           if (!toEntry) {
@@ -147,7 +166,7 @@ export function SalesClient() {
                   lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
                   currentBags: 0, currentWeight: 0,
                   purchaseRate: fromEntry?.purchaseRate || 0,
-                  effectiveRate: sourceEffectiveRate, // Inherited rate
+                  effectiveRate: sourceEffectiveRate,
                   locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
               };
           }
@@ -156,12 +175,9 @@ export function SalesClient() {
           stockMap.set(toKey, toEntry);
       });
     });
-    
-    const tempSales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
-    const tempSaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
-    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
 
-    tempSales.forEach(s => {
+    // 4. Adjust for sales
+    fySales.forEach(s => {
       const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
       const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
       if (entry) {
@@ -170,7 +186,8 @@ export function SalesClient() {
       }
     });
 
-    tempSaleReturns.forEach(sr => {
+    // 5. Adjust for sale returns
+    fySaleReturns.forEach(sr => {
       const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
       const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
       if (entry) {
@@ -180,8 +197,7 @@ export function SalesClient() {
     });
 
     return Array.from(stockMap.values()).filter(item => item.locationId === MUMBAI_WAREHOUSE_ID && item.currentBags > 0);
-
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
 
 
   const startIndex = (currentPage - 1) * itemsPerPage;

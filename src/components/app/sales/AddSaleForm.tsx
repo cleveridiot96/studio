@@ -83,7 +83,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(!!saleToEdit?.netWeight);
   const [brokerageValueManuallySet, setBrokerageValueManuallySet] = React.useState(!!saleToEdit?.brokerageValue);
   
-  const [purchaseRateForLot, setPurchaseRateForLot] = React.useState<number>(0);
   const [effectiveRateForLot, setEffectiveRateForLot] = React.useState<number>(0);
   const [lastSoldRate, setLastSoldRate] = React.useState<number | null>(null);
 
@@ -152,10 +151,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       setBrokerageValueManuallySet(!!saleToEdit?.brokerageValue);
       if (saleToEdit && saleToEdit.lotNumber) {
         const originalStock = availableStock.find(p => p.lotNumber === saleToEdit.lotNumber);
-        setPurchaseRateForLot(originalStock?.purchaseRate || 0);
-        setEffectiveRateForLot(originalStock?.effectiveRate || originalStock?.purchaseRate || 0);
+        setEffectiveRateForLot(originalStock?.effectiveRate || 0);
       } else {
-        setPurchaseRateForLot(0);
         setEffectiveRateForLot(0);
       }
     }
@@ -186,12 +183,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (watchedLotNumber) {
         const selectedStock = availableStock.find(p => p.lotNumber === watchedLotNumber);
-        const newPurchaseRate = selectedStock?.purchaseRate || 0;
-        const newEffectiveRate = selectedStock?.effectiveRate || newPurchaseRate;
-        setPurchaseRateForLot(newPurchaseRate);
+        const newEffectiveRate = selectedStock?.effectiveRate || 0;
         setEffectiveRateForLot(newEffectiveRate);
     } else {
-        setPurchaseRateForLot(0);
         setEffectiveRateForLot(0);
     }
   }, [watchedLotNumber, availableStock]);
@@ -279,7 +273,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [transportCostInput, packingCostInput, labourCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
 
   const calculatedNetProfit = React.useMemo(() => {
-    // IMPORTANT: Net profit is based on full goodsValue, not the billed amount after CB.
     return goodsValue - costOfGoodsSold - totalSaleSideExpenses;
   }, [goodsValue, costOfGoodsSold, totalSaleSideExpenses]);
 
@@ -357,14 +350,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         const availableBags = p.currentBags;
         const rateDisplay = typeof p.purchaseRate === 'number' ? p.purchaseRate.toFixed(2) : 'N/A';
         
-        let tooltipForLot = `Purchase Rate: ₹${rateDisplay}/kg.`;
+        let tooltipForLot = `Landed Cost: ₹${p.effectiveRate.toFixed(2)}/kg.`;
         if (p.locationName) {
             tooltipForLot += ` Location: ${p.locationName}`;
         }
 
         return {
           value: p.lotNumber,
-          label: `${p.lotNumber} (Avl: ${availableBags} bags, Rate: ₹${p.purchaseRate.toFixed(2)})`,
+          label: `${p.lotNumber} (Avl: ${availableBags} bags)`,
           tooltipContent: tooltipForLot,
           isAvailable: availableBags > 0,
         };
@@ -373,7 +366,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
+      <Dialog open={isOpen} onOpenChange={(openState) => { 
           if (!openState && isOpen) { 
             onClose();
           }
@@ -440,7 +433,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormItem><FormLabel>Broker (Optional)</FormLabel>
                           <MasterDataCombobox
                             value={field.value}
-                            onChange={field.onChange}
+                            onChange={(newValue) => {
+                              field.onChange(newValue);
+                              setBrokerageValueManuallySet(false); // Reset manual flag when broker changes
+                            }}
                             options={brokers.map(b => ({ value: b.id, label: b.name, tooltipContent: `Commission: ${b.commission || 0}%` }))}
                             placeholder="Select Broker"
                             searchPlaceholder="Search brokers..."
@@ -555,7 +551,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t">
                             <FormField control={control} name="brokerageType" render={({ field }) => (
                                 <FormItem className="sm:col-span-1"><FormLabel>Brokerage Type</FormLabel>
-                                <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false);}} value={field.value} disabled={!selectedBrokerId}>
+                                <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(true);}} value={field.value} disabled={!selectedBrokerId}>
                                     <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                     <SelectContent><SelectItem value="Fixed">Fixed (₹)</SelectItem><SelectItem value="Percentage">%</SelectItem></SelectContent>
                                 </ShadSelect><FormMessage /></FormItem>)}
