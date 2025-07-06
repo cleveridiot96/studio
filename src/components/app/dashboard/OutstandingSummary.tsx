@@ -6,6 +6,7 @@ import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer } f
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 // All the data keys
 const keys = {
@@ -81,29 +82,33 @@ export const OutstandingSummary = () => {
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold text-foreground">Outstanding Balances</CardTitle>
-        <CardDescription>A summary of total money to be paid and received.</CardDescription>
+        <CardDescription>A summary of total money to be paid and received. Click a card to see details.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50">
-                <CardHeader>
-                    <CardTitle className="text-green-700 dark:text-green-300">Total Receivables</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
-                </CardContent>
-            </Card>
-             <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50">
-                <CardHeader>
-                    <CardTitle className="text-red-700 dark:text-red-300">Total Payables</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
-                </CardContent>
-            </Card>
+            <Link href="/outstanding" className="block group">
+              <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50 h-full transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-1">
+                  <CardHeader>
+                      <CardTitle className="text-green-700 dark:text-green-300">Total Receivables</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <p className="text-3xl font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
+                  </CardContent>
+              </Card>
+            </Link>
+             <Link href="/outstanding" className="block group">
+               <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50 h-full transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-1">
+                  <CardHeader>
+                      <CardTitle className="text-red-700 dark:text-red-300">Total Payables</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
+                  </CardContent>
+              </Card>
+            </Link>
       </CardContent>
       <CardFooter>
         <Button asChild className="w-full">
-            <Link href="/outstanding">View Detailed Outstanding Report</Link>
+            <Link href="/outstanding">View Full Outstanding Report</Link>
         </Button>
       </CardFooter>
     </Card>
