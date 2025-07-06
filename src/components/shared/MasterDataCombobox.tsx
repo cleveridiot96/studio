@@ -5,11 +5,12 @@ import * as React from "react";
 import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, Plus, ChevronsUpDown, X } from "lucide-react";
+import { Check, Plus, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 
 interface Option {
   value: string;
@@ -77,7 +78,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
-  const handleSelect = (selectedValue: string) => {
+  const handleSelect = (selectedValue: string | undefined) => {
     onChange(selectedValue);
     setOpen(false);
     setSearch("");
@@ -89,13 +90,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
       setOpen(false);
       setSearch("");
     }
-  };
-
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Stop event from bubbling to the PopoverTrigger
-    e.preventDefault();   // Prevent any default button behavior
-    onChange(undefined);
-    setOpen(false);       // Explicitly close the popover
   };
 
   return (
@@ -112,14 +106,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           <span className="truncate">
             {selectedLabel || placeholder}
           </span>
-          {value ? (
-            <X
-              className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
-              onClick={handleClear}
-            />
-          ) : (
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          )}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
 
@@ -133,6 +120,20 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           />
           <TooltipProvider>
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
+                <div
+                    onClick={() => handleSelect(undefined)}
+                    className={cn(
+                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
+                        !value && "font-semibold bg-accent"
+                    )}
+                    role="option"
+                    aria-selected={!value}
+                >
+                    <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                    <span className="italic">Clear selection</span>
+                </div>
+                <Separator className="my-1" />
+
               {filteredOptions.length === 0 && search.length > 0 ? (
                 <CommandEmpty>
                   {notFoundMessage}
