@@ -5,7 +5,7 @@ import * as React from "react";
 import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, Plus, ChevronsUpDown } from "lucide-react";
+import { Check, Plus, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
@@ -89,6 +89,13 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     }
   };
 
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the popover from opening when clearing
+    onChange(undefined);
+    setOpen(false);
+  };
+
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -103,7 +110,14 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           <span className="truncate">
             {selectedLabel || placeholder}
           </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {value ? (
+            <X
+              className="ml-2 h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
+              onClick={handleClear}
+            />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
         </Button>
       </PopoverTrigger>
 
