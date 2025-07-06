@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
@@ -10,13 +10,9 @@ import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
 
-// Note: Removed tooltips from individual items to ensure reliable keyboard/mouse selection.
-// Complex nested components within cmdk items can interfere with event handling.
-
 interface Option {
   value: string;
   label: string;
-  tooltipContent?: React.ReactNode; // Kept in interface for future compatibility if a non-interfering solution is found
 }
 
 interface MasterDataComboboxProps {
@@ -79,24 +75,22 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      if (filteredOptions.length > 0) {
-        // Let the default cmdk behavior handle Enter on a selected item
-        return;
-      }
-      // If no options, but we can add new, trigger add new
-      if (search.length > 0 && onAddNew) {
-        e.preventDefault();
-        onAddNew();
-        setOpen(false);
-        setSearch("");
-      }
+  const handleSelect = (selectedValue: string) => {
+    onChange(selectedValue);
+    setOpen(false);
+    setSearch("");
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew) {
+      onAddNew();
+      setOpen(false);
+      setSearch("");
     }
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={true}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           id={triggerId}
@@ -120,58 +114,48 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             value={search}
             onValueChange={setSearch}
             autoFocus
-            onKeyDown={handleKeyDown}
           />
           <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
             {filteredOptions.length === 0 && search.length > 0 ? (
               <CommandEmpty>
                 {notFoundMessage}
                 {onAddNew && (
-                  <CommandItem
-                    onSelect={() => {
-                      onAddNew?.();
-                      setOpen(false);
-                      setSearch("");
-                    }}
-                    className="cursor-pointer"
+                  <div
+                    onClick={handleAddNew}
+                    className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    role="button"
                   >
                     <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                  </CommandItem>
+                  </div>
                 )}
               </CommandEmpty>
             ) : (
               <>
                 {filteredOptions.map((option) => (
-                   <CommandItem
+                   <div
                       key={option.value}
-                      value={option.label} // Use label for cmdk internal matching
-                      onSelect={() => {
-                          onChange(option.value);
-                          setOpen(false);
-                          setSearch("");
-                      }}
+                      onClick={() => handleSelect(option.value)}
                       className={cn(
-                        "cursor-pointer",
+                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
                         value === option.value && "font-semibold"
                       )}
+                      role="option"
+                      aria-selected={value === option.value}
                     >
                       <Check
                           className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
                       />
                       <span className="flex-grow truncate">{option.label}</span>
-                  </CommandItem>
+                  </div>
                 ))}
                 {onAddNew && (
-                  <CommandItem
-                      onSelect={() => {
-                        onAddNew?.();
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                      className="cursor-pointer mt-1 border-t"
+                  <div
+                      onClick={handleAddNew}
+                      className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground mt-1 border-t"
+                      role="button"
                   >
                     <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                  </CommandItem>
+                  </div>
                 )}
               </>
             )}
