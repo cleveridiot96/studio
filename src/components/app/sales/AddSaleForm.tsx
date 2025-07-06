@@ -164,12 +164,21 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageValue");
   const extraBrokeragePerKg = watch("extraBrokeragePerKg") || 0;
   
-  const { totalGoodsValue, totalNetWeight } = React.useMemo(() => {
-    return watchedItems.reduce((acc, item) => {
-        acc.totalGoodsValue += (item.netWeight || 0) * (item.rate || 0);
-        acc.totalNetWeight += (item.netWeight || 0);
+  const { totalGoodsValue, totalNetWeight, totalQuantity } = React.useMemo(() => {
+    return (watchedItems || []).reduce(
+      (acc, item) => {
+        const itemQuantity = Number(item.quantity) || 0;
+        const itemNetWeight = Number(item.netWeight) || 0;
+        const itemRate = Number(item.rate) || 0;
+
+        acc.totalGoodsValue += itemNetWeight * itemRate;
+        acc.totalNetWeight += itemNetWeight;
+        acc.totalQuantity += itemQuantity;
+
         return acc;
-    }, { totalGoodsValue: 0, totalNetWeight: 0 });
+      },
+      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
+    );
   }, [watchedItems]);
 
   const billedAmount = React.useMemo(() => isCB && cbAmountInput ? totalGoodsValue - cbAmountInput : totalGoodsValue, [isCB, cbAmountInput, totalGoodsValue]);
@@ -189,10 +198,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const totalSaleSideExpenses = React.useMemo(() => transportCostInput + packingCostInput + labourCostInput + calculatedBrokerageCommission + calculatedExtraBrokerage, [transportCostInput, packingCostInput, labourCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
 
   const totalCostOfGoodsSold = React.useMemo(() => {
-      return watchedItems.reduce((acc, item) => {
+      return (watchedItems || []).reduce((acc, item) => {
           if (!item.lotNumber) return acc;
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-          const cogsForItem = (item.netWeight || 0) * (stock?.effectiveRate || 0);
+          const cogsForItem = (Number(item.netWeight) || 0) * (stock?.effectiveRate || 0);
           return acc + cogsForItem;
       }, 0);
   }, [watchedItems, availableStock]);
@@ -257,7 +266,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       }),
       totalGoodsValue: totalGoodsValue,
       billedAmount: billedAmount,
-      totalQuantity: values.items.reduce((acc, item) => acc + (item.quantity || 0), 0),
+      totalQuantity: totalQuantity,
       totalNetWeight: totalNetWeight,
       totalCostOfGoodsSold: totalCostOfGoodsSold,
       transporterId: values.transporterId,
@@ -368,16 +377,18 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     ))}
                     <div className="flex justify-between items-start mt-2">
                       <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
-                      <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
-                          <div className="flex justify-between font-semibold">
-                              <span>Total Goods Value:</span>
-                              <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                          </div>
-                          <div className="flex justify-between text-muted-foreground">
-                              <span>Total Net Weight:</span>
-                              <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
-                          </div>
-                      </div>
+                      {totalGoodsValue > 0 && (
+                        <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
+                            <div className="flex justify-between font-semibold">
+                                <span>Total Goods Value:</span>
+                                <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Total Net Weight:</span>
+                                <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                            </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -452,11 +463,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         
                         <div className="pl-4 border-l-2 border-muted text-xs">
                           <div className="flex justify-between font-medium"><span>Less: Landed Cost of Goods</span><span>(-) ₹{totalCostOfGoodsSold.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
-                          {watchedItems.map((item, index) => {
+                          {(watchedItems || []).map((item, index) => {
                               if (!item.lotNumber) return null;
                               const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-                              const landedCost = (item.netWeight || 0) * (stock?.effectiveRate || 0);
-                              return <div key={index} className="flex justify-between"><span>- Cost for "{item.lotNumber}" ({(item.netWeight||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{landedCost.toLocaleString('en-IN')}</span></div>
+                              const landedCost = (Number(item.netWeight) || 0) * (stock?.effectiveRate || 0);
+                              return <div key={index} className="flex justify-between"><span>- Cost for "{item.lotNumber}" ({(Number(item.netWeight)||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{landedCost.toLocaleString('en-IN')}</span></div>
                           })}
                         </div>
 
@@ -498,5 +509,3 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
-
-    

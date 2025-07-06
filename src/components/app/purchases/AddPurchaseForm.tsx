@@ -126,12 +126,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const labourCharges = watch("labourCharges") || 0;
   const miscExpenses = watch("miscExpenses") || 0;
 
-  const { totalGoodsValue, totalNetWeight } = React.useMemo(() => {
-    return watchedItems.reduce((acc, item) => {
-        acc.totalGoodsValue += (item.netWeight || 0) * (item.rate || 0);
-        acc.totalNetWeight += (item.netWeight || 0);
+  const { totalGoodsValue, totalNetWeight, totalQuantity } = React.useMemo(() => {
+    return (watchedItems || []).reduce(
+      (acc, item) => {
+        const itemQuantity = Number(item.quantity) || 0;
+        const itemNetWeight = Number(item.netWeight) || 0;
+        const itemRate = Number(item.rate) || 0;
+
+        acc.totalGoodsValue += itemNetWeight * itemRate;
+        acc.totalNetWeight += itemNetWeight;
+        acc.totalQuantity += itemQuantity;
+        
         return acc;
-    }, { totalGoodsValue: 0, totalNetWeight: 0 });
+      },
+      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
+    );
   }, [watchedItems]);
   
   const calculatedBrokerageCharges = React.useMemo(() => {
@@ -169,18 +178,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
-    const { totalGoodsValue: finalTotalGoodsValue, totalNetWeight: finalTotalNetWeight } = values.items.reduce((acc, item) => {
-        acc.totalGoodsValue += (item.netWeight || 0) * (item.rate || 0);
-        acc.totalNetWeight += (item.netWeight || 0);
-        return acc;
-    }, { totalGoodsValue: 0, totalNetWeight: 0 });
-
-    const finalBrokerageCharges = calculatedBrokerageCharges;
-    const finalTotalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + finalBrokerageCharges + (values.miscExpenses || 0);
-    const finalTotalAmount = finalTotalGoodsValue + finalTotalExpenses;
-    const finalEffectiveRate = finalTotalNetWeight > 0 ? finalTotalAmount / finalTotalNetWeight : 0;
-    const finalTotalQuantity = values.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
@@ -192,19 +189,25 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       agentName: agents.find(a => a.id === values.agentId)?.name,
       transporterId: values.transporterId,
       transporterName: transporters.find(t => t.id === values.transporterId)?.name,
-      items: values.items.map(item => ({...item, quantity: item.quantity || 0, netWeight: item.netWeight || 0, rate: item.rate || 0, goodsValue: (item.netWeight || 0) * (item.rate || 0)})),
-      totalGoodsValue: finalTotalGoodsValue,
-      totalQuantity: finalTotalQuantity,
-      totalNetWeight: finalTotalNetWeight,
+      items: values.items.map(item => ({
+        ...item, 
+        quantity: item.quantity || 0, 
+        netWeight: item.netWeight || 0, 
+        rate: item.rate || 0, 
+        goodsValue: (item.netWeight || 0) * (item.rate || 0)
+      })),
+      totalGoodsValue: totalGoodsValue,
+      totalQuantity: totalQuantity,
+      totalNetWeight: totalNetWeight,
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
       brokerageType: values.brokerageType,
       brokerageValue: values.brokerageValue,
-      brokerageCharges: finalBrokerageCharges,
+      brokerageCharges: calculatedBrokerageCharges,
       miscExpenses: values.miscExpenses,
-      totalAmount: finalTotalAmount,
-      effectiveRate: finalEffectiveRate,
+      totalAmount: totalAmount,
+      effectiveRate: effectiveRate,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
@@ -304,16 +307,18 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
-                    <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
-                      <div className="flex justify-between font-semibold">
-                          <span>Total Goods Value:</span>
-                          <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    {totalGoodsValue > 0 && (
+                      <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
+                        <div className="flex justify-between font-semibold">
+                            <span>Total Goods Value:</span>
+                            <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Total Net Weight:</span>
+                            <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between text-muted-foreground">
-                          <span>Total Net Weight:</span>
-                          <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
