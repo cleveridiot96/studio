@@ -55,61 +55,51 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               <TableHead className="w-[100px]">Date</TableHead>
               <TableHead>Bill No.</TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead>Vakkal / Lot No.</TableHead>
-              <TableHead className="text-right">Bags</TableHead>
-              <TableHead className="text-right">Net Wt.(kg)</TableHead>
-              <TableHead className="text-right">Rate (₹/kg)</TableHead>
+              <TableHead>Vakkal / Lot(s)</TableHead>
+              <TableHead className="text-right">Total Bags</TableHead>
+              <TableHead className="text-right">Total Net Wt.(kg)</TableHead>
               <TableHead>Broker</TableHead>
               <TableHead className="text-right">Billed Amt (₹)</TableHead>
-              <TableHead className="text-right">Actual Goods Value (₹)</TableHead>
               <TableHead className="text-right">Profit (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data.map((sale) => {
-              const grossProfit = sale.goodsValue - (sale.costOfGoodsSold || 0);
+              const vakkalDisplay = sale.items.length > 1 
+                ? `${sale.items[0].lotNumber} (+${sale.items.length - 1})`
+                : sale.items[0]?.lotNumber || 'N/A';
+
               return (
               <TableRow key={sale.id}>
                 <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
                 <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.billNumber || 'N/A'}</span></TooltipTrigger>
+                  <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.billNumber || 'N/A'}</span></TooltipTrigger>
                     <TooltipContent><p>{sale.billNumber || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{sale.customerName || sale.customerId}</span></TooltipTrigger>
+                  <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{sale.customerName || sale.customerId}</span></TooltipTrigger>
                     <TooltipContent><p>{sale.customerName || sale.customerId}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
-                <TableCell>{sale.lotNumber}</TableCell>
-                <TableCell className="text-right">{sale.quantity}</TableCell>
-                <TableCell className="text-right">{sale.netWeight.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{sale.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell>
-                  <Tooltip>
-                    <TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.brokerName || sale.brokerId || 'N/A'}</span></TooltipTrigger>
+                   <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{vakkalDisplay}</span></TooltipTrigger>
+                    <TooltipContent>
+                        <ul>{sale.items.map(item => <li key={item.lotNumber}>{item.lotNumber} ({item.quantity} bags)</li>)}</ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableCell>
+                <TableCell className="text-right">{sale.totalQuantity.toLocaleString()}</TableCell>
+                <TableCell className="text-right">{sale.totalNetWeight.toLocaleString()}</TableCell>
+                <TableCell>
+                  <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.brokerName || sale.brokerId || 'N/A'}</span></TooltipTrigger>
                     <TooltipContent><p>{sale.brokerName || sale.brokerId || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-right font-semibold">{(sale.billedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                <TableCell className="text-right">{(sale.goodsValue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                <TableCell className={`text-right font-semibold ${sale.calculatedProfit !== undefined && sale.calculatedProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        {sale.calculatedProfit?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || 'N/A'}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="text-sm">
-                        <p>Gross Profit: <span className="font-bold">₹{grossProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
-                        <p className="text-xs text-muted-foreground">(Goods Value - Landed Cost)</p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                <TableCell className={`text-right font-semibold ${sale.totalCalculatedProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                  {sale.totalCalculatedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </TableCell>
                 <TableCell className="text-center">
                    <DropdownMenu>

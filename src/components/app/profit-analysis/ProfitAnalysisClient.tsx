@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Sale, Purchase, TransactionalProfitInfo, MonthlyProfitInfo } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import type { Sale, TransactionalProfitInfo, MonthlyProfitInfo } from "@/lib/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Hash, Trophy } from "lucide-react";
@@ -17,20 +17,17 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SALES_STORAGE_KEY = 'salesData';
-const PURCHASES_STORAGE_KEY = 'purchasesData';
 
 interface ProfitKPIs {
   totalNetProfit: number;
-  totalSalesInvoiced: number;
   totalSalesValue: number;
-  avgProfitPerVakkal: number;
-  highestProfitVakkal: { name: string; profit: number };
+  avgProfitPerSale: number;
+  highestProfitSale: { id: string; profit: number, billNumber?: string };
 }
 
 export function ProfitAnalysisClient() {
   const [hydrated, setHydrated] = React.useState(false);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
   const { financialYear: currentFinancialYearString } = useSettings();
   
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
@@ -44,18 +41,32 @@ export function ProfitAnalysisClient() {
     if (!hydrated) return [];
     const fySales = sales.filter(sale => isDateInFinancialYear(sale.date, currentFinancialYearString));
     
-    return fySales.map(sale => {
-      const totalExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
-      const grossProfit = sale.goodsValue - (sale.costOfGoodsSold || 0);
-      return {
-        saleId: sale.id, date: sale.date, billNumber: sale.billNumber, customerName: sale.customerName, lotNumber: sale.lotNumber,
-        saleNetWeightKg: sale.netWeight, saleAmount: sale.billedAmount, goodsValueForProfitCalc: sale.goodsValue,
-        purchaseCostForSalePortion: sale.costOfGoodsSold || 0,
-        totalExpenses: totalExpenses,
-        netProfit: sale.calculatedProfit || 0,
-        grossProfit: grossProfit,
-      };
+    // This will now flatten sales with multiple items into multiple profit transaction rows
+    const flattenedTransactions: TransactionalProfitInfo[] = [];
+    fySales.forEach(sale => {
+      const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
+
+      sale.items.forEach(item => {
+        const itemProportion = sale.totalGoodsValue > 0 ? item.goodsValue / sale.totalGoodsValue : 0;
+        const apportionedExpenses = saleLevelExpenses * itemProportion;
+        const netProfit = item.goodsValue - item.costOfGoodsSold - apportionedExpenses;
+        
+        flattenedTransactions.push({
+          saleId: sale.id,
+          date: sale.date,
+          billNumber: sale.billNumber,
+          customerName: sale.customerName,
+          lotNumber: item.lotNumber,
+          saleNetWeightKg: item.netWeight,
+          saleAmount: sale.billedAmount, // Sale-level
+          goodsValueForProfitCalc: item.goodsValue,
+          purchaseCostForSalePortion: item.costOfGoodsSold,
+          totalExpenses: apportionedExpenses,
+          netProfit: netProfit,
+        });
+      });
     });
+    return flattenedTransactions;
   }, [sales, hydrated, currentFinancialYearString]);
 
   const monthlySummaryForFY = React.useMemo(() => {
@@ -66,7 +77,7 @@ export function ProfitAnalysisClient() {
             monthlyAgg[monthKey] = { transactionCount: 0, grossProfit: 0, netProfit: 0 };
         }
         monthlyAgg[monthKey].transactionCount++;
-        monthlyAgg[monthKey].grossProfit += tx.grossProfit;
+        monthlyAgg[monthKey].grossProfit += (tx.goodsValueForProfitCalc - tx.purchaseCostForSalePortion);
         monthlyAgg[monthKey].netProfit += tx.netProfit;
     });
 
@@ -82,24 +93,30 @@ export function ProfitAnalysisClient() {
 
   const kpiData = React.useMemo<ProfitKPIs>(() => {
     const totalNetProfit = filteredTransactionsForPeriod.reduce((sum, tx) => sum + tx.netProfit, 0);
-    const uniqueVakkals = new Set(filteredTransactionsForPeriod.map(tx => tx.lotNumber));
-    let highestProfitVakkal = { name: 'N/A', profit: 0 };
+    const uniqueSales = new Set(filteredTransactionsForPeriod.map(tx => tx.saleId));
+    let highestProfitSale = { id: 'N/A', profit: 0, billNumber: 'N/A' };
+    
     if (filteredTransactionsForPeriod.length > 0) {
-        const profitByVakkal: Record<string, number> = {};
-        filteredTransactionsForPeriod.forEach(tx => {
-            profitByVakkal[tx.lotNumber] = (profitByVakkal[tx.lotNumber] || 0) + tx.netProfit;
-        });
-        const topVakkal = Object.entries(profitByVakkal).sort((a, b) => b[1] - a[1])[0];
-        if (topVakkal) highestProfitVakkal = { name: topVakkal[0], profit: topVakkal[1] };
+      const profitBySale: Record<string, { profit: number; billNumber?: string }> = {};
+      filteredTransactionsForPeriod.forEach(tx => {
+          if (!profitBySale[tx.saleId]) {
+              profitBySale[tx.saleId] = { profit: 0, billNumber: tx.billNumber };
+          }
+          profitBySale[tx.saleId].profit += tx.netProfit;
+      });
+      const topSale = Object.entries(profitBySale).sort((a,b) => b[1].profit - a[1].profit)[0];
+      if (topSale) {
+        highestProfitSale = { id: topSale[0], profit: topSale[1].profit, billNumber: topSale[1].billNumber };
+      }
     }
+
     return {
         totalNetProfit,
-        totalSalesInvoiced: filteredTransactionsForPeriod.length,
-        totalSalesValue: filteredTransactionsForPeriod.reduce((sum, tx) => sum + tx.saleAmount, 0),
-        avgProfitPerVakkal: uniqueVakkals.size > 0 ? totalNetProfit / uniqueVakkals.size : 0,
-        highestProfitVakkal,
+        totalSalesValue: sales.filter(s => isDateInFinancialYear(s.date, currentFinancialYearString) && isWithinInterval(parseISO(s.date), { start: dateRange?.from!, end: endOfDay(dateRange?.to || dateRange?.from!)})).reduce((sum, s) => sum + s.billedAmount, 0),
+        avgProfitPerSale: uniqueSales.size > 0 ? totalNetProfit / uniqueSales.size : 0,
+        highestProfitSale,
     };
-  }, [filteredTransactionsForPeriod]);
+  }, [filteredTransactionsForPeriod, sales, currentFinancialYearString, dateRange]);
 
   const setDateFilter = (type: "thisMonth" | "lastMonth" | "currentFY") => {
     const today = new Date();
@@ -145,8 +162,8 @@ export function ProfitAnalysisClient() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Net Profit (Selected Period)</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className={`text-2xl font-bold ${kpiData.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{kpiData.totalNetProfit.toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Sales Value</CardTitle><BarChart3 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{kpiData.totalSalesValue.toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Avg. Profit / Vakkal</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{kpiData.avgProfitPerVakkal.toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Vakkal</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate">{kpiData.highestProfitVakkal.name}</div><p className="text-xs text-muted-foreground">Profit: ₹{kpiData.highestProfitVakkal.profit.toLocaleString('en-IN', {maximumFractionDigits:0})}</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Avg. Profit / Sale</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{kpiData.avgProfitPerSale.toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Sale</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground">Profit: ₹{kpiData.highestProfitSale.profit.toLocaleString('en-IN', {maximumFractionDigits:0})}</p></CardContent></Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -179,11 +196,11 @@ export function ProfitAnalysisClient() {
                   <TableBody>
                     {filteredTransactionsForPeriod.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center h-24">No transactions for this period.</TableCell></TableRow> :
                      filteredTransactionsForPeriod.map(tx => (
-                      <TableRow key={tx.saleId}>
+                      <TableRow key={`${tx.saleId}-${tx.lotNumber}`}>
                         <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
                         <TableCell>{tx.lotNumber}</TableCell>
                         <TableCell className="truncate max-w-[120px]">{tx.customerName}</TableCell>
-                        <TableCell className="text-right">{tx.saleAmount.toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                        <TableCell className="text-right">{tx.goodsValueForProfitCalc.toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
                         <TableCell className="text-right">{tx.purchaseCostForSalePortion.toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
                         <TableCell className="text-right">{tx.totalExpenses.toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
                         <TableCell className={`text-right font-bold ${tx.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{tx.netProfit.toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>

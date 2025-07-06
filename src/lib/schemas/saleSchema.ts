@@ -1,105 +1,105 @@
 
 import { z } from 'zod';
-import type { MasterItem, Purchase, Sale } from '@/lib/types';
+import type { MasterItem, Sale } from '@/lib/types';
 
-// This is a type for the aggregated stock data passed to the schema
 interface AggregatedStockItemForSchema {
   lotNumber: string;
   currentBags: number;
 }
 
+const saleItemSchema = (availableStock: AggregatedStockItemForSchema[]) => z.object({
+  lotNumber: z.string().min(1, "Vakkal/Lot is required.").refine(lotNum => availableStock.some(item => item.lotNumber === lotNum), { message: "Lot not in stock." }),
+  quantity: z.coerce.number().min(0.01, "Bags must be > 0."),
+  netWeight: z.coerce.number().min(0.01, "Net weight must be > 0."),
+  rate: z.coerce.number().min(0.01, "Rate must be > 0."),
+});
+
 export const saleSchema = (
     customers: MasterItem[],
     transporters: MasterItem[],
     brokers: MasterItem[],
-    availableStock: AggregatedStockItemForSchema[], // Changed from inventoryLots: Purchase[]
+    availableStock: AggregatedStockItemForSchema[],
     existingSales: Sale[],
     currentSaleIdToEdit?: string
 ) => z.object({
-  date: z.date({
-    required_error: "Sale date is required.",
-  }),
+  date: z.date({ required_error: "Sale date is required." }),
+  customerId: z.string().min(1, "Customer is required.").refine(id => customers.some(c => c.id === id), { message: "Invalid customer." }),
+  brokerId: z.string().optional().refine(id => !id || brokers.some(b => b.id === id), { message: "Invalid broker." }),
+  
+  items: z.array(saleItemSchema(availableStock)).min(1, "At least one sale item is required."),
+
+  isCB: z.boolean().optional().default(false),
+  cbAmount: z.coerce.number().optional(),
   billNumber: z.string().optional(),
-  isCB: z.boolean().optional().default(false), // Renamed from cutBill
-  cbAmount: z.coerce.number().optional(), // Renamed from cutAmount
-  customerId: z.string().min(1, "Customer is required.").refine((customerId) => customers.some((c) => c.id === customerId && c.type === 'Customer'), {
-    message: "Customer does not exist or is not of type Customer.",
-  }),
-  lotNumber: z.string().min(1, "Vakkal / Lot number is required.").refine((lotNum) => availableStock.some((item) => item.lotNumber === lotNum), {
-    message: "Lot number does not exist in available stock.",
-  }),
-  quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."),
-  netWeight: z.coerce.number().min(0.01, "Net weight (kg) must be greater than 0."),
-  rate: z.coerce.number().min(0.01, "Sale price (₹/kg) must be greater than 0."),
-  transporterId: z.string().optional().refine((transporterId) => !transporterId || transporters.some((t) => t.id === transporterId && t.type === 'Transporter'), {
-    message: "Transporter does not exist or is not of type Transporter.",
-  }),
-  transportCost: z.coerce.number().optional().default(0),
+
+  transporterId: z.string().optional().refine(id => !id || transporters.some(t => t.id === id), { message: "Invalid transporter." }),
+  transportCost: z.coerce.number().optional(),
   packingCost: z.coerce.number().optional(),
   labourCost: z.coerce.number().optional(),
-  brokerId: z.string().optional().refine((brokerId) => !brokerId || brokers.some((b) => b.id === brokerId && b.type === 'Broker'), {
-    message: "Broker does not exist or is not of type Broker.",
-  }),
+  
   brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
   brokerageValue: z.coerce.number().optional(),
   extraBrokeragePerKg: z.coerce.number().optional(),
+  
   notes: z.string().optional(),
-  calculatedBrokerageCommission: z.coerce.number().optional(),
-}).refine(data => {
-    if (data.brokerId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0 )) {
-      return false;
-    }
-    return true;
-  }, {
-    message: "Brokerage type and a valid value (non-negative) are required if a broker is selected.",
-    path: ["brokerageValue"],
-  }).refine(data => {
-    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue < 0)) {
-        return false;
-    }
-    return true;
-  }, {
-    message: "Brokerage value is required and must be non-negative if brokerage type is selected.",
-    path: ["brokerageValue"],
-  }).refine(data => {
-    const goodsValue = data.netWeight * data.rate;
-    if (data.isCB && data.cbAmount === undefined) {
-      return false;
-    }
-    if (data.isCB && data.cbAmount !== undefined && data.cbAmount < 0) {
-        return false;
-    }
-    if (data.isCB && data.cbAmount !== undefined && data.cbAmount > goodsValue) {
-        return false;
-    }
-    return true;
-  }, {
-    message: "If 'CB' is checked, a valid CB amount (positive, not exceeding goods value) is required.",
-    path: ["cbAmount"],
-  }).superRefine((data, ctx) => {
-    if (data.lotNumber) {
-        const stockInfo = availableStock.find(s => s.lotNumber === data.lotNumber);
-        const availableBagsInStock = stockInfo?.currentBags || 0;
-        
-        let quantityFromThisSaleInDb = 0;
-        if (currentSaleIdToEdit) {
-            const originalSale = existingSales.find(s => s.id === currentSaleIdToEdit);
-            if (originalSale && originalSale.lotNumber === data.lotNumber) {
-                quantityFromThisSaleInDb = originalSale.quantity;
-            }
-        }
-        
-        const maxAllowedQuantity = availableBagsInStock + quantityFromThisSaleInDb;
+}).superRefine((data, ctx) => {
+  // Validate total quantity for each lot doesn't exceed available stock
+  const lotQuantities = new Map<string, number>();
+  data.items.forEach(item => {
+    lotQuantities.set(item.lotNumber, (lotQuantities.get(item.lotNumber) || 0) + item.quantity);
+  });
 
-        if (data.quantity > maxAllowedQuantity) {
-            ctx.addIssue({
+  for (const [lotNumber, totalQuantity] of lotQuantities.entries()) {
+    const stockInfo = availableStock.find(s => s.lotNumber === lotNumber);
+    let availableBagsInStock = stockInfo?.currentBags || 0;
+    
+    // If editing, add back the quantity of the lot from the original sale to allow for correct validation
+    if (currentSaleIdToEdit) {
+        const originalSale = existingSales.find(s => s.id === currentSaleIdToEdit);
+        if(originalSale) {
+            const originalItemQuantity = originalSale.items.filter(i => i.lotNumber === lotNumber).reduce((sum, i) => sum + i.quantity, 0);
+            availableBagsInStock += originalItemQuantity;
+        }
+    }
+
+    if (totalQuantity > availableBagsInStock) {
+      const itemIndex = data.items.findIndex(item => item.lotNumber === lotNumber);
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Total bags (${totalQuantity}) for ${lotNumber} exceed available stock (${availableBagsInStock}).`,
+        path: ["items", itemIndex, "quantity"],
+      });
+    }
+  }
+
+  // CB Amount validation
+  if (data.isCB) {
+    if (data.cbAmount === undefined || data.cbAmount <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "CB amount is required and must be positive if 'CB' is checked.",
+        path: ["cbAmount"],
+      });
+    } else {
+        const totalGoodsValue = data.items.reduce((sum, item) => sum + (item.netWeight * item.rate), 0);
+        if (data.cbAmount > totalGoodsValue) {
+             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: `Bags (${data.quantity}) exceed available stock for lot ${data.lotNumber} (Available: ${availableBagsInStock}).`,
-                path: ["quantity"],
+                message: `CB amount cannot exceed total goods value of ₹${totalGoodsValue.toFixed(2)}.`,
+                path: ["cbAmount"],
             });
         }
     }
-});
+  }
 
+  // Brokerage validation
+  if (data.brokerId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0)) {
+    ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Brokerage type and a valid value (non-negative) are required if a broker is selected.",
+        path: ["brokerageValue"],
+    });
+  }
+});
 
 export type SaleFormValues = z.infer<ReturnType<typeof saleSchema>>;

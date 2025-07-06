@@ -56,36 +56,56 @@ export interface Purchase {
   locationName?: string;
 }
 
+export interface SaleItem {
+  lotNumber: string;
+  quantity: number;
+  netWeight: number;
+  rate: number;
+  goodsValue: number; // Calculated: netWeight * rate
+  costOfGoodsSold: number; // Calculated from purchase effective rate
+}
+
 export interface Sale {
   id: string;
   date: string; // ISO string date
-  billNumber?: string; // Optional
-  isCB?: boolean; // Is this a "Cut bill"? Renamed from cutBill
-  cbAmount?: number; // Amount for CB deduction. Renamed from cutAmount
-  goodsValue: number; // Actual value of goods sold (netWeight * rate). Used for profit & as basis for billing.
-  billedAmount: number; // Amount on the invoice. If isCB, this is goodsValue - cbAmount. Else, same as goodsValue.
+  billNumber?: string;
+  isCB?: boolean;
+  cbAmount?: number;
+
   customerId: string;
   customerName?: string;
   brokerId?: string;
   brokerName?: string;
-  lotNumber: string; // This is the "Vakkal" from existing inventory
-  quantity: number; // Number of Bags
-  netWeight: number; // in KG
-  rate: number; // Sale price per KG (used to calculate goodsValue)
+
+  items: SaleItem[];
+
+  // Aggregated values from items
+  totalGoodsValue: number;
+  billedAmount: number; // This is the final amount on the chitthi (totalGoodsValue - cbAmount)
+  totalQuantity: number;
+  totalNetWeight: number;
+  totalCostOfGoodsSold: number;
+  
+  // Expenses for the entire sale
   transporterId?: string;
   transporterName?: string;
-  transportCost?: number; // Fixed transport cost for this sale, affects profit
+  transportCost?: number;
   packingCost?: number;
   labourCost?: number;
   brokerageType?: 'Fixed' | 'Percentage';
   brokerageValue?: number;
-  extraBrokeragePerKg?: number; // "Mera ₹" or extra commission per kg
-  calculatedBrokerageCommission?: number; // Percentage-based or fixed brokerage amount
-  calculatedExtraBrokerage?: number; // Total amount from extraBrokeragePerKg
+  extraBrokeragePerKg?: number;
+
+  // Calculated brokerage for the entire sale
+  calculatedBrokerageCommission?: number;
+  calculatedExtraBrokerage?: number;
+  
   notes?: string;
-  calculatedProfit?: number; // Based on goodsValue - COGS - all expenses
-  costOfGoodsSold?: number; // Cost of goods sold at the time of this transaction
+
+  // Aggregated profit for the entire sale
+  totalCalculatedProfit: number;
 }
+
 
 export interface PurchaseReturn {
   id: string;
@@ -238,16 +258,11 @@ export interface TransactionalProfitInfo {
   billNumber?: string;
   customerName?: string;
   lotNumber: string;
-  saleQuantityBags: number;
   saleNetWeightKg: number;
-  saleRatePerKg: number;
   saleAmount: number; // This should be the billedAmount
   goodsValueForProfitCalc: number; // The goodsValue used for profit calculation
   purchaseCostForSalePortion: number;
-  transportCostOnSale?: number;
-  packingCostOnSale?: number;
-  labourCostOnSale?: number;
-  brokerageOnSale?: number;
+  totalExpenses: number;
   netProfit: number;
 }
 

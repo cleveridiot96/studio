@@ -12,8 +12,6 @@ interface SaleChittiPrintProps {
 export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
   if (!sale) return null;
 
-  const displayGoodsValue = sale.goodsValue;
-  const displayBilledAmount = sale.billedAmount;
   const displayCbDeduction = sale.isCB && sale.cbAmount !== undefined && sale.cbAmount > 0 ? sale.cbAmount : 0;
 
   return (
@@ -51,15 +49,11 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
           Broker: <strong>{sale.brokerName}</strong>
         </div>
       )}
-
-      <div className="mb-4">
-        Vakkal / Lot No: <strong>{sale.lotNumber}</strong>
-      </div>
       
       <table className="text-xs">
         <thead>
           <tr>
-            <th>Description</th>
+            <th>Vakkal / Lot No.</th>
             <th className="text-right">Bags</th>
             <th className="text-right">Net Wt (kg)</th>
             <th className="text-right">Rate (₹/kg)</th>
@@ -67,26 +61,34 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Goods Sold</td>
-            <td className="text-right">{sale.quantity}</td>
-            <td className="text-right">{sale.netWeight.toLocaleString()}</td>
-            <td className="text-right">{sale.rate.toFixed(2)}</td>
-            <td className="text-right">{displayGoodsValue.toFixed(2)}</td>
-          </tr>
+          {sale.items.map((item, index) => (
+             <tr key={index}>
+              <td>{item.lotNumber}</td>
+              <td className="text-right">{item.quantity.toLocaleString()}</td>
+              <td className="text-right">{item.netWeight.toLocaleString()}</td>
+              <td className="text-right">{item.rate.toFixed(2)}</td>
+              <td className="text-right">{item.goodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          ))}
         </tbody>
+        <tfoot>
+            <tr className="font-bold">
+                <td colSpan={4}>Total Goods Value</td>
+                <td className="text-right">{sale.totalGoodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+        </tfoot>
       </table>
 
       <div className="mt-4 space-y-1">
         {displayCbDeduction > 0 && (
           <div className="flex-between text-destructive">
             <span>Less: CB Deduction:</span>
-            <span className="font-bold">(-) ₹{displayCbDeduction.toFixed(2)}</span>
+            <span className="font-bold">(-) ₹{displayCbDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         )}
          <div className="flex-between border-t pt-2 mt-2">
           <span className="font-bold text-base">Net Amount Payable:</span>
-          <span className="font-bold text-base">₹{displayBilledAmount.toFixed(2)}</span>
+          <span className="font-bold text-base">₹{sale.billedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
       </div>
 
