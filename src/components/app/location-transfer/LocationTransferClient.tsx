@@ -5,7 +5,7 @@ import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowRightLeft, ListChecks, Building, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
+import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { LocationTransferSlipPrint } from "./LocationTransferSlipPrint";
@@ -39,6 +39,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { format as formatDateFn } from 'date-fns';
+import { cn } from "@/lib/utils";
 
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -86,6 +87,7 @@ export function LocationTransferClient() {
   const [transferForPdf, setTransferForPdf] = React.useState<LocationTransfer | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
 
+  const [activeTab, setActiveTab] = React.useState('stockOverview');
 
   React.useEffect(() => {
     setHydrated(true);
@@ -263,6 +265,17 @@ export function LocationTransferClient() {
       if (isAppHydrating || !hydrated) return [];
       return locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
   }, [locationTransfers, financialYear, isAppHydrating, hydrated]);
+  
+  const addButtonDynamicClass = React.useMemo(() => {
+    if (activeTab === 'stockOverview') {
+        return 'bg-sky-600 hover:bg-sky-700 text-white';
+    }
+    if (activeTab === 'transferHistory') {
+        return 'bg-teal-600 hover:bg-teal-700 text-white';
+    }
+    return 'bg-primary hover:bg-primary/90'; // Fallback
+  }, [activeTab]);
+
 
   if (isAppHydrating || !hydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
@@ -276,7 +289,11 @@ export function LocationTransferClient() {
             <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers (FY {financialYear})
         </h1>
         <div className="flex items-center gap-2">
-            <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className="text-base py-3 px-6 shadow-md">
+            <Button
+              onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }}
+              size="lg"
+              className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}
+            >
                 <PlusCircle className="mr-2 h-5 w-5" /> New Transfer
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}> <Printer className="h-5 w-5" /> <span className="sr-only">Print</span></Button>
@@ -285,7 +302,7 @@ export function LocationTransferClient() {
 
       <Card className="shadow-xl">
       <TooltipProvider>
-        <Tabs defaultValue="stockOverview" className="w-full">
+        <Tabs defaultValue="stockOverview" className="w-full" onValueChange={(value) => setActiveTab(value)}>
           <CardHeader className="p-0">
             <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none no-print p-1 bg-muted gap-1">
               <TabsTrigger
