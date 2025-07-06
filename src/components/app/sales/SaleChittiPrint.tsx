@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Sale } from "@/lib/types";
@@ -13,6 +12,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
   if (!sale) return null;
   
   const displayCbDeduction = sale.isCB && sale.cbAmount !== undefined && sale.cbAmount > 0 ? sale.cbAmount : 0;
+  const totalSaleSideExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
@@ -28,6 +28,8 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         .print-chitti-styles .mb-2 { margin-bottom: 8px; }
         .print-chitti-styles .flex-between { display: flex; justify-content: space-between; }
         .print-chitti-styles .text-destructive { color: #a12121; }
+        .print-chitti-styles .text-green-700 { color: #1d6c4c; }
+        .print-chitti-styles .text-red-700 { color: #a12121; }
       `}</style>
 
       <div className="text-center mb-4">
@@ -67,15 +69,15 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
                 <td>{item.lotNumber}</td>
                 <td className="text-right">{item.quantity.toLocaleString()}</td>
                 <td className="text-right">{item.netWeight.toLocaleString()}</td>
-                <td className="text-right">{item.rate.toFixed(2)}</td>
-                <td className="text-right">{item.goodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td className="text-right">{(item.rate || 0).toFixed(2)}</td>
+                <td className="text-right">{(item.goodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
               <tr className="font-bold">
                   <td colSpan={4}>Total Goods Value</td>
-                  <td className="text-right">{sale.totalGoodsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td className="text-right">{(sale.totalGoodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
           </tfoot>
         </table>
@@ -90,8 +92,38 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         )}
          <div className="flex-between border-t pt-2 mt-2">
           <span className="font-bold text-base">Net Amount Payable:</span>
-          <span className="font-bold text-base">₹{sale.billedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="font-bold text-base">₹{(sale.billedAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
+      </div>
+      
+      <div className="mt-4 pt-2 border-t-2 border-dashed border-gray-400">
+        <h3 className="font-bold text-center text-xs mb-2">PROFIT & LOSS (INTERNAL)</h3>
+        <table className="text-xs">
+           <tbody>
+              <tr>
+                <td>Total Goods Value</td>
+                <td className="text-right font-bold">₹{(sale.totalGoodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td>Less: Total Cost of Goods</td>
+                <td className="text-right text-destructive">(-) ₹{(sale.totalCostOfGoodsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              </tr>
+              <tr className="font-bold border-t">
+                <td>Gross Profit</td>
+                <td className="text-right">₹{((sale.totalGoodsValue || 0) - (sale.totalCostOfGoodsSold || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              </tr>
+              <tr>
+                <td>Less: Sale Expenses</td>
+                <td className="text-right text-destructive">(-) ₹{totalSaleSideExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              </tr>
+              <tr className="font-bold border-t-2 border-black text-base">
+                <td>NET PROFIT</td>
+                <td className={`text-right ${(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  ₹{(sale.totalCalculatedProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </td>
+              </tr>
+           </tbody>
+        </table>
       </div>
 
       {sale.notes && (

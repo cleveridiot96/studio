@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -44,37 +43,38 @@ export function ProfitAnalysisClient() {
     
     const flattenedTransactions: TransactionalProfitInfo[] = [];
     fySales.forEach(sale => {
-      if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
-        const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
-        
-        // Robustly calculate totalGoodsValue from items if not present on the sale object.
-        const totalGoodsValue = (sale.totalGoodsValue && sale.totalGoodsValue > 0)
-          ? sale.totalGoodsValue
-          : sale.items.reduce((sum, item) => sum + (item.goodsValue || 0), 0);
-          
-        if (totalGoodsValue === 0) return; // Cannot apportion expenses if total value is zero.
+      if (!sale.items || !Array.isArray(sale.items) || sale.items.length === 0) return;
 
-        sale.items.forEach(item => {
-          const itemProportion = (item.goodsValue || 0) / totalGoodsValue;
-          const apportionedExpenses = saleLevelExpenses * itemProportion;
-          const costOfGoodsSold = item.costOfGoodsSold || 0;
-          const netProfit = (item.goodsValue || 0) - costOfGoodsSold - apportionedExpenses;
-          
-          flattenedTransactions.push({
-            saleId: sale.id,
-            date: sale.date,
-            billNumber: sale.billNumber,
-            customerName: sale.customerName,
-            lotNumber: item.lotNumber,
-            saleNetWeightKg: item.netWeight,
-            saleAmount: sale.billedAmount || 0, // Sale-level
-            goodsValueForProfitCalc: item.goodsValue || 0,
-            purchaseCostForSalePortion: costOfGoodsSold,
-            totalExpenses: apportionedExpenses,
-            netProfit: netProfit,
-          });
+      const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
+      
+      const totalGoodsValue = sale.items.reduce((sum, item) => sum + (item.goodsValue || 0), 0);
+        
+      if (totalGoodsValue === 0) return;
+
+      sale.items.forEach(item => {
+        const itemProportion = (item.goodsValue || 0) / totalGoodsValue;
+        const apportionedExpenses = saleLevelExpenses * itemProportion;
+        const costOfGoodsSold = item.costOfGoodsSold || 0;
+        const netProfit = (item.goodsValue || 0) - costOfGoodsSold - apportionedExpenses;
+        
+        const netPurchaseRate = costOfGoodsSold > 0 && item.netWeight > 0 ? costOfGoodsSold / item.netWeight : 0;
+        const netRealization = (item.goodsValue || 0) - apportionedExpenses;
+        const netSaleRate = netRealization > 0 && item.netWeight > 0 ? netRealization / item.netWeight : 0;
+        
+        flattenedTransactions.push({
+          saleId: sale.id,
+          date: sale.date,
+          billNumber: sale.billNumber,
+          customerName: sale.customerName,
+          lotNumber: item.lotNumber,
+          saleNetWeightKg: item.netWeight,
+          saleAmount: sale.billedAmount || 0,
+          goodsValueForProfitCalc: item.goodsValue || 0,
+          purchaseCostForSalePortion: costOfGoodsSold,
+          totalExpenses: apportionedExpenses,
+          netProfit: netProfit,
         });
-      }
+      });
     });
     return flattenedTransactions;
   }, [sales, hydrated, currentFinancialYearString]);
