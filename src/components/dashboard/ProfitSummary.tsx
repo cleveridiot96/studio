@@ -103,7 +103,16 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
       const purchaseDetails = getPurchaseDetailsForSaleLot(sale.lotNumber, purchases, locationTransfers);
       
       const netPurchaseRate = sale.costOfGoodsSold && sale.netWeight > 0 ? sale.costOfGoodsSold / sale.netWeight : purchaseDetails.effectiveRate;
-      const netSaleRate = sale.billedAmount && sale.netWeight > 0 ? sale.billedAmount / sale.netWeight : sale.rate;
+      
+      const saleSideExpenses = (sale.transportCost || 0) + 
+                               (sale.packingCost || 0) + 
+                               (sale.labourCost || 0) + 
+                               (sale.calculatedBrokerageCommission || 0) + 
+                               (sale.calculatedExtraBrokerage || 0);
+
+      const netRealization = sale.goodsValue - saleSideExpenses;
+      const netSaleRate = sale.netWeight > 0 ? netRealization / sale.netWeight : 0;
+      
       const grossProfit = sale.goodsValue - (sale.costOfGoodsSold || 0);
 
       return {
