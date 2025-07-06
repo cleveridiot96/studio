@@ -56,6 +56,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [transportChargesManuallySet, setTransportChargesManuallySet] = React.useState(false);
   
   const formSchema = React.useMemo(() => locationTransferSchema(warehouses, transporters, availableStock, transferToEdit), [warehouses, transporters, availableStock, transferToEdit]);
 
@@ -114,11 +115,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
+      setTransportChargesManuallySet(!!transferToEdit?.transportCharges);
     }
   }, [isOpen, transferToEdit, reset, getDefaultValues]);
 
 
   React.useEffect(() => {
+    if (transportChargesManuallySet) return;
+    
     const totalGrossWeight = watchedItems.reduce((acc, item) => acc + (item.grossWeightToTransfer || 0), 0);
     const rate = watchedTransportRate || 0;
     if (totalGrossWeight > 0 && rate > 0) {
@@ -126,7 +130,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     } else {
         setValue('transportCharges', undefined);
     }
-  }, [watchedItems, watchedTransportRate, setValue]);
+  }, [watchedItems, watchedTransportRate, setValue, transportChargesManuallySet]);
 
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
@@ -341,8 +345,32 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormMessage />
                       </FormItem>)}
                     />
-                    <FormField control={control} name="transportRatePerKg" render={({ field }) => (<FormItem><FormLabel>Rate (₹/kg)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 17" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Total Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 800" {...field} value={field.value ?? ''} readOnly className="bg-muted" /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={control} name="transportRatePerKg" render={({ field }) => (
+                        <FormItem><FormLabel>Rate (₹/kg)</FormLabel>
+                            <FormControl><Input type="number" step="0.01" placeholder="e.g. 17" {...field}
+                                value={field.value ?? ''}
+                                onChange={e => {
+                                    field.onChange(parseFloat(e.target.value) || undefined);
+                                    setTransportChargesManuallySet(false);
+                                }}
+                            /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={control} name="transportCharges" render={({ field }) => (
+                        <FormItem><FormLabel>Total Transport (₹)</FormLabel>
+                            <FormControl><Input type="number" step="0.01" placeholder="Auto-calculated" {...field}
+                                value={field.value ?? ''}
+                                onChange={e => {
+                                    field.onChange(parseFloat(e.target.value) || undefined);
+                                    setTransportChargesManuallySet(true);
+                                }}
+                                onFocus={() => setTransportChargesManuallySet(true)}
+                                className={cn(!transportChargesManuallySet && "bg-muted")}
+                            /></FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
