@@ -70,6 +70,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
+
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
@@ -122,6 +124,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const methods = useForm<SaleFormValues>({
     resolver: zodResolver(memoizedSaleSchema),
     defaultValues: getDefaultValues(),
+    mode: 'onChange', // Ensure validation runs on change for live feedback
   });
   const { control, watch, reset, setValue, handleSubmit, formState: { errors } } = methods;
 
@@ -139,18 +142,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       (acc, item) => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
         const purchaseRate = stockInfo?.purchaseRate || 0;
-        const effectiveRate = stockInfo?.effectiveRate || purchaseRate; // Landed cost
+        const landedCost = stockInfo?.effectiveRate || purchaseRate;
         const netWeight = Number(item.netWeight) || 0;
         const saleRate = Number(item.rate) || 0;
 
         acc.totalGoodsValue += netWeight * saleRate;
         acc.totalNetWeight += netWeight;
         acc.totalQuantity += Number(item.quantity) || 0;
-        acc.grossPurchaseCost += netWeight * purchaseRate;
-        acc.totalLandedCost += netWeight * effectiveRate;
+        acc.totalLandedCost += netWeight * landedCost;
         return acc;
       },
-      { totalGoodsValue: 0, totalLandedCost: 0, totalNetWeight: 0, totalQuantity: 0, grossPurchaseCost: 0 }
+      { totalGoodsValue: 0, totalLandedCost: 0, totalNetWeight: 0, totalQuantity: 0 }
     );
 
     const grossProfit = totals.totalGoodsValue - totals.totalLandedCost;
@@ -184,6 +186,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
+      setManualNetWeight({});
     }
   }, [isOpen, saleToEdit, reset, getDefaultValues]);
 
@@ -249,17 +252,16 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               netWeight: netWeight,
               rate: saleRate,
               goodsValue: goodsValue,
-              purchaseRate: purchaseRate, // Raw purchase rate
-              landedCost: landedCost, // Purchase rate + apportioned expenses
+              purchaseRate: purchaseRate,
+              costOfGoodsSold: netWeight * landedCost,
           };
       }),
       totalGoodsValue: summary.totalGoodsValue,
       billedAmount: summary.billedAmount,
       totalQuantity: summary.totalQuantity,
       totalNetWeight: summary.totalNetWeight,
-      grossPurchaseCost: summary.grossPurchaseCost, // Total raw cost
-      totalLandedCost: summary.totalLandedCost, // Total landed cost
-      totalExpenses: summary.totalExpenses, // Sale-side expenses
+      totalCostOfGoodsSold: summary.totalLandedCost,
+      totalExpenses: summary.totalExpenses,
       netProfit: summary.netProfit,
       transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
@@ -325,6 +327,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               value={itemField.value}
                               onChange={(lotValue) => {
                                 itemField.onChange(lotValue);
+                                setManualNetWeight(prev => ({ ...prev, [index]: false }));
+                                setValue(`items.${index}.quantity`, undefined, { shouldValidate: true });
+                                setValue(`items.${index}.netWeight`, undefined, { shouldValidate: true });
                               }}
                               options={availableStock.map(s => ({
                                   value: s.lotNumber,
@@ -345,13 +350,27 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               onChange={e => {
                                   const bagsVal = parseFloat(e.target.value) || undefined;
                                   itemField.onChange(bagsVal);
+                                  if (!manualNetWeight[index]) {
+                                      const lotValue = watch(`items.${index}.lotNumber`);
+                                      const stockInfo = availableStock.find(s => s.lotNumber === lotValue);
+                                      if (stockInfo && bagsVal) {
+                                          const avgWeightPerBag = stockInfo.averageWeightPerBag || 50;
+                                          const newNetWeight = parseFloat((bagsVal * avgWeightPerBag).toFixed(2));
+                                          setValue(`items.${index}.netWeight`, newNetWeight, { shouldValidate: true });
+                                      } else {
+                                          setValue(`items.${index}.netWeight`, undefined, { shouldValidate: true });
+                                      }
+                                  }
                               }}
                              /></FormControl>
                             <FormMessage />
                           </FormItem>)} />
                         <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                           <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''}
-                              onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
+                              onChange={e => {
+                                setManualNetWeight(prev => ({ ...prev, [index]: true }));
+                                itemField.onChange(parseFloat(e.target.value) || undefined)
+                              }}
                           /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
                           <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
@@ -383,7 +402,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <div className="flex items-center space-x-2 pt-6">
                         <FormField control={control} name="isCB" render={({ field }) => (
                           <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} id="isCB-checkbox" /></FormControl><FormLabel htmlFor="isCB-checkbox" className="!mt-0">CB (Cut Bill)</FormLabel></FormItem>)} />
-                        {watch('isCB') && <FormField control={control} name="cbAmount" render={({ field }) => (<FormItem className="flex-1"><FormControl><Input type="number" step="0.01" placeholder="CB Amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />}
+                        {watchedFormValues.isCB && <FormField control={control} name="cbAmount" render={({ field }) => (<FormItem className="flex-1"><FormControl><Input type="number" step="0.01" placeholder="CB Amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />}
                       </div>
                     </div>
                   </div>
@@ -456,7 +475,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       </div>
 
                       <div className="border-t pt-2 mt-2">
-                        {watch('isCB') && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watch('cbAmount')) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+                        {watchedFormValues.isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watchedFormValues.cbAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
                         <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{summary.billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
                       </div>
                   </div>
@@ -477,5 +496,3 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
-
-    

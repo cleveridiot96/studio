@@ -106,22 +106,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const methods = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, [])),
     defaultValues: getDefaultValues(),
+    mode: 'onChange', // Important for live updates
   });
   const { control, watch, setValue, handleSubmit: formHandleSubmit, reset, formState: { errors } } = methods;
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
-  const watchedItems = watch("items");
-  const watchedAgentId = watch("agentId");
-  const watchedBrokerageType = watch("brokerageType");
-  const watchedBrokerageValue = watch("brokerageValue");
-  const watchedTransportCharges = watch("transportCharges");
-  const watchedPackingCharges = watch("packingCharges");
-  const watchedLabourCharges = watch("labourCharges");
-  const watchedMiscExpenses = watch("miscExpenses");
+  const watchedFormValues = watch();
 
   const summary = React.useMemo(() => {
-    const { totalGoodsValue, totalNetWeight, totalQuantity } = (watchedItems || []).reduce(
+    const { 
+        items, agentId, brokerageType, brokerageValue, 
+        transportCharges, packingCharges, labourCharges, miscExpenses 
+    } = watchedFormValues;
+
+    const { totalGoodsValue, totalNetWeight, totalQuantity } = (items || []).reduce(
       (acc, item) => {
         const itemQuantity = Number(item.quantity) || 0;
         const itemNetWeight = Number(item.netWeight) || 0;
@@ -135,16 +134,16 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     );
 
     const calculatedBrokerageCharges = (() => {
-      if (!watchedAgentId || watchedBrokerageValue === undefined || watchedBrokerageValue < 0) return 0;
-      if (watchedBrokerageType === "Percentage") {
-        return (totalGoodsValue * (watchedBrokerageValue / 100));
-      } else if (watchedBrokerageType === "Fixed") {
-        return watchedBrokerageValue;
+      if (!agentId || brokerageValue === undefined || brokerageValue < 0) return 0;
+      if (brokerageType === "Percentage") {
+        return (totalGoodsValue * (brokerageValue / 100));
+      } else if (brokerageType === "Fixed") {
+        return brokerageValue;
       }
       return 0;
     })();
 
-    const totalExpenses = (Number(watchedTransportCharges) || 0) + (Number(watchedPackingCharges) || 0) + (Number(watchedLabourCharges) || 0) + calculatedBrokerageCharges + (Number(watchedMiscExpenses) || 0);
+    const totalExpenses = (Number(transportCharges) || 0) + (Number(packingCharges) || 0) + (Number(labourCharges) || 0) + calculatedBrokerageCharges + (Number(miscExpenses) || 0);
     const totalAmount = totalGoodsValue + totalExpenses;
     const effectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
     
@@ -157,7 +156,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         totalQuantity,
         calculatedBrokerageCharges,
     };
-  }, [watchedItems, watchedAgentId, watchedBrokerageType, watchedBrokerageValue, watchedTransportCharges, watchedPackingCharges, watchedLabourCharges, watchedMiscExpenses]);
+  }, [watchedFormValues]);
 
 
   React.useEffect(() => {
@@ -310,6 +309,18 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
+                     {(summary.totalGoodsValue > 0 || summary.totalNetWeight > 0) && (
+                        <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
+                            <div className="flex justify-between font-semibold">
+                                <span>Total Goods Value:</span>
+                                <span>₹{summary.totalGoodsValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span>Total Bags / Weight:</span>
+                                <span>{summary.totalQuantity.toLocaleString()} Bags / {summary.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                            </div>
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -341,11 +352,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           />
                           <FormMessage />
                         </FormItem>)} />
-                    {watch('agentId') && (
+                    {watchedFormValues.agentId && (
                         <>
                           <FormField control={control} name="brokerageType" render={({ field }) => (
                             <FormItem><FormLabel>Brokerage Type</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!watch('agentId')}>
+                              <Select onValueChange={field.onChange} value={field.value} disabled={!watchedFormValues.agentId}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   <SelectItem value="Fixed">Fixed (₹)</SelectItem>
@@ -360,10 +371,10 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               <div className="relative">
                                 <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
                                   onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                  disabled={!watch('agentId') || !watch('brokerageType')}
-                                  className={watch('brokerageType') === 'Percentage' ? "pr-8" : ""}
+                                  disabled={!watchedFormValues.agentId || !watchedFormValues.brokerageType}
+                                  className={watchedFormValues.brokerageType === 'Percentage' ? "pr-8" : ""}
                                 /></FormControl>
-                                {watch('brokerageType') === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                {watchedFormValues.brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
                               </div>
                               <FormMessage />
                             </FormItem>
