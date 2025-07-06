@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import type { Sale, Purchase, MonthlyProfitInfo } from "@/lib/types";
+import type { Sale, Purchase, MonthlyProfitInfo, LocationTransfer } from "@/lib/types";
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval } from 'date-fns';
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -15,32 +15,64 @@ import { DollarSign } from "lucide-react";
 interface ProfitSummaryProps {
   sales: Sale[];
   purchases: Purchase[];
+  locationTransfers: LocationTransfer[];
 }
 
-const getPurchaseDetailsForSaleLot = (lotNumberFromSale: string | undefined | null, purchases: Purchase[]): { rate: number; supplierName?: string; agentName?: string } => {
+const getPurchaseDetailsForSaleLot = (
+  lotNumberFromSale: string | undefined | null,
+  purchases: Purchase[],
+  locationTransfers: LocationTransfer[]
+): { rate: number; supplierName?: string; agentName?: string } => {
   const searchLot = String(lotNumberFromSale || "").toLowerCase().trim();
   if (!searchLot) {
     return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
   }
 
-  const matchedPurchase = purchases.find(p => {
-    const purchaseLot = String(p.lotNumber || "").toLowerCase().trim();
-    return purchaseLot === searchLot;
-  });
+  // First, try a direct match for non-transferred lots.
+  const directMatchPurchase = purchases.find(p => String(p.lotNumber || "").toLowerCase().trim() === searchLot);
+  if (directMatchPurchase) {
+    return {
+      rate: directMatchPurchase.rate ?? 0,
+      supplierName: directMatchPurchase.supplierName || directMatchPurchase.supplierId || 'N/A',
+      agentName: directMatchPurchase.agentName || directMatchPurchase.agentId || 'N/A',
+    };
+  }
 
-  if (!matchedPurchase) {
-    // console.warn(`ProfitSummary: No matching purchase found for lot: "${searchLot}"`);
+  // If no direct match, it might be a transferred lot. Trace it back.
+  let originalLotNumber: string | null = null;
+  // Iterate backwards to find the most recent transfer for a given newLotNumber, which is more robust
+  for (let i = locationTransfers.length - 1; i >= 0; i--) {
+    const transfer = locationTransfers[i];
+    for (const item of transfer.items) {
+      if (String(item.newLotNumber || "").toLowerCase().trim() === searchLot) {
+        originalLotNumber = item.originalLotNumber;
+        break;
+      }
+    }
+    if (originalLotNumber) break;
+  }
+  
+  if (!originalLotNumber) {
     return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
   }
+  
+  // Find the purchase using the traced-back originalLotNumber.
+  const searchOriginalLot = String(originalLotNumber).toLowerCase().trim();
+  const originalPurchase = purchases.find(p => String(p.lotNumber || "").toLowerCase().trim() === searchOriginalLot);
+
+  if (!originalPurchase) {
+    return { rate: 0, supplierName: 'N/A', agentName: 'N/A' };
+  }
+
   return {
-    rate: matchedPurchase.rate ?? 0,
-    supplierName: matchedPurchase.supplierName || matchedPurchase.supplierId || 'N/A',
-    agentName: matchedPurchase.agentName || matchedPurchase.agentId || 'N/A',
+    rate: originalPurchase.rate ?? 0,
+    supplierName: originalPurchase.supplierName || originalPurchase.supplierId || 'N/A',
+    agentName: originalPurchase.agentName || originalPurchase.agentId || 'N/A',
   };
 };
 
 
-export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesData, purchases }) => {
+export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesData, purchases, locationTransfers }) => {
   const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [hydrated, setHydrated] = useState(false);
@@ -65,10 +97,10 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
   }, [allSalesData, currentFinancialYearString, hydrated, isAppHydrating]);
 
   const allProfitTransactions = useMemo(() => {
-    if (!salesForCurrentFY || !purchases) return [];
+    if (!salesForCurrentFY || !purchases || !locationTransfers) return [];
 
     return salesForCurrentFY.map((sale) => {
-      const purchaseDetails = getPurchaseDetailsForSaleLot(sale.lotNumber, purchases);
+      const purchaseDetails = getPurchaseDetailsForSaleLot(sale.lotNumber, purchases, locationTransfers);
       const purchaseRateValue = purchaseDetails.rate;
       
       const saleRateNum = typeof sale.rate === 'number' ? sale.rate : 0;
@@ -90,7 +122,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
         agentName: purchaseDetails.agentName,
       };
     });
-  }, [salesForCurrentFY, purchases]);
+  }, [salesForCurrentFY, purchases, locationTransfers]);
 
   const monthOptions = useMemo(() => {
     if (!hydrated) return [];

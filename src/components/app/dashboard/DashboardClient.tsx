@@ -179,7 +179,7 @@ const DashboardClient = () => {
             </CardContent></Card></Link>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProfitSummary sales={sales} purchases={purchases} />
+        <ProfitSummary sales={sales} purchases={purchases} locationTransfers={locationTransfers} />
         <OutstandingSummary />
       </div>
     </div>
