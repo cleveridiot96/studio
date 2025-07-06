@@ -78,7 +78,11 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 <TableRow 
                   key={purchase.id}
                   onClick={() => hasMultipleItems && toggleRow(purchase.id)}
-                  className={cn(hasMultipleItems && "cursor-pointer", isExpanded && "bg-muted/50")}
+                  className={cn(
+                    hasMultipleItems && "cursor-pointer",
+                    isExpanded && "bg-purple-50 dark:bg-purple-900/40"
+                  )}
+                  data-state={isExpanded ? 'open' : 'closed'}
                 >
                   <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
                   <TableCell>
@@ -163,26 +167,24 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               );
 
               const expandedSubRows = isExpanded && hasMultipleItems ? [
-                <TableRow key={`${purchase.id}-sub-header`} className="bg-muted/80 hover:bg-muted/80 text-xs">
-                    <TableCell colSpan={1}>{''}</TableCell>
-                    <TableHead className="p-2">Vakkal</TableHead>
-                    <TableCell colSpan={3}>{''}</TableCell>
-                    <TableHead className="text-right p-2">Bags</TableHead>
-                    <TableHead className="text-right p-2">Net Wt</TableHead>
-                    <TableHead className="text-right p-2">Rate</TableHead>
-                    <TableHead className="text-right p-2">Value</TableHead>
-                    <TableCell colSpan={2}>{''}</TableCell>
+                <TableRow key={`${purchase.id}-sub-header`} className="bg-purple-100/50 dark:bg-purple-900/60 text-xs hover:bg-purple-100/60 dark:hover:bg-purple-900/70">
+                    <TableCell className="p-2 w-10" />
+                    <TableCell className="p-2 font-semibold text-muted-foreground" colSpan={4}>Vakkal Breakdown</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Bags</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Rate</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right" colSpan={2}>Value</TableCell>
+                    <TableCell className="p-2 w-10" />
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
-                  <TableRow key={`${purchase.id}-item-${index}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                      <TableCell colSpan={1}>{''}</TableCell>
-                      <TableCell className="p-2">{item.lotNumber}</TableCell>
-                      <TableCell colSpan={3}>{''}</TableCell>
+                  <TableRow key={`${purchase.id}-item-${index}`} className="bg-purple-50 dark:bg-purple-900/40 text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50">
+                      <TableCell className="p-2" />
+                      <TableCell className="p-2 font-medium" colSpan={4}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-2">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-2">{item.netWeight.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-2">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-2 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell colSpan={2}>{''}</TableCell>
+                      <TableCell className="text-right p-2 font-medium" colSpan={2}>{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="p-2" />
                   </TableRow>
                 ))
               ] : [];

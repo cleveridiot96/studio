@@ -82,7 +82,11 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                 <TableRow 
                   key={sale.id}
                   onClick={() => hasMultipleItems && toggleRow(sale.id)}
-                  className={cn(hasMultipleItems && "cursor-pointer", isExpanded && "bg-muted/50")}
+                  className={cn(
+                    hasMultipleItems && "cursor-pointer",
+                    isExpanded && "bg-blue-50 dark:bg-blue-900/40"
+                  )}
+                  data-state={isExpanded ? 'open' : 'closed'}
                 >
                   <TableCell>{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
                   <TableCell>
@@ -161,24 +165,26 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               );
               
               const expandedSubRows = isExpanded && hasMultipleItems ? [
-                <TableRow key={`${sale.id}-sub-header`} className="bg-muted/80 hover:bg-muted/80 text-xs">
-                    <TableCell colSpan={3}>{''}</TableCell>
-                    <TableHead className="p-2">Vakkal</TableHead>
-                    <TableHead className="text-right p-2">Bags</TableHead>
-                    <TableHead className="text-right p-2">Net Wt</TableHead>
-                    <TableHead className="text-right p-2">Rate</TableHead>
-                    <TableHead className="text-right p-2">Value</TableHead>
-                    <TableCell colSpan={2}>{''}</TableCell>
+                <TableRow key={`${sale.id}-sub-header`} className="bg-blue-100/50 dark:bg-blue-900/60 text-xs hover:bg-blue-100/60 dark:hover:bg-blue-900/70">
+                    <TableCell className="p-2 w-10"></TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground" colSpan={3}>Vakkal Breakdown</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Bags</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Rate</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Value</TableCell>
+                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Profit</TableCell>
+                    <TableCell className="p-2 w-10"></TableCell>
                 </TableRow>,
                 ...sale.items.map((item, index) => (
-                  <TableRow key={`${sale.id}-item-${index}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                      <TableCell colSpan={3}>{''}</TableCell>
-                      <TableCell className="p-2">{item.lotNumber}</TableCell>
+                  <TableRow key={`${sale.id}-item-${index}`} className="bg-blue-50 dark:bg-blue-900/40 text-xs hover:bg-blue-100/50 dark:hover:bg-blue-800/50">
+                      <TableCell className="p-2"></TableCell>
+                      <TableCell className="p-2 font-medium" colSpan={3}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-2">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-2">{item.netWeight.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-2">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="text-right p-2 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell colSpan={2}>{''}</TableCell>
+                      <TableCell className={`text-right p-2 font-medium ${(item.itemProfit || 0) >= 0 ? 'text-green-600' : 'text-red-700'}`}>{(item.itemProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="p-2"></TableCell>
                   </TableRow>
                 ))
               ] : [];
