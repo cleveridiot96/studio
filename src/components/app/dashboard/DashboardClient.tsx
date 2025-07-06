@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { isDateInFinancialYear } from "@/lib/utils";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; // New
@@ -42,9 +43,9 @@ const DashboardClient = () => {
   const memoizedEmptyArray = React.useMemo(() => [], []);
   const memoizedInitialWarehouses = React.useMemo(() => initialDashboardWarehouses, []);
 
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
   const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
@@ -131,7 +132,7 @@ const DashboardClient = () => {
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, currentFinancialYearString));
     
     fyPurchases.forEach(p => {
-      if (p.items && Array.isArray(p.items)) {
+      if (p && p.items && Array.isArray(p.items)) {
         p.items.forEach(item => {
           const key = `${item.lotNumber}-${p.locationId}`;
           let entry = inventoryMap.get(key);

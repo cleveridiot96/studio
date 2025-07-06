@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { salesMigrator } from '@/lib/dataMigrators';
 
 const SALES_STORAGE_KEY = 'salesData';
 
@@ -27,7 +28,7 @@ interface ProfitKPIs {
 
 export function ProfitAnalysisClient() {
   const [hydrated, setHydrated] = React.useState(false);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const { financialYear: currentFinancialYearString } = useSettings();
   
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {

@@ -30,6 +30,7 @@ import html2canvas from 'html2canvas';
 import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { purchaseMigrator } from '@/lib/dataMigrators';
 
 const initialPurchasesData: Purchase[] = [];
 const initialPurchaseReturnsData: PurchaseReturn[] = [];
@@ -40,34 +41,6 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-
-const purchaseMigrator = (storedValue: any): Purchase[] => {
-    if (Array.isArray(storedValue)) {
-        return storedValue.map(p => {
-            if (p && p.lotNumber && !p.items) {
-                const goodsValue = (p.netWeight || 0) * (p.rate || 0);
-                return {
-                    ...p,
-                    items: [{
-                        lotNumber: p.lotNumber,
-                        quantity: p.quantity,
-                        netWeight: p.netWeight,
-                        rate: p.rate,
-                        goodsValue: goodsValue,
-                    }],
-                    totalGoodsValue: goodsValue,
-                    totalQuantity: p.quantity,
-                    totalNetWeight: p.netWeight,
-                };
-            }
-             if (p && !p.items) {
-                p.items = [];
-            }
-            return p;
-        });
-    }
-    return [];
-};
 
 export function PurchasesClient() {
   const { toast } = useToast();

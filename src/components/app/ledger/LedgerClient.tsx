@@ -15,6 +15,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -61,8 +62,8 @@ export function LedgerClient() {
   const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
-  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
-  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray, purchaseMigrator);
+  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray, salesMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(TRANSACTIONS_KEYS.saleReturns, memoizedEmptyArray);
 
@@ -132,9 +133,11 @@ export function LedgerClient() {
     // INWARD (Debit): Purchases where party is supplier or agent
     purchases.forEach(p => {
         if ((p.supplierId === selectedPartyId || p.agentId === selectedPartyId) && dateFilter(p.date)) {
-            debitTransactions.push({
-                id: `pur-${p.id}`, date: p.date, vakkal: p.lotNumber, party: p.supplierName || 'N/A',
-                bags: p.quantity, kg: p.netWeight, rate: p.rate, amount: p.totalAmount, type: 'Purchase',
+            p.items.forEach(item => {
+                debitTransactions.push({
+                    id: `pur-${p.id}-${item.lotNumber}`, date: p.date, vakkal: item.lotNumber, party: p.supplierName || 'N/A',
+                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: p.totalAmount, type: 'Purchase',
+                });
             });
         }
     });
@@ -145,7 +148,7 @@ export function LedgerClient() {
         if (originalSale?.brokerId === selectedPartyId && dateFilter(sr.date)) {
             debitTransactions.push({
                 id: `sr-${sr.id}`, date: sr.date, vakkal: sr.originalLotNumber, party: sr.originalCustomerName || 'N/A',
-                bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.rate, amount: sr.returnAmount, type: 'Sale Return',
+                bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.items.find(i => i.lotNumber === sr.originalLotNumber)?.rate || 0, amount: sr.returnAmount, type: 'Sale Return',
             });
         }
     });
@@ -153,9 +156,11 @@ export function LedgerClient() {
     // OUTWARD (Credit): Sales where party is broker
     sales.forEach(s => {
         if (s.brokerId === selectedPartyId && dateFilter(s.date)) {
-            creditTransactions.push({
-                id: `sal-${s.id}`, date: s.date, vakkal: s.lotNumber, party: s.customerName || 'N/A',
-                bags: s.quantity, kg: s.netWeight, rate: s.rate, amount: s.goodsValue, type: 'Sale',
+             s.items.forEach(item => {
+                creditTransactions.push({
+                    id: `sal-${s.id}-${item.lotNumber}`, date: s.date, vakkal: item.lotNumber, party: s.customerName || 'N/A',
+                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: item.goodsValue, type: 'Sale',
+                });
             });
         }
     });
@@ -166,7 +171,7 @@ export function LedgerClient() {
         if (originalPurchase && (originalPurchase.supplierId === selectedPartyId || originalPurchase.agentId === selectedPartyId) && dateFilter(pr.date)) {
             creditTransactions.push({
                 id: `pr-${pr.id}`, date: pr.date, vakkal: pr.originalLotNumber, party: pr.originalSupplierName || 'N/A',
-                bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.rate, amount: pr.returnAmount, type: 'Purchase Return',
+                bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber)?.rate || 0, amount: pr.returnAmount, type: 'Purchase Return',
             });
         }
     });
@@ -378,5 +383,3 @@ export function LedgerClient() {
     </div>
   );
 }
-
-    

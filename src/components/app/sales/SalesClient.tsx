@@ -31,6 +31,7 @@ import { format as formatDateFn, parseISO } from 'date-fns';
 import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 
 
 const SALES_STORAGE_KEY = 'salesData';
@@ -49,39 +50,6 @@ interface AggregatedStockItem {
   effectiveRate: number; 
   locationName?: string;
 }
-
-const salesMigrator = (storedValue: any): Sale[] => {
-    if (Array.isArray(storedValue)) {
-        return storedValue.map(sale => {
-            if (sale && sale.lotNumber && !sale.items) {
-                const goodsValue = (sale.netWeight || 0) * (sale.rate || 0);
-                const cogs = sale.costOfGoodsSold || 0; 
-                
-                return {
-                    ...sale,
-                    items: [{
-                        lotNumber: sale.lotNumber,
-                        quantity: sale.quantity,
-                        netWeight: sale.netWeight,
-                        rate: sale.rate,
-                        goodsValue: goodsValue,
-                        costOfGoodsSold: cogs
-                    }],
-                    totalGoodsValue: goodsValue,
-                    totalQuantity: sale.quantity,
-                    totalNetWeight: sale.netWeight,
-                    totalCostOfGoodsSold: cogs,
-                };
-            }
-            if (sale && !sale.items) {
-                sale.items = [];
-            }
-            return sale;
-        });
-    }
-    return []; 
-};
-
 
 export function SalesClient() {
   const { toast } = useToast();
@@ -110,7 +78,7 @@ export function SalesClient() {
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
@@ -172,7 +140,7 @@ export function SalesClient() {
             const toEntry = stockMap.get(item.newLotNumber);
             if (toEntry) toEntry.currentBags += item.bagsToTransfer;
             else {
-                const originalPurchase = purchases.find(p => p.items.some(pi => pi.lotNumber === item.originalLotNumber));
+                const originalPurchase = purchases.find(p => p.items && p.items.some(pi => pi.lotNumber === item.originalLotNumber));
                 stockMap.set(item.newLotNumber, {
                     currentBags: item.bagsToTransfer,
                     effectiveRate: originalPurchase?.effectiveRate || 0,
@@ -205,8 +173,8 @@ export function SalesClient() {
         }
     });
     fyLocationTransfers.forEach(lt => {
-        if(lt.toWarehouseId === MUMBAI_WAREHOUSE_ID) lt.items.forEach(i => allMumbaiLots.add(i.newLotNumber));
-        if(lt.fromWarehouseId === MUMBAI_WAREHOUSE_ID) lt.items.forEach(i => allMumbaiLots.delete(i.originalLotNumber));
+        if(lt.toWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items) lt.items.forEach(i => allMumbaiLots.add(i.newLotNumber));
+        if(lt.fromWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items) lt.items.forEach(i => allMumbaiLots.delete(i.originalLotNumber));
     });
 
     stockMap.forEach((value, key) => {

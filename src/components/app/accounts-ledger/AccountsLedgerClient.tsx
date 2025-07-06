@@ -16,6 +16,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -58,8 +59,8 @@ export function AccountsLedgerClient() {
   const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
-  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray);
-  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray, purchaseMigrator);
+  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray, salesMigrator);
   const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, memoizedEmptyArray);
   const [receipts] = useLocalStorageState<Receipt[]>(TRANSACTIONS_KEYS.receipts, memoizedEmptyArray);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
@@ -131,26 +132,26 @@ export function AccountsLedgerClient() {
     // Process Purchases
     purchases.forEach(p => {
         if (p.agentId === partyId) {
-            const goodsValue = (p.netWeight * p.rate);
+            const goodsValue = p.totalGoodsValue;
             const brokerageAmount = p.brokerageCharges || 0;
             // Credit for the goods value
             transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase of ${p.lotNumber} from ${p.supplierName}`,
+                particulars: `Purchase from ${p.supplierName}`,
                 debit: 0, credit: goodsValue,
             });
             // Credit for brokerage
             if (brokerageAmount > 0) {
                 transactions.push({
                     id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
-                    particulars: `Brokerage on ${p.lotNumber}`,
+                    particulars: `Brokerage on Purchase`,
                     debit: 0, credit: brokerageAmount,
                 });
             }
         } else if (p.supplierId === partyId) {
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase: ${p.lotNumber} (Agent: ${p.agentName || 'None'})`,
+                particulars: `Purchase (Agent: ${p.agentName || 'None'})`,
                 debit: 0, credit: p.totalAmount,
             });
         }
@@ -159,7 +160,7 @@ export function AccountsLedgerClient() {
         if (p.transporterId === partyId && p.transportCharges && p.transportCharges > 0) {
              transactions.push({
                 id: `pur-transport-${p.id}`, date: p.date, type: 'Transport',
-                particulars: `Transport for ${p.lotNumber}`,
+                particulars: `Transport for Purchase`,
                 debit: 0, credit: p.transportCharges
             });
         }
@@ -173,21 +174,21 @@ export function AccountsLedgerClient() {
             // Debit for the sale amount
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale to ${s.customerName} (${s.lotNumber})`,
+                particulars: `Sale to ${s.customerName}`,
                 debit: s.billedAmount, credit: 0
             });
             // Credit for brokerage
             if (brokerageAmount > 0) {
                 transactions.push({
                     id: `sale-brokerage-${s.id}`, date: s.date, type: 'Brokerage',
-                    particulars: `Commission on ${s.billNumber || s.lotNumber}`,
+                    particulars: `Commission on Bill ${s.billNumber || 'N/A'}`,
                     debit: 0, credit: brokerageAmount
                 });
             }
         } else if (s.customerId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale (${s.lotNumber}) (Broker: ${s.brokerName || 'None'})`,
+                particulars: `Sale (Broker: ${s.brokerName || 'None'})`,
                 debit: s.billedAmount, credit: 0
             });
         }
