@@ -190,13 +190,21 @@ export function AccountsLedgerClient() {
       });
     } else if (party.type === 'Supplier') {
       purchases.filter(p => p.supplierId === partyId).forEach(p => {
-        const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
-        transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'credit', amount: payableToSupplier, vakkal: p.lotNumber, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any);
+        // Credit for goods and other non-brokerage expenses.
+        const goodsAndExpensesPayable = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+        transactions.push({ id: `pur-goods-${p.id}`, date: p.date, type: 'credit', amount: goodsAndExpensesPayable, vakkal: `Purchase: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any);
+        // If this supplier is also the agent, add their brokerage as a separate credit line for clarity.
+        if (p.agentId === p.supplierId && p.brokerageCharges && p.brokerageCharges > 0) {
+          transactions.push({ id: `pur-brok-${p.id}`, date: p.date, type: 'credit', amount: p.brokerageCharges, vakkal: `Brokerage: ${p.lotNumber}` } as any);
+        }
       });
       payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
     } else if (party.type === 'Agent') {
-      purchases.filter(p => p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0).forEach(p => {
-        transactions.push({ id: `brok-${p.id}`, date: p.date, type: 'credit', amount: p.brokerageCharges, vakkal: `Brokerage: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.brokerageValue } as any);
+       purchases.filter(p => p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0).forEach(p => {
+        // Only add brokerage if agent is NOT the supplier, as that case is handled in the 'Supplier' block.
+        if (p.agentId !== p.supplierId) {
+          transactions.push({ id: `brok-${p.id}`, date: p.date, type: 'credit', amount: p.brokerageCharges, vakkal: `Brokerage: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.brokerageValue } as any);
+        }
       });
       payments.filter(p => p.partyId === partyId).forEach(p => transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: p.referenceNo } as any));
     } else if (party.type === 'Expense') {

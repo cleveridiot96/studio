@@ -55,7 +55,8 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead className="text-right">Bags</TableHead>
               <TableHead className="text-right">Net Wt.(kg)</TableHead>
               <TableHead className="text-right">Rate (₹/kg)</TableHead>
-              <TableHead className="text-right">Total Val (₹)</TableHead>
+              <TableHead className="text-right">Brokerage (₹)</TableHead>
+              <TableHead className="text-right">Goods Value (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -83,14 +84,25 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 </TableCell>
                 <TableCell>
                   <Tooltip>
-                    <TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || purchase.agentId || 'N/A'}</span></TooltipTrigger>
+                    <TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || purchase.agentId || ''}</span></TooltipTrigger>
                     <TooltipContent><p>{purchase.agentName || purchase.agentId || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
                 <TableCell className="text-right">{purchase.quantity}</TableCell>
                 <TableCell className="text-right">{purchase.netWeight.toLocaleString()}</TableCell>
                 <TableCell className="text-right">{purchase.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                <TableCell className="text-right font-semibold">{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className="text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
+                <TableCell className="text-right font-semibold">
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>{(purchase.totalAmount - (purchase.brokerageCharges || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Full Landed Cost (incl. all expenses): ₹{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                      <p>Effective Rate: ₹{purchase.effectiveRate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TableCell>
                 <TableCell className="text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
