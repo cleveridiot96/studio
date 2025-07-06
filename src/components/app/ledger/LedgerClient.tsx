@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subYears } from "date-fns";
 import { BookUser, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -204,6 +204,18 @@ export function LedgerClient() {
     return allMasters.find(p => p.id === selectedPartyId);
   }, [selectedPartyId, allMasters]);
 
+  const setDatePreset = (preset: '1m' | '3m' | '6m' | '1y') => {
+    const to = endOfDay(new Date());
+    let from;
+    switch (preset) {
+      case '1m': from = startOfDay(subMonths(to, 1)); break;
+      case '3m': from = startOfDay(subMonths(to, 3)); break;
+      case '6m': from = startOfDay(subMonths(to, 6)); break;
+      case '1y': from = startOfDay(subYears(to, 1)); break;
+    }
+    setDateRange({ from, to });
+  };
+
 
   if (!hydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading ledger data...</p></div>;
@@ -221,6 +233,12 @@ export function LedgerClient() {
                         onChange={(value) => handlePartySelect(value || "")} options={partyOptions}
                         placeholder="Select Party..." searchPlaceholder="Search parties..."
                         notFoundMessage="No party found." className="h-11 text-base" />
+                    <div className="flex gap-1">
+                      <Button variant="outline" size="sm" onClick={() => setDatePreset('1m')}>1M</Button>
+                      <Button variant="outline" size="sm" onClick={() => setDatePreset('3m')}>3M</Button>
+                      <Button variant="outline" size="sm" onClick={() => setDatePreset('6m')}>6M</Button>
+                      <Button variant="outline" size="sm" onClick={() => setDatePreset('1y')}>1Y</Button>
+                    </div>
                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
                     <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
                         <Printer className="h-5 w-5" /><span className="sr-only">Print</span>

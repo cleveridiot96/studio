@@ -1,8 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-// Removed: import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown } from "lucide-react";
@@ -82,7 +82,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      // If no options are available and user hits enter, trigger add new if available
       if (filteredOptions.length === 0 && search.length > 0 && onAddNew) {
         e.preventDefault();
         onAddNew();
@@ -141,33 +140,35 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               ) : (
                 <>
                   {filteredOptions.map((option) => (
-                    <Tooltip key={option.value}>
-                      <TooltipTrigger asChild>
-                        <div
-                          onClick={() => {
-                            onChange(option.value); // Use onChange from props
+                     <CommandItem
+                        key={option.value}
+                        value={option.label}
+                        onSelect={() => {
+                            onChange(option.value);
                             setOpen(false);
                             setSearch("");
-                          }}
-                          className={cn(
-                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full",
-                            value === option.value && "font-semibold" // Use value from props
-                          )}
-                          role="option"
-                          aria-selected={value === option.value} // Use value from props
-                        >
-                          <Check
-                            className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")} // Use value from props
-                          />
-                          <span className="flex-grow truncate" >{option.label}</span>
-                        </div>
-                      </TooltipTrigger>
-                      {option.tooltipContent && (
-                        <TooltipContent side="right" align="start" className="z-[99999]">
-                          {option.tooltipContent}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
+                        }}
+                        className={cn(
+                          "p-0 relative cursor-pointer",
+                          value === option.value && "font-semibold"
+                        )}
+                      >
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex items-center w-full px-4 py-2">
+                                <Check
+                                    className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
+                                />
+                                <span className="flex-grow truncate">{option.label}</span>
+                            </div>
+                        </TooltipTrigger>
+                        {option.tooltipContent && (
+                          <TooltipContent side="right" align="start" className="z-[99999]">
+                            {option.tooltipContent}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </CommandItem>
                   ))}
                   {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
                     <div
@@ -191,3 +192,5 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     </Popover>
   );
 };
+
+    

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, isBefore } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, isBefore, subYears } from "date-fns";
 import { BookCopy, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -128,38 +128,69 @@ export function AccountsLedgerClient() {
     // --- DEBIT(+): Amount the party owes us (or we paid them) ---
     // --- CREDIT(-): Amount we owe the party (or they paid us) ---
 
-    // Process Purchases: If agent exists, liability is with agent. Otherwise, supplier.
+    // Process Purchases
     purchases.forEach(p => {
-        const accountablePartyId = p.agentId || p.supplierId;
-        if (accountablePartyId === partyId) {
+        const goodsValue = (p.netWeight * p.rate);
+        const brokerageAmount = p.brokerageCharges || 0;
+        
+        if (p.agentId === partyId) { // Viewing Agent's ledger
+            // Entry 1: For the goods value
             transactions.push({
-                id: `pur-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase: ${p.lotNumber} from ${p.supplierName}`,
-                debit: 0, credit: p.totalAmount // Credit the full purchase value
+                id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
+                particulars: `Purchase of ${p.lotNumber} from ${p.supplierName}`,
+                debit: 0, credit: goodsValue,
+            });
+            // Entry 2: For brokerage, if any
+            if (brokerageAmount > 0) {
+                transactions.push({
+                    id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
+                    particulars: `Brokerage on ${p.lotNumber}`,
+                    debit: 0, credit: brokerageAmount,
+                });
+            }
+        } else if (!p.agentId && p.supplierId === partyId) { // Viewing Supplier's ledger (NO AGENT)
+            transactions.push({
+                id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
+                particulars: `Purchase: ${p.lotNumber}`,
+                debit: 0, credit: p.totalAmount, // Credit full amount as no separate agent liability
+            });
+        }
+
+        // Transport charges are always owed to the transporter
+        if (p.transporterId === partyId && p.transportCharges && p.transportCharges > 0) {
+             transactions.push({
+                id: `pur-transport-${p.id}`, date: p.date, type: 'Transport',
+                particulars: `Transport for ${p.lotNumber}`,
+                debit: 0, credit: p.transportCharges
             });
         }
     });
 
-    // Process Sales: If broker exists, receivable is from broker. Otherwise, customer.
+    // Process Sales
     sales.forEach(s => {
-        const accountablePartyId = s.brokerId || s.customerId;
-        if (accountablePartyId === partyId) {
+        const brokerageAmount = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+
+        if (s.brokerId === partyId) { // Viewing Broker's Ledger
+            // Debit for the sale amount
             transactions.push({
-                id: `sale-${s.id}`, date: s.date, type: 'Sale',
+                id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
                 particulars: `Sale to ${s.customerName} (${s.lotNumber})`,
                 debit: s.billedAmount, credit: 0
             });
-            // Brokerage is a credit to the broker (we owe them)
-            if (s.brokerId === partyId) {
-                const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-                if (totalBrokerage > 0) {
-                    transactions.push({
-                        id: `brok-${s.id}`, date: s.date, type: 'Brokerage',
-                        particulars: `Commission on ${s.lotNumber}`,
-                        debit: 0, credit: totalBrokerage
-                    });
-                }
+            // Credit for brokerage
+            if (brokerageAmount > 0) {
+                transactions.push({
+                    id: `sale-brokerage-${s.id}`, date: s.date, type: 'Brokerage',
+                    particulars: `Commission on ${s.billNumber || s.lotNumber}`,
+                    debit: 0, credit: brokerageAmount
+                });
             }
+        } else if (!s.brokerId && s.customerId === partyId) { // Viewing Customer's Ledger (NO BROKER)
+            transactions.push({
+                id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
+                particulars: `Sale (${s.lotNumber})`,
+                debit: s.billedAmount, credit: 0
+            });
         }
     });
 
@@ -274,6 +305,18 @@ export function AccountsLedgerClient() {
     router.push(value ? `/accounts-ledger?partyId=${value}` : '/accounts-ledger', { scroll: false });
   };
   
+  const setDatePreset = (preset: '1m' | '3m' | '6m' | '1y') => {
+    const to = endOfDay(new Date());
+    let from;
+    switch (preset) {
+      case '1m': from = startOfDay(subMonths(to, 1)); break;
+      case '3m': from = startOfDay(subMonths(to, 3)); break;
+      case '6m': from = startOfDay(subMonths(to, 6)); break;
+      case '1y': from = startOfDay(subYears(to, 1)); break;
+    }
+    setDateRange({ from, to });
+  };
+
   return (
     <div className="space-y-6 print-area flex flex-col flex-1">
       <Card className="shadow-md no-print">
@@ -291,6 +334,12 @@ export function AccountsLedgerClient() {
                 notFoundMessage="No party found."
                 className="h-11 text-base"
               />
+              <div className="flex gap-1">
+                <Button variant="outline" size="sm" onClick={() => setDatePreset('1m')}>1M</Button>
+                <Button variant="outline" size="sm" onClick={() => setDatePreset('3m')}>3M</Button>
+                <Button variant="outline" size="sm" onClick={() => setDatePreset('6m')}>6M</Button>
+                <Button variant="outline" size="sm" onClick={() => setDatePreset('1y')}>1Y</Button>
+              </div>
               <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
               <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
                 <Printer className="h-5 w-5" /><span className="sr-only">Print</span>
@@ -435,3 +484,5 @@ export function AccountsLedgerClient() {
     </div>
   );
 }
+
+    
