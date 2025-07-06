@@ -307,7 +307,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 border rounded-md shadow-sm space-y-4">
+                <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium text-primary">Quantity & Rate</h3>
                   {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
@@ -328,7 +328,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                 return {
                                     value: s.lotNumber,
                                     label: `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`,
-                                    tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Avl: ${s.currentBags} bags`
+                                    tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Avl: ${s.currentBags} bags at ${s.locationName || 'Mumbai'}`
                                 };
                             })} 
                             placeholder="Select Lot" />
@@ -357,7 +357,19 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                  <div className="flex justify-between items-start mt-2">
+                    <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                     <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
+                        <div className="flex justify-between font-semibold">
+                            <span>Total Goods Value:</span>
+                            <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                            <span>Total Net Weight:</span>
+                            <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                        </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">

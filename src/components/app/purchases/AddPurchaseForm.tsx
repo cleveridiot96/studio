@@ -127,6 +127,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const miscExpenses = watch("miscExpenses") || 0;
 
   const totalGoodsValue = React.useMemo(() => watchedItems.reduce((acc, item) => acc + ((item.netWeight || 0) * (item.rate || 0)), 0), [watchedItems]);
+  const totalNetWeight = React.useMemo(() => watchedItems.reduce((acc, item) => acc + (item.netWeight || 0), 0), [watchedItems]);
   
   const calculatedBrokerageCharges = React.useMemo(() => {
     if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
@@ -140,7 +141,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const totalExpenses = React.useMemo(() => transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses, [transportCharges, packingCharges, labourCharges, calculatedBrokerageCharges, miscExpenses]);
   const totalAmount = React.useMemo(() => totalGoodsValue + totalExpenses, [totalGoodsValue, totalExpenses]);
-  const totalNetWeight = React.useMemo(() => watchedItems.reduce((acc, item) => acc + (item.netWeight || 0), 0), [watchedItems]);
   const effectiveRate = React.useMemo(() => (totalNetWeight > 0 ? totalAmount / totalNetWeight : 0), [totalAmount, totalNetWeight]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -267,7 +267,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
                                 itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
-                                setValue(`items.${index}.netWeight`, bagsVal * 50, { shouldValidate: true });
+                                const currentNetWeight = watch(`items.${index}.netWeight`);
+                                // Only auto-calculate if weight is not manually set or is zero
+                                if (currentNetWeight === undefined || currentNetWeight === 0) {
+                                  setValue(`items.${index}.netWeight`, bagsVal * 50, { shouldValidate: true });
+                                }
                             }} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
@@ -287,9 +291,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       </div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })} className="mt-2">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-                  </Button>
+                  <div className="flex justify-between items-start mt-2">
+                    <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+                    </Button>
+                    <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
+                      <div className="flex justify-between font-semibold">
+                          <span>Total Goods Value:</span>
+                          <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                          <span>Total Net Weight:</span>
+                          <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
