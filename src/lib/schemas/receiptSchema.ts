@@ -14,6 +14,7 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
   paymentMethod: z.enum(['Cash', 'Bank', 'UPI'], {
     required_error: "Payment method is required.",
   }),
+  source: z.string().optional(),
   referenceNo: z.string().optional(),
   notes: z.string().optional(),
   relatedSaleIds: z.array(z.string()).optional(), // Optional: for linking to sales
@@ -21,4 +22,3 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
 });
 
 export type ReceiptFormValues = z.infer<ReturnType<typeof receiptSchema>>;
-

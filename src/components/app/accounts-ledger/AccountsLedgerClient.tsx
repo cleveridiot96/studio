@@ -130,17 +130,16 @@ export function AccountsLedgerClient() {
 
     // Process Purchases
     purchases.forEach(p => {
-        const goodsValue = (p.netWeight * p.rate);
-        const brokerageAmount = p.brokerageCharges || 0;
-        
-        if (p.agentId === partyId) { // Viewing Agent's ledger
-            // Entry 1: For the goods value
+        if (p.agentId === partyId) {
+            const goodsValue = (p.netWeight * p.rate);
+            const brokerageAmount = p.brokerageCharges || 0;
+            // Credit for the goods value
             transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
                 particulars: `Purchase of ${p.lotNumber} from ${p.supplierName}`,
                 debit: 0, credit: goodsValue,
             });
-            // Entry 2: For brokerage, if any
+            // Credit for brokerage
             if (brokerageAmount > 0) {
                 transactions.push({
                     id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
@@ -148,14 +147,14 @@ export function AccountsLedgerClient() {
                     debit: 0, credit: brokerageAmount,
                 });
             }
-        } else if (!p.agentId && p.supplierId === partyId) { // Viewing Supplier's ledger (NO AGENT)
-            transactions.push({
+        } else if (p.supplierId === partyId) {
+             transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase: ${p.lotNumber}`,
-                debit: 0, credit: p.totalAmount, // Credit full amount as no separate agent liability
+                particulars: `Purchase: ${p.lotNumber} (Agent: ${p.agentName || 'None'})`,
+                debit: 0, credit: p.totalAmount,
             });
         }
-
+        
         // Transport charges are always owed to the transporter
         if (p.transporterId === partyId && p.transportCharges && p.transportCharges > 0) {
              transactions.push({
@@ -170,7 +169,7 @@ export function AccountsLedgerClient() {
     sales.forEach(s => {
         const brokerageAmount = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
 
-        if (s.brokerId === partyId) { // Viewing Broker's Ledger
+        if (s.brokerId === partyId) {
             // Debit for the sale amount
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
@@ -185,10 +184,10 @@ export function AccountsLedgerClient() {
                     debit: 0, credit: brokerageAmount
                 });
             }
-        } else if (!s.brokerId && s.customerId === partyId) { // Viewing Customer's Ledger (NO BROKER)
+        } else if (s.customerId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale (${s.lotNumber})`,
+                particulars: `Sale (${s.lotNumber}) (Broker: ${s.brokerName || 'None'})`,
                 debit: s.billedAmount, credit: 0
             });
         }
@@ -196,18 +195,20 @@ export function AccountsLedgerClient() {
 
     // Process Payments we made
     payments.filter(p => p.partyId === partyId).forEach(p => {
+        const particularDetails = `via ${p.paymentMethod}` + (p.source ? ` (Src: ${p.source})` : '');
         transactions.push({
             id: `pay-${p.id}`, date: p.date, type: 'Payment',
-            particulars: `Payment via ${p.paymentMethod}`,
+            particulars: `Payment ${particularDetails}`,
             debit: p.amount, credit: 0
         });
     });
 
     // Process Receipts we received
     receipts.filter(r => r.partyId === partyId).forEach(r => {
+        const particularDetails = `via ${r.paymentMethod}` + (r.source ? ` (Src: ${r.source})` : '');
         transactions.push({
             id: `receipt-${r.id}`, date: r.date, type: 'Receipt',
-            particulars: `Receipt via ${r.paymentMethod}`,
+            particulars: `Receipt ${particularDetails}`,
             debit: 0, credit: r.amount
         });
         if (r.cashDiscount && r.cashDiscount > 0) {
@@ -285,7 +286,7 @@ export function AccountsLedgerClient() {
 
     const totalDebit = debitTransactions.reduce((sum, e) => sum + e.debit, 0);
     const totalCredit = creditTransactions.reduce((sum, e) => sum + e.credit, 0);
-    const closingBalance = openingBalance + totalDebit - totalCredit;
+    const closingBalance = openingBalance + periodTransactions.reduce((acc, tx) => acc + tx.debit - tx.credit, 0);
 
     return {
       debitTransactions,
@@ -484,5 +485,3 @@ export function AccountsLedgerClient() {
     </div>
   );
 }
-
-    

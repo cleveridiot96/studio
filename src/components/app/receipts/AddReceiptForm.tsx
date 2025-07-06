@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -65,6 +66,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         partyId: receiptToEdit.partyId,
         amount: receiptToEdit.amount,
         paymentMethod: receiptToEdit.paymentMethod,
+        source: receiptToEdit.source || "",
         referenceNo: receiptToEdit.referenceNo || "",
         notes: receiptToEdit.notes || "",
         cashDiscount: receiptToEdit.cashDiscount || 0,
@@ -76,6 +78,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       partyId: undefined,
       amount: 0,
       paymentMethod: 'Cash',
+      source: "",
       referenceNo: "",
       notes: "",
       cashDiscount: 0,
@@ -131,6 +134,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       partyType: selectedParty.type as MasterItemType,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
+      source: values.source,
       referenceNo: values.referenceNo,
       notes: values.notes,
       cashDiscount: values.cashDiscount || 0,
@@ -254,6 +258,17 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                           <SelectItem value="UPI">UPI</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={methods.control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Source (Optional)</FormLabel>
+                      <FormControl><Input placeholder="e.g., Self, From Bank" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

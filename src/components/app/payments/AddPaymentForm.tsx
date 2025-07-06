@@ -66,6 +66,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
         partyId: paymentToEdit.partyId,
         amount: paymentToEdit.amount,
         paymentMethod: paymentToEdit.paymentMethod,
+        source: paymentToEdit.source || "",
         referenceNo: paymentToEdit.referenceNo || "",
         notes: paymentToEdit.notes || "",
       };
@@ -75,6 +76,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       partyId: undefined, 
       amount: 0,
       paymentMethod: 'Cash',
+      source: "",
       referenceNo: "",
       notes: "",
     };
@@ -127,6 +129,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       partyType: selectedParty.type as MasterItemType,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
+      source: values.source,
       referenceNo: values.referenceNo,
       notes: values.notes,
     };
@@ -237,6 +240,17 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                           <SelectItem value="UPI">UPI</SelectItem>
                         </SelectContent>
                       </ShadSelect>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Source (Optional)</FormLabel>
+                      <FormControl><Input placeholder="e.g., Self, Bank Deposit" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

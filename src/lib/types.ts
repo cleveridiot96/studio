@@ -141,6 +141,7 @@ export interface Payment {
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   referenceNo?: string;
   notes?: string;
+  source?: string;
 }
 
 export interface Receipt {
@@ -155,6 +156,7 @@ export interface Receipt {
   notes?: string;
   relatedSaleIds?: string[]; // Optional - to tag which invoices this receipt settles
   cashDiscount?: number; // Optional - amount of discount given at time of receipt
+  source?: string;
 }
 
 export interface LocationTransferItem {
