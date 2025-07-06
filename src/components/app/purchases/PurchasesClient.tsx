@@ -31,6 +31,7 @@ import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { purchaseMigrator } from '@/lib/dataMigrators';
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 const initialPurchasesData: Purchase[] = [];
 const initialPurchaseReturnsData: PurchaseReturn[] = [];
@@ -75,6 +76,24 @@ export function PurchasesClient() {
   React.useEffect(() => {
     setIsPurchasesClientHydrated(true);
   }, []);
+  
+  React.useEffect(() => {
+    if (isPurchasesClientHydrated) {
+        const warehousesMap = new Map(warehouses.map(item => [item.id, item]));
+        let updated = false;
+        FIXED_WAREHOUSES.forEach(fixedWarehouse => {
+            const existing = warehousesMap.get(fixedWarehouse.id);
+            if (!existing || existing.name !== fixedWarehouse.name) {
+                warehousesMap.set(fixedWarehouse.id, { ...fixedWarehouse });
+                updated = true;
+            }
+        });
+
+        if (updated) {
+            setWarehouses(Array.from(warehousesMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
+        }
+    }
+  }, [isPurchasesClientHydrated, warehouses, setWarehouses]);
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !isPurchasesClientHydrated) return [];
