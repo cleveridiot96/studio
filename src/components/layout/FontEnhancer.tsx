@@ -8,8 +8,8 @@ import { Slider } from '@/components/ui/slider';
 export function FontEnhancer() {
   const { fontSize, setFontSize } = useSettings();
 
-  const minFontSize = 12; // Min font size in px
-  const maxFontSize = 24; // Max font size in px
+  const minFontSize = 19; // Min font size in px
+  const maxFontSize = 38; // Max font size in px
   const step = 1;
 
   return (

@@ -112,7 +112,7 @@
     /* overflow: hidden; Removed for better page-level scroll */
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-semibold;
     min-height: 100%; /* Allow body to grow with content */
     display: flex; /* Make body a flex container */
     flex-direction: column; /* Stack children vertically */
@@ -121,10 +121,10 @@
     overscroll-behavior: contain;
     /* overflow-y: auto; Let specific content areas scroll */
   }
-  h1 { @apply text-3xl font-bold md:text-4xl lg:text-5xl; }
-  h2 { @apply text-2xl font-semibold md:text-3xl lg:text-4xl; }
-  h3 { @apply text-xl font-semibold md:text-2xl lg:text-3xl; }
-  h4 { @apply text-lg font-semibold md:text-xl lg:text-2xl; }
+  h1 { @apply text-3xl font-extrabold md:text-4xl lg:text-5xl; }
+  h2 { @apply text-2xl font-bold md:text-3xl lg:text-4xl; }
+  h3 { @apply text-xl font-bold md:text-2xl lg:text-3xl; }
+  h4 { @apply text-lg font-bold md:text-xl lg:text-2xl; }
 
   .btn-lg { @apply px-6 py-3 text-lg; }
   .input-lg { @apply px-4 py-3 text-lg; }

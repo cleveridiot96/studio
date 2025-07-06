@@ -7,7 +7,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWith
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useSettings } from "@/contexts/SettingsContext"; // To get the global financial year
 import { isDateInFinancialYear } from "@/lib/utils"; // Utility to check if a date is in FY
 import { DollarSign } from "lucide-react";
@@ -204,7 +204,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle className="text-2xl text-primary flex items-center">
-            <DollarSign className="mr-2 h-6 w-6"/> Profit &amp; Loss (FY: {currentFinancialYearString})
+            <DollarSign className="mr-2 h-6 w-6"/> Profit & Loss (FY: {currentFinancialYearString})
           </CardTitle>
           <MasterDataCombobox
             value={selectedMonth}
@@ -218,21 +218,18 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold mb-3 text-foreground">Transaction-wise Profit &amp; Loss</h3>
+          <h3 className="text-lg font-semibold mb-3 text-foreground">Transaction-wise Profit & Loss</h3>
           {filteredProfitTransactions.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">No sales data for profit in the selected period.</p>
           ) : (
-            <ScrollArea className="h-[300px] rounded-md border">
-              <Table size="sm" className="whitespace-nowrap">
+            <ScrollArea className="h-[400px] rounded-md border">
+              <Table size="sm">
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="whitespace-nowrap">
                     <TableHead>Date</TableHead>
                     <TableHead>Bill No.</TableHead>
                     <TableHead>Vakkal</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Agent</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Broker</TableHead>
                     <TableHead className="text-right">Qty (kg)</TableHead>
                     <TableHead className="text-right">Purch. Rate</TableHead>
                     <TableHead className="text-right">Sale Rate</TableHead>
@@ -244,14 +241,11 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                 </TableHeader>
                 <TableBody>
                   {filteredProfitTransactions.map((row, i) => (
-                    <TableRow key={`${row.id}-${i}`}>
-                      <TableCell>{row.date ? format(parseISO(row.date), "dd-MM-yy") : 'N/A'}</TableCell>
+                    <TableRow key={`${row.id}-${i}`} className="whitespace-nowrap">
+                      <TableCell>{row.date ? format(parseISO(row.date), "dd/MM/yy") : 'N/A'}</TableCell>
                       <TableCell>{row.billNumber || 'N/A'}</TableCell>
                       <TableCell>{row.lotNumber || "N/A"}</TableCell>
-                      <TableCell className="truncate max-w-[120px]">{row.supplierName || 'N/A'}</TableCell>
-                      <TableCell className="truncate max-w-[120px]">{row.agentName || 'N/A'}</TableCell>
                       <TableCell className="truncate max-w-[120px]">{row.customerName || row.customerId}</TableCell>
-                      <TableCell className="truncate max-w-[120px]">{row.brokerName || 'N/A'}</TableCell>
                       <TableCell className="text-right">{row.netWeight.toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-right">{(row.purchaseRate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.rate || 0).toFixed(2)}</TableCell>
@@ -267,6 +261,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                   ))}
                 </TableBody>
               </Table>
+              <ScrollBar orientation="horizontal" />
             </ScrollArea>
           )}
         </div>

@@ -31,7 +31,7 @@ function getDefaultFinancialYear(): string {
 }
 
 const defaultSettings: Settings = {
-  fontSize: 16,
+  fontSize: 19,
   financialYear: getDefaultFinancialYear(),
   isFinancialYearHydrated: false,
 };
