@@ -63,20 +63,20 @@ const OutstandingTable = ({ data }: { data: OutstandingEntry[] }) => {
     };
 
     return (
-        <ScrollArea className="h-[60vh]">
+        <ScrollArea className="h-[40vh]">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer hover:bg-muted/50 w-2/5 p-3">
+                        <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer hover:bg-muted/50 w-2/5 p-2">
                             Party Name <SortIcon columnKey="partyName" />
                         </TableHead>
-                        <TableHead onClick={() => handleSort('amount')} className="cursor-pointer hover:bg-muted/50 text-right p-3">
+                        <TableHead onClick={() => handleSort('amount')} className="cursor-pointer hover:bg-muted/50 text-right p-2">
                             Amount Due <SortIcon columnKey="amount" />
                         </TableHead>
-                        <TableHead onClick={() => handleSort('daysOutstanding')} className="cursor-pointer hover:bg-muted/50 text-right p-3">
+                        <TableHead onClick={() => handleSort('daysOutstanding')} className="cursor-pointer hover:bg-muted/50 text-right p-2">
                             Days Out <SortIcon columnKey="daysOutstanding" />
                         </TableHead>
-                        <TableHead className="text-center w-[80px] p-3">Ledger</TableHead>
+                        <TableHead className="text-center w-[80px] p-2">Ledger</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,24 +102,26 @@ const OutstandingTable = ({ data }: { data: OutstandingEntry[] }) => {
 }
 
 const Leaderboard = ({ title, data }: { title: string, data: OutstandingEntry[] }) => {
-    const topParties = useMemo(() => data.sort((a,b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0,5), [data]);
+    const topParties = useMemo(() => data.sort((a,b) => Math.abs(b.amount) - Math.abs(a.amount)).slice(0,10), [data]);
     if (topParties.length === 0) return null;
 
     return (
         <Card>
             <CardHeader><CardTitle className="text-lg font-semibold">{title}</CardTitle></CardHeader>
-            <CardContent>
-                <Table>
-                    <TableBody>
-                        {topParties.map((party, index) => (
-                            <TableRow key={party.partyId}>
-                                <TableCell className="font-bold w-8 p-2">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</TableCell>
-                                <TableCell className="p-2">{party.partyName}</TableCell>
-                                <TableCell className="p-2 text-right font-semibold">₹{Math.abs(party.amount).toLocaleString('en-IN', {minimumFractionDigits: 0})}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+            <CardContent className="p-0">
+                <ScrollArea className="h-[250px]">
+                    <Table>
+                        <TableBody>
+                            {topParties.map((party, index) => (
+                                <TableRow key={party.partyId}>
+                                    <TableCell className="font-bold w-8 p-2 text-center">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</TableCell>
+                                    <TableCell className="p-2">{party.partyName}</TableCell>
+                                    <TableCell className="p-2 text-right font-semibold">₹{Math.abs(party.amount).toLocaleString('en-IN', {minimumFractionDigits: 0})}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </ScrollArea>
             </CardContent>
         </Card>
     )
@@ -220,7 +222,7 @@ export function OutstandingClient() {
   return (
     <div className="space-y-6 print-area">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-            <h1 className="text-3xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-foreground">
                 Outstanding Dashboard
             </h1>
             <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
