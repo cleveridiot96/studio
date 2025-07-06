@@ -113,6 +113,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   const watchedFormValues = watch();
+  const watchedAgentId = watch("agentId");
+
+  React.useEffect(() => {
+    if (watchedAgentId) {
+        const agent = agents.find(a => a.id === watchedAgentId);
+        if (agent && typeof agent.commission === 'number' && agent.commission >= 0) {
+            setValue("brokerageType", "Percentage", { shouldValidate: true });
+            setValue("brokerageValue", agent.commission, { shouldValidate: true });
+        }
+    } else {
+        setValue("brokerageType", undefined);
+        setValue("brokerageValue", undefined);
+    }
+  }, [watchedAgentId, agents, setValue]);
+
 
   const summary = React.useMemo(() => {
     const { 
@@ -236,41 +251,90 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
           <FormProvider {...methods}>
             <Form {...methods}> 
               <form onSubmit={formHandleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+                
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Basic Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField control={control} name="date" render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Purchase Date</FormLabel>
-                          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
-                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button></FormControl></PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus />
-                            </PopoverContent>
-                          </Popover><FormMessage />
-                        </FormItem>)} />
-                     <FormField control={control} name="supplierId" render={({ field }) => ( 
-                        <FormItem>
-                          <FormLabel>Supplier</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange}
-                              options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
-                              placeholder="Select Supplier" searchPlaceholder="Search suppliers..." notFoundMessage="No supplier found." 
-                              addNewLabel="Add New Supplier" onAddNew={() => handleOpenMasterForm("Supplier")} />
-                          <FormMessage />
-                        </FormItem>)} />
-                    <FormField control={control} name="locationId" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Location (Warehouse)</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange}
-                              options={warehouses.filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
-                              placeholder="Select Location" searchPlaceholder="Search locations..." notFoundMessage="No location found."
-                              addNewLabel="Add New Location" onAddNew={() => handleOpenMasterForm("Warehouse")} />
-                          <FormMessage />
-                        </FormItem>)} />
+                  <h3 className="text-lg font-medium mb-3 text-primary">Basic Details & Agent</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      <FormField control={control} name="date" render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Purchase Date</FormLabel>
+                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
+                                  <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button></FormControl></PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus />
+                              </PopoverContent>
+                            </Popover><FormMessage />
+                          </FormItem>)} />
+                       <FormField control={control} name="supplierId" render={({ field }) => ( 
+                          <FormItem>
+                            <FormLabel>Supplier</FormLabel>
+                            <MasterDataCombobox value={field.value} onChange={field.onChange}
+                                options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
+                                placeholder="Select Supplier" searchPlaceholder="Search suppliers..." notFoundMessage="No supplier found." 
+                                addNewLabel="Add New Supplier" onAddNew={() => handleOpenMasterForm("Supplier")} />
+                            <FormMessage />
+                          </FormItem>)} />
+                       <FormField control={control} name="agentId" render={({ field }) => ( 
+                          <FormItem>
+                            <FormLabel>Agent (Optional)</FormLabel>
+                            <MasterDataCombobox
+                              value={field.value}
+                              onChange={field.onChange}
+                              options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
+                              placeholder="Select Agent"
+                              addNewLabel="Add New Agent"
+                              onAddNew={() => handleOpenMasterForm("Agent")}
+                            />
+                            <FormMessage />
+                          </FormItem>)} />
+                      <FormField control={control} name="locationId" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Location (Warehouse)</FormLabel>
+                            <MasterDataCombobox value={field.value} onChange={field.onChange}
+                                options={warehouses.filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
+                                placeholder="Select Location" searchPlaceholder="Search locations..." notFoundMessage="No location found."
+                                addNewLabel="Add New Location" onAddNew={() => handleOpenMasterForm("Warehouse")} />
+                            <FormMessage />
+                          </FormItem>)} />
                   </div>
+                  {watchedAgentId && (
+                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mt-4 pt-4 border-t">
+                        <div className="font-medium text-sm md:col-span-1 pt-7 text-muted-foreground">Brokerage Details:</div>
+                        <FormField control={control} name="brokerageType" render={({ field }) => (
+                              <FormItem><FormLabel>Brokerage Type</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!watchedAgentId}>
+                                  <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="Fixed">Fixed (₹)</SelectItem>
+                                    <SelectItem value="Percentage">%</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                        <FormField control={control} name="brokerageValue" render={({ field }) => (
+                              <FormItem><FormLabel>Value</FormLabel>
+                                <div className="relative">
+                                  <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
+                                    onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
+                                    disabled={!watchedAgentId || !watchedFormValues.brokerageType}
+                                    className={watchedFormValues.brokerageType === 'Percentage' ? "pr-8" : ""}
+                                  /></FormControl>
+                                  {watchedFormValues.brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                         {summary.calculatedBrokerageCharges > 0 && (
+                              <div className="text-sm text-muted-foreground pt-7">
+                                  = ₹{summary.calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </div>
+                          )}
+                     </div>
+                  )}
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
@@ -342,69 +406,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Agent</h3>
+                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                     <FormField control={control} name="agentId" render={({ field }) => (
-                        <FormItem className="col-span-full sm:col-span-1">
-                          <FormLabel>Agent (Optional)</FormLabel>
-                          <MasterDataCombobox
-                            value={field.value}
-                            onChange={(newAgentId) => {
-                              field.onChange(newAgentId);
-                              if (newAgentId) {
-                                const agent = agents.find(a => a.id === newAgentId);
-                                if (agent && typeof agent.commission === 'number' && agent.commission >= 0) {
-                                  setValue("brokerageType", "Percentage", { shouldValidate: true });
-                                  setValue("brokerageValue", agent.commission, { shouldValidate: true });
-                                }
-                              } else {
-                                setValue("brokerageType", undefined);
-                                setValue("brokerageValue", undefined);
-                              }
-                            }}
-                            options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
-                            placeholder="Select Agent"
-                            addNewLabel="Add New Agent"
-                            onAddNew={() => handleOpenMasterForm("Agent")}
-                          />
-                          <FormMessage />
-                        </FormItem>)} />
-                    {watchedFormValues.agentId && (
-                        <>
-                          <FormField control={control} name="brokerageType" render={({ field }) => (
-                            <FormItem><FormLabel>Brokerage Type</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!watchedFormValues.agentId}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  <SelectItem value="Fixed">Fixed (₹)</SelectItem>
-                                  <SelectItem value="Percentage">%</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          <FormField control={control} name="brokerageValue" render={({ field }) => (
-                            <FormItem><FormLabel>Value</FormLabel>
-                              <div className="relative">
-                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
-                                  onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                  disabled={!watchedFormValues.agentId || !watchedFormValues.brokerageType}
-                                  className={watchedFormValues.brokerageType === 'Percentage' ? "pr-8" : ""}
-                                /></FormControl>
-                                {watchedFormValues.brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          {summary.calculatedBrokerageCharges > 0 && (
-                            <div className="text-sm text-muted-foreground pt-7">
-                                = ₹{summary.calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </div>
-                           )}
-                        </>
-                      )}
-                  </div>
-                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
                      <FormField control={control} name="transporterId" render={({ field }) => (
                       <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
                         <MasterDataCombobox value={field.value} onChange={field.onChange} 
