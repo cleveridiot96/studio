@@ -46,7 +46,7 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
   { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
   { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-gray-500 hover:bg-gray-600 text-white data-[state=active]:bg-gray-600 data-[state=active]:text-white' },
+  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-[#efb924] hover:bg-[#efb924]/90 text-black data-[state=active]:bg-[#efb924] data-[state=active]:text-black' },
   { value: "Expense", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
@@ -229,13 +229,10 @@ export default function MastersPage() {
       return '';
     }
     
-    // Extract the base background and text colors from the tab's style config.
+    // This logic finds the base background color, text color, and hover state from the tab's style config.
     const classes = config.colorClass.split(' ');
-    // Correctly find the base background color, not the active state one.
     const bgClass = classes.find(c => /^bg-\S+/.test(c) && !c.includes(':'));
-    // Correctly find the base text color.
     const textClass = classes.find(c => /^text-\S+/.test(c) && !c.includes(':'));
-    // Correctly find the hover background color.
     const hoverClass = classes.find(c => c.startsWith('hover:bg-'));
 
     return `${bgClass || ''} ${textClass || ''} ${hoverClass || ''}`.trim();
@@ -273,7 +270,8 @@ export default function MastersPage() {
               className={cn(
                 "py-3 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
                 tab.colorClass,
-                tab.value === 'Broker' && 'data-[state=active]:!text-black'
+                tab.value === 'Broker' && 'data-[state=active]:!text-black',
+                tab.value === 'Transporter' && 'data-[state=active]:!text-black'
               )}
             >
               <tab.icon className="w-5 h-5 mr-2" /> {tab.label}
