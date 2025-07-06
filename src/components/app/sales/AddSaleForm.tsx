@@ -108,7 +108,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       date: new Date(),
       customerId: undefined,
       brokerId: undefined,
-      items: [{ lotNumber: "", quantity: 0, netWeight: 0, rate: 0 }],
+      items: [{ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined }],
       isCB: false,
       cbAmount: undefined,
       billNumber: "",
@@ -241,7 +241,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           const itemGoodsValue = (item.netWeight || 0) * (item.rate || 0);
           const itemCOGS = (item.netWeight || 0) * (stock?.effectiveRate || 0);
           return {
-              ...item,
+              lotNumber: item.lotNumber,
+              quantity: item.quantity || 0,
+              netWeight: item.netWeight || 0,
+              rate: item.rate || 0,
               goodsValue: itemGoodsValue,
               costOfGoodsSold: itemCOGS,
           };
@@ -291,7 +294,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <FormField control={control} name="date" render={({ field }) => (
                       <FormItem className="flex flex-col"><FormLabel>Sale Date</FormLabel>
                         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
-                          <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                          <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")} disabled={(date) => date > new Date()}>
                             {field.value ? format(field.value, "PPP") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button></FormControl></PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(d) => { field.onChange(d); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
@@ -318,11 +321,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             value={itemField.value} 
                             onChange={itemField.onChange} 
                             options={availableStock.map(s => {
-                                const fullLabel = `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
+                                const fullLabel = `${s.lotNumber} (Avl: ${s.currentBags} bags)`;
                                 return {
                                     value: s.lotNumber,
                                     label: fullLabel,
-                                    tooltipContent: fullLabel
+                                    tooltipContent: `${s.lotNumber} | Available: ${s.currentBags} bags | Purchase Rate: ₹${s.purchaseRate.toFixed(2)} | Location: ${s.locationName || 'N/A'}`
                                 };
                             })} 
                             placeholder="Select Lot" />
@@ -333,7 +336,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
-                                itemField.onChange(bagsVal);
+                                itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
                                 const lotNumber = watch(`items.${index}.lotNumber`);
                                 const stockItem = availableStock.find(s => s.lotNumber === lotNumber);
                                 const avgWeight = stockItem?.averageWeightPerBag || 50;
@@ -343,19 +346,19 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                      <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
+                        <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                      <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: 0, netWeight: 0, rate: 0 })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                  <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Cut Bill (CB)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                    <FormField control={control} name="billNumber" render={({ field }) => (
+                  <h3 className="text-lg font-medium mb-3 text-primary">Billing & Expenses</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <FormField control={control} name="billNumber" render={({ field }) => (
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel><FormControl><Input placeholder="e.g., INV-001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                     <div className="flex items-center space-x-2 pt-6">
                       <FormField control={control} name="isCB" render={({ field }) => (

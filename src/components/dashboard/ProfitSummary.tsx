@@ -18,63 +18,6 @@ interface ProfitSummaryProps {
   locationTransfers: LocationTransfer[];
 }
 
-const getPurchaseDetailsForSaleLot = (
-  lotNumberFromSale: string | undefined | null,
-  purchases: Purchase[],
-  locationTransfers: LocationTransfer[]
-): { rate: number; supplierName?: string; agentName?: string; effectiveRate: number } => {
-  const searchLot = String(lotNumberFromSale || "").toLowerCase().trim();
-  if (!searchLot) {
-    return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
-  }
-
-  // First, try a direct match for non-transferred lots.
-  const directMatchPurchase = purchases.find(p => p.items && p.items.some(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchLot));
-  if (directMatchPurchase) {
-    const item = directMatchPurchase.items.find(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchLot);
-    return {
-      rate: item?.rate ?? 0,
-      effectiveRate: directMatchPurchase.effectiveRate ?? 0,
-      supplierName: directMatchPurchase.supplierName || directMatchPurchase.supplierId || 'N/A',
-      agentName: directMatchPurchase.agentName || directMatchPurchase.agentId || 'N/A',
-    };
-  }
-
-  // If no direct match, it might be a transferred lot. Trace it back.
-  let originalLotNumber: string | null = null;
-  for (let i = locationTransfers.length - 1; i >= 0; i--) {
-    const transfer = locationTransfers[i];
-    for (const item of transfer.items) {
-      if (String(item.newLotNumber || "").toLowerCase().trim() === searchLot) {
-        originalLotNumber = item.originalLotNumber;
-        break;
-      }
-    }
-    if (originalLotNumber) break;
-  }
-  
-  if (!originalLotNumber) {
-    return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
-  }
-  
-  const searchOriginalLot = String(originalLotNumber).toLowerCase().trim();
-  const originalPurchase = purchases.find(p => p.items && p.items.some(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchOriginalLot));
-
-  if (!originalPurchase) {
-    return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
-  }
-  
-  const originalItem = originalPurchase.items.find(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchOriginalLot);
-
-  return {
-    rate: originalItem?.rate ?? 0,
-    effectiveRate: originalPurchase.effectiveRate ?? 0,
-    supplierName: originalPurchase.supplierName || originalPurchase.supplierId || 'N/A',
-    agentName: originalPurchase.agentName || originalPurchase.agentId || 'N/A',
-  };
-};
-
-
 export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesData, purchases, locationTransfers }) => {
   const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
@@ -104,46 +47,43 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
 
     return salesForCurrentFY.flatMap((sale) => {
         if (!sale.items || sale.items.length === 0) return [];
+
+        const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
+
+        const totalGoodsValue = (sale.totalGoodsValue && sale.totalGoodsValue > 0)
+          ? sale.totalGoodsValue
+          : sale.items.reduce((sum, item) => sum + (item.goodsValue || 0), 0);
+          
+        if (totalGoodsValue === 0) return []; // Cannot apportion expenses if total value is zero.
+        
         return sale.items.map(item => {
-            const purchaseDetails = getPurchaseDetailsForSaleLot(item.lotNumber, purchases, locationTransfers);
-            const goodsValue = item.goodsValue || 0;
             const costOfGoodsSold = item.costOfGoodsSold || 0;
-            const grossProfit = goodsValue - costOfGoodsSold;
+            const goodsValue = item.goodsValue || 0;
+            const itemProportion = goodsValue / totalGoodsValue;
+            const apportionedExpenses = saleLevelExpenses * itemProportion;
+            const netProfit = goodsValue - costOfGoodsSold - apportionedExpenses;
             
-            const saleSideExpenses = (sale.transportCost || 0) + 
-                                   (sale.packingCost || 0) + 
-                                   (sale.labourCost || 0) + 
-                                   (sale.calculatedBrokerageCommission || 0) + 
-                                   (sale.calculatedExtraBrokerage || 0);
-
-            const proportionOfSale = (sale.totalGoodsValue || 1) > 0 ? goodsValue / (sale.totalGoodsValue || 1) : 0;
-            const apportionedExpenses = saleSideExpenses * proportionOfSale;
-            
-            const netProfit = grossProfit - apportionedExpenses;
-
             const netPurchaseRate = costOfGoodsSold / (item.netWeight || 1);
             const netRealization = goodsValue - apportionedExpenses;
             const netSaleRate = netRealization / (item.netWeight || 1);
             
             return {
               ...sale,
-              // Item specific details
               lotNumber: item.lotNumber,
               netWeight: item.netWeight,
               rate: item.rate,
               goodsValue: goodsValue,
               costOfGoodsSold: costOfGoodsSold,
               profit: netProfit,
-              // Details from linked purchase
-              purchaseRate: purchaseDetails.rate,
-              supplierName: purchaseDetails.supplierName,
-              agentName: purchaseDetails.agentName,
+              purchaseRate: 0, // Placeholder, detailed purchase info not needed here
+              supplierName: 'N/A', // Placeholder
+              agentName: 'N/A', // Placeholder
               netPurchaseRate,
               netSaleRate,
-              grossProfit,
+              grossProfit: goodsValue - costOfGoodsSold,
             };
         });
-    });
+    }).filter(Boolean); // Filter out any empty arrays that might result
   }, [salesForCurrentFY, purchases, locationTransfers]);
 
   const monthOptions = useMemo(() => {
@@ -258,7 +198,6 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                     <TableHead>Vakkal</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead className="text-right">Qty (kg)</TableHead>
-                    <TableHead className="text-right">Purch. Rate</TableHead>
                     <TableHead className="text-right">Sale Rate</TableHead>
                     <TableHead className="text-right">Net Purch. Rate</TableHead>
                     <TableHead className="text-right">Net Sale Rate</TableHead>
@@ -274,7 +213,6 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                       <TableCell>{row.lotNumber || "N/A"}</TableCell>
                       <TableCell className="truncate max-w-[120px]">{row.customerName || row.customerId}</TableCell>
                       <TableCell className="text-right">{(row.netWeight || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-right">{(row.purchaseRate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.rate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.netPurchaseRate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.netSaleRate || 0).toFixed(2)}</TableCell>

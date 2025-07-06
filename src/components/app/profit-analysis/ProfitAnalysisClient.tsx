@@ -44,14 +44,21 @@ export function ProfitAnalysisClient() {
     
     const flattenedTransactions: TransactionalProfitInfo[] = [];
     fySales.forEach(sale => {
-      if (sale.items && Array.isArray(sale.items)) {
+      if (sale.items && Array.isArray(sale.items) && sale.items.length > 0) {
         const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
-        const totalGoodsValue = sale.totalGoodsValue || 0;
+        
+        // Robustly calculate totalGoodsValue from items if not present on the sale object.
+        const totalGoodsValue = (sale.totalGoodsValue && sale.totalGoodsValue > 0)
+          ? sale.totalGoodsValue
+          : sale.items.reduce((sum, item) => sum + (item.goodsValue || 0), 0);
+          
+        if (totalGoodsValue === 0) return; // Cannot apportion expenses if total value is zero.
 
         sale.items.forEach(item => {
-          const itemProportion = totalGoodsValue > 0 ? (item.goodsValue || 0) / totalGoodsValue : 0;
+          const itemProportion = (item.goodsValue || 0) / totalGoodsValue;
           const apportionedExpenses = saleLevelExpenses * itemProportion;
-          const netProfit = (item.goodsValue || 0) - (item.costOfGoodsSold || 0) - apportionedExpenses;
+          const costOfGoodsSold = item.costOfGoodsSold || 0;
+          const netProfit = (item.goodsValue || 0) - costOfGoodsSold - apportionedExpenses;
           
           flattenedTransactions.push({
             saleId: sale.id,
@@ -62,7 +69,7 @@ export function ProfitAnalysisClient() {
             saleNetWeightKg: item.netWeight,
             saleAmount: sale.billedAmount || 0, // Sale-level
             goodsValueForProfitCalc: item.goodsValue || 0,
-            purchaseCostForSalePortion: item.costOfGoodsSold || 0,
+            purchaseCostForSalePortion: costOfGoodsSold,
             totalExpenses: apportionedExpenses,
             netProfit: netProfit,
           });
