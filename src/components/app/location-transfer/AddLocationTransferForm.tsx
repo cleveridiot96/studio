@@ -96,10 +96,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       };
   }, [transferToEdit]);
 
-
   const methods = useForm<LocationTransferFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(),
+    mode: 'onChange'
   });
 
   const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = methods;
@@ -119,7 +119,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     }
   }, [isOpen, transferToEdit, reset, getDefaultValues]);
 
-
   React.useEffect(() => {
     if (transportChargesManuallySet) return;
     
@@ -127,11 +126,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const rate = watchedTransportRate || 0;
     if (totalGrossWeight > 0 && rate > 0) {
         setValue('transportCharges', parseFloat((totalGrossWeight * rate).toFixed(2)), { shouldValidate: true });
-    } else if (!transportChargesManuallySet) { // Only clear if not manually set
+    } else if (!transportChargesManuallySet) {
         setValue('transportCharges', undefined);
     }
   }, [watchedItems, watchedTransportRate, setValue, transportChargesManuallySet]);
-
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
     if (!watchedFromWarehouseId) return [];
