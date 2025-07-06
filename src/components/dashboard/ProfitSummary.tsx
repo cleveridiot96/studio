@@ -29,10 +29,11 @@ const getPurchaseDetailsForSaleLot = (
   }
 
   // First, try a direct match for non-transferred lots.
-  const directMatchPurchase = purchases.find(p => String(p.lotNumber || "").toLowerCase().trim() === searchLot);
+  const directMatchPurchase = purchases.find(p => p.items && p.items.some(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchLot));
   if (directMatchPurchase) {
+    const item = directMatchPurchase.items.find(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchLot);
     return {
-      rate: directMatchPurchase.rate ?? 0,
+      rate: item?.rate ?? 0,
       effectiveRate: directMatchPurchase.effectiveRate ?? 0,
       supplierName: directMatchPurchase.supplierName || directMatchPurchase.supplierId || 'N/A',
       agentName: directMatchPurchase.agentName || directMatchPurchase.agentId || 'N/A',
@@ -57,14 +58,16 @@ const getPurchaseDetailsForSaleLot = (
   }
   
   const searchOriginalLot = String(originalLotNumber).toLowerCase().trim();
-  const originalPurchase = purchases.find(p => String(p.lotNumber || "").toLowerCase().trim() === searchOriginalLot);
+  const originalPurchase = purchases.find(p => p.items && p.items.some(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchOriginalLot));
 
   if (!originalPurchase) {
     return { rate: 0, supplierName: 'N/A', agentName: 'N/A', effectiveRate: 0 };
   }
+  
+  const originalItem = originalPurchase.items.find(pi => String(pi.lotNumber || "").toLowerCase().trim() === searchOriginalLot);
 
   return {
-    rate: originalPurchase.rate ?? 0,
+    rate: originalItem?.rate ?? 0,
     effectiveRate: originalPurchase.effectiveRate ?? 0,
     supplierName: originalPurchase.supplierName || originalPurchase.supplierId || 'N/A',
     agentName: originalPurchase.agentName || originalPurchase.agentId || 'N/A',
@@ -99,32 +102,47 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
   const allProfitTransactions = useMemo(() => {
     if (!salesForCurrentFY || !purchases || !locationTransfers) return [];
 
-    return salesForCurrentFY.map((sale) => {
-      const purchaseDetails = getPurchaseDetailsForSaleLot(sale.lotNumber, purchases, locationTransfers);
-      
-      const netPurchaseRate = sale.costOfGoodsSold && sale.netWeight > 0 ? sale.costOfGoodsSold / sale.netWeight : purchaseDetails.effectiveRate;
-      
-      const saleSideExpenses = (sale.transportCost || 0) + 
-                               (sale.packingCost || 0) + 
-                               (sale.labourCost || 0) + 
-                               (sale.calculatedBrokerageCommission || 0) + 
-                               (sale.calculatedExtraBrokerage || 0);
+    return salesForCurrentFY.flatMap((sale) => {
+        if (!sale.items || sale.items.length === 0) return [];
+        return sale.items.map(item => {
+            const purchaseDetails = getPurchaseDetailsForSaleLot(item.lotNumber, purchases, locationTransfers);
+            const goodsValue = item.goodsValue || 0;
+            const costOfGoodsSold = item.costOfGoodsSold || 0;
+            const grossProfit = goodsValue - costOfGoodsSold;
+            
+            const saleSideExpenses = (sale.transportCost || 0) + 
+                                   (sale.packingCost || 0) + 
+                                   (sale.labourCost || 0) + 
+                                   (sale.calculatedBrokerageCommission || 0) + 
+                                   (sale.calculatedExtraBrokerage || 0);
 
-      const netRealization = sale.goodsValue - saleSideExpenses;
-      const netSaleRate = sale.netWeight > 0 ? netRealization / sale.netWeight : 0;
-      
-      const grossProfit = sale.goodsValue - (sale.costOfGoodsSold || 0);
+            const proportionOfSale = (sale.totalGoodsValue || 1) > 0 ? goodsValue / (sale.totalGoodsValue || 1) : 0;
+            const apportionedExpenses = saleSideExpenses * proportionOfSale;
+            
+            const netProfit = grossProfit - apportionedExpenses;
 
-      return {
-        ...sale,
-        profit: sale.calculatedProfit || 0,
-        purchaseRate: purchaseDetails.rate,
-        supplierName: purchaseDetails.supplierName,
-        agentName: purchaseDetails.agentName,
-        netPurchaseRate,
-        netSaleRate,
-        grossProfit,
-      };
+            const netPurchaseRate = costOfGoodsSold / (item.netWeight || 1);
+            const netRealization = goodsValue - apportionedExpenses;
+            const netSaleRate = netRealization / (item.netWeight || 1);
+            
+            return {
+              ...sale,
+              // Item specific details
+              lotNumber: item.lotNumber,
+              netWeight: item.netWeight,
+              rate: item.rate,
+              goodsValue: goodsValue,
+              costOfGoodsSold: costOfGoodsSold,
+              profit: netProfit,
+              // Details from linked purchase
+              purchaseRate: purchaseDetails.rate,
+              supplierName: purchaseDetails.supplierName,
+              agentName: purchaseDetails.agentName,
+              netPurchaseRate,
+              netSaleRate,
+              grossProfit,
+            };
+        });
     });
   }, [salesForCurrentFY, purchases, locationTransfers]);
 
@@ -255,7 +273,7 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                       <TableCell>{row.billNumber || 'N/A'}</TableCell>
                       <TableCell>{row.lotNumber || "N/A"}</TableCell>
                       <TableCell className="truncate max-w-[120px]">{row.customerName || row.customerId}</TableCell>
-                      <TableCell className="text-right">{row.netWeight.toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right">{(row.netWeight || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
                       <TableCell className="text-right">{(row.purchaseRate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.rate || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right">{(row.netPurchaseRate || 0).toFixed(2)}</TableCell>
@@ -290,8 +308,8 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
                   {monthlyProfitsDataForSelectedPeriod.map((monthData) => (
                     <TableRow key={monthData.monthKey}>
                       <TableCell>{monthData.monthYear}</TableCell>
-                      <TableCell className={`text-right font-medium ${monthData.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
-                        {monthData.totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      <TableCell className={`text-right font-medium ${(monthData.totalProfit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {(monthData.totalProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </TableCell>
                     </TableRow>
                   ))}

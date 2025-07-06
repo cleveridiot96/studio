@@ -173,13 +173,13 @@ export function OutstandingClient() {
     // Purchases: If agent exists, liability is with agent. Otherwise, supplier.
     purchases.forEach(p => {
         const accountablePartyId = p.agentId || p.supplierId;
-        updateBalance(accountablePartyId, -p.totalAmount, p.date);
+        updateBalance(accountablePartyId, -(p.totalAmount || 0), p.date);
     });
 
     // Sales: If broker exists, receivable is from broker. Otherwise, customer.
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
-        updateBalance(accountablePartyId, s.billedAmount, s.date);
+        updateBalance(accountablePartyId, s.billedAmount || 0, s.date);
         // Brokerage is a CREDIT to the broker (we owe them)
         if (s.brokerId) {
             const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
@@ -189,12 +189,12 @@ export function OutstandingClient() {
 
     // Receipts: CREDIT the party who paid.
     receipts.forEach(r => {
-        updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
+        updateBalance(r.partyId, -((r.amount || 0) + (r.cashDiscount || 0)), r.date);
     });
 
     // Payments: DEBIT the party who was paid.
     payments.forEach(p => {
-        updateBalance(p.partyId, p.amount, p.date);
+        updateBalance(p.partyId, p.amount || 0, p.date);
     });
     
     // Purchase Returns: DEBIT against the accountable party.
@@ -202,7 +202,7 @@ export function OutstandingClient() {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (!originalPurchase) return;
         const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
-        updateBalance(accountablePartyId, pr.returnAmount, pr.date);
+        updateBalance(accountablePartyId, pr.returnAmount || 0, pr.date);
     });
 
     // Sale Returns: CREDIT the accountable party for the return amount.
@@ -210,7 +210,7 @@ export function OutstandingClient() {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if(originalSale) {
             const accountablePartyId = originalSale.brokerId || originalSale.customerId;
-            updateBalance(accountablePartyId, -sr.returnAmount, sr.date);
+            updateBalance(accountablePartyId, -(sr.returnAmount || 0), sr.date);
         }
     });
 

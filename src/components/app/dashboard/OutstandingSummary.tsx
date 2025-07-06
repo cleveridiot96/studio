@@ -65,13 +65,13 @@ export const OutstandingSummary = () => {
     // Purchases: If agent exists, liability is with agent. Otherwise, supplier.
     purchases.forEach(p => {
         const accountablePartyId = p.agentId || p.supplierId;
-        updateBalance(accountablePartyId, -p.totalAmount);
+        updateBalance(accountablePartyId, -(p.totalAmount || 0));
     });
 
     // Sales: If broker exists, receivable is from broker. Otherwise, customer.
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
-        updateBalance(accountablePartyId, s.billedAmount);
+        updateBalance(accountablePartyId, s.billedAmount || 0);
         // Brokerage is a CREDIT to the broker (we owe them)
         if (s.brokerId) {
             const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
@@ -86,7 +86,7 @@ export const OutstandingSummary = () => {
     
     // Payments: DEBIT the party who was paid.
     payments.forEach(p => {
-        updateBalance(p.partyId, p.amount);
+        updateBalance(p.partyId, p.amount || 0);
     });
 
     // Purchase Returns: DEBIT the accountable party for the return amount.
@@ -94,7 +94,7 @@ export const OutstandingSummary = () => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if(originalPurchase) {
             const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
-            updateBalance(accountablePartyId, pr.returnAmount);
+            updateBalance(accountablePartyId, pr.returnAmount || 0);
         }
     });
 
@@ -103,7 +103,7 @@ export const OutstandingSummary = () => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if(originalSale) {
             const accountablePartyId = originalSale.brokerId || originalSale.customerId;
-            updateBalance(accountablePartyId, -sr.returnAmount);
+            updateBalance(accountablePartyId, -(sr.returnAmount || 0));
         }
     });
 

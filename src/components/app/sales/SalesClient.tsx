@@ -88,8 +88,41 @@ export function SalesClient() {
 
   const filteredSales = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
-    return sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear)).sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
+    
+    const fySales = sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
+
+    // Enrich sales data to ensure all calculated fields are present for rendering
+    const enrichedSales = fySales.map(sale => {
+        if (!sale || !sale.items) return null; // Safety check
+
+        const totalGoodsValue = sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
+        
+        const billedAmount = (sale.isCB && sale.cbAmount) 
+            ? totalGoodsValue - sale.cbAmount 
+            : totalGoodsValue;
+
+        const totalCostOfGoodsSold = sale.items.reduce((acc, item) => acc + (item.costOfGoodsSold || 0), 0);
+        const grossProfit = totalGoodsValue - totalCostOfGoodsSold;
+        
+        const totalSaleSideExpenses = (sale.transportCost || 0) + 
+                                      (sale.packingCost || 0) + 
+                                      (sale.labourCost || 0) + 
+                                      (sale.calculatedBrokerageCommission || 0) + 
+                                      (sale.calculatedExtraBrokerage || 0);
+
+        const totalCalculatedProfit = grossProfit - totalSaleSideExpenses;
+
+        // Return a new object with guaranteed fields, using existing values if they exist (for performance)
+        return {
+            ...sale,
+            billedAmount: sale.billedAmount ?? billedAmount,
+            totalCalculatedProfit: sale.totalCalculatedProfit ?? totalCalculatedProfit,
+        };
+    }).filter(Boolean) as Sale[]; // Filter out any nulls
+
+    return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+}, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
+
 
   const filteredSaleReturns = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];

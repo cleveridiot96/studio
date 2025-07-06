@@ -56,13 +56,22 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((purchase) => (
+            {data.map((purchase) => {
+              const vakkalDisplay = (purchase.items && purchase.items.length > 1) 
+                ? `${purchase.items[0].lotNumber} (+${purchase.items.length - 1})`
+                : (purchase.items && purchase.items[0]?.lotNumber) || 'N/A';
+              
+              return (
               <TableRow key={purchase.id}>
                 <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
                 <TableCell>
                   <Tooltip>
-                    <TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.lotNumber}</span></TooltipTrigger>
-                    <TooltipContent><p>{purchase.lotNumber}</p></TooltipContent>
+                    <TooltipTrigger asChild>
+                      <span className="truncate max-w-[120px] inline-block">{vakkalDisplay}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <ul>{purchase.items && purchase.items.map(item => <li key={item.lotNumber}>{item.lotNumber} ({item.quantity} bags)</li>)}</ul>
+                    </TooltipContent>
                   </Tooltip>
                 </TableCell>
                 <TableCell>
@@ -83,18 +92,18 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <TooltipContent><p>{purchase.agentName || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
-                <TableCell className="text-right">{purchase.quantity}</TableCell>
-                <TableCell className="text-right">{purchase.netWeight.toLocaleString()}</TableCell>
-                <TableCell className="text-right">{purchase.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className="text-right">{purchase.totalQuantity}</TableCell>
+                <TableCell className="text-right">{purchase.totalNetWeight.toLocaleString()}</TableCell>
+                <TableCell className="text-right">{(purchase.items[0]?.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                 <TableCell className="text-right font-semibold">
                    <Tooltip>
                     <TooltipTrigger asChild>
-                      <span>{(purchase.totalAmount - (purchase.brokerageCharges || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                      <span>{((purchase.totalAmount || 0) - (purchase.brokerageCharges || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Full Landed Cost (incl. all expenses): ₹{purchase.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                      <p>Effective Rate: ₹{purchase.effectiveRate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg</p>
+                      <p>Full Landed Cost (incl. all expenses): ₹{(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                      <p>Effective Rate: ₹{(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg</p>
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
@@ -129,7 +138,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
-            ))}
+            )})}
           </TableBody>
         </Table>
         <ScrollBar orientation="horizontal" />

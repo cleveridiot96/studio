@@ -111,42 +111,17 @@ const DashboardClient = () => {
   const stockSummary = React.useMemo<StockSummary>(() => {
     if (isAppHydrating || !hydrated) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
 
-    type TempInventoryItem = {
-        lotNumber: string;
-        locationId: string;
-        totalPurchasedBags: number;
-        totalPurchasedWeight: number;
-        totalSoldBags: number;
-        totalSoldWeight: number;
-        totalPurchaseReturnedBags: number; 
-        totalPurchaseReturnedWeight: number; 
-        totalSaleReturnedBags: number; 
-        totalSaleReturnedWeight: number; 
-        totalTransferredOutBags: number;
-        totalTransferredOutWeight: number;
-        totalTransferredInBags: number;
-        totalTransferredInWeight: number;
-    };
-    
-    const inventoryMap = new Map<string, TempInventoryItem>();
+    const inventoryMap = new Map<string, { lotNumber: string, locationId: string, currentBags: number, currentWeight: number }>();
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, currentFinancialYearString));
     
     fyPurchases.forEach(p => {
       if (p && p.items && Array.isArray(p.items)) {
         p.items.forEach(item => {
           const key = `${item.lotNumber}-${p.locationId}`;
-          let entry = inventoryMap.get(key);
-          if (!entry) {
-            entry = {
-                lotNumber: item.lotNumber, locationId: p.locationId,
-                totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
-                totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
-                totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
-            };
-            inventoryMap.set(key, entry);
-          }
-          entry.totalPurchasedBags += item.quantity;
-          entry.totalPurchasedWeight += item.netWeight;
+          let entry = inventoryMap.get(key) || { lotNumber: item.lotNumber, locationId: p.locationId, currentBags: 0, currentWeight: 0 };
+          entry.currentBags += item.quantity || 0;
+          entry.currentWeight += item.netWeight || 0;
+          inventoryMap.set(key, entry);
         });
       }
     });
@@ -158,49 +133,45 @@ const DashboardClient = () => {
         const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
         const entry = inventoryMap.get(key);
         if (entry) {
-          entry.totalPurchaseReturnedBags += pr.quantityReturned;
-          entry.totalPurchaseReturnedWeight += pr.netWeightReturned;
+          entry.currentBags -= pr.quantityReturned || 0;
+          entry.currentWeight -= pr.netWeightReturned || 0;
         }
       }
     });
 
     const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, currentFinancialYearString));
     fyLocationTransfers.forEach(transfer => {
-      transfer.items.forEach(item => {
-        const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
-        const fromItem = inventoryMap.get(fromKey);
-        if (fromItem) {
-          fromItem.totalTransferredOutBags += item.bagsToTransfer;
-          fromItem.totalTransferredOutWeight += item.netWeightToTransfer;
-        }
+      if (transfer && transfer.items && Array.isArray(transfer.items)) {
+        transfer.items.forEach(item => {
+          const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
+          const fromItem = inventoryMap.get(fromKey);
+          if (fromItem) {
+            fromItem.currentBags -= item.bagsToTransfer || 0;
+            fromItem.currentWeight -= item.netWeightToTransfer || 0;
+          }
 
-        const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
-        let toEntry = inventoryMap.get(toKey);
-        if (!toEntry) {
-          toEntry = {
-            lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
-            totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
-            totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
-            totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
-          };
-          inventoryMap.set(toKey, toEntry);
-        }
-        toEntry.totalTransferredInBags += item.bagsToTransfer;
-        toEntry.totalTransferredInWeight += item.netWeightToTransfer;
-      });
+          const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+          let toEntry = inventoryMap.get(toKey);
+          if (!toEntry) {
+            toEntry = { lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0 };
+            inventoryMap.set(toKey, toEntry);
+          }
+          toEntry.currentBags += item.bagsToTransfer || 0;
+          toEntry.currentWeight += item.netWeightToTransfer || 0;
+        });
+      }
     });
 
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, currentFinancialYearString));
-    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
     fySales.forEach(s => {
-      if (s.items && Array.isArray(s.items)) {
+      if (s && s.items && Array.isArray(s.items)) {
         s.items.forEach(item => {
-          const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+          const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber));
           const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
           
           if (entry) {
-            entry.totalSoldBags += item.quantity;
-            entry.totalSoldWeight += item.netWeight;
+            entry.currentBags -= item.quantity || 0;
+            entry.currentWeight -= item.netWeight || 0;
           }
         });
       }
@@ -208,12 +179,12 @@ const DashboardClient = () => {
 
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, currentFinancialYearString));
     fySaleReturns.forEach(sr => {
-      const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(sr.originalLotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
       const entry = saleReturnLotKey ? inventoryMap.get(saleReturnLotKey) : undefined;
 
       if (entry) {
-        entry.totalSaleReturnedBags += sr.quantityReturned;
-        entry.totalSaleReturnedWeight += sr.netWeightReturned;
+        entry.currentBags += sr.quantityReturned || 0;
+        entry.currentWeight += sr.netWeightReturned || 0;
       }
     });
 
@@ -222,20 +193,15 @@ const DashboardClient = () => {
     let totalNetWeight = 0;
 
     inventoryMap.forEach(item => {
-      const currentBags = item.totalPurchasedBags + item.totalTransferredInBags + item.totalSaleReturnedBags
-                        - item.totalSoldBags - item.totalTransferredOutBags - item.totalPurchaseReturnedBags;
-      const currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight
-                        - item.totalSoldWeight - item.totalTransferredOutWeight - item.totalPurchaseReturnedWeight;
-
-      if (currentBags > 0.001 || currentWeight > 0.001) {
-        totalBags += currentBags;
-        totalNetWeight += currentWeight;
+      if (item.currentBags > 0.001 || item.currentWeight > 0.001) {
+        totalBags += item.currentBags;
+        totalNetWeight += item.currentWeight;
         const locName = warehouses.find(w => w.id === item.locationId)?.name || item.locationId;
         if (!byLocation[item.locationId]) {
           byLocation[item.locationId] = { name: locName, bags: 0, netWeight: 0 };
         }
-        byLocation[item.locationId].bags += currentBags;
-        byLocation[item.locationId].netWeight += currentWeight;
+        byLocation[item.locationId].bags += item.currentBags;
+        byLocation[item.locationId].netWeight += item.currentWeight;
       }
     });
     

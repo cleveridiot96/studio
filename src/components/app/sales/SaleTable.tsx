@@ -97,9 +97,9 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     <TooltipContent><p>{sale.brokerName || sale.brokerId || 'N/A'}</p></TooltipContent>
                   </Tooltip>
                 </TableCell>
-                <TableCell className="text-right font-semibold">{(sale.billedAmount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                <TableCell className={`text-right font-semibold ${sale.totalCalculatedProfit < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                  {sale.totalCalculatedProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                <TableCell className="text-right font-semibold">{(sale.billedAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                <TableCell className={`text-right font-semibold ${(sale.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                  {(sale.totalCalculatedProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </TableCell>
                 <TableCell className="text-center">
                    <DropdownMenu>
