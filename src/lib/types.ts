@@ -1,4 +1,5 @@
 
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface NavItem {
@@ -72,10 +73,13 @@ export interface SaleItem {
   lotNumber: string;
   quantity: number;
   netWeight: number;
-  rate: number;
+  rate: number; // This is the Sale Rate
   goodsValue: number; // Calculated: netWeight * rate
-  costOfGoodsSold: number; // Calculated from purchase effective rate
-  itemProfit?: number;
+  
+  // New fields for profit calculation
+  purchaseRate: number; // The raw purchase rate for this lot.
+  costOfGoods: number; // Calculated: netWeight * purchaseRate
+  grossProfit: number; // Calculated: goodsValue - costOfGoods
 }
 
 export interface Sale {
@@ -92,12 +96,17 @@ export interface Sale {
 
   items: SaleItem[];
 
-  // Aggregated values from items
+  // Aggregated values
   totalGoodsValue: number;
   billedAmount: number; // This is the final amount on the chitthi (totalGoodsValue - cbAmount)
   totalQuantity: number;
   totalNetWeight: number;
-  totalCostOfGoodsSold: number;
+  
+  // New profit fields
+  totalCostOfGoods: number; // Sum of items' costOfGoods
+  totalGrossProfit: number; // totalGoodsValue - totalCostOfGoods
+  totalExpenses: number; // Sum of all sale-side expenses
+  netProfit: number; // totalGrossProfit - totalExpenses
   
   // Expenses for the entire sale
   transporterId?: string;
@@ -114,9 +123,6 @@ export interface Sale {
   calculatedExtraBrokerage?: number;
   
   notes?: string;
-
-  // Aggregated profit for the entire sale
-  totalCalculatedProfit: number;
 }
 
 

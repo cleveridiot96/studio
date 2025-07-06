@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -99,8 +100,9 @@ export function InventoryClient() {
     if (isAppHydrating || !hydrated) return [];
 
     const inventoryMap = new Map<string, AggregatedInventoryItem>();
+    const allPurchasesEver = purchases;
 
-    const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+    const fyPurchases = allPurchasesEver.filter(p => isDateInFinancialYear(p.date, financialYear));
     fyPurchases.forEach(p => {
       if (!p.items) return;
       p.items.forEach(item => {
@@ -124,7 +126,7 @@ export function InventoryClient() {
     
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
     fyPurchaseReturns.forEach(pr => {
-      const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+      const originalPurchase = allPurchasesEver.find(p => p.id === pr.originalPurchaseId);
       if (originalPurchase) {
         const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
         const entry = inventoryMap.get(key);
@@ -148,10 +150,10 @@ export function InventoryClient() {
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
         
-        const sourceEffectiveRate = fromItem?.effectiveRate || purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber))?.effectiveRate || 0;
+        const originalPurchase = allPurchasesEver.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
+        const sourceEffectiveRate = originalPurchase?.effectiveRate || 0;
         
         if (!toEntry) {
-          const originalPurchase = purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
           const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
           toEntry = {
             lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
@@ -182,7 +184,6 @@ export function InventoryClient() {
     fySales.forEach(s => {
       if (!s.items) return;
       s.items.forEach(item => {
-        // Find the specific lot from any location (assuming lot numbers are unique across locations for this logic)
         const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber));
         const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
         

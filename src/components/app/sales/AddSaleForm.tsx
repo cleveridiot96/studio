@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -68,9 +69,22 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
-
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+
+  const [summary, setSummary] = React.useState({
+    totalGoodsValue: 0,
+    totalCostOfGoods: 0,
+    grossProfit: 0,
+    totalExpenses: 0,
+    netProfit: 0,
+    totalNetWeight: 0,
+    totalQuantity: 0,
+    billedAmount: 0,
+    calculatedBrokerageCommission: 0,
+    calculatedExtraBrokerage: 0,
+  });
+
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
@@ -127,6 +141,51 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { control, watch, reset, setValue, handleSubmit, formState: { errors } } = methods;
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
+  
+  const watchedFormValues = watch();
+
+  React.useEffect(() => {
+    const { items, isCB, cbAmount, transportCost, packingCost, labourCost, brokerageType, brokerageValue, extraBrokeragePerKg, brokerId } = watchedFormValues;
+
+    const totals = (items || []).reduce(
+      (acc, item) => {
+        const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
+        const purchaseRate = stockInfo?.purchaseRate || 0;
+        const netWeight = Number(item.netWeight) || 0;
+        const saleRate = Number(item.rate) || 0;
+        const quantity = Number(item.quantity) || 0;
+
+        const goodsValue = netWeight * saleRate;
+        const costOfGoods = netWeight * purchaseRate;
+
+        acc.totalGoodsValue += goodsValue;
+        acc.totalCostOfGoods += costOfGoods;
+        acc.totalNetWeight += netWeight;
+        acc.totalQuantity += quantity;
+        return acc;
+      },
+      { totalGoodsValue: 0, totalCostOfGoods: 0, totalNetWeight: 0, totalQuantity: 0 }
+    );
+
+    const grossProfit = totals.totalGoodsValue - totals.totalCostOfGoods;
+    const billedAmount = isCB ? totals.totalGoodsValue - (Number(cbAmount) || 0) : totals.totalGoodsValue;
+
+    const calculatedBrokerageCommission = (() => {
+      if (!brokerId || brokerageValue === undefined || brokerageValue < 0) return 0;
+      if (brokerageType === "Percentage") return (totals.totalGoodsValue * (brokerageValue / 100));
+      if (brokerageType === "Fixed") return brokerageValue;
+      return 0;
+    })();
+
+    const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totals.totalNetWeight;
+    const totalExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
+    
+    const netProfit = grossProfit - totalExpenses;
+
+    setSummary({ ...totals, grossProfit, totalExpenses, netProfit, billedAmount, calculatedBrokerageCommission, calculatedExtraBrokerage });
+
+  }, [watchedFormValues, availableStock]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -149,59 +208,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
   }, [selectedBrokerId, brokers, setValue]);
 
-  const watchedFormValues = watch();
-
-  const calculatedTotals = React.useMemo(() => {
-    const {
-      items, isCB, cbAmount, transportCost, packingCost, labourCost,
-      brokerageType, brokerageValue, extraBrokeragePerKg
-    } = watchedFormValues;
-
-    const totals = (items || []).reduce(
-      (acc, item) => {
-        const itemQuantity = Number(item.quantity) || 0;
-        const itemNetWeight = Number(item.netWeight) || 0;
-        const itemRate = Number(item.rate) || 0;
-        const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
-        
-        const landedCostPerKg = stockInfo?.effectiveRate || 0;
-
-        acc.totalGoodsValue += itemNetWeight * itemRate;
-        acc.totalNetWeight += itemNetWeight;
-        acc.totalQuantity += itemQuantity;
-        acc.totalLandedCost += itemNetWeight * landedCostPerKg;
-
-        return acc;
-      },
-      { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0, totalLandedCost: 0 }
-    );
-
-    const cbAmountInput = Number(cbAmount) || 0;
-    const billedAmount = isCB ? totals.totalGoodsValue - cbAmountInput : totals.totalGoodsValue;
-
-    const calculatedBrokerageCommission = (() => {
-      if (!watchedFormValues.brokerId || brokerageValue === undefined || brokerageValue < 0) return 0;
-      if (brokerageType === "Percentage") return (totals.totalGoodsValue * (brokerageValue / 100));
-      if (brokerageType === "Fixed") return brokerageValue;
-      return 0;
-    })();
-
-    const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totals.totalNetWeight;
-    const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
-    
-    const grossProfit = totals.totalGoodsValue - totals.totalLandedCost;
-    const finalNetProfit = grossProfit - totalSaleSideExpenses;
-
-    return {
-      ...totals,
-      billedAmount,
-      calculatedBrokerageCommission,
-      calculatedExtraBrokerage,
-      totalSaleSideExpenses,
-      grossProfit,
-      finalNetProfit,
-    };
-  }, [watchedFormValues, availableStock]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setIsMasterFormOpen(true);
@@ -214,10 +220,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') {
         methods.setValue('brokerId', newItem.id, { shouldValidate: true });
-        if (typeof newItem.commission === 'number') {
-            methods.setValue('brokerageType', 'Percentage');
-            methods.setValue('brokerageValue', newItem.commission);
-        }
     }
     setIsMasterFormOpen(false); setMasterFormItemType(null);
     toast({ title: `${newItem.type} added and selected.` });
@@ -241,28 +243,33 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerName: selectedBroker?.name,
       items: values.items.map(item => {
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-          const itemGoodsValue = (item.netWeight || 0) * (item.rate || 0);
-          const itemCOGS = (item.netWeight || 0) * (stock?.effectiveRate || 0);
+          const purchaseRate = stock?.purchaseRate || 0;
+          const netWeight = item.netWeight || 0;
+          const saleRate = item.rate || 0;
 
-          const itemProportionOfGoods = calculatedTotals.totalGoodsValue > 0 ? itemGoodsValue / calculatedTotals.totalGoodsValue : 0;
-          const apportionedExpenses = calculatedTotals.totalSaleSideExpenses * itemProportionOfGoods;
-          const itemNetProfit = itemGoodsValue - itemCOGS - apportionedExpenses;
-
+          const goodsValue = netWeight * saleRate;
+          const costOfGoods = netWeight * purchaseRate;
+          const grossProfit = goodsValue - costOfGoods;
+          
           return {
               lotNumber: item.lotNumber,
               quantity: item.quantity || 0,
-              netWeight: item.netWeight || 0,
-              rate: item.rate || 0,
-              goodsValue: itemGoodsValue,
-              costOfGoodsSold: itemCOGS,
-              itemProfit: itemNetProfit,
+              netWeight: netWeight,
+              rate: saleRate,
+              goodsValue: goodsValue,
+              purchaseRate: purchaseRate,
+              costOfGoods: costOfGoods,
+              grossProfit: grossProfit,
           };
       }),
-      totalGoodsValue: calculatedTotals.totalGoodsValue,
-      billedAmount: calculatedTotals.billedAmount,
-      totalQuantity: calculatedTotals.totalQuantity,
-      totalNetWeight: calculatedTotals.totalNetWeight,
-      totalCostOfGoodsSold: calculatedTotals.totalLandedCost,
+      totalGoodsValue: summary.totalGoodsValue,
+      billedAmount: summary.billedAmount,
+      totalQuantity: summary.totalQuantity,
+      totalNetWeight: summary.totalNetWeight,
+      totalCostOfGoods: summary.totalCostOfGoods,
+      totalGrossProfit: summary.grossProfit,
+      totalExpenses: summary.totalExpenses,
+      netProfit: summary.netProfit,
       transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
       transportCost: values.transportCost,
@@ -271,10 +278,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerageType: values.brokerageType,
       brokerageValue: values.brokerageValue,
       extraBrokeragePerKg: values.extraBrokeragePerKg,
-      calculatedBrokerageCommission: calculatedTotals.calculatedBrokerageCommission,
-      calculatedExtraBrokerage: calculatedTotals.calculatedExtraBrokerage,
+      calculatedBrokerageCommission: summary.calculatedBrokerageCommission,
+      calculatedExtraBrokerage: summary.calculatedExtraBrokerage,
       notes: values.notes,
-      totalCalculatedProfit: calculatedTotals.finalNetProfit,
     };
     onSubmit(saleData);
     setIsSubmitting(false);
@@ -329,20 +335,12 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               value={itemField.value} 
                               onChange={(lotValue) => {
                                 itemField.onChange(lotValue);
-                                const currentBags = watch(`items.${index}.quantity`);
-                                if (currentBags && currentBags > 0) {
-                                    const stockItem = availableStock.find(s => s.lotNumber === lotValue);
-                                    const avgWeight = stockItem?.averageWeightPerBag || 50;
-                                    setValue(`items.${index}.netWeight`, parseFloat((currentBags * avgWeight).toFixed(2)), { shouldValidate: true });
-                                }
                               }} 
-                              options={availableStock.map(s => {
-                                  return {
-                                      value: s.lotNumber,
-                                      label: `${s.lotNumber} (Avl: ${s.currentBags} bags)`,
-                                      tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)} | Landed Cost: ₹${s.effectiveRate.toFixed(2)} | Avl: ${s.currentBags} bags at ${s.locationName || 'MUMBAI'}`
-                                  };
-                              })} 
+                              options={availableStock.map(s => ({
+                                  value: s.lotNumber,
+                                  label: `${s.lotNumber} (Avl: ${s.currentBags} bags)`,
+                                  tooltipContent: `Purch. Rate: ₹${s.purchaseRate.toFixed(2)} | Landed Cost: ₹${s.effectiveRate.toFixed(2)} | Avl: ${s.currentBags.toLocaleString()} bags at ${s.locationName || 'Unknown'}`
+                              }))} 
                               placeholder="Select Lot" />
                             <FormMessage />
                           </FormItem>)} />
@@ -352,10 +350,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               onChange={e => {
                                   const bagsVal = parseFloat(e.target.value) || undefined;
                                   itemField.onChange(bagsVal);
-                                  const currentLotNumber = watch(`items.${index}.lotNumber`);
-                                  const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
-                                  const avgWeight = stockItem?.averageWeightPerBag || 50;
-                                  setValue(`items.${index}.netWeight`, parseFloat(((bagsVal || 0) * avgWeight).toFixed(2)), { shouldValidate: true });
                               }} 
                              /></FormControl>
                             <FormMessage />
@@ -371,15 +365,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     ))}
                     <div className="flex justify-between items-start mt-2">
                       <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
-                      {(calculatedTotals.totalGoodsValue > 0 || calculatedTotals.totalNetWeight > 0) && (
+                      {(summary.totalGoodsValue > 0 || summary.totalNetWeight > 0) && (
                         <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
                             <div className="flex justify-between font-semibold">
-                                <span>Total Goods Value:</span>
-                                <span>₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Total Net Weight:</span>
-                                <span>{calculatedTotals.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                                <span>Gross Totals:</span>
+                                <span>{summary.totalQuantity.toLocaleString()} Bags / {summary.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
                             </div>
                         </div>
                       )}
@@ -439,7 +429,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                  <FormMessage />
                               </FormItem>)} />
                             <div className="text-sm text-muted-foreground pt-7">
-                                = ₹{calculatedTotals.calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                = ₹{summary.calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </div>
                          </div>
                        )}
@@ -450,24 +440,25 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   
                   <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                       <h3 className="text-lg font-semibold text-primary mb-2">Transaction Summary</h3>
-                      <div className="flex justify-between"><span>Total Goods Value:</span> <span className="font-medium">₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                      {watch('isCB') && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watch('cbAmount')) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
-                      <div className="flex justify-between border-t pt-2 mt-2 text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{calculatedTotals.billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
                       
-                      <div className="text-sm text-muted-foreground space-y-1 pt-4 mt-4 border-t border-dashed">
-                        <h4 className="font-semibold text-foreground">Profit & Loss Breakdown (Estimated)</h4>
-                        <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                        <div className="flex justify-between"><span>Less: Landed Cost of Goods:</span><span>(-) ₹{calculatedTotals.totalLandedCost.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
-                        <div className={`flex justify-between font-bold ${calculatedTotals.grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
-                            <span>Gross Profit:</span> <span>₹{calculatedTotals.grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{summary.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                        <div className="flex justify-between"><span>Less: Total Cost of Goods:</span><span>(-) ₹{summary.totalCostOfGoods.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
+                        <div className={`flex justify-between font-bold ${summary.grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
+                            <span>Gross Profit:</span> <span>₹{summary.grossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        {calculatedTotals.totalSaleSideExpenses > 0 && 
-                          <div className="flex justify-between text-xs text-muted-foreground"><span>Less: Sale-Side Expenses:</span><span>(-) ₹{calculatedTotals.totalSaleSideExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                        {summary.totalExpenses > 0 && 
+                          <div className="flex justify-between text-xs"><span>Less: Sale-Side Expenses:</span><span>(-) ₹{summary.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                         }
                         <hr className="my-1 border-muted-foreground/50" />
-                        <div className={`flex justify-between font-bold text-base ${calculatedTotals.finalNetProfit >= 0 ? 'text-green-600' : 'text-red-700'}`}>
-                            <span>Estimated Net Profit:</span> <span>₹{calculatedTotals.finalNetProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-700'}`}>
+                            <span>Estimated Net Profit:</span> <span>₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
+                      </div>
+
+                      <div className="border-t pt-2 mt-2">
+                        {watch('isCB') && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watch('cbAmount')) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+                        <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{summary.billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
                       </div>
                   </div>
 

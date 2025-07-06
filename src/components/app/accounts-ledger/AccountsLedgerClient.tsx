@@ -1,4 +1,5 @@
 
+
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -128,62 +129,62 @@ export function AccountsLedgerClient() {
     if (!partyId) return [];
 
     let transactions: LedgerEntry[] = [];
-    const createTransactionDetailsNode = (items: { lotNumber: string; quantity: number; netWeight: number }[]) => (
-        <ul className="list-disc pl-4 text-xs">
-            {items.map((item, index) => (
-                <li key={index}>{item.lotNumber} ({item.quantity} bags, {item.netWeight} kg)</li>
-            ))}
-        </ul>
-    );
-
+    
     // --- DEBIT(+): Amount the party owes us (or we paid them) ---
     // --- CREDIT(-): Amount we owe the party (or they paid us) ---
     purchases.forEach(p => {
-        const transactionDetailsNode = createTransactionDetailsNode(p.items);
+        const totalTransportCharges = p.transportCharges || 0;
+        const totalGoodsValue = p.totalGoodsValue || 0;
+        const mainPayable = totalGoodsValue + (p.packingCharges || 0) + (p.labourCharges || 0) + (p.miscExpenses || 0);
+
         if (p.agentId === partyId) {
-            transactions.push({
+            const brokerageAmount = p.brokerageCharges || 0;
+             transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase from ${p.supplierName}`,
-                debit: 0, credit: p.totalAmount - (p.transportCharges || 0), transactionDetails: transactionDetailsNode,
+                particulars: `Goods from ${p.supplierName} (Bill: ${p.id.slice(-5)})`,
+                debit: 0, credit: mainPayable
             });
+            if(brokerageAmount > 0) {
+                 transactions.push({
+                    id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
+                    particulars: `Brokerage on Bill ${p.id.slice(-5)}`,
+                    debit: 0, credit: brokerageAmount
+                });
+            }
         } else if (p.supplierId === partyId) {
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Goods (Agent: ${p.agentName || 'None'})`,
-                debit: 0, credit: p.totalAmount - (p.transportCharges || 0), transactionDetails: transactionDetailsNode,
+                particulars: `Goods (Agent: ${p.agentName || 'None'}, Bill: ${p.id.slice(-5)})`,
+                debit: 0, credit: mainPayable
             });
         }
-        if (p.transporterId === partyId && p.transportCharges && p.transportCharges > 0) {
+        if (p.transporterId === partyId && totalTransportCharges > 0) {
              transactions.push({
                 id: `pur-transport-${p.id}`, date: p.date, type: 'Transport',
-                particulars: `Transport for Purchase`,
-                debit: 0, credit: p.transportCharges, transactionDetails: transactionDetailsNode,
+                particulars: `Transport for Bill ${p.id.slice(-5)}`,
+                debit: 0, credit: totalTransportCharges
             });
         }
     });
 
     sales.forEach(s => {
-        const transactionDetailsNode = createTransactionDetailsNode(s.items);
-        const brokerageAmount = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-        if (s.brokerId === partyId) {
+        const accountablePartyId = s.brokerId || s.customerId;
+        if(accountablePartyId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale to ${s.customerName}`,
-                debit: s.billedAmount, credit: 0, transactionDetails: transactionDetailsNode
+                particulars: `Sale to ${s.customerName} (Bill: ${s.billNumber || 'N/A'})`,
+                debit: s.billedAmount, credit: 0,
             });
-            if (brokerageAmount > 0) {
+        }
+        if (s.brokerId === partyId) {
+            const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+            if (totalBrokerage > 0) {
                 transactions.push({
                     id: `sale-brokerage-${s.id}`, date: s.date, type: 'Brokerage',
                     particulars: `Commission on Bill ${s.billNumber || 'N/A'}`,
-                    debit: 0, credit: brokerageAmount, transactionDetails: transactionDetailsNode
+                    debit: 0, credit: totalBrokerage,
                 });
             }
-        } else if (s.customerId === partyId) {
-            transactions.push({
-                id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale (Broker: ${s.brokerName || 'None'})`,
-                debit: s.billedAmount, credit: 0, transactionDetails: transactionDetailsNode
-            });
         }
     });
 
@@ -201,15 +202,8 @@ export function AccountsLedgerClient() {
         transactions.push({
             id: `receipt-${r.id}`, date: r.date, type: 'Receipt',
             particulars: `Receipt ${particularDetails}`,
-            debit: 0, credit: r.amount
+            debit: 0, credit: r.amount + (r.cashDiscount || 0)
         });
-        if (r.cashDiscount && r.cashDiscount > 0) {
-            transactions.push({
-                id: `disc-${r.id}`, date: r.date, type: 'Discount',
-                particulars: 'Discount Given',
-                debit: 0, credit: r.cashDiscount
-            });
-        }
     });
 
     purchaseReturns.forEach(pr => {

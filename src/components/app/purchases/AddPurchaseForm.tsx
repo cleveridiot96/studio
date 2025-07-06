@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -64,6 +65,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  
+  const [summary, setSummary] = React.useState({
+    totalGoodsValue: 0,
+    totalExpenses: 0,
+    totalAmount: 0,
+    effectiveRate: 0,
+    totalNetWeight: 0,
+    totalQuantity: 0,
+    calculatedBrokerageCharges: 0,
+  });
+
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -111,15 +123,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
-  React.useEffect(() => {
-    if (isOpen) {
-      reset(getDefaultValues());
-    }
-  }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
-
   const watchedFormValues = watch();
 
-  const calculatedTotals = React.useMemo(() => {
+  React.useEffect(() => {
     const { 
       items, agentId, brokerageType, brokerageValue,
       transportCharges, packingCharges, labourCharges, miscExpenses 
@@ -151,17 +157,25 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     const totalExpenses = (Number(transportCharges) || 0) + (Number(packingCharges) || 0) + (Number(labourCharges) || 0) + calculatedBrokerageCharges + (Number(miscExpenses) || 0);
     const totalAmount = totalGoodsValue + totalExpenses;
     const effectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
+    
+    setSummary({
+        totalGoodsValue,
+        totalExpenses,
+        totalAmount,
+        effectiveRate,
+        totalNetWeight,
+        totalQuantity,
+        calculatedBrokerageCharges,
+    });
 
-    return {
-      totalGoodsValue,
-      totalNetWeight,
-      totalQuantity,
-      calculatedBrokerageCharges,
-      totalExpenses,
-      totalAmount,
-      effectiveRate
-    };
   }, [watchedFormValues]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      reset(getDefaultValues());
+    }
+  }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
+
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
@@ -202,18 +216,18 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         rate: item.rate || 0, 
         goodsValue: (item.netWeight || 0) * (item.rate || 0)
       })),
-      totalGoodsValue: calculatedTotals.totalGoodsValue,
-      totalQuantity: calculatedTotals.totalQuantity,
-      totalNetWeight: calculatedTotals.totalNetWeight,
+      totalGoodsValue: summary.totalGoodsValue,
+      totalQuantity: summary.totalQuantity,
+      totalNetWeight: summary.totalNetWeight,
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
       brokerageType: values.brokerageType,
       brokerageValue: values.brokerageValue,
-      brokerageCharges: calculatedTotals.calculatedBrokerageCharges,
+      brokerageCharges: summary.calculatedBrokerageCharges,
       miscExpenses: values.miscExpenses,
-      totalAmount: calculatedTotals.totalAmount,
-      effectiveRate: calculatedTotals.effectiveRate,
+      totalAmount: summary.totalAmount,
+      effectiveRate: summary.effectiveRate,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
@@ -282,11 +296,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''} 
-                            onChange={e => {
-                                const bagsVal = parseFloat(e.target.value) || undefined;
-                                itemField.onChange(bagsVal);
-                                setValue(`items.${index}.netWeight`, (bagsVal || 0) * 50, { shouldValidate: true });
-                            }} /></FormControl>
+                            onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
+                           /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel>
@@ -309,18 +320,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
-                    {(calculatedTotals.totalGoodsValue > 0 || calculatedTotals.totalNetWeight > 0) && (
-                      <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
-                        <div className="flex justify-between font-semibold">
-                            <span>Total Goods Value:</span>
-                            <span>₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Total Net Weight:</span>
-                            <span>{calculatedTotals.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -379,9 +378,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               <FormMessage />
                             </FormItem>
                           )} />
-                          {calculatedTotals.calculatedBrokerageCharges > 0 && (
+                          {summary.calculatedBrokerageCharges > 0 && (
                             <div className="text-sm text-muted-foreground pt-7">
-                                = ₹{calculatedTotals.calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                = ₹{summary.calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </div>
                            )}
                         </>
@@ -406,19 +405,19 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
                       <div className="text-md font-semibold">Goods Value:</div>
-                      <p className="text-md font-semibold">₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-md font-semibold">₹{summary.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="flex items-center justify-between">
                       <div className="text-md font-semibold">Total Expenses:</div>
-                      <p className="text-md font-semibold">₹{calculatedTotals.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-md font-semibold">₹{summary.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                    <div className="flex items-center justify-between border-t pt-2 mt-2">
                       <div className="flex items-center text-md font-semibold text-primary"><Info className="w-5 h-5 mr-2" />Total Purchase Value:</div>
-                      <p className="text-xl font-bold text-primary">₹{calculatedTotals.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-xl font-bold text-primary">₹{summary.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
-                   {calculatedTotals.totalNetWeight > 0 && (
+                   {summary.totalNetWeight > 0 && (
                     <p className="text-sm text-muted-foreground text-right">
-                        Effective Landed Rate: <span className="font-semibold">₹{calculatedTotals.effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
+                        Effective Landed Rate: <span className="font-semibold">₹{summary.effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
                     </p>
                    )}
                 </div>
