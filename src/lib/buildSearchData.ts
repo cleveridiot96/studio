@@ -31,22 +31,24 @@ export const buildSearchData = ({
   const searchableItems: SearchableItem[] = [];
 
   sales.forEach((s) => {
+    const itemLots = s.items.map(i => i.lotNumber).join(' ');
     searchableItems.push({
       id: s.id,
       type: 'sale',
       title: `Sale: ${s.billNumber || s.id} to ${s.customerName || s.customerId}`,
-      searchableText: `sale sales bill ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${s.lotNumber} ${s.billedAmount} ${s.date} ${s.notes || ''}`,
+      searchableText: `sale sales bill ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${itemLots} ${s.billedAmount} ${s.date} ${s.notes || ''}`,
       href: `/sales#${s.id}`, 
       date: s.date,
     });
   });
 
   purchases.forEach((p) => {
+    const itemLots = p.items.map(i => i.lotNumber).join(' ');
     searchableItems.push({
       id: p.id,
       type: 'purchase',
-      title: `Purchase: ${p.lotNumber} from ${p.supplierName || p.supplierId}`,
-      searchableText: `purchase purchases lot vakkal ${p.supplierName || p.supplierId} ${p.lotNumber} ${p.totalAmount} ${p.date} ${p.agentName || ''} ${p.transporterName || ''} ${p.locationName || ''}`,
+      title: `Purchase: ${itemLots} from ${p.supplierName || p.supplierId}`,
+      searchableText: `purchase purchases lot vakkal ${p.supplierName || p.supplierId} ${itemLots} ${p.totalAmount} ${p.date} ${p.agentName || ''} ${p.transporterName || ''} ${p.locationName || ''}`,
       href: `/purchases#${p.id}`,
       date: p.date,
     });
@@ -57,7 +59,7 @@ export const buildSearchData = ({
       id: pm.id,
       type: 'payment',
       title: `Payment: To ${pm.partyName || pm.partyId} (₹${pm.amount})`,
-      searchableText: `payment payments ${pm.partyName || pm.partyId} ${pm.partyType} ${pm.amount} ${pm.paymentMethod} ${pm.referenceNo || ''} ${pm.date} ${pm.notes || ''}`,
+      searchableText: `payment payments ${pm.partyName || pm.partyId} ${pm.partyType} ${pm.amount} ${pm.paymentMethod} ${pm.date} ${pm.notes || ''}`,
       href: `/payments#${pm.id}`,
       date: pm.date,
     });
@@ -68,7 +70,7 @@ export const buildSearchData = ({
       id: r.id,
       type: 'receipt',
       title: `Receipt: From ${r.partyName || r.partyId} (₹${r.amount})`,
-      searchableText: `receipt receipts ${r.partyName || r.partyId} ${r.partyType} ${r.amount} ${r.paymentMethod} ${r.referenceNo || ''} ${r.date} ${r.notes || ''}`,
+      searchableText: `receipt receipts ${r.partyName || r.partyId} ${r.partyType} ${r.amount} ${r.paymentMethod} ${r.date} ${r.notes || ''}`,
       href: `/receipts#${r.id}`,
       date: r.date,
     });

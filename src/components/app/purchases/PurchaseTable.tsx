@@ -24,7 +24,7 @@ import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-
+import { Badge } from "@/components/ui/badge";
 
 interface PurchaseTableProps {
   data: Purchase[];
@@ -63,9 +63,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead>Agent</TableHead>
               <TableHead className="text-right">Bags</TableHead>
               <TableHead className="text-right">Net Wt.(kg)</TableHead>
-              <TableHead className="text-right">Rate (₹/kg)</TableHead>
+              <TableHead className="text-right">Landed Rate (₹/kg)</TableHead>
               <TableHead className="text-right">Brokerage (₹)</TableHead>
-              <TableHead className="text-right">Payable Value (₹)</TableHead>
+              <TableHead className="text-right">Total Cost (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -73,9 +73,6 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
             {data.flatMap((purchase) => {
               const hasMultipleItems = purchase.items && purchase.items.length > 1;
               const isExpanded = expandedRows.has(purchase.id);
-              const vakkalDisplay = hasMultipleItems 
-                ? `${purchase.items[0].lotNumber} (+${purchase.items.length - 1})`
-                : (purchase.items && purchase.items[0]?.lotNumber) || 'N/A';
               
               const mainRow = (
                 <TableRow 
@@ -85,50 +82,38 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 >
                   <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="truncate max-w-[120px] inline-block">{vakkalDisplay}</span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <ul>{purchase.items && purchase.items.map(item => <li key={item.lotNumber}>{item.lotNumber} ({item.quantity} bags)</li>)}</ul>
-                        </TooltipContent>
-                      </Tooltip>
-                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 ml-1 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />}
+                    <div className="flex items-center gap-2">
+                      {hasMultipleItems ? (
+                        <Badge variant="outline">Multiple Items</Badge>
+                      ) : (
+                        <span>{purchase.items[0]?.lotNumber || 'N/A'}</span>
+                      )}
+                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.locationName || purchase.locationId}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.locationName || purchase.locationId}</span></TooltipTrigger>
                       <TooltipContent><p>{purchase.locationName || purchase.locationId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.supplierName || purchase.supplierId}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.supplierName || purchase.supplierId}</span></TooltipTrigger>
                       <TooltipContent><p>{purchase.supplierName || purchase.supplierId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <Tooltip>
-                      <TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || 'N/A'}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || 'N/A'}</span></TooltipTrigger>
                       <TooltipContent><p>{purchase.agentName || 'N/A'}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="text-right">{purchase.totalQuantity}</TableCell>
                   <TableCell className="text-right">{purchase.totalNetWeight.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{(purchase.items[0]?.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                   <TableCell className="text-right font-medium">
+                    {(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </TableCell>
                   <TableCell className="text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                   <TableCell className="text-right font-semibold">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>{((purchase.totalAmount || 0) - (purchase.brokerageCharges || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Full Landed Cost (incl. all expenses): ₹{(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                        <p>Effective Rate: ₹{(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    {(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
@@ -163,19 +148,30 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 </TableRow>
               );
 
-              const expandedSubRows = isExpanded && hasMultipleItems ? purchase.items.slice(1).map((item, index) => (
-                <TableRow key={`${purchase.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                    <TableCell>{''}</TableCell>
-                    <TableCell className="pl-8">↳ {item.lotNumber}</TableCell>
-                    <TableCell>{''}</TableCell>
-                    <TableCell>{''}</TableCell>
-                    <TableCell>{''}</TableCell>
-                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">{item.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                    <TableCell colSpan={3}>{''}</TableCell>
-                </TableRow>
-              )) : [];
+              const expandedSubRows = isExpanded && hasMultipleItems ? [
+                <TableRow key={`${purchase.id}-sub-header`} className="bg-muted/80 hover:bg-muted/80 text-xs">
+                    <TableCell colSpan={1}></TableCell>
+                    <TableHead className="p-2">Vakkal</TableHead>
+                    <TableCell colSpan={3}></TableCell>
+                    <TableHead className="text-right p-2">Bags</TableHead>
+                    <TableHead className="text-right p-2">Net Wt</TableHead>
+                    <TableHead className="text-right p-2">Rate</TableHead>
+                    <TableHead className="text-right p-2">Value</TableHead>
+                    <TableCell colSpan={2}></TableCell>
+                </TableRow>,
+                ...purchase.items.map((item, index) => (
+                  <TableRow key={`${purchase.id}-item-${index}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
+                      <TableCell colSpan={1}>{''}</TableCell>
+                      <TableCell className="p-2">{item.lotNumber}</TableCell>
+                      <TableCell colSpan={3}>{''}</TableCell>
+                      <TableCell className="text-right p-2">{item.quantity.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-2">{item.netWeight.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-2">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-2 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell colSpan={2}>{''}</TableCell>
+                  </TableRow>
+                ))
+              ] : [];
               
               return [mainRow, ...expandedSubRows];
             })}

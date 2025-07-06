@@ -22,8 +22,9 @@ import { MoreVertical, Pencil, Trash2, Printer, Download, ChevronDown } from "lu
 import type { Sale } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // Corrected import
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface SaleTableProps {
   data: Sale[];
@@ -76,10 +77,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
             {data.flatMap((sale) => {
               const hasMultipleItems = sale.items && sale.items.length > 1;
               const isExpanded = expandedRows.has(sale.id);
-              const vakkalDisplay = hasMultipleItems
-                ? `${sale.items[0].lotNumber} (+${sale.items.length - 1})`
-                : (sale.items && sale.items[0]?.lotNumber) || 'N/A';
-
+              
               const mainRow = (
                 <TableRow 
                   key={sale.id}
@@ -98,13 +96,13 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{vakkalDisplay}</span></TooltipTrigger>
-                        <TooltipContent>
-                            <ul>{sale.items && sale.items.map(item => <li key={item.lotNumber}>{item.lotNumber} ({item.quantity} bags)</li>)}</ul>
-                        </TooltipContent>
-                      </Tooltip>
-                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 ml-1 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />}
+                    <div className="flex items-center gap-2">
+                       {hasMultipleItems ? (
+                        <Badge variant="outline">Multiple Items</Badge>
+                      ) : (
+                        <span>{sale.items[0]?.lotNumber || 'N/A'}</span>
+                      )}
+                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">{sale.totalQuantity.toLocaleString()}</TableCell>
@@ -148,15 +146,28 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                 </TableRow>
               );
               
-              const expandedSubRows = isExpanded && hasMultipleItems ? sale.items.slice(1).map((item, index) => (
-                <TableRow key={`${sale.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                  <TableCell colSpan={3}>{''}</TableCell>
-                  <TableCell className="pl-8">↳ {item.lotNumber}</TableCell>
-                  <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell>
-                  <TableCell colSpan={4}>{''}</TableCell>
-                </TableRow>
-              )) : [];
+              const expandedSubRows = isExpanded && hasMultipleItems ? [
+                <TableRow key={`${sale.id}-sub-header`} className="bg-muted/80 hover:bg-muted/80 text-xs">
+                    <TableCell colSpan={3}></TableCell>
+                    <TableHead className="p-2">Vakkal</TableHead>
+                    <TableHead className="text-right p-2">Bags</TableHead>
+                    <TableHead className="text-right p-2">Net Wt</TableHead>
+                    <TableHead className="text-right p-2">Rate</TableHead>
+                    <TableHead className="text-right p-2">Value</TableHead>
+                    <TableCell colSpan={2}></TableCell>
+                </TableRow>,
+                ...sale.items.map((item, index) => (
+                  <TableRow key={`${sale.id}-item-${index}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
+                      <TableCell colSpan={3}>{''}</TableCell>
+                      <TableCell className="p-2">{item.lotNumber}</TableCell>
+                      <TableCell className="text-right p-2">{item.quantity.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-2">{item.netWeight.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-2">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-2 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell colSpan={2}>{''}</TableCell>
+                  </TableRow>
+                ))
+              ] : [];
               
               return [mainRow, ...expandedSubRows];
             })}

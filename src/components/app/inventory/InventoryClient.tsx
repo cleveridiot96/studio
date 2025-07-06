@@ -102,20 +102,23 @@ export function InventoryClient() {
 
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
     fyPurchases.forEach(p => {
-      const key = `${p.lotNumber}-${p.locationId}`;
-      inventoryMap.set(key, {
-        lotNumber: p.lotNumber, locationId: p.locationId,
-        locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
-        supplierId: p.supplierId, supplierName: suppliers.find(s => s.id === p.supplierId)?.name || p.supplierName,
-        sourceType: 'Purchase',
-        totalPurchasedBags: p.quantity, totalPurchasedWeight: p.netWeight,
-        totalSoldBags: 0, totalSoldWeight: 0,
-        totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0,
-        totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
-        totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
-        totalTransferredInBags: 0, totalTransferredInWeight: 0,
-        currentBags: 0, currentWeight: 0,
-        purchaseDate: p.date, purchaseRate: p.rate, effectiveRate: p.effectiveRate, cogs: 0,
+      if (!p.items) return;
+      p.items.forEach(item => {
+        const key = `${item.lotNumber}-${p.locationId}`;
+        inventoryMap.set(key, {
+          lotNumber: item.lotNumber, locationId: p.locationId,
+          locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
+          supplierId: p.supplierId, supplierName: suppliers.find(s => s.id === p.supplierId)?.name || p.supplierName,
+          sourceType: 'Purchase',
+          totalPurchasedBags: item.quantity, totalPurchasedWeight: item.netWeight,
+          totalSoldBags: 0, totalSoldWeight: 0,
+          totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0,
+          totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
+          totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
+          totalTransferredInBags: 0, totalTransferredInWeight: 0,
+          currentBags: 0, currentWeight: 0,
+          purchaseDate: p.date, purchaseRate: item.rate, effectiveRate: p.effectiveRate, cogs: 0,
+        });
       });
     });
     
@@ -123,7 +126,7 @@ export function InventoryClient() {
     fyPurchaseReturns.forEach(pr => {
       const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
       if (originalPurchase) {
-        const key = `${originalPurchase.lotNumber}-${originalPurchase.locationId}`;
+        const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
         const entry = inventoryMap.get(key);
         if (entry) {
           entry.totalPurchaseReturnedBags += pr.quantityReturned;
@@ -144,11 +147,11 @@ export function InventoryClient() {
 
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
-        // Inherit effectiveRate from source, DO NOT add transfer costs to it
-        const sourceEffectiveRate = fromItem?.effectiveRate || purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0;
+        
+        const sourceEffectiveRate = fromItem?.effectiveRate || purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber))?.effectiveRate || 0;
         
         if (!toEntry) {
-          const originalPurchase = purchases.find(p => p.lotNumber === item.originalLotNumber);
+          const originalPurchase = purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
           const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
           toEntry = {
             lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,
@@ -163,8 +166,8 @@ export function InventoryClient() {
             totalTransferredInBags: 0, totalTransferredInWeight: 0,
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
-            purchaseRate: originalPurchase?.rate || 0,
-            effectiveRate: sourceEffectiveRate, // Inherited rate
+            purchaseRate: originalPurchase?.items.find(i => i.lotNumber === item.originalLotNumber)?.rate || 0,
+            effectiveRate: sourceEffectiveRate,
             cogs: 0,
           };
           inventoryMap.set(toKey, toEntry);
@@ -176,20 +179,23 @@ export function InventoryClient() {
     });
 
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
-    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
     fySales.forEach(s => {
-      const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(s.lotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
-      const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
-      
-      if (entry) {
-        entry.totalSoldBags += s.quantity;
-        entry.totalSoldWeight += s.netWeight;
-      }
+      if (!s.items) return;
+      s.items.forEach(item => {
+        // Find the specific lot from any location (assuming lot numbers are unique across locations for this logic)
+        const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber));
+        const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
+        
+        if (entry) {
+          entry.totalSoldBags += item.quantity;
+          entry.totalSoldWeight += item.netWeight;
+        }
+      });
     });
 
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
-      const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(sr.originalLotNumber) && k.endsWith(MUMBAI_WAREHOUSE_ID));
+      const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
       const entry = saleReturnLotKey ? inventoryMap.get(saleReturnLotKey) : undefined;
 
       if (entry) {
@@ -214,7 +220,7 @@ export function InventoryClient() {
       item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
       item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
 
-      if (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0 || item.currentBags > 0) {
+      if (item.totalPurchasedBags > 0 || item.totalTransferredInBags > 0 || item.currentBags > -0.001) {
         result.push(item);
       }
     });
@@ -255,8 +261,8 @@ export function InventoryClient() {
   }, [archivedInventory, selectedWarehouseId]);
 
   const handleArchiveAttempt = (item: AggregatedInventoryItem) => {
-    if (item.currentBags <= 0) { setItemToArchive(item); setShowArchiveConfirm(true); }
-    else { toast({ title: "Cannot Archive", description: `Lot "${item.lotNumber}" has ${item.currentBags} bags. Only zero-stock can be archived.`, variant: "destructive" }); }
+    if (item.currentBags <= 0.001) { setItemToArchive(item); setShowArchiveConfirm(true); }
+    else { toast({ title: "Cannot Archive", description: `Lot "${item.lotNumber}" has stock. Only zero-stock can be archived.`, variant: "destructive" }); }
   };
   const confirmArchiveItem = () => {
     if (itemToArchive) {

@@ -183,6 +183,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const totalCostOfGoodsSold = React.useMemo(() => {
       return watchedItems.reduce((acc, item) => {
+          if (!item.lotNumber) return acc;
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
           const cogsForItem = (item.netWeight || 0) * (stock?.effectiveRate || 0);
           return acc + cogsForItem;

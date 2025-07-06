@@ -215,6 +215,7 @@ export function SalesClient() {
       }
     });
 
+
     const result: AggregatedStockItemForForm[] = [];
     const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
 

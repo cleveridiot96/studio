@@ -17,6 +17,8 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -42,6 +44,7 @@ interface LedgerEntry {
     particulars: string;
     debit: number;
     credit: number;
+    transactionDetails?: React.ReactNode;
 }
 
 const initialFinancialLedgerData = {
@@ -124,13 +127,21 @@ export function AccountsLedgerClient() {
   const getPartyTransactions = React.useCallback((partyId: string) => {
     if (!partyId) return [];
 
-    let transactions: Omit<LedgerEntry, 'balance'>[] = [];
+    let transactions: LedgerEntry[] = [];
 
     // --- DEBIT(+): Amount the party owes us (or we paid them) ---
     // --- CREDIT(-): Amount we owe the party (or they paid us) ---
 
     // Process Purchases
     purchases.forEach(p => {
+        const transactionDetailsNode = (
+            <ul className="list-disc pl-4 text-xs">
+                {p.items.map((item, index) => (
+                    <li key={index}>{item.lotNumber} ({item.quantity} bags, {item.netWeight} kg)</li>
+                ))}
+            </ul>
+        );
+
         if (p.agentId === partyId) {
             const goodsValue = p.totalGoodsValue;
             const brokerageAmount = p.brokerageCharges || 0;
@@ -138,21 +149,21 @@ export function AccountsLedgerClient() {
             transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
                 particulars: `Purchase from ${p.supplierName}`,
-                debit: 0, credit: goodsValue,
+                debit: 0, credit: goodsValue, transactionDetails: transactionDetailsNode,
             });
             // Credit for brokerage
             if (brokerageAmount > 0) {
                 transactions.push({
                     id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
                     particulars: `Brokerage on Purchase`,
-                    debit: 0, credit: brokerageAmount,
+                    debit: 0, credit: brokerageAmount, transactionDetails: transactionDetailsNode,
                 });
             }
         } else if (p.supplierId === partyId) {
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
                 particulars: `Purchase (Agent: ${p.agentName || 'None'})`,
-                debit: 0, credit: p.totalAmount,
+                debit: 0, credit: p.totalAmount, transactionDetails: transactionDetailsNode,
             });
         }
         
@@ -161,7 +172,7 @@ export function AccountsLedgerClient() {
              transactions.push({
                 id: `pur-transport-${p.id}`, date: p.date, type: 'Transport',
                 particulars: `Transport for Purchase`,
-                debit: 0, credit: p.transportCharges
+                debit: 0, credit: p.transportCharges, transactionDetails: transactionDetailsNode,
             });
         }
     });
@@ -169,27 +180,34 @@ export function AccountsLedgerClient() {
     // Process Sales
     sales.forEach(s => {
         const brokerageAmount = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+        const transactionDetailsNode = (
+            <ul className="list-disc pl-4 text-xs">
+                {s.items.map((item, index) => (
+                    <li key={index}>{item.lotNumber} ({item.quantity} bags, {item.netWeight} kg)</li>
+                ))}
+            </ul>
+        );
 
         if (s.brokerId === partyId) {
             // Debit for the sale amount
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
                 particulars: `Sale to ${s.customerName}`,
-                debit: s.billedAmount, credit: 0
+                debit: s.billedAmount, credit: 0, transactionDetails: transactionDetailsNode
             });
             // Credit for brokerage
             if (brokerageAmount > 0) {
                 transactions.push({
                     id: `sale-brokerage-${s.id}`, date: s.date, type: 'Brokerage',
                     particulars: `Commission on Bill ${s.billNumber || 'N/A'}`,
-                    debit: 0, credit: brokerageAmount
+                    debit: 0, credit: brokerageAmount, transactionDetails: transactionDetailsNode
                 });
             }
         } else if (s.customerId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
                 particulars: `Sale (Broker: ${s.brokerName || 'None'})`,
-                debit: s.billedAmount, credit: 0
+                debit: s.billedAmount, credit: 0, transactionDetails: transactionDetailsNode
             });
         }
     });
@@ -320,6 +338,7 @@ export function AccountsLedgerClient() {
   };
 
   return (
+    <TooltipProvider>
     <div className="space-y-6 print-area flex flex-col flex-1">
       <Card className="shadow-md no-print">
         <CardHeader>
@@ -327,7 +346,6 @@ export function AccountsLedgerClient() {
             <h1 className="text-3xl font-bold text-foreground">Accounts Ledger</h1>
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <MasterDataCombobox
-                triggerId="accounts-ledger-party-selector"
                 value={selectedPartyId}
                 onChange={(value) => handlePartySelect(value || "")}
                 options={partyOptions}
@@ -388,9 +406,22 @@ export function AccountsLedgerClient() {
                                   financialLedgerData.debitTransactions.map(tx => (
                                     <TableRow key={tx.id}>
                                       <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                                      <TableCell className="flex items-center gap-2">
-                                        <Badge variant="outline">{tx.type}</Badge>
-                                        <span>{tx.particulars}</span>
+                                      <TableCell>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline">{tx.type}</Badge>
+                                          {tx.transactionDetails ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="truncate max-w-xs cursor-help underline decoration-dashed">{tx.particulars}</span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    {tx.transactionDetails}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                          ) : (
+                                            <span>{tx.particulars}</span>
+                                          )}
+                                        </div>
                                       </TableCell>
                                       <TableCell className="text-right font-medium">{tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                     </TableRow>
@@ -432,9 +463,22 @@ export function AccountsLedgerClient() {
                                   financialLedgerData.creditTransactions.map(tx => (
                                     <TableRow key={tx.id}>
                                       <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
-                                      <TableCell className="flex items-center gap-2">
-                                        <Badge variant="secondary">{tx.type}</Badge>
-                                        <span>{tx.particulars}</span>
+                                      <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="secondary">{tx.type}</Badge>
+                                            {tx.transactionDetails ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="truncate max-w-xs cursor-help underline decoration-dashed">{tx.particulars}</span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        {tx.transactionDetails}
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <span>{tx.particulars}</span>
+                                            )}
+                                        </div>
                                       </TableCell>
                                       <TableCell className="text-right font-medium">{tx.credit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                     </TableRow>
@@ -470,7 +514,7 @@ export function AccountsLedgerClient() {
         <Card
           className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors flex-1"
           onClick={() => {
-            const trigger = document.getElementById('accounts-ledger-party-selector');
+            const trigger = document.getElementById('accounts-ledger-party-selector-trigger');
             trigger?.click();
           }}
         >
@@ -484,5 +528,6 @@ export function AccountsLedgerClient() {
         </Card>
       )}
     </div>
+    </TooltipProvider>
   );
 }
