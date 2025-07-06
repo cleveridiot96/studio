@@ -73,7 +73,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
     return {
       date: new Date(),
       partyId: undefined, 
-      amount: 0,
+      amount: undefined,
       paymentMethod: 'Cash',
       source: "",
       notes: "",
@@ -106,7 +106,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   };
 
   const processSubmit = (values: PaymentFormValues) => {
-    if (!values.partyId || values.amount <= 0) {
+    if (!values.partyId || !values.amount || values.amount <= 0) {
         toast({ title: "Missing Info", description: "Please select a party and enter a valid amount.", variant: "destructive" });
         setIsSubmitting(false); 
         return;
@@ -215,7 +215,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amount (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

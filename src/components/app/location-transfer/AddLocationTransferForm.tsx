@@ -287,17 +287,17 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       <FormField control={control} name={`items.${index}.bagsToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField}
-                            value={itemField.value || ''}
+                            value={itemField.value ?? ''}
                             onChange={e => {
-                              const bagsVal = parseFloat(e.target.value) || 0;
+                              const bagsVal = parseFloat(e.target.value) || undefined;
                               itemField.onChange(bagsVal);
-                              setValue(`items.${index}.grossWeightToTransfer`, bagsVal * 50, { shouldValidate: true });
+                              setValue(`items.${index}.grossWeightToTransfer`, (bagsVal || 0) * 50, { shouldValidate: true });
                               const lotValue = watch(`items.${index}.originalLotNumber`);
                               const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watchedFromWarehouseId);
                               const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
-                              let newNetWeight = 0;
-                              if (bagsVal > 0 && !isNaN(avgWeightPerBag)) {
-                                newNetWeight = parseFloat((bagsVal * avgWeightPerBag).toFixed(2));
+                              let newNetWeight;
+                              if (bagsVal && bagsVal > 0 && !isNaN(avgWeightPerBag)) {
+                                newNetWeight = parseFloat(((bagsVal || 0) * avgWeightPerBag).toFixed(2));
                               }
                               setValue(`items.${index}.netWeightToTransfer`, newNetWeight, { shouldValidate: true });
                             }}
@@ -307,13 +307,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value || ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />

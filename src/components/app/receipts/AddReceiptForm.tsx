@@ -68,18 +68,18 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         paymentMethod: receiptToEdit.paymentMethod,
         source: receiptToEdit.source || "",
         notes: receiptToEdit.notes || "",
-        cashDiscount: receiptToEdit.cashDiscount || 0,
+        cashDiscount: receiptToEdit.cashDiscount || undefined,
         relatedSaleIds: receiptToEdit.relatedSaleIds || [],
       };
     }
     return {
       date: new Date(),
       partyId: undefined,
-      amount: 0,
+      amount: undefined,
       paymentMethod: 'Cash',
       source: "",
       notes: "",
-      cashDiscount: 0,
+      cashDiscount: undefined,
       relatedSaleIds: [],
     };
   }, [receiptToEdit]);
@@ -111,7 +111,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
   };
 
   const processSubmit = React.useCallback((values: ReceiptFormValues) => {
-    if (!values.partyId || values.amount <= 0) {
+    if (!values.partyId || !values.amount || values.amount <= 0) {
       toast({ title: "Missing Info", description: "Please select a party and enter a valid amount received.", variant: "destructive" });
       setIsSubmitting(false);
       return;
@@ -222,7 +222,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amount Received (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount received" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount received" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -233,7 +233,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cash Discount (₹, Optional)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="e.g., 200" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormControl><Input type="number" step="0.01" placeholder="e.g., 200" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

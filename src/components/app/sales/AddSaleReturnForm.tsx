@@ -56,8 +56,8 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
       : {
           date: new Date(),
           originalSaleId: undefined,
-          quantityReturned: 0,
-          netWeightReturned: 0,
+          quantityReturned: undefined,
+          netWeightReturned: undefined,
           returnReason: "",
           notes: "",
           restockingFee: undefined,
@@ -81,7 +81,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
             notes: saleReturnToEdit.notes || "",
             restockingFee: saleReturnToEdit.restockingFee || undefined,
           }
-        : { date: new Date(), originalSaleId: undefined, quantityReturned: 0, netWeightReturned: 0, returnReason: "", notes: "", restockingFee: undefined }
+        : { date: new Date(), originalSaleId: undefined, quantityReturned: undefined, netWeightReturned: undefined, returnReason: "", notes: "", restockingFee: undefined }
       );
       setSelectedOriginalSale(saleReturnToEdit ? sales.find(s => s.id === saleReturnToEdit.originalSaleId) || null : null);
     }
@@ -97,8 +97,8 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
   }, [watchedOriginalSaleId, sales]);
 
   React.useEffect(() => {
-    if (selectedOriginalSale && watchedQuantityReturned > 0) {
-      const avgWeightPerBag = selectedOriginalSale.netWeight / selectedOriginalSale.quantity;
+    if (selectedOriginalSale && watchedQuantityReturned && watchedQuantityReturned > 0) {
+      const avgWeightPerBag = selectedOriginalSale.totalNetWeight / selectedOriginalSale.totalQuantity;
       if (!isNaN(avgWeightPerBag) && formMethods.getValues("netWeightReturned") === 0) {
         setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)));
       }
@@ -109,13 +109,16 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
   const processSubmit = (values: SaleReturnFormValues) => {
     setIsSubmitting(true);
     const originalSale = sales.find(s => s.id === values.originalSaleId);
-    if (!originalSale) {
-      toast({ title: "Error", description: "Original sale not found.", variant: "destructive" });
+    if (!originalSale || !values.quantityReturned || !values.netWeightReturned) {
+      toast({ title: "Error", description: "Original sale or return quantities are missing.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
+    
+    const originalItem = originalSale.items[0]; // Assuming single item for now, needs improvement for multi-item returns
+    const rate = originalItem?.rate || 0;
 
-    const returnAmount = (values.netWeightReturned * originalSale.rate) - (values.restockingFee || 0);
+    const returnAmount = (values.netWeightReturned * rate) - (values.restockingFee || 0);
 
     const saleReturnData: SaleReturn = {
       id: saleReturnToEdit?.id || `sr-${Date.now()}`,
@@ -124,8 +127,8 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
       originalBillNumber: originalSale.billNumber,
       originalCustomerId: originalSale.customerId,
       originalCustomerName: originalSale.customerName,
-      originalLotNumber: originalSale.lotNumber,
-      originalSaleRate: originalSale.rate,
+      originalLotNumber: originalItem.lotNumber,
+      originalSaleRate: rate,
       quantityReturned: values.quantityReturned,
       netWeightReturned: values.netWeightReturned,
       returnReason: values.returnReason,
@@ -141,7 +144,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
 
   const saleOptions = sales.map(s => ({
     value: s.id,
-    label: `${s.billNumber || s.id.slice(-5)} - ${s.customerName || s.customerId} (Lot: ${s.lotNumber}, Date: ${format(parseISO(s.date), "dd-MM-yy")})`,
+    label: `${s.billNumber || s.id.slice(-5)} - ${s.customerName || s.customerId} (${s.items.map(i => i.lotNumber).join(', ')}, ${format(parseISO(s.date), "dd-MM-yy")})`,
   }));
 
   return (
@@ -197,23 +200,23 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
                 <div className="p-3 border rounded-md bg-muted/50 text-sm">
                   <p><strong>Bill:</strong> {selectedOriginalSale.billNumber || selectedOriginalSale.id.slice(-5)}</p>
                   <p><strong>Customer:</strong> {selectedOriginalSale.customerName || selectedOriginalSale.customerId}</p>
-                  <p><strong>Lot:</strong> {selectedOriginalSale.lotNumber}</p>
-                  <p><strong>Original Sale Rate:</strong> ₹{selectedOriginalSale.rate.toFixed(2)}/kg</p>
-                  <p><strong>Original Qty:</strong> {selectedOriginalSale.quantity} bags, {selectedOriginalSale.netWeight.toFixed(2)} kg</p>
+                  <p><strong>Lot(s):</strong> {selectedOriginalSale.items.map(i => i.lotNumber).join(', ')}</p>
+                  <p><strong>Original Sale Rate:</strong> ₹{selectedOriginalSale.items[0]?.rate.toFixed(2)}/kg</p>
+                  <p><strong>Original Qty:</strong> {selectedOriginalSale.totalQuantity} bags, {selectedOriginalSale.totalNetWeight.toFixed(2)} kg</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={control} name="quantityReturned" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Quantity Returned (Bags)</FormLabel>
-                    <FormControl><Input type="number" placeholder="Bags" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                    <FormControl><Input type="number" placeholder="Bags" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                     <FormMessage />
                   </FormItem>)}
                 />
                 <FormField control={control} name="netWeightReturned" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Net Weight Returned (kg)</FormLabel>
-                    <FormControl><Input type="number" step="0.01" placeholder="Weight" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                    <FormControl><Input type="number" step="0.01" placeholder="Weight" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                     <FormMessage />
                   </FormItem>)}
                 />
@@ -221,7 +224,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
               <FormField control={control} name="restockingFee" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Restocking Fee (₹, Optional)</FormLabel>
-                  <FormControl><Input type="number" step="0.01" placeholder="e.g., 50" {...field} value={field.value === undefined ? '' : field.value} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
+                  <FormControl><Input type="number" step="0.01" placeholder="e.g., 50" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
                   <FormMessage />
                 </FormItem>)}
               />
