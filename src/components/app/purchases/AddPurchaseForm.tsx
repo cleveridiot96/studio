@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,11 +25,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Info, Percent } from "lucide-react";
+import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType } from "@/lib/types";
+import type { MasterItem, Purchase, MasterItemType, PurchaseItem } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
@@ -64,24 +64,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
-  
-  const [quantityManuallySet, setQuantityManuallySet] = React.useState(false);
-  const [netWeightManuallySet, setNetWeightManuallySet] = React.useState(false);
-  const [transportChargesManuallySet, setTransportChargesManuallySet] = React.useState(false);
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
       return {
         date: new Date(purchaseToEdit.date),
-        lotNumber: purchaseToEdit.lotNumber,
         locationId: purchaseToEdit.locationId,
         supplierId: purchaseToEdit.supplierId,
         agentId: purchaseToEdit.agentId || undefined,
         transporterId: purchaseToEdit.transporterId || undefined,
-        quantity: purchaseToEdit.quantity,
-        netWeight: purchaseToEdit.netWeight,
-        rate: purchaseToEdit.rate,
-        transportRatePerKg: purchaseToEdit.transportRatePerKg,
+        items: purchaseToEdit.items.map(item => ({
+            lotNumber: item.lotNumber,
+            quantity: item.quantity,
+            netWeight: item.netWeight,
+            rate: item.rate
+        })),
         transportCharges: purchaseToEdit.transportCharges,
         packingCharges: purchaseToEdit.packingCharges,
         labourCharges: purchaseToEdit.labourCharges,
@@ -92,15 +89,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
     return {
       date: new Date(),
-      lotNumber: "",
       locationId: undefined,
       supplierId: undefined,
       agentId: undefined,
       transporterId: undefined,
-      quantity: 0,
-      netWeight: 0,
-      rate: 0,
-      transportRatePerKg: undefined,
+      items: [{ lotNumber: "", quantity: 0, netWeight: 0, rate: 0 }],
       transportCharges: undefined,
       packingCharges: undefined,
       labourCharges: undefined,
@@ -114,69 +107,41 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, [])),
     defaultValues: getDefaultValues(),
   });
-  const { control, watch, setValue, handleSubmit: formHandleSubmit, reset, formState: { errors, dirtyFields } } = methods;
+  const { control, watch, setValue, handleSubmit: formHandleSubmit, reset, formState: { errors } } = methods;
+
+  const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
-      setQuantityManuallySet(!!purchaseToEdit?.quantity); 
-      setNetWeightManuallySet(!!purchaseToEdit?.netWeight);
-      setTransportChargesManuallySet(!!purchaseToEdit?.transportCharges);
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
-  const lotNumberValue = watch("lotNumber");
-  const quantityValue = watch("quantity");
-  const transportRatePerKg = watch("transportRatePerKg");
-
-  React.useEffect(() => {
-    if (lotNumberValue && !quantityManuallySet && !dirtyFields.quantity) {
-      const match = lotNumberValue.match(/[/\-. ](\d+)$/);
-      if (match && match[1]) {
-        const bags = parseInt(match[1], 10);
-        if (!isNaN(bags) && bags > 0) {
-          setValue("quantity", bags, { shouldValidate: true });
-        }
-      }
-    }
-  }, [lotNumberValue, setValue, dirtyFields.quantity, quantityManuallySet]);
-
-  React.useEffect(() => {
-    if (typeof quantityValue === 'number' && quantityValue > 0 && !netWeightManuallySet && !dirtyFields.netWeight) {
-      setValue("netWeight", quantityValue * 50, { shouldValidate: true });
-    }
-    if (typeof quantityValue === 'number' && quantityValue > 0 && typeof transportRatePerKg === 'number' && transportRatePerKg > 0 && !transportChargesManuallySet) {
-        const grossWeight = quantityValue * 50;
-        setValue("transportCharges", grossWeight * transportRatePerKg, { shouldValidate: true });
-    }
-  }, [quantityValue, transportRatePerKg, setValue, dirtyFields.netWeight, netWeightManuallySet, transportChargesManuallySet]);
-  
+  const watchedItems = watch("items");
   const watchedAgentId = watch("agentId");
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
-
-  const netWeight = watch("netWeight");
-  const rate = watch("rate");
   const transportCharges = watch("transportCharges") || 0;
   const packingCharges = watch("packingCharges") || 0;
   const labourCharges = watch("labourCharges") || 0;
   const miscExpenses = watch("miscExpenses") || 0;
 
-  const goodsValue = React.useMemo(() => (netWeight || 0) * (rate || 0), [netWeight, rate]);
+  const totalGoodsValue = React.useMemo(() => watchedItems.reduce((acc, item) => acc + ((item.netWeight || 0) * (item.rate || 0)), 0), [watchedItems]);
   
   const calculatedBrokerageCharges = React.useMemo(() => {
     if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
     if (brokerageType === "Percentage") {
-      return (goodsValue * (brokerageValue / 100));
+      return (totalGoodsValue * (brokerageValue / 100));
     } else if (brokerageType === "Fixed") {
       return brokerageValue;
     }
     return 0;
-  }, [watchedAgentId, brokerageType, brokerageValue, goodsValue]);
+  }, [watchedAgentId, brokerageType, brokerageValue, totalGoodsValue]);
 
   const totalExpenses = React.useMemo(() => transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses, [transportCharges, packingCharges, labourCharges, calculatedBrokerageCharges, miscExpenses]);
-  const totalAmount = React.useMemo(() => goodsValue + totalExpenses, [goodsValue, totalExpenses]);
-  const effectiveRate = React.useMemo(() => (netWeight > 0 ? totalAmount / netWeight : 0), [totalAmount, netWeight]);
+  const totalAmount = React.useMemo(() => totalGoodsValue + totalExpenses, [totalGoodsValue, totalExpenses]);
+  const totalNetWeight = React.useMemo(() => watchedItems.reduce((acc, item) => acc + (item.netWeight || 0), 0), [watchedItems]);
+  const effectiveRate = React.useMemo(() => (totalNetWeight > 0 ? totalAmount / totalNetWeight : 0), [totalAmount, totalNetWeight]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
@@ -199,17 +164,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
-    const calculatedGoodsValue = (values.netWeight || 0) * (values.rate || 0);
     const finalBrokerageCharges = calculatedBrokerageCharges;
-    const calculatedTotalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + finalBrokerageCharges + (values.miscExpenses || 0);
-    const calculatedTotalAmount = calculatedGoodsValue + calculatedTotalExpenses;
-    const calculatedEffectiveRate = values.netWeight > 0 ? calculatedTotalAmount / values.netWeight : 0;
-    const transporter = transporters.find(t => t.id === values.transporterId);
+    const finalTotalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + finalBrokerageCharges + (values.miscExpenses || 0);
+    const finalTotalGoodsValue = values.items.reduce((sum, item) => sum + (item.netWeight * item.rate), 0);
+    const finalTotalAmount = finalTotalGoodsValue + finalTotalExpenses;
+    const finalTotalNetWeight = values.items.reduce((sum, item) => sum + item.netWeight, 0);
+    const finalEffectiveRate = finalTotalNetWeight > 0 ? finalTotalAmount / finalTotalNetWeight : 0;
+    const finalTotalQuantity = values.items.reduce((sum, item) => sum + item.quantity, 0);
 
     const purchaseData: Purchase = {
       id: purchaseToEdit?.id || `purchase-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
-      lotNumber: values.lotNumber,
       locationId: values.locationId as string,
       locationName: warehouses.find(w => w.id === values.locationId)?.name,
       supplierId: values.supplierId as string,
@@ -217,11 +182,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       agentId: values.agentId,
       agentName: agents.find(a => a.id === values.agentId)?.name,
       transporterId: values.transporterId,
-      transporterName: transporter?.name,
-      quantity: values.quantity,
-      netWeight: values.netWeight,
-      rate: values.rate,
-      transportRatePerKg: values.transportRatePerKg,
+      transporterName: transporters.find(t => t.id === values.transporterId)?.name,
+      items: values.items.map(item => ({...item, goodsValue: item.netWeight * item.rate})),
+      totalGoodsValue: finalTotalGoodsValue,
+      totalQuantity: finalTotalQuantity,
+      totalNetWeight: finalTotalNetWeight,
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
@@ -229,8 +194,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       brokerageValue: values.brokerageValue,
       brokerageCharges: finalBrokerageCharges,
       miscExpenses: values.miscExpenses,
-      totalAmount: calculatedTotalAmount,
-      effectiveRate: calculatedEffectiveRate,
+      totalAmount: finalTotalAmount,
+      effectiveRate: finalEffectiveRate,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
@@ -242,7 +207,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   return (
     <>
       <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{purchaseToEdit ? 'Edit Purchase' : 'Add New Purchase'}</DialogTitle>
             <DialogDescription>Enter the details for the purchase record. Click save when you&apos;re done.</DialogDescription>
@@ -266,15 +231,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             </PopoverContent>
                           </Popover><FormMessage />
                         </FormItem>)} />
-                    <FormField control={control} name="lotNumber" render={({ field }) => (
+                     <FormField control={control} name="supplierId" render={({ field }) => ( 
                         <FormItem>
-                          <FormLabel>Vakkal / Lot Number</FormLabel>
-                          <FormControl><Input placeholder="e.g., AB/6 or BU-5" {...field}
-                              onChange={(e) => {
-                                  field.onChange(e.target.value);
-                                  setQuantityManuallySet(false); 
-                                  setNetWeightManuallySet(false); 
-                              }} /></FormControl>
+                          <FormLabel>Supplier</FormLabel>
+                          <MasterDataCombobox value={field.value} onChange={field.onChange}
+                              options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
+                              placeholder="Select Supplier" searchPlaceholder="Search suppliers..." notFoundMessage="No supplier found." 
+                              addNewLabel="Add New Supplier" onAddNew={() => handleOpenMasterForm("Supplier")} />
                           <FormMessage />
                         </FormItem>)} />
                     <FormField control={control} name="locationId" render={({ field }) => (
@@ -290,107 +253,67 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Supplier &amp; Agent</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={control} name="supplierId" render={({ field }) => ( 
-                        <FormItem>
-                          <FormLabel>Supplier</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange}
-                              options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
-                              placeholder="Select Supplier" searchPlaceholder="Search suppliers..." notFoundMessage="No supplier found." 
-                              addNewLabel="Add New Supplier" onAddNew={() => handleOpenMasterForm("Supplier")} />
+                  <h3 className="text-lg font-medium text-primary">Items</h3>
+                   {fields.map((field, index) => (
+                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
+                      <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
+                        <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot No.</FormLabel>
+                          <FormControl><Input placeholder="e.g., AB/6 or BU-5" {...itemField} /></FormControl>
                           <FormMessage />
                         </FormItem>)} />
-                    <FormField control={control} name="agentId" render={({ field }) => (
-                        <FormItem>
+                      <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
+                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormMessage /></FormItem>)} />
+                      <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
+                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormMessage /></FormItem>)} />
+                      <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
+                        <FormItem className="md:col-span-2"><FormLabel>Rate</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
+                          <FormMessage /></FormItem>)} />
+                      <div className="md:col-span-1 flex items-end justify-end">
+                        <Button type="button" variant="destructive" size="icon" onClick={() => (fields.length > 1 ? remove(index) : null)} disabled={fields.length <= 1}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: 0, netWeight: 0, rate: 0 })} className="mt-2">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+                  </Button>
+                </div>
+
+                <div className="p-4 border rounded-md shadow-sm">
+                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Agent</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                     <FormField control={control} name="agentId" render={({ field }) => (
+                        <FormItem className="col-span-full sm:col-span-1">
                           <FormLabel>Agent (Optional)</FormLabel>
                           <MasterDataCombobox
                             value={field.value}
                             onChange={(newAgentId) => {
-                              field.onChange(newAgentId); // Update RHF state for agentId
-
+                              field.onChange(newAgentId);
                               if (newAgentId) {
                                 const agent = agents.find(a => a.id === newAgentId);
                                 if (agent && typeof agent.commission === 'number' && agent.commission >= 0) {
                                   setValue("brokerageType", "Percentage", { shouldValidate: true });
                                   setValue("brokerageValue", agent.commission, { shouldValidate: true });
-                                } else {
-                                  // Clear if agent has no commission details
-                                  setValue("brokerageType", undefined, { shouldValidate: true });
-                                  setValue("brokerageValue", undefined, { shouldValidate: true });
                                 }
                               } else {
-                                // Clear if agent is deselected
-                                setValue("brokerageType", undefined, { shouldValidate: true });
-                                setValue("brokerageValue", undefined, { shouldValidate: true });
+                                setValue("brokerageType", undefined);
+                                setValue("brokerageValue", undefined);
                               }
                             }}
                             options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
                             placeholder="Select Agent"
-                            searchPlaceholder="Search agents..."
-                            notFoundMessage="No agent found."
                             addNewLabel="Add New Agent"
                             onAddNew={() => handleOpenMasterForm("Agent")}
                           />
                           <FormMessage />
                         </FormItem>)} />
-                  </div>
-                </div>
-                
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Quantity &amp; Rate</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField control={control} name="quantity" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Number of Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="e.g., 100" {...field} value={field.value || ''} 
-                            onChange={e => { 
-                                const val = parseFloat(e.target.value) || 0;
-                                field.onChange(val); 
-                                setQuantityManuallySet(true); 
-                                if (!netWeightManuallySet) { setValue("netWeight", val * 50, { shouldValidate: true }); }
-                            }} 
-                            onFocus={() => setQuantityManuallySet(true)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>)} />
-                    <FormField control={control} name="netWeight" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Net Weight (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 5000" {...field} value={field.value || ''} 
-                            onChange={e => { field.onChange(parseFloat(e.target.value) || 0); setNetWeightManuallySet(true);}} 
-                            onFocus={() => setNetWeightManuallySet(true)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>)} />
-                    <FormField control={control} name="rate" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Rate (₹/kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="e.g., 20.50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>)} />
-                  </div>
-                </div>
-
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses (Optional)</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                    <FormField control={control} name="transporterId" render={({ field }) => (
-                      <FormItem className="col-span-full sm:col-span-2">
-                        <FormLabel>Transporter</FormLabel>
-                        <MasterDataCombobox value={field.value} onChange={field.onChange} 
-                          options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
-                          placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={control} name="transportRatePerKg" render={({ field }) => (<FormItem><FormLabel>Tpt. Rate/kg</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g., 17" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setTransportChargesManuallySet(false); }} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Auto" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); setTransportChargesManuallySet(true); }} onFocus={() => setTransportChargesManuallySet(true)} /></FormControl><FormMessage /></FormItem>)} />
-                  </div>
-                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
-                     <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Packing Cost" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Labour Cost" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                     <div className="col-span-2 grid grid-cols-2 gap-2 items-end">
-                      {watchedAgentId && (
+                    {watchedAgentId && (
                         <>
                           <FormField control={control} name="brokerageType" render={({ field }) => (
                             <FormItem><FormLabel>Brokerage Type</FormLabel>
@@ -419,15 +342,29 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           )} />
                         </>
                       )}
-                     </div>
-                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Misc." {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                  </div>
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
+                     <FormField control={control} name="transporterId" render={({ field }) => (
+                      <FormItem className="col-span-full sm:col-span-2">
+                        <FormLabel>Transporter</FormLabel>
+                        <MasterDataCombobox value={field.value} onChange={field.onChange} 
+                          options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
+                          placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                     <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Exp (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 150" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                    </div>
                 </div>
 
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
                       <div className="text-md font-semibold">Goods Value:</div>
-                      <p className="text-md font-semibold">₹{goodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-md font-semibold">₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="flex items-center justify-between">
                       <div className="text-md font-semibold">Total Expenses:</div>
@@ -437,7 +374,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       <div className="flex items-center text-md font-semibold text-primary"><Info className="w-5 h-5 mr-2" />Total Purchase Value:</div>
                       <p className="text-xl font-bold text-primary">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
-                   {netWeight > 0 && (
+                   {totalNetWeight > 0 && (
                     <p className="text-sm text-muted-foreground text-right">
                         Effective Landed Rate: <span className="font-semibold">₹{effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
                     </p>

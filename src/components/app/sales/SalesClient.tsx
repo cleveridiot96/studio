@@ -109,11 +109,15 @@ export function SalesClient() {
 
     // Initial stock from purchases
     fyPurchases.forEach(p => {
-        stockMap.set(p.lotNumber, {
-            currentBags: p.quantity,
-            effectiveRate: p.effectiveRate,
-            locationName: p.locationName
-        });
+        if (p.items && Array.isArray(p.items)) {
+            p.items.forEach(item => {
+                stockMap.set(item.lotNumber, {
+                    currentBags: item.quantity,
+                    effectiveRate: p.effectiveRate,
+                    locationName: p.locationName
+                });
+            });
+        }
     });
     
     // Process returns, sales, transfers in chronological order might be better, but this is simpler
@@ -130,10 +134,10 @@ export function SalesClient() {
           const toEntry = stockMap.get(item.newLotNumber);
           if (toEntry) toEntry.currentBags += item.bagsToTransfer;
           else {
-              const sourceEffectiveRate = fromEntry?.effectiveRate || purchases.find(p => p.lotNumber === item.originalLotNumber)?.effectiveRate || 0;
+              const originalPurchase = purchases.find(p => p.items.some(pi => pi.lotNumber === item.originalLotNumber));
               stockMap.set(item.newLotNumber, {
                   currentBags: item.bagsToTransfer,
-                  effectiveRate: sourceEffectiveRate,
+                  effectiveRate: originalPurchase?.effectiveRate || 0,
                   locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
               });
           }
@@ -141,10 +145,13 @@ export function SalesClient() {
     });
 
     fySales.forEach(s => {
-      s.items.forEach(item => {
-        const entry = stockMap.get(item.lotNumber);
-        if (entry) entry.currentBags -= item.quantity;
-      });
+      // FIX: Add defensive check for s.items
+      if (s.items && Array.isArray(s.items)) {
+          s.items.forEach(item => {
+            const entry = stockMap.get(item.lotNumber);
+            if (entry) entry.currentBags -= item.quantity;
+          });
+      }
     });
     
     fySaleReturns.forEach(sr => {
@@ -153,19 +160,18 @@ export function SalesClient() {
     });
 
     const result: AggregatedStockItem[] = [];
-    stockMap.forEach((value, key) => {
-        // This logic is complex. We assume sales are only from MUMBAI.
-        // A better inventory system would track stock per lot per location.
-        // For now, let's just filter by lots that are supposed to be in Mumbai.
-        // This is a simplification. The real inventory logic in InventoryClient is the source of truth.
-        // Let's get lots from Mumbai based on purchases and transfers.
-        const allMumbaiLots = new Set<string>();
-        fyPurchases.forEach(p => { if(p.locationId === MUMBAI_WAREHOUSE_ID) allMumbaiLots.add(p.lotNumber) });
-        fyLocationTransfers.forEach(lt => {
-            if(lt.toWarehouseId === MUMBAI_WAREHOUSE_ID) lt.items.forEach(i => allMumbaiLots.add(i.newLotNumber));
-            if(lt.fromWarehouseId === MUMBAI_WAREHOUSE_ID) lt.items.forEach(i => allMumbaiLots.delete(i.originalLotNumber));
-        });
+    const allMumbaiLots = new Set<string>();
+    fyPurchases.forEach(p => { 
+        if(p.locationId === MUMBAI_WAREHOUSE_ID && p.items) {
+            p.items.forEach(pi => allMumbaiLots.add(pi.lotNumber));
+        }
+    });
+    fyLocationTransfers.forEach(lt => {
+        if(lt.toWarehouseId === MUMBAI_WAREHOUSE_ID) lt.items.forEach(i => allMumbaiLots.add(i.newLotNumber));
+        if(lt.fromWarehouseId === MUMBAI_WAREHOUSE_ID) lt.items.forEach(i => allMumbaiLots.delete(i.originalLotNumber));
+    });
 
+    stockMap.forEach((value, key) => {
         if (value.currentBags > 0 && allMumbaiLots.has(key)) {
             result.push({ lotNumber: key, ...value });
         }

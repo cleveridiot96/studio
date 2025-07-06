@@ -2,6 +2,13 @@
 import { z } from 'zod';
 import type { MasterItem } from '@/lib/types';
 
+const purchaseItemSchema = z.object({
+    lotNumber: z.string().min(1, "Vakkal/Lot number is required."),
+    quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."),
+    netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."),
+    rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."),
+});
+
 export const purchaseSchema = (
     suppliers: MasterItem[], 
     agents: MasterItem[], 
@@ -12,7 +19,6 @@ export const purchaseSchema = (
   date: z.date({
     required_error: "Purchase date is required.",
   }),
-  lotNumber: z.string().min(1, "Vakkal / Lot number is required."),
   locationId: z.string().min(1, "Location (Warehouse) is required.").refine((locationId) => warehouses.some((w) => w.id === locationId), {
     message: "Location does not exist.",
   }),
@@ -25,11 +31,10 @@ export const purchaseSchema = (
   transporterId: z.string().optional().refine((transporterId) => !transporterId || transporters.some((t) => t.id === transporterId), {
     message: "Transporter does not exist.",
   }),
-  quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0."),
-  netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0."),
-  rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0."),
+
+  items: z.array(purchaseItemSchema).min(1, "At least one purchase item is required."),
+  
   // Expense Fields
-  transportRatePerKg: z.coerce.number().nonnegative("Rate must be non-negative").optional(),
   transportCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
   packingCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
   labourCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),

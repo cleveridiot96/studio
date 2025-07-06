@@ -26,33 +26,45 @@ export interface MasterItem {
 
 export type MasterItemType = 'Supplier' | 'Agent' | 'Transporter' | 'Warehouse' | 'Customer' | 'Broker' | 'Expense';
 
-// Example data types for features
+export interface PurchaseItem {
+  lotNumber: string;
+  quantity: number;
+  netWeight: number;
+  rate: number;
+  goodsValue: number; // Calculated: netWeight * rate
+}
+
 export interface Purchase {
   id: string;
   date: string; // ISO string date
-  lotNumber: string; // This is the "Vakkal"
+  
   supplierId: string;
-  supplierName?: string; // For display in table
+  supplierName?: string;
   agentId?: string;
-  agentName?: string; // For display in table
+  agentName?: string;
   transporterId?: string;
   transporterName?: string;
-  quantity: number; // Number of Bags
-  netWeight: number; // in KG
-  rate: number; // per KG
-  // Expenses
-  transportRatePerKg?: number;
+  
+  items: PurchaseItem[];
+
+  // Aggregated values from items
+  totalGoodsValue: number;
+  totalQuantity: number;
+  totalNetWeight: number;
+
+  // Expenses for the entire purchase
   transportCharges?: number;
   packingCharges?: number;
   labourCharges?: number;
   brokerageType?: 'Fixed' | 'Percentage';
   brokerageValue?: number;
-  brokerageCharges?: number;
+  brokerageCharges?: number; // Calculated brokerage
   miscExpenses?: number;
-  // Calculated Fields
-  totalAmount: number; // (netWeight * rate) + all expenses
-  effectiveRate: number; // Landed cost per kg: totalAmount / netWeight
-  locationId: string;
+
+  // Final calculated fields
+  totalAmount: number; // totalGoodsValue + all expenses
+  effectiveRate: number; // Landed cost per kg: totalAmount / totalNetWeight
+  locationId: string; // All items in one purchase go to one location
   locationName?: string;
 }
 
