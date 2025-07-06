@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -65,17 +64,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
-  
-  const [summary, setSummary] = React.useState({
-    totalGoodsValue: 0,
-    totalExpenses: 0,
-    totalAmount: 0,
-    effectiveRate: 0,
-    totalNetWeight: 0,
-    totalQuantity: 0,
-    calculatedBrokerageCharges: 0,
-  });
-
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -123,15 +111,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
-  const watchedFormValues = watch();
+  const watchedItems = watch("items");
+  const watchedAgentId = watch("agentId");
+  const watchedBrokerageType = watch("brokerageType");
+  const watchedBrokerageValue = watch("brokerageValue");
+  const watchedTransportCharges = watch("transportCharges");
+  const watchedPackingCharges = watch("packingCharges");
+  const watchedLabourCharges = watch("labourCharges");
+  const watchedMiscExpenses = watch("miscExpenses");
 
-  React.useEffect(() => {
-    const { 
-      items, agentId, brokerageType, brokerageValue,
-      transportCharges, packingCharges, labourCharges, miscExpenses 
-    } = watchedFormValues;
-
-    const { totalGoodsValue, totalNetWeight, totalQuantity } = (items || []).reduce(
+  const summary = React.useMemo(() => {
+    const { totalGoodsValue, totalNetWeight, totalQuantity } = (watchedItems || []).reduce(
       (acc, item) => {
         const itemQuantity = Number(item.quantity) || 0;
         const itemNetWeight = Number(item.netWeight) || 0;
@@ -145,20 +135,20 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     );
 
     const calculatedBrokerageCharges = (() => {
-      if (!agentId || brokerageValue === undefined || brokerageValue < 0) return 0;
-      if (brokerageType === "Percentage") {
-        return (totalGoodsValue * (brokerageValue / 100));
-      } else if (brokerageType === "Fixed") {
-        return brokerageValue;
+      if (!watchedAgentId || watchedBrokerageValue === undefined || watchedBrokerageValue < 0) return 0;
+      if (watchedBrokerageType === "Percentage") {
+        return (totalGoodsValue * (watchedBrokerageValue / 100));
+      } else if (watchedBrokerageType === "Fixed") {
+        return watchedBrokerageValue;
       }
       return 0;
     })();
 
-    const totalExpenses = (Number(transportCharges) || 0) + (Number(packingCharges) || 0) + (Number(labourCharges) || 0) + calculatedBrokerageCharges + (Number(miscExpenses) || 0);
+    const totalExpenses = (Number(watchedTransportCharges) || 0) + (Number(watchedPackingCharges) || 0) + (Number(watchedLabourCharges) || 0) + calculatedBrokerageCharges + (Number(watchedMiscExpenses) || 0);
     const totalAmount = totalGoodsValue + totalExpenses;
     const effectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
     
-    setSummary({
+    return {
         totalGoodsValue,
         totalExpenses,
         totalAmount,
@@ -166,9 +156,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         totalNetWeight,
         totalQuantity,
         calculatedBrokerageCharges,
-    });
+    };
+  }, [watchedItems, watchedAgentId, watchedBrokerageType, watchedBrokerageValue, watchedTransportCharges, watchedPackingCharges, watchedLabourCharges, watchedMiscExpenses]);
 
-  }, [watchedFormValues]);
 
   React.useEffect(() => {
     if (isOpen) {
