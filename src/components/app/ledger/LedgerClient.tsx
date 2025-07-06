@@ -122,67 +122,55 @@ export function LedgerClient() {
 
   const ledgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialLedgerData;
-    const party = allMasters.find(m => m.id === selectedPartyId);
-    if (!party) return initialLedgerData;
 
-    const toDate = dateRange.to || dateRange.from;
     let debitTransactions: LedgerTransaction[] = [];
     let creditTransactions: LedgerTransaction[] = [];
 
-    // INWARD (Debit)
-    if (party.type === 'Supplier' || party.type === 'Agent') {
-      debitTransactions.push(...purchases
-        .filter(p => {
-            const isMatch = (party.type === 'Supplier' && p.supplierId === party.id) || (party.type === 'Agent' && p.agentId === party.id);
-            return isMatch && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
-        })
-        .map(p => ({
-            id: `pur-${p.id}`, date: p.date, vakkal: p.lotNumber, party: p.supplierName || 'N/A',
-            bags: p.quantity, kg: p.netWeight, rate: p.rate, amount: p.totalAmount, type: 'Purchase',
-        })));
-    }
-    if (party.type === 'Broker') {
-      creditTransactions.push(...sales
-        .filter(s => s.brokerId === party.id && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-        .map(s => ({
-            id: `sal-${s.id}`, date: s.date, vakkal: s.lotNumber, party: s.customerName || 'N/A',
-            bags: s.quantity, kg: s.netWeight, rate: s.rate, amount: s.goodsValue, type: 'Sale',
-        })));
-        
-      // Sale Returns are Inward for the Broker
-      debitTransactions.push(...saleReturns
-        .filter(sr => {
-          const originalSale = sales.find(s => s.id === sr.originalSaleId);
-          return originalSale?.brokerId === party.id && isWithinInterval(parseISO(sr.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
-        })
-        .map(sr => {
-          const originalSale = sales.find(s => s.id === sr.originalSaleId)!;
-          return {
-            id: `sr-${sr.id}`, date: sr.date, vakkal: sr.originalLotNumber, party: sr.originalCustomerName || 'N/A',
-            bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.rate, amount: sr.returnAmount, type: 'Sale Return',
-          };
-        }));
-    }
-
-    // OUTWARD (Credit)
-    if (party.type === 'Supplier' || party.type === 'Agent') {
-      // Purchase Returns are Outward for Supplier/Agent
-      creditTransactions.push(...purchaseReturns
-        .filter(pr => {
-          const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-          if (!originalPurchase) return false;
-          const isMatch = (party.type === 'Supplier' && originalPurchase.supplierId === party.id) || (party.type === 'Agent' && originalPurchase.agentId === party.id);
-          return isMatch && isWithinInterval(parseISO(pr.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
-        })
-        .map(pr => {
-          const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId)!;
-          return {
-            id: `pr-${pr.id}`, date: pr.date, vakkal: pr.originalLotNumber, party: pr.originalSupplierName || 'N/A',
-            bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.rate, amount: pr.returnAmount, type: 'Purchase Return',
-          };
-        }));
-    }
+    const toDate = dateRange.to || dateRange.from;
+    const dateFilter = (date: string) => isWithinInterval(parseISO(date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
     
+    // INWARD (Debit): Purchases where party is supplier or agent
+    purchases.forEach(p => {
+        if ((p.supplierId === selectedPartyId || p.agentId === selectedPartyId) && dateFilter(p.date)) {
+            debitTransactions.push({
+                id: `pur-${p.id}`, date: p.date, vakkal: p.lotNumber, party: p.supplierName || 'N/A',
+                bags: p.quantity, kg: p.netWeight, rate: p.rate, amount: p.totalAmount, type: 'Purchase',
+            });
+        }
+    });
+
+    // INWARD (Debit): Sale Returns where party was broker
+    saleReturns.forEach(sr => {
+        const originalSale = sales.find(s => s.id === sr.originalSaleId);
+        if (originalSale?.brokerId === selectedPartyId && dateFilter(sr.date)) {
+            debitTransactions.push({
+                id: `sr-${sr.id}`, date: sr.date, vakkal: sr.originalLotNumber, party: sr.originalCustomerName || 'N/A',
+                bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.rate, amount: sr.returnAmount, type: 'Sale Return',
+            });
+        }
+    });
+
+    // OUTWARD (Credit): Sales where party is broker
+    sales.forEach(s => {
+        if (s.brokerId === selectedPartyId && dateFilter(s.date)) {
+            creditTransactions.push({
+                id: `sal-${s.id}`, date: s.date, vakkal: s.lotNumber, party: s.customerName || 'N/A',
+                bags: s.quantity, kg: s.netWeight, rate: s.rate, amount: s.goodsValue, type: 'Sale',
+            });
+        }
+    });
+
+    // OUTWARD (Credit): Purchase Returns where party was supplier or agent
+    purchaseReturns.forEach(pr => {
+        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
+        if (originalPurchase && (originalPurchase.supplierId === selectedPartyId || originalPurchase.agentId === selectedPartyId) && dateFilter(pr.date)) {
+            creditTransactions.push({
+                id: `pr-${pr.id}`, date: pr.date, vakkal: pr.originalLotNumber, party: pr.originalSupplierName || 'N/A',
+                bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.rate, amount: pr.returnAmount, type: 'Purchase Return',
+            });
+        }
+    });
+
     // Sort transactions by date
     debitTransactions.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     creditTransactions.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
@@ -203,7 +191,7 @@ export function LedgerClient() {
         kg: totals.debitKg - totals.creditKg
       }
     };
-  }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, allMasters, hydrated]);
+  }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, hydrated]);
 
   const handlePartySelect = React.useCallback((value: string) => {
     setSelectedPartyId(value);
@@ -372,3 +360,5 @@ export function LedgerClient() {
     </div>
   );
 }
+
+    
