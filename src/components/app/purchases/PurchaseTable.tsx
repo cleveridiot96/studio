@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -84,7 +83,21 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {hasMultipleItems ? (
-                        <Badge variant="outline">Multiple Items</Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1 cursor-help">
+                              <span>{purchase.items[0]?.lotNumber}</span>
+                              <Badge variant="secondary" className="px-1.5 py-0">+{purchase.items.length - 1}</Badge>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <ul className="list-disc pl-4 text-sm">
+                              {purchase.items.map((item, index) => (
+                                <li key={index}>{item.lotNumber} ({item.quantity} bags)</li>
+                              ))}
+                            </ul>
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (
                         <span>{purchase.items[0]?.lotNumber || 'N/A'}</span>
                       )}
@@ -150,14 +163,14 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 
               const expandedSubRows = isExpanded && hasMultipleItems ? [
                 <TableRow key={`${purchase.id}-sub-header`} className="bg-muted/80 hover:bg-muted/80 text-xs">
-                    <TableCell colSpan={1}></TableCell>
+                    <TableCell colSpan={1}>{''}</TableCell>
                     <TableHead className="p-2">Vakkal</TableHead>
-                    <TableCell colSpan={3}></TableCell>
+                    <TableCell colSpan={3}>{''}</TableCell>
                     <TableHead className="text-right p-2">Bags</TableHead>
                     <TableHead className="text-right p-2">Net Wt</TableHead>
                     <TableHead className="text-right p-2">Rate</TableHead>
                     <TableHead className="text-right p-2">Value</TableHead>
-                    <TableCell colSpan={2}></TableCell>
+                    <TableCell colSpan={2}>{''}</TableCell>
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
                   <TableRow key={`${purchase.id}-item-${index}`} className="bg-muted/50 hover:bg-muted/80 text-xs">

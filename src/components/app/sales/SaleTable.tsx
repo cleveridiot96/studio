@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -98,7 +97,21 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   <TableCell>
                     <div className="flex items-center gap-2">
                        {hasMultipleItems ? (
-                        <Badge variant="outline">Multiple Items</Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="flex items-center gap-1 cursor-help">
+                              <span>{sale.items[0]?.lotNumber}</span>
+                              <Badge variant="secondary" className="px-1.5 py-0">+{sale.items.length - 1}</Badge>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <ul className="list-disc pl-4 text-sm">
+                              {sale.items.map((item, index) => (
+                                <li key={index}>{item.lotNumber} ({item.quantity} bags)</li>
+                              ))}
+                            </ul>
+                          </TooltipContent>
+                        </Tooltip>
                       ) : (
                         <span>{sale.items[0]?.lotNumber || 'N/A'}</span>
                       )}
@@ -148,13 +161,13 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               
               const expandedSubRows = isExpanded && hasMultipleItems ? [
                 <TableRow key={`${sale.id}-sub-header`} className="bg-muted/80 hover:bg-muted/80 text-xs">
-                    <TableCell colSpan={3}></TableCell>
+                    <TableCell colSpan={3}>{''}</TableCell>
                     <TableHead className="p-2">Vakkal</TableHead>
                     <TableHead className="text-right p-2">Bags</TableHead>
                     <TableHead className="text-right p-2">Net Wt</TableHead>
                     <TableHead className="text-right p-2">Rate</TableHead>
                     <TableHead className="text-right p-2">Value</TableHead>
-                    <TableCell colSpan={2}></TableCell>
+                    <TableCell colSpan={2}>{''}</TableCell>
                 </TableRow>,
                 ...sale.items.map((item, index) => (
                   <TableRow key={`${sale.id}-item-${index}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
