@@ -220,6 +220,24 @@ export default function MastersPage() {
     return `Add New ${singularLabel || 'Item'}`;
   }, [activeTab]);
 
+  const addButtonDynamicClass = useMemo(() => {
+    if (activeTab === 'All') {
+      return ''; // Use theme default for the "All Parties" tab.
+    }
+    const config = TABS_CONFIG.find(t => t.value === activeTab);
+    if (!config) {
+      return '';
+    }
+
+    // Extract the base background and text colors from the tab's style config.
+    const classes = config.colorClass.split(' ');
+    const bgClass = classes.find(c => c.startsWith('data-[state=active]:bg-'))?.replace('data-[state=active]:', '') || classes.find(c => c.startsWith('bg-'));
+    const textClass = classes.find(c => c.startsWith('data-[state=active]:text-'))?.replace('data-[state=active]:!text-', 'text-').replace('data-[state=active]:text-', 'text-') || classes.find(c => c.startsWith('text-'));
+    const hoverClass = classes.find(c => c.startsWith('hover:bg-'));
+
+    return `${bgClass} ${textClass} ${hoverClass}`;
+  }, [activeTab]);
+
 
   if (!hydrated) {
     return (
@@ -235,7 +253,10 @@ export default function MastersPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Masters</h1>
         </div>
-        <Button onClick={openFormForNewItem} size="lg" className="text-base py-3 px-6 shadow-md">
+        <Button onClick={openFormForNewItem} size="lg" className={cn(
+            "text-base py-3 px-6 shadow-md",
+            addButtonDynamicClass
+        )}>
             <PlusCircle className="mr-2 h-5 w-5" /> {addButtonLabel}
         </Button>
       </div>
