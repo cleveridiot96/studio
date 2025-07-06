@@ -63,7 +63,7 @@ const OutstandingTable = ({ data }: { data: OutstandingEntry[] }) => {
     };
 
     return (
-        <ScrollArea className="h-[50vh]">
+        <ScrollArea className="h-[40vh]">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -107,7 +107,7 @@ const Leaderboard = ({ title, data }: { title: string, data: OutstandingEntry[] 
 
     return (
         <Card>
-            <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg font-semibold">{title}</CardTitle></CardHeader>
             <CardContent>
                 <Table>
                     <TableBody>
@@ -233,12 +233,12 @@ export function OutstandingClient() {
             <div className="space-y-4">
                 <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50">
                     <CardHeader>
-                        <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-3">
-                            <ArrowDownCircle /> Receivables (To Collect)
+                        <CardTitle className="text-lg font-medium text-green-700 dark:text-green-300 flex items-center gap-2">
+                           <ArrowDownCircle className="h-5 w-5" /> Receivables (To Collect)
                         </CardTitle>
-                        <CardDescription>
-                            Total: <span className="font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                        </CardDescription>
+                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+                          ₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                        </div>
                     </CardHeader>
                     <CardContent className="p-0"><OutstandingTable data={receivables} /></CardContent>
                 </Card>
@@ -247,12 +247,12 @@ export function OutstandingClient() {
              <div className="space-y-4">
                 <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50">
                     <CardHeader>
-                        <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-3">
-                           <ArrowUpCircle /> Payables (To Pay)
+                        <CardTitle className="text-lg font-medium text-red-700 dark:text-red-300 flex items-center gap-2">
+                           <ArrowUpCircle className="h-5 w-5"/> Payables (To Pay)
                         </CardTitle>
-                         <CardDescription>
-                           Total: <span className="font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                        </CardDescription>
+                         <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+                           ₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                        </div>
                     </CardHeader>
                     <CardContent className="p-0"><OutstandingTable data={payables} /></CardContent>
                 </Card>
