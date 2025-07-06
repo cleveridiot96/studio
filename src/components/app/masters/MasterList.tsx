@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 
@@ -58,7 +57,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
 
   return (
     <TooltipProvider>
-    <ScrollArea className="rounded-md border shadow-sm h-[50vh] print:h-auto print:overflow-visible">
+    <ScrollArea className="rounded-md border shadow-sm h-[70vh] print:h-auto print:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
