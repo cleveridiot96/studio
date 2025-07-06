@@ -66,6 +66,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
+
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -115,6 +117,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   const watchedFormValues = watch();
+  const watchedAgentId = watch("agentId");
   
   const summary = React.useMemo(() => {
     const { 
@@ -150,6 +153,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     const overallEffectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
     
     const expensesPerKg = totalNetWeight > 0 ? totalNonBrokerageExpenses / totalNetWeight : 0;
+    
     const itemsWithLandedCost = itemsWithGoodsValue.map(item => {
         const itemRate = Number(item.rate) || 0;
         const landedCostPerKg = itemRate + expensesPerKg;
@@ -171,8 +175,19 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
+      setManualNetWeight({});
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
+  
+  React.useEffect(() => {
+    if (watchedAgentId) {
+      const agent = agents.find(a => a.id === watchedAgentId);
+      if (agent && typeof agent.commission === 'number') {
+        setValue("brokerageType", "Percentage", { shouldValidate: true });
+        setValue("brokerageValue", agent.commission, { shouldValidate: true });
+      }
+    }
+  }, [watchedAgentId, agents, setValue]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);
@@ -246,7 +261,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
               <form onSubmit={formHandleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Basic Details & Agent</h3>
+                  <h3 className="text-lg font-medium mb-3 text-primary">Basic Details & Parties</h3>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                       <FormField control={control} name="date" render={({ field }) => (
                           <FormItem className="flex flex-col">
@@ -348,6 +363,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                   const bags = parseInt(match[1], 10);
                                   if (!isNaN(bags)) {
                                     setValue(`items.${index}.quantity`, bags, { shouldValidate: true });
+                                    if (!manualNetWeight[index]) {
+                                      setValue(`items.${index}.netWeight`, bags * 50, { shouldValidate: true });
+                                    }
                                   }
                                 }
                               }}
@@ -358,13 +376,22 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''} 
-                            onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
+                            onChange={e => {
+                                const bags = parseFloat(e.target.value) || undefined;
+                                itemField.onChange(bags);
+                                if (!manualNetWeight[index]) {
+                                    setValue(`items.${index}.netWeight`, (bags || 0) * 50, { shouldValidate: true });
+                                }
+                            }}
                            /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
-                            onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
+                            onChange={e => {
+                                setManualNetWeight(prev => ({ ...prev, [index]: true }));
+                                itemField.onChange(parseFloat(e.target.value) || undefined);
+                            }}
                            /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
