@@ -118,18 +118,15 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
   // --- LIVE CALCULATIONS ---
-  // Watching individual fields and the items array to ensure live updates
-  const watchedItems = watch("items");
-  const watchedAgentId = watch("agentId");
-  const brokerageType = watch("brokerageType");
-  const brokerageValue = watch("brokerageValue");
-  const transportCharges = watch("transportCharges") || 0;
-  const packingCharges = watch("packingCharges") || 0;
-  const labourCharges = watch("labourCharges") || 0;
-  const miscExpenses = watch("miscExpenses") || 0;
+  const watchedFormValues = watch();
 
-  const { totalGoodsValue, totalNetWeight, totalQuantity } = React.useMemo(() => {
-    return (watchedItems || []).reduce(
+  const calculatedTotals = React.useMemo(() => {
+    const { 
+      items, agentId, brokerageType, brokerageValue,
+      transportCharges, packingCharges, labourCharges, miscExpenses 
+    } = watchedFormValues;
+
+    const { totalGoodsValue, totalNetWeight, totalQuantity } = (items || []).reduce(
       (acc, item) => {
         const itemQuantity = Number(item.quantity) || 0;
         const itemNetWeight = Number(item.netWeight) || 0;
@@ -141,21 +138,31 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       },
       { totalGoodsValue: 0, totalNetWeight: 0, totalQuantity: 0 }
     );
-  }, [watchedItems]);
 
-  const calculatedBrokerageCharges = React.useMemo(() => {
-    if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
-    if (brokerageType === "Percentage") {
-      return (totalGoodsValue * (brokerageValue / 100));
-    } else if (brokerageType === "Fixed") {
-      return brokerageValue;
-    }
-    return 0;
-  }, [watchedAgentId, brokerageType, brokerageValue, totalGoodsValue]);
+    const calculatedBrokerageCharges = (() => {
+      if (!agentId || brokerageValue === undefined || brokerageValue < 0) return 0;
+      if (brokerageType === "Percentage") {
+        return (totalGoodsValue * (brokerageValue / 100));
+      } else if (brokerageType === "Fixed") {
+        return brokerageValue;
+      }
+      return 0;
+    })();
 
-  const totalExpenses = transportCharges + packingCharges + labourCharges + calculatedBrokerageCharges + miscExpenses;
-  const totalAmount = totalGoodsValue + totalExpenses;
-  const effectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
+    const totalExpenses = (Number(transportCharges) || 0) + (Number(packingCharges) || 0) + (Number(labourCharges) || 0) + calculatedBrokerageCharges + (Number(miscExpenses) || 0);
+    const totalAmount = totalGoodsValue + totalExpenses;
+    const effectiveRate = totalNetWeight > 0 ? totalAmount / totalNetWeight : 0;
+
+    return {
+      totalGoodsValue,
+      totalNetWeight,
+      totalQuantity,
+      calculatedBrokerageCharges,
+      totalExpenses,
+      totalAmount,
+      effectiveRate
+    };
+  }, [watchedFormValues]);
   // --- End Live Calculations ---
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -197,18 +204,18 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         rate: item.rate || 0, 
         goodsValue: (item.netWeight || 0) * (item.rate || 0)
       })),
-      totalGoodsValue: totalGoodsValue,
-      totalQuantity: totalQuantity,
-      totalNetWeight: totalNetWeight,
+      totalGoodsValue: calculatedTotals.totalGoodsValue,
+      totalQuantity: calculatedTotals.totalQuantity,
+      totalNetWeight: calculatedTotals.totalNetWeight,
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
       brokerageType: values.brokerageType,
       brokerageValue: values.brokerageValue,
-      brokerageCharges: calculatedBrokerageCharges,
+      brokerageCharges: calculatedTotals.calculatedBrokerageCharges,
       miscExpenses: values.miscExpenses,
-      totalAmount: totalAmount,
-      effectiveRate: effectiveRate,
+      totalAmount: calculatedTotals.totalAmount,
+      effectiveRate: calculatedTotals.effectiveRate,
     };
     onSubmit(purchaseData);
     setIsSubmitting(false);
@@ -280,7 +287,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || undefined;
                                 itemField.onChange(bagsVal);
-                                // Auto-calculate weight based on bags, assuming 50kg/bag
                                 setValue(`items.${index}.netWeight`, (bagsVal || 0) * 50, { shouldValidate: true });
                             }} /></FormControl>
                           <FormMessage /></FormItem>)} />
@@ -305,15 +311,15 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Item
                     </Button>
-                    {(totalGoodsValue > 0 || totalNetWeight > 0) && (
+                    {(calculatedTotals.totalGoodsValue > 0 || calculatedTotals.totalNetWeight > 0) && (
                       <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
                         <div className="flex justify-between font-semibold">
                             <span>Total Goods Value:</span>
-                            <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                            <span>₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between text-muted-foreground">
                             <span>Total Net Weight:</span>
-                            <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                            <span>{calculatedTotals.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
                         </div>
                       </div>
                     )}
@@ -348,11 +354,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           />
                           <FormMessage />
                         </FormItem>)} />
-                    {watchedAgentId && (
+                    {watch('agentId') && (
                         <>
                           <FormField control={control} name="brokerageType" render={({ field }) => (
                             <FormItem><FormLabel>Brokerage Type</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!watchedAgentId}>
+                              <Select onValueChange={field.onChange} value={field.value} disabled={!watch('agentId')}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   <SelectItem value="Fixed">Fixed (₹)</SelectItem>
@@ -367,17 +373,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               <div className="relative">
                                 <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
                                   onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                  disabled={!watchedAgentId || !brokerageType}
-                                  className={brokerageType === 'Percentage' ? "pr-8" : ""}
+                                  disabled={!watch('agentId') || !watch('brokerageType')}
+                                  className={watch('brokerageType') === 'Percentage' ? "pr-8" : ""}
                                 /></FormControl>
-                                {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                {watch('brokerageType') === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
                               </div>
                               <FormMessage />
                             </FormItem>
                           )} />
-                          {calculatedBrokerageCharges > 0 && (
+                          {calculatedTotals.calculatedBrokerageCharges > 0 && (
                             <div className="text-sm text-muted-foreground pt-7">
-                                = ₹{calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                = ₹{calculatedTotals.calculatedBrokerageCharges.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </div>
                            )}
                         </>
@@ -402,19 +408,19 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                 <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                   <div className="flex items-center justify-between">
                       <div className="text-md font-semibold">Goods Value:</div>
-                      <p className="text-md font-semibold">₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-md font-semibold">₹{calculatedTotals.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                   <div className="flex items-center justify-between">
                       <div className="text-md font-semibold">Total Expenses:</div>
-                      <p className="text-md font-semibold">₹{totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-md font-semibold">₹{calculatedTotals.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
                    <div className="flex items-center justify-between border-t pt-2 mt-2">
                       <div className="flex items-center text-md font-semibold text-primary"><Info className="w-5 h-5 mr-2" />Total Purchase Value:</div>
-                      <p className="text-xl font-bold text-primary">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                      <p className="text-xl font-bold text-primary">₹{calculatedTotals.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                   </div>
-                   {totalNetWeight > 0 && (
+                   {calculatedTotals.totalNetWeight > 0 && (
                     <p className="text-sm text-muted-foreground text-right">
-                        Effective Landed Rate: <span className="font-semibold">₹{effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
+                        Effective Landed Rate: <span className="font-semibold">₹{calculatedTotals.effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / kg</span>
                     </p>
                    )}
                 </div>
@@ -442,5 +448,3 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
-
-    
