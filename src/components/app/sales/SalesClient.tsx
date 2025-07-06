@@ -48,6 +48,8 @@ interface AggregatedStockItem {
   lotNumber: string;
   currentBags: number;
   effectiveRate: number; 
+  purchaseRate: number;
+  averageWeightPerBag: number;
   locationName?: string;
 }
 
@@ -91,17 +93,18 @@ export function SalesClient() {
     
     const fySales = sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
 
-    // Enrich sales data to ensure all calculated fields are present for rendering
     const enrichedSales = fySales.map(sale => {
-        if (!sale || !sale.items) return null; // Safety check
+        if (!sale || !sale.items) return null;
 
-        const totalGoodsValue = sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
+        const totalGoodsValue = (sale.totalGoodsValue !== undefined) ? sale.totalGoodsValue : sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
         
-        const billedAmount = (sale.isCB && sale.cbAmount) 
-            ? totalGoodsValue - sale.cbAmount 
-            : totalGoodsValue;
+        const billedAmount = (sale.billedAmount !== undefined) 
+            ? sale.billedAmount
+            : (sale.isCB && sale.cbAmount) 
+                ? totalGoodsValue - sale.cbAmount 
+                : totalGoodsValue;
 
-        const totalCostOfGoodsSold = sale.items.reduce((acc, item) => acc + (item.costOfGoodsSold || 0), 0);
+        const totalCostOfGoodsSold = (sale.totalCostOfGoodsSold !== undefined) ? sale.totalCostOfGoodsSold : sale.items.reduce((acc, item) => acc + (item.costOfGoodsSold || 0), 0);
         const grossProfit = totalGoodsValue - totalCostOfGoodsSold;
         
         const totalSaleSideExpenses = (sale.transportCost || 0) + 
@@ -110,15 +113,14 @@ export function SalesClient() {
                                       (sale.calculatedBrokerageCommission || 0) + 
                                       (sale.calculatedExtraBrokerage || 0);
 
-        const totalCalculatedProfit = grossProfit - totalSaleSideExpenses;
-
-        // Return a new object with guaranteed fields, using existing values if they exist (for performance)
+        const totalCalculatedProfit = (sale.totalCalculatedProfit !== undefined) ? sale.totalCalculatedProfit : grossProfit - totalSaleSideExpenses;
+        
         return {
             ...sale,
-            billedAmount: sale.billedAmount ?? billedAmount,
-            totalCalculatedProfit: sale.totalCalculatedProfit ?? totalCalculatedProfit,
+            billedAmount,
+            totalCalculatedProfit,
         };
-    }).filter(Boolean) as Sale[]; // Filter out any nulls
+    }).filter(Boolean) as Sale[];
 
     return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 }, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
@@ -132,93 +134,99 @@ export function SalesClient() {
   const aggregatedStockForSalesForm = React.useMemo(() => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
 
-    const stockMap = new Map<string, { currentBags: number, effectiveRate: number, locationName?: string }>();
-    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
-    
+    const stockMap = new Map<string, {
+        currentBags: number,
+        effectiveRate: number,
+        purchaseRate: number,
+        averageWeightPerBag: number,
+        locationName?: string,
+    }>();
+
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
-    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
-    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
-    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear) && s.id !== saleToEdit?.id); // Exclude current sale being edited
-    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
-
-    fyPurchases.forEach(p => {
-        if (p && p.items && Array.isArray(p.items)) {
-            p.items.forEach(item => {
-                stockMap.set(item.lotNumber, {
-                    currentBags: item.quantity,
-                    effectiveRate: p.effectiveRate,
-                    locationName: p.locationName
-                });
-            });
-        }
-    });
     
+    fyPurchases.forEach(p => {
+        if (!p || !p.items) return;
+        p.items.forEach(item => {
+            stockMap.set(item.lotNumber, {
+                currentBags: item.quantity,
+                effectiveRate: p.effectiveRate,
+                purchaseRate: item.rate,
+                averageWeightPerBag: item.quantity > 0 ? item.netWeight / item.quantity : 50,
+                locationName: p.locationName
+            });
+        });
+    });
+
+    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
     fyPurchaseReturns.forEach(pr => {
-        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-        if (originalPurchase && originalPurchase.items) {
-          const originalItem = originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber);
-          if (originalItem) {
-            const entry = stockMap.get(pr.originalLotNumber);
-            if (entry) entry.currentBags -= pr.quantityReturned;
-          }
+        const entry = stockMap.get(pr.originalLotNumber);
+        if (entry) {
+            entry.currentBags -= pr.quantityReturned;
         }
     });
 
+    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
     fyLocationTransfers.forEach(transfer => {
-      if (transfer && transfer.items && Array.isArray(transfer.items)) {
+        if (!transfer || !transfer.items) return;
         transfer.items.forEach(item => {
             const fromEntry = stockMap.get(item.originalLotNumber);
-            if (fromEntry) fromEntry.currentBags -= item.bagsToTransfer;
+            if (fromEntry) {
+                fromEntry.currentBags -= item.bagsToTransfer;
+            }
 
             const toEntry = stockMap.get(item.newLotNumber);
-            if (toEntry) toEntry.currentBags += item.bagsToTransfer;
-            else {
-                const originalPurchase = purchases.find(p => p.items && p.items.some(pi => pi.lotNumber === item.originalLotNumber));
+            const sourceEntry = fromEntry || stockMap.get(item.originalLotNumber);
+            if (toEntry) {
+                toEntry.currentBags += item.bagsToTransfer;
+            } else {
                 stockMap.set(item.newLotNumber, {
                     currentBags: item.bagsToTransfer,
-                    effectiveRate: originalPurchase?.effectiveRate || 0,
+                    effectiveRate: sourceEntry?.effectiveRate || 0,
+                    purchaseRate: sourceEntry?.purchaseRate || 0,
+                    averageWeightPerBag: item.bagsToTransfer > 0 ? item.netWeightToTransfer / item.bagsToTransfer : (sourceEntry?.averageWeightPerBag || 50),
                     locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
                 });
             }
         });
-      }
     });
 
+    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear) && s.id !== saleToEdit?.id);
     fySales.forEach(s => {
-      if (s && s.items && Array.isArray(s.items)) {
-          s.items.forEach(item => {
+        if (!s || !s.items) return;
+        s.items.forEach(item => {
             const entry = stockMap.get(item.lotNumber);
-            if (entry) entry.currentBags -= item.quantity;
-          });
-      }
+            if (entry) {
+                entry.currentBags -= item.quantity;
+            }
+        });
     });
     
+    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
       const entry = stockMap.get(sr.originalLotNumber);
-      if (entry) entry.currentBags += sr.quantityReturned;
+      if (entry) {
+        entry.currentBags += sr.quantityReturned;
+      }
     });
 
     const result: AggregatedStockItem[] = [];
-    const allMumbaiLots = new Set<string>();
-    fyPurchases.forEach(p => { 
-        if(p.locationId === MUMBAI_WAREHOUSE_ID && p.items && Array.isArray(p.items)) {
-            p.items.forEach(pi => allMumbaiLots.add(pi.lotNumber));
-        }
-    });
-    fyLocationTransfers.forEach(lt => {
-        if(lt.toWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items) lt.items.forEach(i => allMumbaiLots.add(i.newLotNumber));
-        if(lt.fromWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items) lt.items.forEach(i => allMumbaiLots.delete(i.originalLotNumber));
-    });
+    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
 
     stockMap.forEach((value, key) => {
-        if (value.currentBags > 0 && allMumbaiLots.has(key)) {
+        // A bit of a complex check: Is the lot currently in Mumbai?
+        // We find the latest transaction for a lot to determine its current location.
+        // This is simplified; a full ledger per lot would be more robust.
+        // For now, let's assume if it exists in a purchase at Mumbai or transferred to Mumbai, it's there.
+        const purchaseAtMumbai = fyPurchases.find(p => p.locationId === MUMBAI_WAREHOUSE_ID && p.items.some(i => i.lotNumber === key));
+        const transferredToMumbai = fyLocationTransfers.find(lt => lt.toWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items.some(i => i.newLotNumber === key));
+        
+        if ((purchaseAtMumbai || transferredToMumbai) && value.currentBags > 0.001) {
             result.push({ lotNumber: key, ...value });
         }
     });
     return result;
 
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
-
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;

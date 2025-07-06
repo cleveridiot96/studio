@@ -227,7 +227,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button></FormControl></PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus />
+                              <Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus />
                             </PopoverContent>
                           </Popover><FormMessage />
                         </FormItem>)} />
@@ -263,15 +263,21 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value === 0 ? '' : itemField.value} 
+                            onChange={e => {
+                                const bagsVal = parseFloat(e.target.value) || 0;
+                                itemField.onChange(bagsVal);
+                                // Auto-calculate net weight, assuming 50kg/bag as a default
+                                setValue(`items.${index}.netWeight`, bagsVal * 50, { shouldValidate: true });
+                            }} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Rate</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)}/></FormControl>
                           <FormMessage /></FormItem>)} />
                       <div className="md:col-span-1 flex items-end justify-end">
                         <Button type="button" variant="destructive" size="icon" onClick={() => (fields.length > 1 ? remove(index) : null)} disabled={fields.length <= 1}>
@@ -330,8 +336,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                           <FormField control={control} name="brokerageValue" render={({ field }) => (
                             <FormItem><FormLabel>Value</FormLabel>
                               <div className="relative">
-                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
-                                  onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
+                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value === 0 ? '' : field.value}
+                                  onChange={e => { field.onChange(parseFloat(e.target.value) || 0); }}
                                   disabled={!watchedAgentId || !brokerageType}
                                   className={brokerageType === 'Percentage' ? "pr-8" : ""}
                                 /></FormControl>
@@ -345,15 +351,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t">
                      <FormField control={control} name="transporterId" render={({ field }) => (
-                      <FormItem className="col-span-full sm:col-span-2">
-                        <FormLabel>Transporter</FormLabel>
+                      <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
                         <MasterDataCombobox value={field.value} onChange={field.onChange} 
                           options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
                           placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
                         />
                         <FormMessage />
-                      </FormItem>
-                    )} />
+                      </FormItem>)} />
                      <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />

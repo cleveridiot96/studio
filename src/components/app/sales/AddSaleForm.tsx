@@ -42,6 +42,8 @@ interface AggregatedStockItemForForm {
   lotNumber: string;
   currentBags: number;
   effectiveRate: number;
+  purchaseRate: number;
+  averageWeightPerBag: number;
   locationName?: string;
 }
 
@@ -150,13 +152,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         setValue("brokerageType", "Percentage", { shouldValidate: true });
         setValue("brokerageValue", broker.commission, { shouldValidate: true });
       } else {
-        // If broker changes to one without a commission, clear the fields
-        // This allows for manual entry if desired.
         setValue("brokerageType", undefined);
         setValue("brokerageValue", undefined);
       }
     } else {
-      // No broker selected, clear the fields
       setValue("brokerageType", undefined);
       setValue("brokerageValue", undefined);
     }
@@ -315,14 +314,31 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
-                          <MasterDataCombobox value={itemField.value} onChange={itemField.onChange} options={availableStock.map(s => ({ value: s.lotNumber, label: `${s.lotNumber} (${s.currentBags} bags)`}))} placeholder="Select Lot" /> <FormMessage />
+                          <MasterDataCombobox 
+                            value={itemField.value} 
+                            onChange={itemField.onChange} 
+                            options={availableStock.map(s => ({ value: s.lotNumber, label: `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`}))} 
+                            placeholder="Select Lot" />
+                          <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel><FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value === 0 ? '' : itemField.value}
+                            onChange={e => {
+                                const bagsVal = parseFloat(e.target.value) || 0;
+                                itemField.onChange(bagsVal);
+                                const lotNumber = watch(`items.${index}.lotNumber`);
+                                const stockItem = availableStock.find(s => s.lotNumber === lotNumber);
+                                const avgWeight = stockItem?.averageWeightPerBag || 50;
+                                setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
+                            }} 
+                           /></FormControl>
+                          <FormMessage />
+                        </FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value === 0 ? '' : itemField.value} onChange={e => itemField.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
                       <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
                   ))}
