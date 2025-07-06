@@ -67,7 +67,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
-  const [netWeightManuallySet, setNetWeightManuallySet] = React.useState<Record<number, boolean>>({});
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -132,7 +131,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       reset(memoizedDefaultValues);
-      setNetWeightManuallySet({});
     }
   }, [isOpen, saleToEdit, reset, memoizedDefaultValues]);
 
@@ -317,13 +315,20 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
                           <MasterDataCombobox 
                             value={itemField.value} 
-                            onChange={itemField.onChange} 
+                            onChange={(lotValue) => {
+                              itemField.onChange(lotValue);
+                              const currentBags = watch(`items.${index}.quantity`);
+                              if (currentBags && currentBags > 0) {
+                                  const stockItem = availableStock.find(s => s.lotNumber === lotValue);
+                                  const avgWeight = stockItem?.averageWeightPerBag || 50;
+                                  setValue(`items.${index}.netWeight`, parseFloat((currentBags * avgWeight).toFixed(2)), { shouldValidate: true });
+                              }
+                            }} 
                             options={availableStock.map(s => {
-                                const fullLabel = `${s.lotNumber} (Purch. Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`;
                                 return {
                                     value: s.lotNumber,
-                                    label: fullLabel,
-                                    tooltipContent: `${s.lotNumber} | Avl: ${s.currentBags} bags | Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Loc: ${s.locationName || 'N/A'}`
+                                    label: `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`,
+                                    tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Avl: ${s.currentBags} bags`
                                 };
                             })} 
                             placeholder="Select Lot" />
@@ -335,12 +340,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
                                 itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
-                                if (!netWeightManuallySet[index]) {
-                                  const currentLotNumber = watch(`items.${index}.lotNumber`);
-                                  const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
-                                  const avgWeight = stockItem?.averageWeightPerBag || 50;
-                                  setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
-                                }
+                                const currentLotNumber = watch(`items.${index}.lotNumber`);
+                                const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
+                                const avgWeight = stockItem?.averageWeightPerBag || 50;
+                                setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
                             }} 
                            /></FormControl>
                           <FormMessage />
@@ -348,7 +351,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
                             onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
-                            onFocus={() => setNetWeightManuallySet(prev => ({...prev, [index]: true}))} 
                         /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />

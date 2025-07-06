@@ -61,7 +61,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
-  const [netWeightManuallySet, setNetWeightManuallySet] = React.useState<Record<number, boolean>>({});
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
@@ -115,7 +114,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
-      setNetWeightManuallySet({});
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
@@ -269,16 +267,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             onChange={e => {
                                 const bagsVal = parseFloat(e.target.value) || 0;
                                 itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
-                                if (!netWeightManuallySet[index]) {
-                                    setValue(`items.${index}.netWeight`, bagsVal * 50, { shouldValidate: true });
-                                }
+                                setValue(`items.${index}.netWeight`, bagsVal * 50, { shouldValidate: true });
                             }} /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
                             onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
-                            onFocus={() => setNetWeightManuallySet(prev => ({...prev, [index]: true}))} 
                            /></FormControl>
                           <FormMessage /></FormItem>)} />
                       <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
