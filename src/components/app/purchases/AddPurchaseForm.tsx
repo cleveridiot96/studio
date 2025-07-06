@@ -279,7 +279,24 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot No.</FormLabel>
-                          <FormControl><Input placeholder="e.g., AB/6 or BU-5" {...itemField} /></FormControl>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., AB/6 or BU-5" 
+                              {...itemField}
+                              onChange={(e) => {
+                                const lotNumber = e.target.value;
+                                itemField.onChange(lotNumber);
+
+                                const match = lotNumber.match(/[/;.,\s-]*(\d+)$/);
+                                if (match && match[1]) {
+                                  const bags = parseInt(match[1], 10);
+                                  if (!isNaN(bags)) {
+                                    setValue(`items.${index}.quantity`, bags, { shouldValidate: true });
+                                  }
+                                }
+                              }}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
