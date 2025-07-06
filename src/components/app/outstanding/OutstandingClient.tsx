@@ -2,7 +2,7 @@
 "use client";
 import React, { useMemo, useState } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ const keys = {
   transporters: 'masterTransporters',
   brokers: 'masterBrokers',
   expenses: 'masterExpenses',
+  purchaseReturns: 'purchaseReturnsData',
+  saleReturns: 'saleReturnsData',
 };
 
 interface OutstandingEntry {
@@ -137,6 +139,8 @@ export function OutstandingClient() {
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
 
   const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
@@ -165,15 +169,23 @@ export function OutstandingClient() {
         }
     };
 
+    // Sales: DEBIT broker if present, otherwise customer.
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
         updateBalance(accountablePartyId, s.billedAmount, s.date);
+        // Brokerage is a CREDIT to the broker (we owe them)
+        if (s.brokerId) {
+            const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+            updateBalance(s.brokerId, -totalBrokerage, s.date);
+        }
     });
 
+    // Receipts: CREDIT the party who paid.
     receipts.forEach(r => {
         updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)), r.date);
     });
     
+    // Purchases: CREDIT supplier and agent separately.
     purchases.forEach(p => {
         const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
         updateBalance(p.supplierId, -payableToSupplier, p.date);
@@ -182,14 +194,23 @@ export function OutstandingClient() {
         }
     });
 
+    // Payments: DEBIT the party who was paid.
     payments.forEach(p => {
         updateBalance(p.partyId, p.amount, p.date);
     });
-
-    locationTransfers.forEach(lt => {
-        if (lt.transporterId && lt.transportCharges) {
-            updateBalance(lt.transporterId, -lt.transportCharges, lt.date);
+    
+    // Sale Returns: CREDIT broker/customer.
+    saleReturns.forEach(sr => {
+        const originalSale = sales.find(s => s.id === sr.originalSaleId);
+        if(originalSale) {
+            const accountablePartyId = originalSale.brokerId || originalSale.customerId;
+            updateBalance(accountablePartyId, -sr.returnAmount, sr.date);
         }
+    });
+
+    // Purchase Returns: DEBIT supplier.
+    purchaseReturns.forEach(pr => {
+        updateBalance(pr.originalSupplierId, pr.returnAmount, pr.date);
     });
 
     const today = new Date();
@@ -205,6 +226,7 @@ export function OutstandingClient() {
     });
 
     const receivablesData = outstanding.filter(o => o.amount > 0);
+    // Payables are owed to anyone EXCEPT brokers (whose balance is a net of receivables and commissions)
     const payablesData = outstanding.filter(o => o.amount < 0 && o.partyType !== 'Broker');
     
     const totalReceivable = receivablesData.reduce((sum, item) => sum + item.amount, 0);
@@ -212,7 +234,7 @@ export function OutstandingClient() {
 
     return { receivables: receivablesData, payables: payablesData, totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses]);
+  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
   
   if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 

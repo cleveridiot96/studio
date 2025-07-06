@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry as LedgerEntryType } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -15,6 +15,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -30,55 +31,27 @@ const TRANSACTIONS_KEYS = {
   payments: 'paymentsData',
   receipts: 'receiptsData',
   locationTransfers: 'locationTransfersData',
+  purchaseReturns: 'purchaseReturnsData',
+  saleReturns: 'saleReturnsData',
 };
 
 interface LedgerEntry {
     id: string;
     date: string;
-    vakkal?: string;
-    bags?: number;
-    kg?: number;
-    rate?: number;
-    amount: number;
-}
-
-interface TransporterCreditEntry {
-  id: string;
-  date: string;
-  vakkalTransfer: string;
-  bags: number;
-  grossWeight: number;
-  rate: number;
-  amount: number;
-}
-interface TransporterDebitEntry {
-  id: string;
-  date: string;
-  amount: number;
-  mode: string;
-  notes: string;
+    type: string;
+    particulars: string;
+    debit: number;
+    credit: number;
+    balance: number;
 }
 
 const initialFinancialLedgerData = {
-  debitEntries: [] as LedgerEntry[],
-  creditEntries: [] as LedgerEntry[],
-  totalDebit: 0,
-  totalCredit: 0,
-  totalDebitBags: 0,
-  totalCreditBags: 0,
-  totalDebitKg: 0,
-  totalCreditKg: 0,
+  entries: [] as LedgerEntry[],
   openingBalance: 0,
   closingBalance: 0,
-  balanceType: 'Dr',
-};
-
-const initialTransporterLedgerData = {
-  creditEntries: [] as TransporterCreditEntry[],
-  debitEntries: [] as TransporterDebitEntry[],
-  totalCredit: 0,
   totalDebit: 0,
-  balance: 0,
+  totalCredit: 0,
+  balanceType: 'Dr',
 };
 
 export function AccountsLedgerClient() {
@@ -90,7 +63,8 @@ export function AccountsLedgerClient() {
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray);
   const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, memoizedEmptyArray);
   const [receipts] = useLocalStorageState<Receipt[]>(TRANSACTIONS_KEYS.receipts, memoizedEmptyArray);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(TRANSACTIONS_KEYS.locationTransfers, memoizedEmptyArray);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(TRANSACTIONS_KEYS.saleReturns, memoizedEmptyArray);
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -151,133 +125,119 @@ export function AccountsLedgerClient() {
     const party = allMasters.find(p => p.id === partyId);
     if (!party) return [];
 
-    let transactions: (LedgerEntryType & { type: 'debit' | 'credit' })[] = [];
+    let transactions: Omit<LedgerEntry, 'balance'>[] = [];
 
-    // Sales: Debit the broker if present, otherwise debit the customer
-    sales.forEach(s => {
-        if (s.brokerId === partyId) {
-            transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: `Sale: ${s.customerName} (${s.lotNumber})`, bags: s.quantity, kg: s.netWeight, rate: s.rate } as any);
-        } else if (!s.brokerId && s.customerId === partyId) {
-            transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'debit', amount: s.billedAmount, vakkal: `Sale: ${s.billNumber || s.lotNumber}`, bags: s.quantity, kg: s.netWeight, rate: s.rate } as any);
-        }
-    });
-
-    // Purchases: Credit the supplier for goods, credit the agent for brokerage separately
-    purchases.forEach(p => {
-        if (p.supplierId === partyId) {
-            const goodsPayable = (p.totalAmount || 0) - (p.brokerageCharges || 0);
-            transactions.push({ id: `pur-goods-${p.id}`, date: p.date, type: 'credit', amount: goodsPayable, vakkal: `Purchase: ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.rate } as any);
-        }
-        if (p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0) {
-            transactions.push({ id: `pur-brok-${p.id}`, date: p.date, type: 'credit', amount: p.brokerageCharges, vakkal: `Brokerage on ${p.lotNumber}`, bags: p.quantity, kg: p.netWeight, rate: p.brokerageValue } as any);
-        }
-    });
-
-    // Receipts: Always a credit for the party making the payment
-    receipts.forEach(r => {
-        if (r.partyId === partyId) {
-            transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'credit', amount: r.amount, vakkal: `Receipt - Ref: ${r.referenceNo || ''}` } as any);
-            if (r.cashDiscount && r.cashDiscount > 0) {
-                transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'credit', amount: r.cashDiscount, vakkal: 'Discount Given' } as any);
-            }
-        }
-    });
-
-    // Payments: Always a debit for the party receiving the payment
-    payments.forEach(p => {
-        if (p.partyId === partyId) {
-            transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'debit', amount: p.amount, vakkal: `Payment - Ref: ${p.referenceNo || ''}` } as any);
-        }
-    });
-    
-    // Expense heads are payables, so credit them from purchases/sales
-    if (party.type === 'Expense') {
-        purchases.forEach(p => {
-            if (party.id === 'fixed-exp-packing' && p.packingCharges && p.packingCharges > 0) { transactions.push({ id: `pur-pack-${p.id}`, date: p.date, type: 'credit', amount: p.packingCharges, vakkal: `Purchase: ${p.lotNumber}` } as any); }
-            if (party.id === 'fixed-exp-labour' && p.labourCharges && p.labourCharges > 0) { transactions.push({ id: `pur-labour-${p.id}`, date: p.date, type: 'credit', amount: p.labourCharges, vakkal: `Purchase: ${p.lotNumber}` } as any); }
-            if (party.id === 'fixed-exp-misc' && p.miscExpenses && p.miscExpenses > 0) { transactions.push({ id: `pur-misc-${p.id}`, date: p.date, type: 'credit', amount: p.miscExpenses, vakkal: `Purchase: ${p.lotNumber}` } as any); }
-        });
-        sales.forEach(s => {
-            if (party.id === 'fixed-exp-packing' && s.packingCost && s.packingCost > 0) { transactions.push({ id: `sale-pack-${s.id}`, date: s.date, type: 'credit', amount: s.packingCost, vakkal: `Sale: ${s.billNumber || s.lotNumber}` } as any); }
-            if (party.id === 'fixed-exp-labour' && s.labourCost && s.labourCost > 0) { transactions.push({ id: `sale-labour-${s.id}`, date: s.date, type: 'credit', amount: s.labourCost, vakkal: `Sale: ${s.billNumber || s.lotNumber}` } as any); }
-        });
+    // --- DEBIT: Amount the party owes us ---
+    // --- CREDIT: Amount we owe the party ---
+    switch(party.type) {
+        case 'Broker':
+            sales.filter(s => s.brokerId === partyId).forEach(s => {
+                transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'Sale', particulars: `Sale to ${s.customerName} (${s.lotNumber})`, debit: s.billedAmount, credit: 0 });
+                const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+                if (totalBrokerage > 0) {
+                    transactions.push({ id: `brok-${s.id}`, date: s.date, type: 'Brokerage', particulars: `Brokerage on ${s.lotNumber}`, debit: 0, credit: totalBrokerage });
+                }
+            });
+            receipts.filter(r => r.partyId === partyId).forEach(r => {
+                transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'Receipt', particulars: `Receipt via ${r.paymentMethod}`, debit: 0, credit: r.amount });
+                if (r.cashDiscount && r.cashDiscount > 0) {
+                    transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'Discount', particulars: 'Discount Given', debit: 0, credit: r.cashDiscount });
+                }
+            });
+            saleReturns.forEach(sr => {
+                const originalSale = sales.find(s => s.id === sr.originalSaleId);
+                if (originalSale?.brokerId === partyId) {
+                    // Credit broker for returned goods value
+                    transactions.push({ id: `sret-${sr.id}`, date: sr.date, type: 'Sale Return', particulars: `Return from ${sr.originalCustomerName} of ${sr.originalLotNumber}`, debit: 0, credit: sr.returnAmount });
+                }
+            });
+            break;
+        case 'Agent':
+            purchases.filter(p => p.agentId === partyId && p.brokerageCharges && p.brokerageCharges > 0).forEach(p => {
+                transactions.push({ id: `brok-${p.id}`, date: p.date, type: 'Brokerage', particulars: `Brokerage on ${p.lotNumber} from ${p.supplierName}`, debit: 0, credit: p.brokerageCharges || 0 });
+            });
+            payments.filter(p => p.partyId === partyId).forEach(p => {
+                transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'Payment', particulars: `Payment via ${p.paymentMethod}`, debit: p.amount, credit: 0 });
+            });
+            break;
+        case 'Supplier':
+            purchases.filter(p => p.supplierId === partyId).forEach(p => {
+                const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
+                transactions.push({ id: `pur-${p.id}`, date: p.date, type: 'Purchase', particulars: `Purchase: ${p.lotNumber}`, debit: 0, credit: payableToSupplier });
+            });
+            payments.filter(p => p.partyId === partyId).forEach(p => {
+                transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'Payment', particulars: `Payment via ${p.paymentMethod}`, debit: p.amount, credit: 0 });
+            });
+            purchaseReturns.filter(pr => pr.originalSupplierId === partyId).forEach(pr => {
+                transactions.push({ id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return', particulars: `Return of ${pr.originalLotNumber}`, debit: pr.returnAmount, credit: 0 });
+            });
+            break;
+        case 'Customer':
+             sales.filter(s => s.customerId === partyId && !s.brokerId).forEach(s => {
+                transactions.push({ id: `sale-${s.id}`, date: s.date, type: 'Sale', particulars: `Sale: ${s.billNumber || s.lotNumber}`, debit: s.billedAmount, credit: 0 });
+            });
+             receipts.filter(r => r.partyId === partyId).forEach(r => {
+                transactions.push({ id: `receipt-${r.id}`, date: r.date, type: 'Receipt', particulars: `Receipt via ${r.paymentMethod}`, debit: 0, credit: r.amount });
+                 if (r.cashDiscount && r.cashDiscount > 0) {
+                    transactions.push({ id: `disc-${r.id}`, date: r.date, type: 'Discount', particulars: 'Discount Given', debit: 0, credit: r.cashDiscount });
+                }
+            });
+            break;
+        default:
+            // For Transporter, Expense heads
+            payments.filter(p => p.partyId === partyId).forEach(p => {
+                 transactions.push({ id: `pay-${p.id}`, date: p.date, type: 'Payment', particulars: `Payment via ${p.paymentMethod}`, debit: p.amount, credit: 0 });
+            });
+            break;
     }
-
+    
     return transactions;
-  }, [allMasters, sales, purchases, payments, receipts]);
+  }, [allMasters, sales, purchases, payments, receipts, saleReturns, purchaseReturns]);
 
   const financialLedgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialFinancialLedgerData;
     const party = allMasters.find(p => p.id === selectedPartyId);
-    if (!party || party.type === 'Transporter') return initialFinancialLedgerData; // Transporter handled separately
+    if (!party) return initialFinancialLedgerData;
     
-    const partyTransactions = getPartyTransactions(selectedPartyId);
+    const allPartyTransactions = getPartyTransactions(selectedPartyId);
     let openingBalance = party.openingBalance || 0;
     if (party.openingBalanceType === 'Cr') openingBalance = -openingBalance;
 
-    partyTransactions.forEach(tx => {
+    // Calculate opening balance based on transactions before the date range
+    allPartyTransactions.forEach(tx => {
       if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
-        openingBalance += (tx.type === 'debit' ? tx.amount : -tx.amount);
+        openingBalance += (tx.debit - tx.credit);
       }
     });
 
-    const periodTransactions = partyTransactions.filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }));
-    let debitEntries = periodTransactions.filter(tx => tx.type === 'debit').sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-    let creditEntries = periodTransactions.filter(tx => tx.type === 'credit').sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-    const totalDebitDuringPeriod = debitEntries.reduce((sum, e) => sum + e.amount, 0);
-    const totalCreditDuringPeriod = creditEntries.reduce((sum, e) => sum + e.amount, 0);
+    const periodTransactions = allPartyTransactions
+        .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
-    if (openingBalance > 0) debitEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), amount: openingBalance, vakkal: 'Opening Balance' } as any);
-    else if (openingBalance < 0) creditEntries.unshift({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), amount: -openingBalance, vakkal: 'Opening Balance' } as any);
+    let runningBalance = openingBalance;
+    const entries: LedgerEntry[] = [];
+    
+    entries.push({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), type: 'Opening Balance', particulars: 'Opening Balance', debit: openingBalance > 0 ? openingBalance : 0, credit: openingBalance < 0 ? -openingBalance : 0, balance: runningBalance });
+
+    periodTransactions.forEach(tx => {
+        runningBalance += (tx.debit - tx.credit);
+        entries.push({ ...tx, balance: runningBalance });
+    });
+
+    const totalDebitDuringPeriod = periodTransactions.reduce((sum, e) => sum + e.debit, 0);
+    const totalCreditDuringPeriod = periodTransactions.reduce((sum, e) => sum + e.credit, 0);
     
     return {
-      debitEntries, creditEntries,
-      totalDebit: debitEntries.reduce((sum, e) => sum + e.amount, 0),
-      totalCredit: creditEntries.reduce((sum, e) => sum + e.amount, 0),
-      totalDebitBags: debitEntries.reduce((sum, entry) => sum + (entry.bags || 0), 0),
-      totalDebitKg: debitEntries.reduce((sum, entry) => sum + (entry.kg || 0), 0),
-      totalCreditBags: creditEntries.reduce((sum, entry) => sum + (entry.bags || 0), 0),
-      totalCreditKg: creditEntries.reduce((sum, entry) => sum + (entry.kg || 0), 0),
-      openingBalance, closingBalance: openingBalance + totalDebitDuringPeriod - totalCreditDuringPeriod,
-      balanceType: (openingBalance + totalDebitDuringPeriod - totalCreditDuringPeriod) >= 0 ? 'Dr' : 'Cr',
+      entries,
+      openingBalance,
+      closingBalance: runningBalance,
+      totalDebit: openingBalance > 0 ? openingBalance + totalDebitDuringPeriod : totalDebitDuringPeriod,
+      totalCredit: openingBalance < 0 ? -openingBalance + totalCreditDuringPeriod : totalCreditDuringPeriod,
+      balanceType: runningBalance >= 0 ? 'Dr' : 'Cr',
     };
   }, [selectedPartyId, dateRange, hydrated, getPartyTransactions, allMasters]);
   
   const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
-
-  const transporterLedgerData = React.useMemo(() => {
-    if (!selectedPartyId || !dateRange?.from || !hydrated) return initialTransporterLedgerData;
-    const party = allMasters.find(p => p.id === selectedPartyId);
-    if (!party || party.type !== 'Transporter') return initialTransporterLedgerData;
-
-    const toDate = dateRange.to || dateRange.from;
-
-    const creditEntries: TransporterCreditEntry[] = locationTransfers
-      .filter(lt => lt.transporterId === selectedPartyId && isWithinInterval(parseISO(lt.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-      .map(lt => ({
-        id: lt.id, date: lt.date,
-        vakkalTransfer: lt.items.map(i => i.originalLotNumber).join(', '),
-        bags: lt.items.reduce((s, i) => s + i.bagsToTransfer, 0),
-        grossWeight: lt.items.reduce((s, i) => s + i.grossWeightToTransfer, 0),
-        rate: lt.transportRatePerKg || 0,
-        amount: lt.transportCharges || 0,
-      }))
-      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-    const debitEntries: TransporterDebitEntry[] = payments
-      .filter(p => p.partyId === selectedPartyId && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }))
-      .map(p => ({
-        id: p.id, date: p.date, amount: p.amount,
-        mode: p.paymentMethod, notes: p.notes || p.referenceNo || ''
-      }))
-      .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-      
-    const totalCredit = creditEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    const totalDebit = debitEntries.reduce((sum, entry) => sum + entry.amount, 0);
-
-    return { creditEntries, debitEntries, totalCredit, totalDebit, balance: totalCredit - totalDebit };
-  }, [selectedPartyId, dateRange, hydrated, locationTransfers, payments, allMasters]);
-
 
   const handlePartySelect = (value: string) => {
     setSelectedPartyId(value);
@@ -322,147 +282,51 @@ export function AccountsLedgerClient() {
             </p>
           </CardHeader>
 
-          {selectedPartyDetails.type === 'Transporter' ? (
-             <CardContent className="flex flex-col flex-grow min-h-0">
-                <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
-                  <div className="flex-1 flex flex-col min-w-0">
-                    <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
-                      <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable to Transporter)</CardTitle></CardHeader>
-                      <CardContent className="p-0 flex-grow min-h-0">
-                        <ScrollArea className="h-full">
-                          <Table size="sm"><TableHeader><TableRow>
-                              <TableHead>Date</TableHead><TableHead>Vakkal(s)</TableHead>
-                              <TableHead className="text-right">Weight</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">Amount</TableHead>
-                            </TableRow></TableHeader><TableBody>
-                                {transporterLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No transport charges recorded.</TableCell></TableRow>}
-                                {transporterLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
-                                  <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                  <TableCell>{e.vakkalTransfer}</TableCell>
-                                  <TableCell className="text-right">{e.grossWeight.toLocaleString()}</TableCell>
-                                  <TableCell className="text-right">{e.rate.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                  <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                </TableRow>))}
-                              </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
-                                  <TableCell colSpan={4}>Total Payable</TableCell>
-                                  <TableCell className="text-right">{transporterLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                              </TableRow></TableFooter></Table>
-                               <ScrollBar orientation="horizontal" />
-                          </ScrollArea>
-                        </CardContent>
-                      </Card>
-                  </div>
-                  <div className="flex-1 flex flex-col min-w-0">
-                    <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
-                      <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Paid to Transporter)</CardTitle></CardHeader>
-                      <CardContent className="p-0 flex-grow min-h-0">
-                        <ScrollArea className="h-full">
-                          <Table size="sm"><TableHeader><TableRow>
-                              <TableHead>Date</TableHead><TableHead>Mode</TableHead><TableHead>Notes</TableHead><TableHead className="text-right">Amount</TableHead>
-                            </TableRow></TableHeader><TableBody>
-                                {transporterLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No payments recorded.</TableCell></TableRow>}
-                                {transporterLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
-                                  <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                                  <TableCell>{e.mode}</TableCell>
-                                  <TableCell>{e.notes}</TableCell>
-                                  <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                </TableRow>))}
-                              </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                                  <TableCell colSpan={3}>Total Paid</TableCell>
-                                  <TableCell className="text-right">{transporterLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                              </TableRow></TableFooter></Table>
-                               <ScrollBar orientation="horizontal" />
-                          </ScrollArea>
-                        </CardContent>
-                      </Card>
-                    </div>
-                </div>
-            </CardContent>
-          ) : (
-            <CardContent className="flex flex-col flex-grow min-h-0">
-            <div className="flex flex-col md:flex-row gap-4 flex-grow min-h-0">
-              <div className="flex-1 flex flex-col min-h-0">
-                <Card className="shadow-inner h-full flex flex-col border-orange-300 flex-1">
-                  <CardHeader className="p-0"><CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT</CardTitle></CardHeader>
-                  <CardContent className="p-0 flex-grow min-h-0">
-                    <ScrollArea className="h-full">
-                      <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Particulars</TableHead>
-                          <TableHead className="text-right">Bags</TableHead>
-                          <TableHead className="text-right">Kg</TableHead>
-                          <TableHead className="text-right">Rate</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.debitEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No debit entries.</TableCell></TableRow>}
-                            {financialLedgerData.debitEntries.map(e => (<TableRow key={`dr-${e.id}`}>
-                              <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{e.vakkal}</TableCell>
-                              <TableCell className="text-right">{e.bags?.toLocaleString() ?? ''}</TableCell>
-                              <TableCell className="text-right">{e.kg?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
-                              <TableCell className="text-right">{e.rate?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
-                              <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>))}
-                          </TableBody><TableFooter><TableRow className="font-bold bg-orange-50">
-                              <TableCell colSpan={2}>Total</TableCell>
-                              <TableCell className="text-right">{financialLedgerData.totalDebitBags.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">{financialLedgerData.totalDebitKg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                              <TableCell></TableCell>
-                              <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                          </TableRow></TableFooter></Table>
-                           <ScrollBar orientation="horizontal" />
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-              </div>
-              <div className="flex-1 flex flex-col min-h-0">
-                  <Card className="shadow-inner h-full flex flex-col border-green-300 flex-1">
-                  <CardHeader className="p-0"><CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT</CardTitle></CardHeader>
-                  <CardContent className="p-0 flex-grow min-h-0">
-                    <ScrollArea className="h-full">
-                      <Table size="sm" className="whitespace-nowrap"><TableHeader><TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Particulars</TableHead>
-                          <TableHead className="text-right">Bags</TableHead>
-                          <TableHead className="text-right">Kg</TableHead>
-                          <TableHead className="text-right">Rate</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader><TableBody>
-                            {financialLedgerData.creditEntries.length === 0 && <TableRow><TableCell colSpan={6} className="h-24 text-center">No credit entries.</TableCell></TableRow>}
-                            {financialLedgerData.creditEntries.map(e => (<TableRow key={`cr-${e.id}`}>
-                              <TableCell>{format(parseISO(e.date), "dd-MM-yy")}</TableCell>
-                              <TableCell>{e.vakkal}</TableCell>
-                              <TableCell className="text-right">{e.bags?.toLocaleString() ?? ''}</TableCell>
-                              <TableCell className="text-right">{e.kg?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
-                              <TableCell className="text-right">{e.rate?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) ?? ''}</TableCell>
-                              <TableCell className="text-right">{e.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            </TableRow>))}
-                          </TableBody><TableFooter><TableRow className="font-bold bg-green-50">
+          <CardContent className="flex flex-col flex-grow min-h-0 p-0">
+             <ScrollArea className="h-full">
+                <Table size="sm" className="whitespace-nowrap">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Particulars</TableHead>
+                            <TableHead className="text-right">Debit</TableHead>
+                            <TableHead className="text-right">Credit</TableHead>
+                            <TableHead className="text-right">Balance</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {financialLedgerData.entries.length <= 1 && <TableRow><TableCell colSpan={5} className="h-24 text-center">No transactions in this period.</TableCell></TableRow>}
+                        {financialLedgerData.entries.map((entry) => (
+                            <TableRow key={entry.id}>
+                                <TableCell>{format(parseISO(entry.date), "dd-MM-yy")}</TableCell>
+                                <TableCell className="flex items-center gap-2">
+                                    <Badge variant="outline">{entry.type}</Badge>
+                                    <span>{entry.particulars}</span>
+                                </TableCell>
+                                <TableCell className="text-right text-red-600">{entry.debit > 0 ? entry.debit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : ''}</TableCell>
+                                <TableCell className="text-right text-green-700">{entry.credit > 0 ? entry.credit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : ''}</TableCell>
+                                <TableCell className="text-right font-semibold">
+                                    {Math.abs(entry.balance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {entry.balance >= 0 ? 'Dr' : 'Cr'}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                    <TableFooter>
+                        <TableRow className="font-bold bg-muted">
                             <TableCell colSpan={2}>Total</TableCell>
-                            <TableCell className="text-right">{financialLedgerData.totalCreditBags.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">{financialLedgerData.totalCreditKg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            <TableCell></TableCell>
+                            <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                             <TableCell className="text-right">{financialLedgerData.totalCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                          </TableRow></TableFooter></Table>
-                           <ScrollBar orientation="horizontal" />
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
-              </div>
-            </div>
-            </CardContent>
-          )}
+                            <TableCell className="text-right">
+                                {Math.abs(financialLedgerData.closingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {financialLedgerData.balanceType}
+                            </TableCell>
+                        </TableRow>
+                    </TableFooter>
+                </Table>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </CardContent>
 
-          {selectedPartyDetails.type === 'Transporter' ? (
-             <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
-              <div className="text-right font-bold text-lg">
-                  <span>Balance Due: </span>
-                  <span className={transporterLedgerData.balance >= 0 ? 'text-green-700' : 'text-red-700'}>
-                      ₹{Math.abs(transporterLedgerData.balance).toLocaleString('en-IN', {minimumFractionDigits: 2})}
-                  </span>
-              </div>
-            </CardFooter>
-          ) : (
-             <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
+          <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
               <div className="text-right font-bold text-lg">
                   <span>Closing Balance: </span>
                   <span className={financialLedgerData.balanceType === 'Dr' ? 'text-green-700' : 'text-red-700'}>
@@ -470,8 +334,7 @@ export function AccountsLedgerClient() {
                   </span>
                   <p className="text-xs text-muted-foreground font-normal">({financialLedgerData.balanceType === 'Dr' ? 'Receivable from party' : 'Payable to party'})</p>
               </div>
-            </CardFooter>
-          )}
+          </CardFooter>
         </Card>
       ) : (
         <Card

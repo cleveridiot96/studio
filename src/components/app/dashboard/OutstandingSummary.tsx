@@ -2,16 +2,18 @@
 "use client";
 import React, { useMemo, useState } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 // All the data keys
 const keys = {
   purchases: 'purchasesData',
+  purchaseReturns: 'purchaseReturnsData',
   sales: 'salesData',
+  saleReturns: 'saleReturnsData',
   receipts: 'receiptsData',
   payments: 'paymentsData',
   locationTransfers: 'locationTransfersData',
@@ -29,7 +31,9 @@ export const OutstandingSummary = () => {
   React.useEffect(() => { setHydrated(true) }, []);
 
   const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, []);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
   const [sales] = useLocalStorageState<Sale[]>(keys.sales, []);
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
@@ -57,15 +61,25 @@ export const OutstandingSummary = () => {
         balances.set(partyId, balances.get(partyId)! + amount);
     };
 
+    // DEBIT(+) means party owes us. CREDIT(-) means we owe party.
+    
+    // Sales: DEBIT broker if present, otherwise customer.
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
         updateBalance(accountablePartyId, s.billedAmount);
+        // Brokerage is a CREDIT to the broker (we owe them)
+        if (s.brokerId) {
+            const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+            updateBalance(s.brokerId, -totalBrokerage);
+        }
     });
 
+    // Receipts: CREDIT the party who paid.
     receipts.forEach(r => {
         updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
     });
     
+    // Purchases: CREDIT supplier and agent separately.
     purchases.forEach(p => {
         const payableToSupplier = (p.totalAmount || 0) - (p.brokerageCharges || 0);
         updateBalance(p.supplierId, -payableToSupplier);
@@ -74,23 +88,33 @@ export const OutstandingSummary = () => {
         }
     });
 
+    // Payments: DEBIT the party who was paid.
     payments.forEach(p => {
         updateBalance(p.partyId, p.amount);
     });
 
-    locationTransfers.forEach(lt => {
-        if (lt.transporterId && lt.transportCharges) {
-            updateBalance(lt.transporterId, -lt.transportCharges);
+    // Sale Returns: CREDIT the accountable party for the return amount.
+    saleReturns.forEach(sr => {
+        const originalSale = sales.find(s => s.id === sr.originalSaleId);
+        if(originalSale) {
+            const accountablePartyId = originalSale.brokerId || originalSale.customerId;
+            updateBalance(accountablePartyId, -sr.returnAmount);
         }
+    });
+
+    // Purchase Returns: DEBIT the supplier for the return amount.
+    purchaseReturns.forEach(pr => {
+        updateBalance(pr.originalSupplierId, pr.returnAmount);
     });
 
     let totalReceivable = 0;
     let totalPayable = 0;
     balances.forEach((balance, partyId) => {
-        const party = allMasters.find(m => m.id === partyId);
         if (balance > 0) {
             totalReceivable += balance;
         } else if (balance < 0) {
+            const party = allMasters.find(m => m.id === partyId);
+            // Brokers are not included in payables; their balance is a net figure.
             if (party?.type !== 'Broker') {
               totalPayable += balance;
             }
@@ -99,7 +123,7 @@ export const OutstandingSummary = () => {
 
     return { totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses]);
+  }, [hydrated, purchases, sales, receipts, payments, locationTransfers, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
