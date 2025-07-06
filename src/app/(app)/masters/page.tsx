@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -71,9 +71,34 @@ export default function MastersPage() {
 
   const [hydrated, setHydrated] = useState(false);
   
+  const prevAllMasterItemsRef = useRef<MasterItem[]>([]);
+
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  const allMasterItems = useMemo(() => {
+    if (!hydrated) return []; 
+    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses, ...expenses]
+      .filter(item => item && item.id && item.name && item.type) 
+      .sort((a,b) => a.name.localeCompare(b.name));
+  }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, hydrated]);
+
+  useEffect(() => {
+    if (hydrated) {
+      const prevItemsMap = new Map(prevAllMasterItemsRef.current.map(item => [item.id, item]));
+      const currentItemsMap = new Map(allMasterItems.map(item => [item.id, item]));
+
+      if (prevAllMasterItemsRef.current.length > allMasterItems.length) {
+          const deletedItem = prevAllMasterItemsRef.current.find(item => !currentItemsMap.has(item.id));
+          if (deletedItem) {
+              toast({ title: `${deletedItem.type} deleted`, description: `${deletedItem.name} has been removed.`, variant: 'destructive' });
+          }
+      }
+      
+      prevAllMasterItemsRef.current = allMasterItems;
+    }
+  }, [allMasterItems, hydrated, toast]);
 
   const hydrateFixedItems = <T extends MasterItem>(
     currentItems: T[],
@@ -99,14 +124,6 @@ export default function MastersPage() {
       hydrateFixedItems(expenses, FIXED_EXPENSES, setExpenses);
     }
   }, [hydrated, setWarehouses, warehouses, setExpenses, expenses]);
-
-
-  const allMasterItems = useMemo(() => {
-    if (!hydrated) return []; 
-    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses, ...expenses]
-      .filter(item => item && item.id && item.name && item.type) 
-      .sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, hydrated]);
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
@@ -139,7 +156,7 @@ export default function MastersPage() {
        return;
     }
 
-    const { setData } = getMasterDataState(item.type);
+    const { setData, data: currentData } = getMasterDataState(item.type);
     const itemsForNameCheck = allMasterItems.filter(existingItem => existingItem.id !== item.id);
 
     if (doesNameExist(item.name, item.type, item.id, itemsForNameCheck)) {
@@ -151,22 +168,22 @@ export default function MastersPage() {
       return;
     }
 
+    const isEditing = currentData.some(i => i.id === item.id);
     setData(prev => {
-      const existingIndex = prev.findIndex(i => i.id === item.id);
-      if (existingIndex > -1) {
-        const updatedData = [...prev];
-        updatedData[existingIndex] = item;
-        toast({ title: `${item.type} updated`, description: `Details for ${item.name} saved.` });
-        return updatedData.sort((a,b) => a.name.localeCompare(b.name));
+      if (isEditing) {
+        return prev.map(i => i.id === item.id ? item : i).sort((a, b) => a.name.localeCompare(b.name));
       } else {
-        toast({ title: `${item.type} added`, description: `${item.name} is now in your masters.` });
-        return [item, ...prev].sort((a,b) => a.name.localeCompare(b.name));
+        return [item, ...prev].sort((a, b) => a.name.localeCompare(b.name));
       }
+    });
+
+    toast({
+        title: isEditing ? `${item.type} updated` : `${item.type} added`,
+        description: isEditing ? `Details for ${item.name} saved.` : `${item.name} is now in your masters.`
     });
 
     setIsFormOpen(false);
     setEditingItem(null);
-
   }, [getMasterDataState, allMasterItems, toast, editingItem]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
@@ -196,13 +213,8 @@ export default function MastersPage() {
         return;
       }
       const itemType = itemToDelete.type;
-      const itemName = itemToDelete.name;
       const { setData } = getMasterDataState(itemType);
-      
       setData(prev => prev.filter(i => i.id !== itemToDelete.id));
-      
-      toast({ title: `${itemType} deleted.`, description: `${itemName} has been removed.`, variant: 'destructive' });
-      
       setItemToDelete(null);
       setShowDeleteConfirm(false);
     }
@@ -222,20 +234,16 @@ export default function MastersPage() {
 
   const addButtonDynamicClass = useMemo(() => {
     if (activeTab === 'All') {
-      return ''; // Use theme default for "All Parties" tab.
-    }
-    const config = TABS_CONFIG.find(t => t.value === activeTab);
-    if (!config) {
       return '';
     }
-    
-    // This logic finds the base background color, text color, and hover state from the tab's style config.
-    const classes = config.colorClass.split(' ');
-    const bgClass = classes.find(c => /^bg-\S+/.test(c) && !c.includes(':'));
-    const textClass = classes.find(c => /^text-\S+/.test(c) && !c.includes(':'));
-    const hoverClass = classes.find(c => c.startsWith('hover:bg-'));
+    const config = TABS_CONFIG.find(t => t.value === activeTab);
+    if (!config) return '';
 
-    return `${bgClass || ''} ${textClass || ''} ${hoverClass || ''}`.trim();
+    const bgClass = config.colorClass.split(' ').find(c => /^bg-\S+/.test(c) && !c.includes(':')) || 'bg-primary';
+    const textClass = config.colorClass.split(' ').find(c => /^text-\S+/.test(c) && !c.includes(':')) || 'text-primary-foreground';
+    const hoverBgClass = config.colorClass.split(' ').find(c => c.startsWith('hover:bg-')) || 'hover:bg-primary/90';
+
+    return `${bgClass} ${textClass} ${hoverBgClass}`.trim();
   }, [activeTab]);
 
 
