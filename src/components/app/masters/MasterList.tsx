@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -101,14 +102,14 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                   <TableCell className="text-right whitespace-nowrap p-2">
                     {itemHasCommission && item.commission !== undefined
                       ? `${item.commission.toLocaleString()}%`
-                      : 'N/A'}
+                      : ''}
                   </TableCell>
                 )}
                 {showBalanceColumn && (
                   <TableCell className="text-right whitespace-nowrap p-2">
                     {itemHasBalance && item.openingBalance && item.openingBalance > 0
                       ? `${item.openingBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })} ${item.openingBalanceType || ''}`.trim()
-                      : 'N/A'}
+                      : ''}
                   </TableCell>
                 )}
                 <TableCell className="text-center p-2">
