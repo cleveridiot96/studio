@@ -6,7 +6,7 @@ import { useForm, useFieldArray, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -366,8 +366,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                     setTransportChargesManuallySet(true);
                                 }}
                                 onFocus={() => setTransportChargesManuallySet(true)}
-                                className={cn(!transportChargesManuallySet && "bg-muted")}
                             /></FormControl>
+                            <FormDescription className="text-xs">
+                              Calculated from weight & rate. Can be overridden.
+                            </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )} />
