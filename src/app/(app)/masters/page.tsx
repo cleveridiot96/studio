@@ -222,20 +222,23 @@ export default function MastersPage() {
 
   const addButtonDynamicClass = useMemo(() => {
     if (activeTab === 'All') {
-      return ''; // Use theme default for the "All Parties" tab.
+      return ''; // Use theme default for "All Parties" tab.
     }
     const config = TABS_CONFIG.find(t => t.value === activeTab);
     if (!config) {
       return '';
     }
-
+    
     // Extract the base background and text colors from the tab's style config.
     const classes = config.colorClass.split(' ');
-    const bgClass = classes.find(c => c.startsWith('data-[state=active]:bg-'))?.replace('data-[state=active]:', '') || classes.find(c => c.startsWith('bg-'));
-    const textClass = classes.find(c => c.startsWith('data-[state=active]:text-'))?.replace('data-[state=active]:!text-', 'text-').replace('data-[state=active]:text-', 'text-') || classes.find(c => c.startsWith('text-'));
+    // Correctly find the base background color, not the active state one.
+    const bgClass = classes.find(c => /^bg-\S+/.test(c) && !c.includes(':'));
+    // Correctly find the base text color.
+    const textClass = classes.find(c => /^text-\S+/.test(c) && !c.includes(':'));
+    // Correctly find the hover background color.
     const hoverClass = classes.find(c => c.startsWith('hover:bg-'));
 
-    return `${bgClass} ${textClass} ${hoverClass}`;
+    return `${bgClass || ''} ${textClass || ''} ${hoverClass || ''}`.trim();
   }, [activeTab]);
 
 
