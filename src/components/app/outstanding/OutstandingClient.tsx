@@ -63,34 +63,34 @@ const OutstandingTable = ({ data }: { data: OutstandingEntry[] }) => {
     };
 
     return (
-        <ScrollArea className="h-[40vh]">
+        <ScrollArea className="h-[60vh]">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer hover:bg-muted/50 w-2/5">
+                        <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer hover:bg-muted/50 w-2/5 p-3">
                             Party Name <SortIcon columnKey="partyName" />
                         </TableHead>
-                        <TableHead onClick={() => handleSort('amount')} className="cursor-pointer hover:bg-muted/50 text-right">
+                        <TableHead onClick={() => handleSort('amount')} className="cursor-pointer hover:bg-muted/50 text-right p-3">
                             Amount Due <SortIcon columnKey="amount" />
                         </TableHead>
-                        <TableHead onClick={() => handleSort('daysOutstanding')} className="cursor-pointer hover:bg-muted/50 text-right">
+                        <TableHead onClick={() => handleSort('daysOutstanding')} className="cursor-pointer hover:bg-muted/50 text-right p-3">
                             Days Out <SortIcon columnKey="daysOutstanding" />
                         </TableHead>
-                        <TableHead className="text-center w-[80px]">Ledger</TableHead>
+                        <TableHead className="text-center w-[80px] p-3">Ledger</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {sortedData.map(item => (
                         <TableRow key={item.partyId} className="cursor-pointer hover:bg-muted/20" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
-                            <TableCell>
+                            <TableCell className="p-2">
                                 <div className="font-medium">{item.partyName}</div>
                                 <div className="text-xs text-muted-foreground">{item.partyType}</div>
                             </TableCell>
-                            <TableCell className="text-right font-semibold">₹{Math.abs(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                            <TableCell className={`text-right ${item.daysOutstanding > 30 ? 'text-destructive font-bold' : item.daysOutstanding > 7 ? 'text-orange-500' : ''}`}>
+                            <TableCell className="p-2 text-right font-semibold">₹{Math.abs(item.amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                            <TableCell className={`p-2 text-right ${item.daysOutstanding > 30 ? 'text-destructive font-bold' : item.daysOutstanding > 7 ? 'text-orange-500' : ''}`}>
                                 {item.daysOutstanding}
                             </TableCell>
-                            <TableCell className="text-center">
+                            <TableCell className="p-2 text-center">
                                 <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); router.push(`/accounts-ledger?partyId=${item.partyId}`)}}><ArrowRight className="h-4 w-4"/></Button>
                             </TableCell>
                         </TableRow>
@@ -113,9 +113,9 @@ const Leaderboard = ({ title, data }: { title: string, data: OutstandingEntry[] 
                     <TableBody>
                         {topParties.map((party, index) => (
                             <TableRow key={party.partyId}>
-                                <TableCell className="font-bold w-8">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</TableCell>
-                                <TableCell>{party.partyName}</TableCell>
-                                <TableCell className="text-right font-semibold">₹{Math.abs(party.amount).toLocaleString('en-IN', {minimumFractionDigits: 0})}</TableCell>
+                                <TableCell className="font-bold w-8 p-2">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : index + 1}</TableCell>
+                                <TableCell className="p-2">{party.partyName}</TableCell>
+                                <TableCell className="p-2 text-right font-semibold">₹{Math.abs(party.amount).toLocaleString('en-IN', {minimumFractionDigits: 0})}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -229,10 +229,10 @@ export function OutstandingClient() {
         </div>
         <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4">
             <div className="space-y-4">
                 <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50">
-                    <CardHeader>
+                    <CardHeader className="py-4 px-5">
                         <CardTitle className="text-lg font-medium text-green-700 dark:text-green-300 flex items-center gap-2">
                            <ArrowDownCircle className="h-5 w-5" /> Receivables (To Collect)
                         </CardTitle>
@@ -246,7 +246,7 @@ export function OutstandingClient() {
             </div>
              <div className="space-y-4">
                 <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50">
-                    <CardHeader>
+                    <CardHeader className="py-4 px-5">
                         <CardTitle className="text-lg font-medium text-red-700 dark:text-red-300 flex items-center gap-2">
                            <ArrowUpCircle className="h-5 w-5"/> Payables (To Pay)
                         </CardTitle>
