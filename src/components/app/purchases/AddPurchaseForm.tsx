@@ -155,28 +155,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const brokerageType = watch("brokerageType");
   const brokerageValue = watch("brokerageValue");
 
-  React.useEffect(() => {
-    // This effect runs only when the selected agent changes.
-    // It populates the brokerage fields from master data.
-    // Manual edits by the user will persist until the agent is changed again.
-    if (watchedAgentId && agents) {
-      const agent = agents.find(a => a.id === watchedAgentId);
-      if (agent && typeof agent.commission === 'number' && agent.commission >= 0) {
-        setValue("brokerageType", "Percentage");
-        setValue("brokerageValue", agent.commission);
-      } else {
-        // If agent has no commission details, clear the fields
-        setValue("brokerageType", undefined);
-        setValue("brokerageValue", undefined);
-      }
-    } else if (!watchedAgentId) {
-      // If agent is deselected, clear the fields
-      setValue("brokerageType", undefined);
-      setValue("brokerageValue", undefined);
-    }
-  }, [watchedAgentId, agents, setValue]);
-
-
   const netWeight = watch("netWeight");
   const rate = watch("rate");
   const transportCharges = watch("transportCharges") || 0;
@@ -326,10 +304,34 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <FormField control={control} name="agentId" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Agent (Optional)</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange}
-                              options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
-                              placeholder="Select Agent" searchPlaceholder="Search agents..." notFoundMessage="No agent found." 
-                              addNewLabel="Add New Agent" onAddNew={() => handleOpenMasterForm("Agent")} />
+                          <MasterDataCombobox
+                            value={field.value}
+                            onChange={(newAgentId) => {
+                              field.onChange(newAgentId); // Update RHF state for agentId
+
+                              if (newAgentId) {
+                                const agent = agents.find(a => a.id === newAgentId);
+                                if (agent && typeof agent.commission === 'number' && agent.commission >= 0) {
+                                  setValue("brokerageType", "Percentage", { shouldValidate: true });
+                                  setValue("brokerageValue", agent.commission, { shouldValidate: true });
+                                } else {
+                                  // Clear if agent has no commission details
+                                  setValue("brokerageType", undefined, { shouldValidate: true });
+                                  setValue("brokerageValue", undefined, { shouldValidate: true });
+                                }
+                              } else {
+                                // Clear if agent is deselected
+                                setValue("brokerageType", undefined, { shouldValidate: true });
+                                setValue("brokerageValue", undefined, { shouldValidate: true });
+                              }
+                            }}
+                            options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
+                            placeholder="Select Agent"
+                            searchPlaceholder="Search agents..."
+                            notFoundMessage="No agent found."
+                            addNewLabel="Add New Agent"
+                            onAddNew={() => handleOpenMasterForm("Agent")}
+                          />
                           <FormMessage />
                         </FormItem>)} />
                   </div>
