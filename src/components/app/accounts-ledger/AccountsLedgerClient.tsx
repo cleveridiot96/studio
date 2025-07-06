@@ -346,6 +346,7 @@ export function AccountsLedgerClient() {
             <h1 className="text-3xl font-bold text-foreground">Accounts Ledger</h1>
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               <MasterDataCombobox
+                triggerId="accounts-ledger-party-selector-trigger"
                 value={selectedPartyId}
                 onChange={(value) => handlePartySelect(value || "")}
                 options={partyOptions}
