@@ -38,6 +38,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MasterForm } from '@/components/app/masters/MasterForm';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AddSaleFormProps {
   isOpen: boolean;
@@ -163,8 +164,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerageValue = watch("brokerageValue");
   const extraBrokeragePerKg = watch("extraBrokeragePerKg") || 0;
   
-  const totalNetWeight = React.useMemo(() => watchedItems.reduce((acc, item) => acc + (item.netWeight || 0), 0), [watchedItems]);
-  const totalGoodsValue = React.useMemo(() => watchedItems.reduce((acc, item) => acc + ((item.netWeight || 0) * (item.rate || 0)), 0), [watchedItems]);
+  const { totalGoodsValue, totalNetWeight } = React.useMemo(() => {
+    return watchedItems.reduce((acc, item) => {
+        acc.totalGoodsValue += (item.netWeight || 0) * (item.rate || 0);
+        acc.totalNetWeight += (item.netWeight || 0);
+        return acc;
+    }, { totalGoodsValue: 0, totalNetWeight: 0 });
+  }, [watchedItems]);
+
   const billedAmount = React.useMemo(() => isCB && cbAmountInput ? totalGoodsValue - cbAmountInput : totalGoodsValue, [isCB, cbAmountInput, totalGoodsValue]);
 
   const calculatedBrokerageCommission = React.useMemo(() => {
@@ -275,217 +282,221 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
-        <DialogContent className="sm:max-w-6xl">
-          <DialogHeader>
-            <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
-            <DialogDescription>Create a sale with one or more items.</DialogDescription>
-          </DialogHeader>
-          <FormProvider {...methods}>
-            <Form {...methods}>
-              <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
-                
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField control={control} name="date" render={({ field }) => (
-                      <FormItem className="flex flex-col"><FormLabel>Sale Date</FormLabel>
-                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
-                          <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button></FormControl></PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(d) => { field.onChange(d); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
-                        </Popover><FormMessage />
-                      </FormItem>)} />
-                    <FormField control={control} name="customerId" render={({ field }) => (
-                      <FormItem><FormLabel>Customer</FormLabel>
-                        <MasterDataCombobox value={field.value} onChange={field.onChange} options={customers.map(c => ({ value: c.id, label: c.name }))} placeholder="Select Customer" onAddNew={() => handleOpenMasterForm("Customer")} /> <FormMessage />
-                      </FormItem>)} />
-                    <FormField control={control} name="brokerId" render={({ field }) => (
-                      <FormItem><FormLabel>Broker (Optional)</FormLabel>
-                        <MasterDataCombobox value={field.value} onChange={field.onChange} options={brokers.map(b => ({ value: b.id, label: b.name }))} placeholder="Select Broker" onAddNew={() => handleOpenMasterForm("Broker")} /> <FormMessage />
-                      </FormItem>)} />
+      <TooltipProvider>
+        <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
+          <DialogContent className="sm:max-w-6xl">
+            <DialogHeader>
+              <DialogTitle>{saleToEdit ? 'Edit Sale' : 'Add New Sale'}</DialogTitle>
+              <DialogDescription>Create a sale with one or more items.</DialogDescription>
+            </DialogHeader>
+            <FormProvider {...methods}>
+              <Form {...methods}>
+                <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+                  
+                  <div className="p-4 border rounded-md shadow-sm">
+                    <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField control={control} name="date" render={({ field }) => (
+                        <FormItem className="flex flex-col"><FormLabel>Sale Date</FormLabel>
+                          <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
+                            <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button></FormControl></PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(d) => { field.onChange(d); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
+                          </Popover><FormMessage />
+                        </FormItem>)} />
+                      <FormField control={control} name="customerId" render={({ field }) => (
+                        <FormItem><FormLabel>Customer</FormLabel>
+                          <MasterDataCombobox value={field.value} onChange={field.onChange} options={customers.map(c => ({ value: c.id, label: c.name }))} placeholder="Select Customer" onAddNew={() => handleOpenMasterForm("Customer")} /> <FormMessage />
+                        </FormItem>)} />
+                      <FormField control={control} name="brokerId" render={({ field }) => (
+                        <FormItem><FormLabel>Broker (Optional)</FormLabel>
+                          <MasterDataCombobox value={field.value} onChange={field.onChange} options={brokers.map(b => ({ value: b.id, label: b.name }))} placeholder="Select Broker" onAddNew={() => handleOpenMasterForm("Broker")} /> <FormMessage />
+                        </FormItem>)} />
+                    </div>
                   </div>
-                </div>
 
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium text-primary">Quantity & Rate</h3>
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
-                      <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
-                          <MasterDataCombobox 
-                            value={itemField.value} 
-                            onChange={(lotValue) => {
-                              itemField.onChange(lotValue);
-                              const currentBags = watch(`items.${index}.quantity`);
-                              if (currentBags && currentBags > 0) {
-                                  const stockItem = availableStock.find(s => s.lotNumber === lotValue);
+                  <div className="p-4 border rounded-md shadow-sm">
+                    <h3 className="text-lg font-medium text-primary">Quantity & Rate</h3>
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
+                        <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
+                          <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
+                            <MasterDataCombobox 
+                              value={itemField.value} 
+                              onChange={(lotValue) => {
+                                itemField.onChange(lotValue);
+                                const currentBags = watch(`items.${index}.quantity`);
+                                if (currentBags && currentBags > 0) {
+                                    const stockItem = availableStock.find(s => s.lotNumber === lotValue);
+                                    const avgWeight = stockItem?.averageWeightPerBag || 50;
+                                    setValue(`items.${index}.netWeight`, parseFloat((currentBags * avgWeight).toFixed(2)), { shouldValidate: true });
+                                }
+                              }} 
+                              options={availableStock.map(s => {
+                                  return {
+                                      value: s.lotNumber,
+                                      label: `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`,
+                                      tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Avl: ${s.currentBags} bags at ${s.locationName || 'Mumbai'}`
+                                  };
+                              })} 
+                              placeholder="Select Lot" />
+                            <FormMessage />
+                          </FormItem>)} />
+                        <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
+                          <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
+                            <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
+                              onChange={e => {
+                                  const bagsVal = parseFloat(e.target.value) || undefined;
+                                  itemField.onChange(bagsVal);
+                                  const currentLotNumber = watch(`items.${index}.lotNumber`);
+                                  const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
                                   const avgWeight = stockItem?.averageWeightPerBag || 50;
-                                  setValue(`items.${index}.netWeight`, parseFloat((currentBags * avgWeight).toFixed(2)), { shouldValidate: true });
-                              }
-                            }} 
-                            options={availableStock.map(s => {
-                                return {
-                                    value: s.lotNumber,
-                                    label: `${s.lotNumber} (Rate: ₹${s.purchaseRate.toFixed(2)}, Avl: ${s.currentBags} bags)`,
-                                    tooltipContent: `Purch Rate: ₹${s.purchaseRate.toFixed(2)}/kg | Landed Cost: ₹${s.effectiveRate.toFixed(2)}/kg | Avl: ${s.currentBags} bags at ${s.locationName || 'Mumbai'}`
-                                };
-                            })} 
-                            placeholder="Select Lot" />
-                          <FormMessage />
-                        </FormItem>)} />
-                      <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
-                            onChange={e => {
-                                const bagsVal = parseFloat(e.target.value) || 0;
-                                itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
-                                const currentLotNumber = watch(`items.${index}.lotNumber`);
-                                const stockItem = availableStock.find(s => s.lotNumber === currentLotNumber);
-                                const avgWeight = stockItem?.averageWeightPerBag || 50;
-                                setValue(`items.${index}.netWeight`, parseFloat((bagsVal * avgWeight).toFixed(2)), { shouldValidate: true });
-                            }} 
-                           /></FormControl>
-                          <FormMessage />
-                        </FormItem>)} />
-                      <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
-                            onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
-                        /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                      <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
-                    </div>
-                  ))}
-                  <div className="flex justify-between items-start mt-2">
-                    <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
-                     <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
-                        <div className="flex justify-between font-semibold">
-                            <span>Total Goods Value:</span>
-                            <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="flex justify-between text-muted-foreground">
-                            <span>Total Net Weight:</span>
-                            <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
-                        </div>
+                                  setValue(`items.${index}.netWeight`, parseFloat(((bagsVal || 0) * avgWeight).toFixed(2)), { shouldValidate: true });
+                              }} 
+                             /></FormControl>
+                            <FormMessage />
+                          </FormItem>)} />
+                        <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
+                          <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
+                              onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}
+                          /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
+                          <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                        <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-start mt-2">
+                      <Button type="button" variant="outline" onClick={() => append({ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined })}><PlusCircle className="mr-2 h-4 w-4" /> Add Item</Button>
+                      <div className="w-full md:w-1/2 lg:w-1/3 space-y-1 text-sm p-3 bg-muted/50 rounded-md">
+                          <div className="flex justify-between font-semibold">
+                              <span>Total Goods Value:</span>
+                              <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between text-muted-foreground">
+                              <span>Total Net Weight:</span>
+                              <span>{totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg</span>
+                          </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Billing & Expenses</h3>
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                     <FormField control={control} name="billNumber" render={({ field }) => (
-                      <FormItem><FormLabel>Bill Number (Optional)</FormLabel><FormControl><Input placeholder="e.g., INV-001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                    <div className="flex items-center space-x-2 pt-6">
-                      <FormField control={control} name="isCB" render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} id="isCB-checkbox" /></FormControl><FormLabel htmlFor="isCB-checkbox" className="!mt-0">CB (Cut Bill)</FormLabel></FormItem>)} />
-                      {isCB && <FormField control={control} name="cbAmount" render={({ field }) => (<FormItem className="flex-1"><FormControl><Input type="number" step="0.01" placeholder="CB Amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />}
+                  <div className="p-4 border rounded-md shadow-sm">
+                    <h3 className="text-lg font-medium mb-3 text-primary">Billing & Expenses</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <FormField control={control} name="billNumber" render={({ field }) => (
+                        <FormItem><FormLabel>Bill Number (Optional)</FormLabel><FormControl><Input placeholder="e.g., INV-001" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                      <div className="flex items-center space-x-2 pt-6">
+                        <FormField control={control} name="isCB" render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} id="isCB-checkbox" /></FormControl><FormLabel htmlFor="isCB-checkbox" className="!mt-0">CB (Cut Bill)</FormLabel></FormItem>)} />
+                        {isCB && <FormField control={control} name="cbAmount" render={({ field }) => (<FormItem className="flex-1"><FormControl><Input type="number" step="0.01" placeholder="CB Amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="p-4 border rounded-md shadow-sm">
-                    <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Brokerage</h3>
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                       <FormField control={control} name="transporterId" render={({ field }) => (
-                        <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange} 
-                            options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
-                            placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
-                          /> <FormMessage />
-                        </FormItem>)} />
-                       <FormField control={control} name="transportCost" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                       <FormField control={control} name="packingCost" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                       <FormField control={control} name="labourCost" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                     </div>
-                     {selectedBrokerId && (
-                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t items-end">
-                          <FormField control={control} name="brokerageType" render={({ field }) => (
-                            <FormItem><FormLabel>Brokerage Type</FormLabel>
-                              <ShadSelect onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  <SelectItem value="Fixed">Fixed (₹)</SelectItem>
-                                  <SelectItem value="Percentage">%</SelectItem>
-                                </SelectContent>
-                              </ShadSelect><FormMessage />
-                            </FormItem>)} />
-                          <FormField control={control} name="brokerageValue" render={({ field }) => (
-                            <FormItem><FormLabel>Value</FormLabel>
-                              <div className="relative">
-                                <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                  className={brokerageType === 'Percentage' ? "pr-8" : ""}
-                                /></FormControl>
-                                {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
-                              </div><FormMessage />
-                            </FormItem>)} />
-                          <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
-                            <FormItem><FormLabel>Extra (₹/kg)</FormLabel>
-                               <FormControl><Input type="number" step="0.01" placeholder="e.g. 0.50" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }} /></FormControl>
-                               <FormMessage />
-                            </FormItem>)} />
+                  <div className="p-4 border rounded-md shadow-sm">
+                      <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Brokerage</h3>
+                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                         <FormField control={control} name="transporterId" render={({ field }) => (
+                          <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
+                            <MasterDataCombobox value={field.value} onChange={field.onChange} 
+                              options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
+                              placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
+                            /> <FormMessage />
+                          </FormItem>)} />
+                         <FormField control={control} name="transportCost" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                         <FormField control={control} name="packingCost" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                         <FormField control={control} name="labourCost" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                        </div>
-                     )}
-                </div>
-                
-                <FormField control={control} name="notes" render={({ field }) => (
-                    <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                
-                <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
-                    <h3 className="text-lg font-semibold text-primary mb-2">Transaction Summary</h3>
-                    <div className="flex justify-between"><span>Total Goods Value:</span> <span className="font-medium">₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                    {isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(cbAmountInput || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
-                    <div className="flex justify-between border-t pt-2 mt-2 text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
-                    
-                    <div className="text-sm text-muted-foreground space-y-1 pt-4 mt-4 border-t border-dashed">
-                      <h4 className="font-semibold text-foreground">Profit & Loss Breakdown (Estimated)</h4>
-                      <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                       {selectedBrokerId && (
+                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t items-end">
+                            <FormField control={control} name="brokerageType" render={({ field }) => (
+                              <FormItem><FormLabel>Brokerage Type</FormLabel>
+                                <ShadSelect onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="Fixed">Fixed (₹)</SelectItem>
+                                    <SelectItem value="Percentage">%</SelectItem>
+                                  </SelectContent>
+                                </ShadSelect><FormMessage />
+                              </FormItem>)} />
+                            <FormField control={control} name="brokerageValue" render={({ field }) => (
+                              <FormItem><FormLabel>Value</FormLabel>
+                                <div className="relative">
+                                  <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
+                                    className={brokerageType === 'Percentage' ? "pr-8" : ""}
+                                  /></FormControl>
+                                  {brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                </div><FormMessage />
+                              </FormItem>)} />
+                            <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (
+                              <FormItem><FormLabel>Extra (₹/kg)</FormLabel>
+                                 <FormControl><Input type="number" step="0.01" placeholder="e.g. 0.50" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }} /></FormControl>
+                                 <FormMessage />
+                              </FormItem>)} />
+                         </div>
+                       )}
+                  </div>
+                  
+                  <FormField control={control} name="notes" render={({ field }) => (
+                      <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                  
+                  <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
+                      <h3 className="text-lg font-semibold text-primary mb-2">Transaction Summary</h3>
+                      <div className="flex justify-between"><span>Total Goods Value:</span> <span className="font-medium">₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                      {isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(cbAmountInput || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+                      <div className="flex justify-between border-t pt-2 mt-2 text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
                       
-                      <div className="pl-4 border-l-2 border-muted text-xs">
-                        <div className="flex justify-between font-medium"><span>Less: Landed Cost of Goods</span><span>(-) ₹{totalCostOfGoodsSold.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
-                        {watchedItems.map((item, index) => {
-                            if (!item.lotNumber) return null;
-                            const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-                            const landedCost = (item.netWeight || 0) * (stock?.effectiveRate || 0);
-                            return <div key={index} className="flex justify-between"><span>- Cost for "{item.lotNumber}" ({(item.netWeight||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{landedCost.toLocaleString('en-IN')}</span></div>
-                        })}
-                      </div>
-
-                      <div className={`flex justify-between font-bold ${grossProfitOnLandedCost >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
-                          <span>Gross Profit (before sale expenses):</span> <span>₹{grossProfitOnLandedCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      
-                      {totalSaleSideExpenses > 0 && (
+                      <div className="text-sm text-muted-foreground space-y-1 pt-4 mt-4 border-t border-dashed">
+                        <h4 className="font-semibold text-foreground">Profit & Loss Breakdown (Estimated)</h4>
+                        <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                        
                         <div className="pl-4 border-l-2 border-muted text-xs">
-                          <div className="flex justify-between font-medium"><span>Less: Sale-Side Expenses</span><span>(-) ₹{totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
-                            {calculatedBrokerageCommission > 0 && <div className="flex justify-between"><span>- Brokerage:</span><span>(-) ₹{calculatedBrokerageCommission.toLocaleString('en-IN')}</span></div>}
-                            {calculatedExtraBrokerage > 0 && <div className="flex justify-between"><span>- Extra Brokerage:</span><span>(-) ₹{calculatedExtraBrokerage.toLocaleString('en-IN')}</span></div>}
-                            {transportCostInput > 0 && <div className="flex justify-between"><span>- Transport:</span><span>(-) ₹{transportCostInput.toLocaleString('en-IN')}</span></div>}
-                            {packingCostInput > 0 && <div className="flex justify-between"><span>- Packing:</span><span>(-) ₹{packingCostInput.toLocaleString('en-IN')}</span></div>}
-                            {labourCostInput > 0 && <div className="flex justify-between"><span>- Labour:</span><span>(-) ₹{labourCostInput.toLocaleString('en-IN')}</span></div>}
+                          <div className="flex justify-between font-medium"><span>Less: Landed Cost of Goods</span><span>(-) ₹{totalCostOfGoodsSold.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
+                          {watchedItems.map((item, index) => {
+                              if (!item.lotNumber) return null;
+                              const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
+                              const landedCost = (item.netWeight || 0) * (stock?.effectiveRate || 0);
+                              return <div key={index} className="flex justify-between"><span>- Cost for "{item.lotNumber}" ({(item.netWeight||0).toFixed(2)}kg @ ₹{(stock?.effectiveRate || 0).toFixed(2)}):</span><span>(-) ₹{landedCost.toLocaleString('en-IN')}</span></div>
+                          })}
                         </div>
-                      )}
-                      
-                      <hr className="my-1 border-muted-foreground/50" />
-                      <div className={`flex justify-between font-bold text-base ${finalNetProfit >= 0 ? 'text-green-600' : 'text-red-700'}`}>
-                          <span>Estimated Net Profit:</span> <span>₹{finalNetProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                </div>
 
-                <DialogFooter className="pt-4">
-                  <DialogClose asChild><Button type="button" variant="outline" onClick={onClose}>Cancel</Button></DialogClose>
-                  <Button type="submit" disabled={isSubmitting}>{isSubmitting ? (saleToEdit ? "Saving..." : "Creating Sale...") : (saleToEdit ? "Save Changes" : "Create Sale")}</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </FormProvider>
-        </DialogContent>
-      </Dialog>
+                        <div className={`flex justify-between font-bold ${grossProfitOnLandedCost >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>
+                            <span>Gross Profit (before sale expenses):</span> <span>₹{grossProfitOnLandedCost.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        
+                        {totalSaleSideExpenses > 0 && (
+                          <div className="pl-4 border-l-2 border-muted text-xs">
+                            <div className="flex justify-between font-medium"><span>Less: Sale-Side Expenses</span><span>(-) ₹{totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></div>
+                              {calculatedBrokerageCommission > 0 && <div className="flex justify-between"><span>- Brokerage:</span><span>(-) ₹{calculatedBrokerageCommission.toLocaleString('en-IN')}</span></div>}
+                              {calculatedExtraBrokerage > 0 && <div className="flex justify-between"><span>- Extra Brokerage:</span><span>(-) ₹{calculatedExtraBrokerage.toLocaleString('en-IN')}</span></div>}
+                              {transportCostInput > 0 && <div className="flex justify-between"><span>- Transport:</span><span>(-) ₹{transportCostInput.toLocaleString('en-IN')}</span></div>}
+                              {packingCostInput > 0 && <div className="flex justify-between"><span>- Packing:</span><span>(-) ₹{packingCostInput.toLocaleString('en-IN')}</span></div>}
+                              {labourCostInput > 0 && <div className="flex justify-between"><span>- Labour:</span><span>(-) ₹{labourCostInput.toLocaleString('en-IN')}</span></div>}
+                          </div>
+                        )}
+                        
+                        <hr className="my-1 border-muted-foreground/50" />
+                        <div className={`flex justify-between font-bold text-base ${finalNetProfit >= 0 ? 'text-green-600' : 'text-red-700'}`}>
+                            <span>Estimated Net Profit:</span> <span>₹{finalNetProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                  </div>
+
+                  <DialogFooter className="pt-4">
+                    <DialogClose asChild><Button type="button" variant="outline" onClick={onClose}>Cancel</Button></DialogClose>
+                    <Button type="submit" disabled={isSubmitting}>{isSubmitting ? (saleToEdit ? "Saving..." : "Creating Sale...") : (saleToEdit ? "Save Changes" : "Create Sale")}</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </FormProvider>
+          </DialogContent>
+        </Dialog>
+      </TooltipProvider>
       {isMasterFormOpen && masterFormItemType && (<MasterForm isOpen={isMasterFormOpen} onClose={() => setIsMasterFormOpen(false)} onSubmit={handleMasterFormSubmit} itemTypeFromButton={masterFormItemType}/>)}
     </>
   );
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
+
+    

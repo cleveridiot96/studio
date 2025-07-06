@@ -126,8 +126,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const labourCharges = watch("labourCharges") || 0;
   const miscExpenses = watch("miscExpenses") || 0;
 
-  const totalGoodsValue = React.useMemo(() => watchedItems.reduce((acc, item) => acc + ((item.netWeight || 0) * (item.rate || 0)), 0), [watchedItems]);
-  const totalNetWeight = React.useMemo(() => watchedItems.reduce((acc, item) => acc + (item.netWeight || 0), 0), [watchedItems]);
+  const { totalGoodsValue, totalNetWeight } = React.useMemo(() => {
+    return watchedItems.reduce((acc, item) => {
+        acc.totalGoodsValue += (item.netWeight || 0) * (item.rate || 0);
+        acc.totalNetWeight += (item.netWeight || 0);
+        return acc;
+    }, { totalGoodsValue: 0, totalNetWeight: 0 });
+  }, [watchedItems]);
   
   const calculatedBrokerageCharges = React.useMemo(() => {
     if (!watchedAgentId || brokerageValue === undefined || brokerageValue < 0) return 0;
@@ -164,11 +169,15 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const processSubmit = (values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
+    const { totalGoodsValue: finalTotalGoodsValue, totalNetWeight: finalTotalNetWeight } = values.items.reduce((acc, item) => {
+        acc.totalGoodsValue += (item.netWeight || 0) * (item.rate || 0);
+        acc.totalNetWeight += (item.netWeight || 0);
+        return acc;
+    }, { totalGoodsValue: 0, totalNetWeight: 0 });
+
     const finalBrokerageCharges = calculatedBrokerageCharges;
     const finalTotalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + finalBrokerageCharges + (values.miscExpenses || 0);
-    const finalTotalGoodsValue = values.items.reduce((sum, item) => sum + ((item.netWeight || 0) * (item.rate || 0)), 0);
     const finalTotalAmount = finalTotalGoodsValue + finalTotalExpenses;
-    const finalTotalNetWeight = values.items.reduce((sum, item) => sum + (item.netWeight || 0), 0);
     const finalEffectiveRate = finalTotalNetWeight > 0 ? finalTotalAmount / finalTotalNetWeight : 0;
     const finalTotalQuantity = values.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
@@ -265,12 +274,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''} 
                             onChange={e => {
-                                const bagsVal = parseFloat(e.target.value) || 0;
-                                itemField.onChange(bagsVal === 0 ? undefined : bagsVal);
+                                const bagsVal = parseFloat(e.target.value) || undefined;
+                                itemField.onChange(bagsVal);
                                 const currentNetWeight = watch(`items.${index}.netWeight`);
                                 // Only auto-calculate if weight is not manually set or is zero
                                 if (currentNetWeight === undefined || currentNetWeight === 0) {
-                                  setValue(`items.${index}.netWeight`, bagsVal * 50, { shouldValidate: true });
+                                  setValue(`items.${index}.netWeight`, (bagsVal || 0) * 50, { shouldValidate: true });
                                 }
                             }} /></FormControl>
                           <FormMessage /></FormItem>)} />
