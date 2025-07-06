@@ -15,7 +15,6 @@ export const paymentSchema = (parties: MasterItem[]) => z.object({
     required_error: "Payment method is required.",
   }),
   source: z.string().optional(),
-  referenceNo: z.string().optional(),
   notes: z.string().optional(),
 });
 

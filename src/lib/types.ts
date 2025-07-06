@@ -139,7 +139,6 @@ export interface Payment {
   partyType: MasterItemType; // Supplier, Agent, Transporter
   amount: number;
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
-  referenceNo?: string;
   notes?: string;
   source?: string;
 }
@@ -152,7 +151,6 @@ export interface Receipt {
   partyType: MasterItemType; // Customer, Broker
   amount: number; // Actual amount received
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
-  referenceNo?: string;
   notes?: string;
   relatedSaleIds?: string[]; // Optional - to tag which invoices this receipt settles
   cashDiscount?: number; // Optional - amount of discount given at time of receipt

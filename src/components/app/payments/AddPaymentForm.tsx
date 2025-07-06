@@ -67,7 +67,6 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
         amount: paymentToEdit.amount,
         paymentMethod: paymentToEdit.paymentMethod,
         source: paymentToEdit.source || "",
-        referenceNo: paymentToEdit.referenceNo || "",
         notes: paymentToEdit.notes || "",
       };
     }
@@ -77,7 +76,6 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       amount: 0,
       paymentMethod: 'Cash',
       source: "",
-      referenceNo: "",
       notes: "",
     };
   }, [paymentToEdit]);
@@ -130,7 +128,6 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       source: values.source,
-      referenceNo: values.referenceNo,
       notes: values.notes,
     };
     onSubmit(paymentData);
@@ -251,17 +248,6 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                     <FormItem>
                       <FormLabel>Source (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., Self, Bank Deposit" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
-                  name="referenceNo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reference No. (Optional)</FormLabel>
-                      <FormControl><Input placeholder="e.g., Cheque No., UPI ID" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

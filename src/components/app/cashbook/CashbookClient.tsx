@@ -140,8 +140,7 @@ export function CashbookClient() {
         runningBalance = runningBalance + credit - debit;
         
         const particularDetails = `${tx.type === 'Receipt' ? 'From' : 'To'} ${tx.partyName || tx.partyId} (${tx.partyType})` +
-                                  (tx.source ? ` (Src: ${tx.source})` : '') +
-                                  (tx.referenceNo ? ` - Ref: ${tx.referenceNo}` : '');
+                                  (tx.source ? ` (Src: ${tx.source})` : '');
         return {
             id: `${tx.type}-${tx.id}`,
             date: tx.date,

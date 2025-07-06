@@ -67,7 +67,6 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         amount: receiptToEdit.amount,
         paymentMethod: receiptToEdit.paymentMethod,
         source: receiptToEdit.source || "",
-        referenceNo: receiptToEdit.referenceNo || "",
         notes: receiptToEdit.notes || "",
         cashDiscount: receiptToEdit.cashDiscount || 0,
         relatedSaleIds: receiptToEdit.relatedSaleIds || [],
@@ -79,7 +78,6 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       amount: 0,
       paymentMethod: 'Cash',
       source: "",
-      referenceNo: "",
       notes: "",
       cashDiscount: 0,
       relatedSaleIds: [],
@@ -135,7 +133,6 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       source: values.source,
-      referenceNo: values.referenceNo,
       notes: values.notes,
       cashDiscount: values.cashDiscount || 0,
       relatedSaleIds: values.relatedSaleIds || [],
@@ -269,17 +266,6 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                     <FormItem>
                       <FormLabel>Source (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., Self, From Bank" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={methods.control}
-                  name="referenceNo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Reference No. (Optional)</FormLabel>
-                      <FormControl><Input placeholder="e.g., Cheque No., UPI ID" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

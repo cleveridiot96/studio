@@ -15,7 +15,6 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
     required_error: "Payment method is required.",
   }),
   source: z.string().optional(),
-  referenceNo: z.string().optional(),
   notes: z.string().optional(),
   relatedSaleIds: z.array(z.string()).optional(), // Optional: for linking to sales
   cashDiscount: z.coerce.number().nonnegative("Cash discount cannot be negative.").optional().default(0),
