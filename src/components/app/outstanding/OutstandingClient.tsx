@@ -63,7 +63,7 @@ const OutstandingTable = ({ data }: { data: OutstandingEntry[] }) => {
     };
 
     return (
-        <ScrollArea className="h-[40vh]">
+        <ScrollArea className="h-[50vh]">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -179,7 +179,7 @@ export function OutstandingClient() {
             updateBalance(accountablePartyId, -p.totalAmount, p.date);
         });
 
-        // Payments reduce payables.
+        // Payments reduce payables. A payment TO a party increases their balance (from negative towards zero).
         payments.forEach(p => {
             updateBalance(p.partyId, p.amount, p.date);
         });
@@ -205,7 +205,9 @@ export function OutstandingClient() {
         });
 
         const receivablesData = outstanding.filter(o => o.amount > 0);
-        const payablesData = outstanding.filter(o => o.amount < 0);
+        // A broker should never be a payable party. Filter them out from this list if they appear due to advances etc.
+        const payablesData = outstanding.filter(o => o.amount < 0 && o.partyType !== 'Broker');
+        
         const totalReceivable = receivablesData.reduce((sum, item) => sum + item.amount, 0);
         const totalPayable = payablesData.reduce((sum, item) => sum + item.amount, 0);
 
@@ -224,7 +226,7 @@ export function OutstandingClient() {
         </div>
         <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-6">
                 <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50">
                     <CardHeader>
@@ -257,3 +259,4 @@ export function OutstandingClient() {
     </div>
   )
 }
+
