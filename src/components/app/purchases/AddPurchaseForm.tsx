@@ -117,7 +117,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
 
-  // --- LIVE CALCULATIONS ---
   const watchedFormValues = watch();
 
   const calculatedTotals = React.useMemo(() => {
@@ -163,7 +162,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       effectiveRate
     };
   }, [watchedFormValues]);
-  // --- End Live Calculations ---
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterFormItemType(type);

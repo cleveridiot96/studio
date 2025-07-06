@@ -142,9 +142,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       if (broker && typeof broker.commission === 'number' && broker.commission >= 0) {
         setValue("brokerageType", "Percentage", { shouldValidate: true });
         setValue("brokerageValue", broker.commission, { shouldValidate: true });
-      } else {
-        setValue("brokerageType", undefined);
-        setValue("brokerageValue", undefined);
       }
     } else {
       setValue("brokerageType", undefined);
@@ -152,7 +149,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
   }, [selectedBrokerId, brokers, setValue]);
 
-  // --- LIVE CALCULATIONS ---
   const watchedFormValues = watch();
 
   const calculatedTotals = React.useMemo(() => {
@@ -206,7 +202,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       finalNetProfit,
     };
   }, [watchedFormValues, availableStock]);
-  // --- End Live Calculations ---
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setIsMasterFormOpen(true);

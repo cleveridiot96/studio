@@ -130,19 +130,17 @@ export function LedgerClient() {
     const toDate = dateRange.to || dateRange.from;
     const dateFilter = (date: string) => isWithinInterval(parseISO(date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
     
-    // INWARD (Debit): Purchases where party is supplier or agent
     purchases.forEach(p => {
         if ((p.supplierId === selectedPartyId || p.agentId === selectedPartyId) && dateFilter(p.date)) {
             p.items.forEach(item => {
                 debitTransactions.push({
                     id: `pur-${p.id}-${item.lotNumber}`, date: p.date, vakkal: item.lotNumber, party: p.supplierName || 'N/A',
-                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: p.totalAmount, type: 'Purchase',
+                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: item.goodsValue, type: 'Purchase',
                 });
             });
         }
     });
 
-    // INWARD (Debit): Sale Returns where party was broker
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if (originalSale?.brokerId === selectedPartyId && dateFilter(sr.date)) {
@@ -153,7 +151,6 @@ export function LedgerClient() {
         }
     });
 
-    // OUTWARD (Credit): Sales where party is broker
     sales.forEach(s => {
         if (s.brokerId === selectedPartyId && dateFilter(s.date)) {
              s.items.forEach(item => {
@@ -165,7 +162,6 @@ export function LedgerClient() {
         }
     });
 
-    // OUTWARD (Credit): Purchase Returns where party was supplier or agent
     purchaseReturns.forEach(pr => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (originalPurchase && (originalPurchase.supplierId === selectedPartyId || originalPurchase.agentId === selectedPartyId) && dateFilter(pr.date)) {
@@ -176,7 +172,6 @@ export function LedgerClient() {
         }
     });
 
-    // Sort transactions by date
     debitTransactions.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     creditTransactions.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     
@@ -371,7 +366,7 @@ export function LedgerClient() {
           </CardFooter>
         </Card>
       ) : (
-        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors"
+        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors flex-1"
           onClick={() => { document.getElementById('ledger-party-selector-trigger')?.click(); }}>
           <div className="text-center">
             <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />

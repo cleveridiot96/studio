@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -43,6 +43,7 @@ const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
+const RECEIPTS_STORAGE_KEY = 'receiptsData';
 
 export interface AggregatedStockItemForForm {
   lotNumber: string;
@@ -84,7 +85,7 @@ export function SalesClient() {
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
-
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedEmptyArray);
 
   React.useEffect(() => setIsSalesClientHydrated(true), []);
 
@@ -217,13 +218,8 @@ export function SalesClient() {
 
 
     const result: AggregatedStockItemForForm[] = [];
-    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id || 'fixed-wh-mumbai';
-
     stockMap.forEach((value, key) => {
-        const purchaseAtMumbai = fyPurchases.find(p => p.locationId === MUMBAI_WAREHOUSE_ID && p.items.some(i => i.lotNumber === key));
-        const transferredToMumbai = fyLocationTransfers.find(lt => lt.toWarehouseId === MUMBAI_WAREHOUSE_ID && lt.items.some(i => i.newLotNumber === key));
-        
-        if ((purchaseAtMumbai || transferredToMumbai) && value.currentBags > 0.001) {
+        if (value.currentBags > 0.001) {
             result.push({ 
                 lotNumber: key, 
                 currentBags: value.currentBags,
@@ -254,13 +250,33 @@ export function SalesClient() {
         ? prevSales.map(s => (s.id === sale.id ? sale : s))
         : [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
     });
+
+    if (sale.isCB && sale.cbAmount && sale.cbAmount > 0) {
+        const accountableParty = sale.brokerId ? brokers.find(b => b.id === sale.brokerId) : customers.find(c => c.id === sale.customerId);
+        if(accountableParty) {
+            const cbReceipt: Receipt = {
+                id: `receipt-cb-${sale.id}`,
+                date: sale.date,
+                partyId: accountableParty.id,
+                partyName: accountableParty.name,
+                partyType: accountableParty.type as 'Broker' | 'Customer',
+                amount: sale.cbAmount,
+                paymentMethod: 'Cash',
+                notes: `Auto-generated for CB on Sale Bill: ${sale.billNumber || sale.id}`,
+            };
+            setReceipts(prev => [cbReceipt, ...prev.filter(r => r.id !== cbReceipt.id)]);
+            toast({ title: "CB Recorded", description: `A receipt of ₹${sale.cbAmount} has been auto-generated for the cut bill.` });
+        }
+    }
+
+
     toast({
       title: "Success!",
       description: isEditing ? "Sale updated." : "Sale added."
     });
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
-  }, [setSales, toast, sales]);
+  }, [sales, setSales, brokers, customers, setReceipts, toast]);
 
   const handleEditSale = React.useCallback((sale: Sale) => { setSaleToEdit(sale); setIsAddSaleFormOpen(true); }, []);
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => { setSaleToDeleteId(saleId); setShowDeleteConfirm(true); }, []);

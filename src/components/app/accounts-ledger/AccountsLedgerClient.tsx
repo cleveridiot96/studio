@@ -128,46 +128,31 @@ export function AccountsLedgerClient() {
     if (!partyId) return [];
 
     let transactions: LedgerEntry[] = [];
+    const createTransactionDetailsNode = (items: { lotNumber: string; quantity: number; netWeight: number }[]) => (
+        <ul className="list-disc pl-4 text-xs">
+            {items.map((item, index) => (
+                <li key={index}>{item.lotNumber} ({item.quantity} bags, {item.netWeight} kg)</li>
+            ))}
+        </ul>
+    );
 
     // --- DEBIT(+): Amount the party owes us (or we paid them) ---
     // --- CREDIT(-): Amount we owe the party (or they paid us) ---
-
-    // Process Purchases
     purchases.forEach(p => {
-        const transactionDetailsNode = (
-            <ul className="list-disc pl-4 text-xs">
-                {p.items.map((item, index) => (
-                    <li key={index}>{item.lotNumber} ({item.quantity} bags, {item.netWeight} kg)</li>
-                ))}
-            </ul>
-        );
-
+        const transactionDetailsNode = createTransactionDetailsNode(p.items);
         if (p.agentId === partyId) {
-            const goodsValue = p.totalGoodsValue;
-            const brokerageAmount = p.brokerageCharges || 0;
-            // Credit for the goods value
             transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
                 particulars: `Purchase from ${p.supplierName}`,
-                debit: 0, credit: goodsValue, transactionDetails: transactionDetailsNode,
+                debit: 0, credit: p.totalAmount - (p.transportCharges || 0), transactionDetails: transactionDetailsNode,
             });
-            // Credit for brokerage
-            if (brokerageAmount > 0) {
-                transactions.push({
-                    id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
-                    particulars: `Brokerage on Purchase`,
-                    debit: 0, credit: brokerageAmount, transactionDetails: transactionDetailsNode,
-                });
-            }
         } else if (p.supplierId === partyId) {
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Purchase (Agent: ${p.agentName || 'None'})`,
-                debit: 0, credit: p.totalAmount, transactionDetails: transactionDetailsNode,
+                particulars: `Goods (Agent: ${p.agentName || 'None'})`,
+                debit: 0, credit: p.totalAmount - (p.transportCharges || 0), transactionDetails: transactionDetailsNode,
             });
         }
-        
-        // Transport charges are always owed to the transporter
         if (p.transporterId === partyId && p.transportCharges && p.transportCharges > 0) {
              transactions.push({
                 id: `pur-transport-${p.id}`, date: p.date, type: 'Transport',
@@ -177,25 +162,15 @@ export function AccountsLedgerClient() {
         }
     });
 
-    // Process Sales
     sales.forEach(s => {
+        const transactionDetailsNode = createTransactionDetailsNode(s.items);
         const brokerageAmount = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-        const transactionDetailsNode = (
-            <ul className="list-disc pl-4 text-xs">
-                {s.items.map((item, index) => (
-                    <li key={index}>{item.lotNumber} ({item.quantity} bags, {item.netWeight} kg)</li>
-                ))}
-            </ul>
-        );
-
         if (s.brokerId === partyId) {
-            // Debit for the sale amount
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
                 particulars: `Sale to ${s.customerName}`,
                 debit: s.billedAmount, credit: 0, transactionDetails: transactionDetailsNode
             });
-            // Credit for brokerage
             if (brokerageAmount > 0) {
                 transactions.push({
                     id: `sale-brokerage-${s.id}`, date: s.date, type: 'Brokerage',
@@ -212,7 +187,6 @@ export function AccountsLedgerClient() {
         }
     });
 
-    // Process Payments we made
     payments.filter(p => p.partyId === partyId).forEach(p => {
         const particularDetails = `via ${p.paymentMethod}` + (p.source ? ` (Src: ${p.source})` : '');
         transactions.push({
@@ -222,7 +196,6 @@ export function AccountsLedgerClient() {
         });
     });
 
-    // Process Receipts we received
     receipts.filter(r => r.partyId === partyId).forEach(r => {
         const particularDetails = `via ${r.paymentMethod}` + (r.source ? ` (Src: ${r.source})` : '');
         transactions.push({
@@ -239,7 +212,6 @@ export function AccountsLedgerClient() {
         }
     });
 
-    // Process Purchase Returns: This is a DEBIT against the accountable party.
     purchaseReturns.forEach(pr => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (!originalPurchase) return;
@@ -253,7 +225,6 @@ export function AccountsLedgerClient() {
         }
     });
 
-    // Process Sale Returns: This is a CREDIT against the accountable party.
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if (!originalSale) return;
