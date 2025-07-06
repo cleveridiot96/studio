@@ -20,8 +20,8 @@ export const saleSchema = (
     required_error: "Sale date is required.",
   }),
   billNumber: z.string().optional(),
-  cutBill: z.boolean().optional().default(false),
-  cutAmount: z.coerce.number().optional(),
+  isCB: z.boolean().optional().default(false), // Renamed from cutBill
+  cbAmount: z.coerce.number().optional(), // Renamed from cutAmount
   customerId: z.string().min(1, "Customer is required.").refine((customerId) => customers.some((c) => c.id === customerId && c.type === 'Customer'), {
     message: "Customer does not exist or is not of type Customer.",
   }),
@@ -51,7 +51,7 @@ export const saleSchema = (
     }
     return true;
   }, {
-    message: "Brokerage type and a valid brokerage value (non-negative) are required if a broker is selected.",
+    message: "Brokerage type and a valid value (non-negative) are required if a broker is selected.",
     path: ["brokerageValue"],
   }).refine(data => {
     if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue < 0)) {
@@ -63,19 +63,19 @@ export const saleSchema = (
     path: ["brokerageValue"],
   }).refine(data => {
     const goodsValue = data.netWeight * data.rate;
-    if (data.cutBill && data.cutAmount === undefined) {
+    if (data.isCB && data.cbAmount === undefined) {
       return false;
     }
-    if (data.cutBill && data.cutAmount !== undefined && data.cutAmount < 0) {
+    if (data.isCB && data.cbAmount !== undefined && data.cbAmount < 0) {
         return false;
     }
-    if (data.cutBill && data.cutAmount !== undefined && data.cutAmount > goodsValue) {
+    if (data.isCB && data.cbAmount !== undefined && data.cbAmount > goodsValue) {
         return false;
     }
     return true;
   }, {
-    message: "If 'Cut Bill' is checked, a valid cut amount (positive, not exceeding goods value) is required.",
-    path: ["cutAmount"],
+    message: "If 'CB' is checked, a valid CB amount (positive, not exceeding goods value) is required.",
+    path: ["cbAmount"],
   }).superRefine((data, ctx) => {
     if (data.lotNumber) {
         const stockInfo = availableStock.find(s => s.lotNumber === data.lotNumber);

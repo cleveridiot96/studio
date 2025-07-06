@@ -60,10 +60,10 @@ export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber?: string; // Optional
-  cutBill?: boolean; // Is this a "cut bill"?
+  isCB?: boolean; // Is this a "Cut bill"? Renamed from cutBill
+  cbAmount?: number; // Amount for CB deduction. Renamed from cutAmount
   goodsValue: number; // Actual value of goods sold (netWeight * rate). Used for profit & as basis for billing.
-  cutAmount?: number; // Amount to reduce from goodsValue if cutBill is true.
-  billedAmount: number; // Amount on the invoice. If cutBill, this is goodsValue - cutAmount. Else, same as goodsValue.
+  billedAmount: number; // Amount on the invoice. If isCB, this is goodsValue - cbAmount. Else, same as goodsValue.
   customerId: string;
   customerName?: string;
   brokerId?: string;
@@ -231,7 +231,7 @@ export interface Broker extends MasterItem {
   commission?: number;
 }
 
-// For Profit Analysis Page
+// For Profit Analysis
 export interface TransactionalProfitInfo {
   saleId: string;
   date: string;

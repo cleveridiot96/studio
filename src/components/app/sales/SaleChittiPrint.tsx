@@ -14,7 +14,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
 
   const displayGoodsValue = sale.goodsValue;
   const displayBilledAmount = sale.billedAmount;
-  const displayCutAmount = sale.cutBill && sale.cutAmount !== undefined && sale.cutAmount > 0 ? sale.cutAmount : 0;
+  const displayCbDeduction = sale.isCB && sale.cbAmount !== undefined && sale.cbAmount > 0 ? sale.cbAmount : 0;
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
@@ -78,15 +78,14 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
       </table>
 
       <div className="mt-4 space-y-1">
-        {displayCutAmount > 0 && (
+        {displayCbDeduction > 0 && (
           <div className="flex-between text-destructive">
-            <span>Less: Cut Amount (Reduction):</span>
-            <span className="font-bold">(-) ₹{displayCutAmount.toFixed(2)}</span>
+            <span>Less: CB Deduction:</span>
+            <span className="font-bold">(-) ₹{displayCbDeduction.toFixed(2)}</span>
           </div>
         )}
-        {/* Transport and Brokerage are internal costs for profit, not typically shown on customer invoice unless explicitly added */}
          <div className="flex-between border-t pt-2 mt-2">
-          <span className="font-bold text-base">Total Amount Billed:</span>
+          <span className="font-bold text-base">Net Amount Payable:</span>
           <span className="font-bold text-base">₹{displayBilledAmount.toFixed(2)}</span>
         </div>
       </div>

@@ -92,8 +92,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       return {
         date: new Date(saleToEdit.date),
         billNumber: saleToEdit.billNumber || "",
-        cutAmount: saleToEdit.cutAmount === undefined || saleToEdit.cutAmount === null ? undefined : saleToEdit.cutAmount,
-        cutBill: saleToEdit.cutBill || false,
+        cbAmount: saleToEdit.cbAmount === undefined || saleToEdit.cbAmount === null ? undefined : saleToEdit.cbAmount,
+        isCB: saleToEdit.isCB || false,
         customerId: saleToEdit.customerId,
         lotNumber: saleToEdit.lotNumber,
         quantity: saleToEdit.quantity,
@@ -113,8 +113,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     return {
       date: new Date(),
       billNumber: "",
-      cutAmount: undefined,
-      cutBill: false,
+      cbAmount: undefined,
+      isCB: false,
       customerId: undefined,
       lotNumber: undefined,
       quantity: 0,
@@ -165,8 +165,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const quantity = watch("quantity");
   const netWeight = watch("netWeight");
   const rate = watch("rate");
-  const cutAmountInput = watch("cutAmount"); 
-  const cutBill = watch("cutBill");
+  const cbAmountInput = watch("cbAmount"); 
+  const isCB = watch("isCB");
   const transportCostInput = watch("transportCost") || 0;
   const packingCostInput = watch("packingCost") || 0;
   const labourCostInput = watch("labourCost") || 0;
@@ -240,11 +240,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [netWeight, rate]);
 
   const billedAmount = React.useMemo(() => {
-    if (cutBill && cutAmountInput !== undefined && cutAmountInput >= 0) {
-      return goodsValue - cutAmountInput;
+    if (isCB && cbAmountInput !== undefined && cbAmountInput >= 0) {
+      return goodsValue - cbAmountInput;
     }
     return goodsValue;
-  }, [cutBill, cutAmountInput, goodsValue]);
+  }, [isCB, cbAmountInput, goodsValue]);
 
 
   const calculatedBrokerageCommission = React.useMemo(() => {
@@ -279,7 +279,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [transportCostInput, packingCostInput, labourCostInput, calculatedBrokerageCommission, calculatedExtraBrokerage]);
 
   const calculatedNetProfit = React.useMemo(() => {
-    // IMPORTANT: Net profit is based on full goodsValue, not the billed amount after cut.
+    // IMPORTANT: Net profit is based on full goodsValue, not the billed amount after CB.
     return goodsValue - costOfGoodsSold - totalSaleSideExpenses;
   }, [goodsValue, costOfGoodsSold, totalSaleSideExpenses]);
 
@@ -318,8 +318,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       id: saleToEdit?.id || `sale-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
       billNumber: values.billNumber,
-      cutBill: values.cutBill,
-      cutAmount: (values.cutBill && values.cutAmount !== undefined) ? values.cutAmount : undefined,
+      isCB: values.isCB,
+      cbAmount: (values.isCB && values.cbAmount !== undefined) ? values.cbAmount : undefined,
       goodsValue: goodsValue,
       billedAmount: billedAmount,
       customerId: values.customerId as string,
@@ -373,7 +373,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
+      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { 
           if (!openState && isOpen) { 
             onClose();
           }
@@ -388,8 +388,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField control={control} name="date" render={({ field }) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <FormField control={control} name="date" render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Sale Date</FormLabel>
                         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
@@ -416,43 +416,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <FormItem><FormLabel>Bill Number (Optional)</FormLabel>
                       <FormControl><Input placeholder="e.g., INV-001" {...field} /></FormControl><FormMessage /></FormItem>)}
                     />
-                     <FormField control={control} name="cutAmount" render={({ field }) => (
-                      <FormItem><FormLabel>Cut Amount (Reduction ₹)</FormLabel> 
-                      <FormControl><Input type="number" step="0.01" placeholder="Enter reduction amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("cutBill")} /></FormControl>
-                      <FormMessage /></FormItem>)}
-                    />
                   </div>
-                   <FormField control={control} name="cutBill" render={({ field }) => (
-                      <FormItem className="flex flex-row items-center space-x-2 mt-4 pt-4 border-t">
-                          <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                            <FormLabel className="font-normal cursor-pointer mt-0!">
-                              Is this a "Cut Bill"? (Record an unbilled reduction from the total)
-                            </FormLabel>
-                          <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Product &amp; Customer</h3>
+                  <h3 className="text-lg font-medium mb-3 text-primary">Product &amp; Parties</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField control={control} name="lotNumber" render={({ field }) => (
-                      <FormItem><FormLabel>Vakkal / Lot Number (Mumbai)</FormLabel>
-                      <MasterDataCombobox
-                        value={field.value}
-                        onChange={field.onChange}
-                        options={availableLotsForDropdown}
-                        placeholder="Select Lot from Mumbai"
-                        searchPlaceholder="Search lots..."
-                        notFoundMessage="Lot not available in Mumbai warehouse."
-                      />
-                      <FormDescription>
-                        Only stock from the Mumbai warehouse is available for sale. Use 'Location Transfer' to move stock.
-                      </FormDescription>
-                      <FormMessage /></FormItem>)}
-                    />
-                    <FormField control={control} name="customerId" render={({ field }) => (
+                     <FormField control={control} name="customerId" render={({ field }) => (
                       <FormItem><FormLabel>Customer</FormLabel>
                       <MasterDataCombobox
                         value={field.value}
@@ -466,8 +436,43 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       />
                       <FormMessage /></FormItem>)}
                     />
+                     <FormField control={control} name="brokerId" render={({ field }) => (
+                          <FormItem><FormLabel>Broker (Optional)</FormLabel>
+                          <MasterDataCombobox
+                            value={field.value}
+                            onChange={field.onChange}
+                            options={brokers.map(b => ({ value: b.id, label: b.name, tooltipContent: `Commission: ${b.commission || 0}%` }))}
+                            placeholder="Select Broker"
+                            searchPlaceholder="Search brokers..."
+                            notFoundMessage="Broker not found."
+                            addNewLabel="Add New Broker"
+                            onAddNew={() => handleOpenMasterForm("Broker")}
+                          />
+                          <FormMessage /></FormItem>)}
+                      />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
+                     <FormField control={control} name="lotNumber" render={({ field }) => (
+                      <FormItem><FormLabel>Vakkal / Lot Number (From Mumbai)</FormLabel>
+                      <MasterDataCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={availableLotsForDropdown}
+                        placeholder="Select Lot from Mumbai"
+                        searchPlaceholder="Search lots..."
+                        notFoundMessage="Lot not available in Mumbai warehouse."
+                      />
+                      <FormDescription>
+                        Only stock from the Mumbai warehouse is available for sale. Use 'Location Transfer' to move stock.
+                      </FormDescription>
+                      <FormMessage /></FormItem>)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="p-4 border rounded-md shadow-sm">
+                  <h3 className="text-lg font-medium mb-3 text-primary">Quantity &amp; Rate</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField control={control} name="quantity" render={({ field }) => (
                           <FormItem><FormLabel>No. of Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="e.g., 50" {...field} value={field.value || ''}
@@ -497,11 +502,28 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormControl><Input type="number" step="0.01" placeholder="e.g., 25.50" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)}
                       />
                   </div>
+                   <div className="flex flex-row items-center space-x-3 mt-4 pt-4 border-t">
+                     <FormField control={control} name="isCB" render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2">
+                          <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} id="isCB-checkbox" /></FormControl>
+                            <FormLabel htmlFor="isCB-checkbox" className="font-normal cursor-pointer mt-0!">
+                              CB (Cut Bill)
+                            </FormLabel>
+                          <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                    <FormField control={control} name="cbAmount" render={({ field }) => (
+                      <FormItem className="flex-1"><FormLabel htmlFor="cbAmount-input" className="sr-only">CB Amount</FormLabel> 
+                      <FormControl><Input id="cbAmount-input" type="number" step="0.01" placeholder="Enter CB reduction amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} disabled={!watch("isCB")} /></FormControl>
+                      <FormMessage /></FormItem>)}
+                    />
+                  </div>
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Broker (Optional)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-4">
+                  <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Brokerage (Optional)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-4">
                       <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem><FormLabel>Transporter</FormLabel>
                           <MasterDataCombobox
@@ -528,25 +550,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormItem><FormLabel>Labour (₹)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="e.g., 100" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)}
                       />
-                  </div>
-                  {/* Brokerage Section */}
-                  <div className="border-t pt-4 mt-4">
-                     <FormField control={control} name="brokerId" render={({ field }) => (
-                          <FormItem className="lg:col-span-2"><FormLabel>Broker</FormLabel>
-                          <MasterDataCombobox
-                            value={field.value}
-                            onChange={field.onChange}
-                            options={brokers.map(b => ({ value: b.id, label: b.name, tooltipContent: `Commission: ${b.commission || 0}%` }))}
-                            placeholder="Select Broker"
-                            searchPlaceholder="Search brokers..."
-                            notFoundMessage="Broker not found."
-                            addNewLabel="Add New Broker"
-                            onAddNew={() => handleOpenMasterForm("Broker")}
-                          />
-                          <FormMessage /></FormItem>)}
-                      />
+                     
                       {selectedBrokerId && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+                        <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 pt-4 border-t">
                             <FormField control={control} name="brokerageType" render={({ field }) => (
                                 <FormItem className="sm:col-span-1"><FormLabel>Brokerage Type</FormLabel>
                                 <ShadSelect onValueChange={(value) => { field.onChange(value); setBrokerageValueManuallySet(false);}} value={field.value} disabled={!selectedBrokerId}>
@@ -591,20 +597,20 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
                  <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                      <div className="flex items-center justify-between">
-                        <div className="text-md font-semibold">Goods Value (Qty x Rate):</div>
+                        <div className="text-md font-semibold">Total Goods Value:</div>
                         <p className="text-md font-semibold">₹{goodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                     </div>
-                     {cutBill && <div className="flex items-center justify-between text-destructive">
-                        <div className="text-md font-semibold">Less: Cut Amount:</div>
-                        <p className="text-md font-semibold">(-) ₹{(cutAmountInput || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                     {isCB && <div className="flex items-center justify-between text-destructive">
+                        <div className="text-md font-semibold">Less: CB Deduction:</div>
+                        <p className="text-md font-semibold">(-) ₹{(cbAmountInput || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                     </div>}
                      <div className="flex items-center justify-between border-t pt-2 mt-2">
                         <div className="text-md font-semibold text-primary">Final Billed Amount:</div>
                         <p className="text-xl font-bold text-primary">₹{billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                     </div>
                      <div className="text-sm text-muted-foreground space-y-1 pt-4 mt-4 border-t border-dashed">
-                        <h4 className="font-semibold text-foreground">Profit Calculation:</h4>
-                        <div className="flex justify-between"><span>Goods Value:</span> <span>₹{goodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                        <h4 className="font-semibold text-foreground">Profit Calculation Summary</h4>
+                        <div className="flex justify-between"><span>Goods Value (for Profit Calc):</span> <span>₹{goodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
                         <div className="flex justify-between">
                            <span>Less: Landed Cost of Goods:</span>
                            <span className="font-semibold">(-) ₹{costOfGoodsSold.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>

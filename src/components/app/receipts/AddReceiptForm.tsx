@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -146,7 +145,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{receiptToEdit ? 'Edit Receipt' : 'Add New Receipt'}</DialogTitle>

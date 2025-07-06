@@ -30,7 +30,7 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="text-xl">Stock List (by Bags)</CardTitle>
+        <CardTitle className="text-xl">Stock List (Sorted by Bag Count)</CardTitle>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[250px] rounded-md border">

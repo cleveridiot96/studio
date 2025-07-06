@@ -29,6 +29,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { format as formatDateFn, parseISO } from 'date-fns';
 import { cn } from "@/lib/utils";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 
 const SALES_STORAGE_KEY = 'salesData';
@@ -275,9 +277,6 @@ export function SalesClient() {
           return;
         }
         try {
-          const { default: jsPDF } = await import('jspdf');
-          const { default: html2canvas } = await import('html2canvas');
-
           const canvas = await html2canvas(elementToCapture, { scale: 1.5, useCORS: true, width: 550, height: elementToCapture.offsetHeight, logging: false });
           const imgData = canvas.toDataURL('image/jpeg', 0.85);
           const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5', compress: true });

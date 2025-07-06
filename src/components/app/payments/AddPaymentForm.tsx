@@ -139,7 +139,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
 
   return (
     <>
-      <Dialog modal={false} open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>
