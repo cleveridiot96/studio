@@ -73,16 +73,16 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((sale) => {
+            {data.flatMap((sale) => {
               const hasMultipleItems = sale.items && sale.items.length > 1;
               const isExpanded = expandedRows.has(sale.id);
               const vakkalDisplay = hasMultipleItems
                 ? `${sale.items[0].lotNumber} (+${sale.items.length - 1})`
                 : (sale.items && sale.items[0]?.lotNumber) || 'N/A';
 
-              return (
-              <React.Fragment key={sale.id}>
+              const mainRow = (
                 <TableRow 
+                  key={sale.id}
                   onClick={() => hasMultipleItems && toggleRow(sale.id)}
                   className={cn(hasMultipleItems && "cursor-pointer", isExpanded && "bg-muted/50")}
                 >
@@ -146,17 +146,20 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                       </DropdownMenu>
                   </TableCell>
                 </TableRow>
-                {isExpanded && hasMultipleItems && sale.items.slice(1).map((item, index) => (
-                  <TableRow key={`${sale.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                    <TableCell colSpan={3} /> {/* Date, Bill No, Customer */}
-                    <TableCell className="pl-8">↳ {item.lotNumber}</TableCell> {/* Vakkal */}
-                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell> {/* Bags */}
-                    <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell> {/* Weight */}
-                    <TableCell colSpan={4} /> {/* Broker, Billed, Profit, Actions */}
-                  </TableRow>
-                ))}
-              </React.Fragment>
-            )})}
+              );
+              
+              const expandedSubRows = isExpanded && hasMultipleItems ? sale.items.slice(1).map((item, index) => (
+                <TableRow key={`${sale.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
+                  <TableCell colSpan={3} /> {/* Date, Bill No, Customer */}
+                  <TableCell className="pl-8">↳ {item.lotNumber}</TableCell> {/* Vakkal */}
+                  <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell> {/* Bags */}
+                  <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell> {/* Weight */}
+                  <TableCell colSpan={4} /> {/* Broker, Billed, Profit, Actions */}
+                </TableRow>
+              )) : [];
+              
+              return [mainRow, ...expandedSubRows];
+            })}
           </TableBody>
         </Table>
         <ScrollBar orientation="horizontal" />

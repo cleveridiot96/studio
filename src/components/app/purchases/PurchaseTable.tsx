@@ -70,16 +70,16 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((purchase) => {
+            {data.flatMap((purchase) => {
               const hasMultipleItems = purchase.items && purchase.items.length > 1;
               const isExpanded = expandedRows.has(purchase.id);
               const vakkalDisplay = hasMultipleItems 
                 ? `${purchase.items[0].lotNumber} (+${purchase.items.length - 1})`
                 : (purchase.items && purchase.items[0]?.lotNumber) || 'N/A';
               
-              return (
-              <React.Fragment key={purchase.id}>
+              const mainRow = (
                 <TableRow 
+                  key={purchase.id}
                   onClick={() => hasMultipleItems && toggleRow(purchase.id)}
                   className={cn(hasMultipleItems && "cursor-pointer", isExpanded && "bg-muted/50")}
                 >
@@ -161,21 +161,24 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-                {isExpanded && hasMultipleItems && purchase.items.slice(1).map((item, index) => (
-                    <TableRow key={`${purchase.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
-                        <TableCell /> {/* Date */}
-                        <TableCell className="pl-8">↳ {item.lotNumber}</TableCell> {/* Vakkal */}
-                        <TableCell /> {/* Location */}
-                        <TableCell /> {/* Supplier */}
-                        <TableCell /> {/* Agent */}
-                        <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell> {/* Bags */}
-                        <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell> {/* Weight */}
-                        <TableCell className="text-right">{item.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell> {/* Rate */}
-                        <TableCell colSpan={3} /> {/* Brokerage, Payable, Actions */}
-                    </TableRow>
-                ))}
-              </React.Fragment>
-            )})}
+              );
+
+              const expandedSubRows = isExpanded && hasMultipleItems ? purchase.items.slice(1).map((item, index) => (
+                <TableRow key={`${purchase.id}-${item.lotNumber}`} className="bg-muted/50 hover:bg-muted/80 text-xs">
+                    <TableCell /> {/* Date */}
+                    <TableCell className="pl-8">↳ {item.lotNumber}</TableCell> {/* Vakkal */}
+                    <TableCell /> {/* Location */}
+                    <TableCell /> {/* Supplier */}
+                    <TableCell /> {/* Agent */}
+                    <TableCell className="text-right">{item.quantity.toLocaleString()}</TableCell> {/* Bags */}
+                    <TableCell className="text-right">{item.netWeight.toLocaleString()}</TableCell> {/* Weight */}
+                    <TableCell className="text-right">{item.rate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell> {/* Rate */}
+                    <TableCell colSpan={3} /> {/* Brokerage, Payable, Actions */}
+                </TableRow>
+              )) : [];
+              
+              return [mainRow, ...expandedSubRows];
+            })}
           </TableBody>
         </Table>
         <ScrollBar orientation="horizontal" />
