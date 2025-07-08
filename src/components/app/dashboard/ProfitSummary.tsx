@@ -63,9 +63,9 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
             const apportionedExpenses = saleLevelExpenses * itemProportion;
             const netProfit = goodsValue - costOfGoodsSold - apportionedExpenses;
             
-            const netPurchaseRate = costOfGoodsSold > 0 && item.netWeight > 0 ? costOfGoodsSold / item.netWeight : 0;
+            const netPurchaseRate = costOfGoodsSold / (item.netWeight || 1);
             const netRealization = goodsValue - apportionedExpenses;
-            const netSaleRate = netRealization > 0 && item.netWeight > 0 ? netRealization / item.netWeight : 0;
+            const netSaleRate = netRealization / (item.netWeight || 1);
             
             return {
               ...sale,
@@ -268,5 +268,3 @@ export const ProfitSummary: React.FC<ProfitSummaryProps> = ({ sales: allSalesDat
     </Card>
   );
 };
-
-  

@@ -48,6 +48,7 @@ const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
+const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
 // Initial data sets - changed to empty arrays for clean slate on format
 const initialLocationTransfers: LocationTransfer[] = [];
@@ -76,6 +77,7 @@ export function LocationTransferClient() {
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
   const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
@@ -211,7 +213,8 @@ export function LocationTransferClient() {
   const handleMasterDataUpdate = React.useCallback((type: "Warehouse" | "Transporter" | "Expense", newItem: MasterItem) => {
     if (type === "Warehouse") setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
     else if (type === "Transporter") setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
-  }, [setWarehouses, setTransporters]);
+    else if (type === "Expense") setExpenses(prev => [newItem, ...prev.filter(e => e.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
+  }, [setWarehouses, setTransporters, setExpenses]);
 
   const triggerDownloadTransferPdf = React.useCallback((transfer: LocationTransfer) => {
     setTransferForPdf(transfer);
@@ -412,6 +415,7 @@ export function LocationTransferClient() {
           onSubmit={handleAddOrUpdateTransfer}
           warehouses={warehouses}
           transporters={transporters}
+          expenses={expenses}
           availableStock={aggregatedStockForForm}
           onMasterDataUpdate={handleMasterDataUpdate}
           transferToEdit={transferToEdit}
@@ -433,5 +437,3 @@ export function LocationTransferClient() {
     </div>
   );
 }
-
-  

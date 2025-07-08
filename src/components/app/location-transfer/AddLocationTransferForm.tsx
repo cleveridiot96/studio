@@ -34,6 +34,7 @@ interface AddLocationTransferFormProps {
   onSubmit: (transfer: LocationTransfer) => void;
   warehouses: Warehouse[];
   transporters: Transporter[];
+  expenses: MasterItem[];
   availableStock: AggregatedStockItemForForm[];
   onMasterDataUpdate: (type: "Warehouse" | "Transporter" | "Expense", item: MasterItem) => void;
   transferToEdit?: LocationTransfer | null;
@@ -45,6 +46,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   onSubmit,
   warehouses,
   transporters,
+  expenses,
   availableStock,
   onMasterDataUpdate,
   transferToEdit,
@@ -423,5 +425,3 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
-
-  

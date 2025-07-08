@@ -310,4 +310,3 @@ export interface MonthlyProfitInfo {
   totalCostOfGoods: number;
 }
 
-  

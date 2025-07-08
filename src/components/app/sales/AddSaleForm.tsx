@@ -39,6 +39,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
 
 interface AddSaleFormProps {
   isOpen: boolean;
@@ -182,7 +189,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       totalQuantity,
       billedAmount,
       totalLandedCost,
-      totalGrossProfit: grossProfit, // Changed this name for clarity
+      totalGrossProfit: grossProfit,
       totalSaleSideExpenses,
       netProfit, 
       calculatedBrokerageCommission, 
@@ -481,41 +488,50 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   <FormField control={control} name="notes" render={({ field }) => (
                       <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                   
-                  <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
-                      <h3 className="text-lg font-semibold text-primary mb-2">Transaction Summary</h3>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{summary.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
-                        
-                        <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            <span>Gross Profit:</span> 
-                             <Tooltip>
-                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
-                                <TooltipContent><p>(Goods Value) - (Landed Purchase Cost)</p></TooltipContent>
-                            </Tooltip>
-                        </div>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="summary">
+                      <AccordionTrigger>
+                        <h3 className="text-lg font-semibold text-primary">Transaction Summary</h3>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
+                            <div className="text-sm text-muted-foreground space-y-1">
+                              <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{summary.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                              
+                              <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  <span>Gross Profit:</span> 
+                                  <Tooltip>
+                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
+                                      <TooltipContent><p>(Goods Value) - (Landed Purchase Cost)</p></TooltipContent>
+                                  </Tooltip>
+                              </div>
 
-                        <div className="flex justify-between text-red-600">
-                           <span>Less: All Expenses:</span>
-                            <Tooltip>
-                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">(-) ₹{summary.totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></TooltipTrigger>
-                                <TooltipContent><p>Transport, Packing, Labour, Brokerage etc.</p></TooltipContent>
-                            </Tooltip>
-                        </div>
-                         <hr className="my-1 border-muted-foreground/50" />
-                        <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                            <span>Net Profit:</span> 
-                            <Tooltip>
-                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
-                                <TooltipContent><p>(Gross Profit) - (Sale Expenses)</p></TooltipContent>
-                            </Tooltip>
-                        </div>
-                      </div>
+                              <div className="flex justify-between text-red-600">
+                                <span>Less: All Expenses:</span>
+                                  <Tooltip>
+                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">(-) ₹{summary.totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></TooltipTrigger>
+                                      <TooltipContent><p>Transport, Packing, Labour, Brokerage etc.</p></TooltipContent>
+                                  </Tooltip>
+                              </div>
+                              <hr className="my-1 border-muted-foreground/50" />
+                              <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                  <span>Net Profit:</span> 
+                                  <Tooltip>
+                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
+                                      <TooltipContent><p>(Gross Profit) - (Sale Expenses)</p></TooltipContent>
+                                  </Tooltip>
+                              </div>
+                            </div>
 
-                      <div className="border-t pt-2 mt-2">
-                        {watchedFormValues.isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watchedFormValues.cbAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
-                        <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{summary.billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
-                      </div>
-                  </div>
+                            <div className="border-t pt-2 mt-2">
+                              {watchedFormValues.isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watchedFormValues.cbAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
+                              <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{summary.billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
+                            </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+
 
                   <DialogFooter className="pt-4">
                     <DialogClose asChild><Button type="button" variant="outline" onClick={onClose}>Cancel</Button></DialogClose>
