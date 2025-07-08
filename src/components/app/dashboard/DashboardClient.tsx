@@ -29,7 +29,7 @@ const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const initialDashboardWarehouses: MasterWarehouse[] = [];
 
 interface SummaryData { totalAmount: number; totalBags: number; totalNetWeight: number; }
-interface StockSummary { totalBags: number; totalNetWeight: number; byLocation: Record<string, { name: string; bags: number; netWeight: number }>; }
+interface StockSummary { totalBags: number; totalNetWeight: number; byLocation: Record<string, { name: string; bags: number; netWeight: number; totalValue: number }>; }
 
 const getFinancialYearDateRange = (fyString: string): { start: Date; end: Date } | null => {
     if (!fyString || typeof fyString !== 'string') return null; const [startYearStr] = fyString.split('-');
@@ -108,7 +108,7 @@ const DashboardClient = () => {
     return netPurchases;
   }, [purchases, purchaseReturns, selectedPeriod, hydrated, currentFinancialYearString, isAppHydrating]);
 
-  const stockSummary = React.useMemo(() => {
+  const stockSummary = React.useMemo<StockSummary>(() => {
     if (isAppHydrating || !hydrated) return { totalBags: 0, totalNetWeight: 0, byLocation: {} };
 
     const inventoryMap = new Map<string, { lotNumber: string, locationId: string, currentBags: number, currentWeight: number, cogs: number }>();
@@ -190,7 +190,7 @@ const DashboardClient = () => {
         }
     });
 
-    const byLocation: Record<string, { name: string; bags: number; netWeight: number }> = {};
+    const byLocation: Record<string, { name: string; bags: number; netWeight: number, totalValue: number }> = {};
     let totalBags = 0;
     let totalNetWeight = 0;
 
@@ -200,10 +200,11 @@ const DashboardClient = () => {
             totalNetWeight += item.currentWeight;
             const locName = warehouses.find(w => w.id === item.locationId)?.name || item.locationId;
             if (!byLocation[item.locationId]) {
-                byLocation[item.locationId] = { name: locName, bags: 0, netWeight: 0 };
+                byLocation[item.locationId] = { name: locName, bags: 0, netWeight: 0, totalValue: 0 };
             }
             byLocation[item.locationId].bags += item.currentBags;
             byLocation[item.locationId].netWeight += item.currentWeight;
+            byLocation[item.locationId].totalValue += item.cogs;
         }
     });
     
@@ -249,3 +250,5 @@ const DashboardClient = () => {
   );
 };
 export default DashboardClient;
+
+  

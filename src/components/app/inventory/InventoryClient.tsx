@@ -358,3 +358,5 @@ export function InventoryClient() {
     </div>
   );
 }
+
+  

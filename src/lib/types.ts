@@ -309,3 +309,5 @@ export interface MonthlyProfitInfo {
   totalSalesValue: number; // Sum of goodsValue
   totalCostOfGoods: number;
 }
+
+  

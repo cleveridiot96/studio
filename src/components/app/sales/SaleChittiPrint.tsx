@@ -153,3 +153,5 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
     </div>
   );
 };
+
+  

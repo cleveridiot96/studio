@@ -201,3 +201,5 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
+
+  
