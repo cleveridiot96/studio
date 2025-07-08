@@ -58,6 +58,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
 
   const getDefaultValues = React.useCallback((): ReceiptFormValues => {
     if (receiptToEdit) {
@@ -96,9 +97,19 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
   }, [receiptToEdit, isOpen, methods, getDefaultValues]);
 
   const handleOpenMasterForm = (type: MasterItemType = "Customer") => {
+    setMasterItemToEdit(null);
     setMasterFormItemType(type); 
     setIsMasterFormOpen(true);
   };
+  
+  const handleEditMasterItem = (id: string) => {
+    const itemToEdit = parties.find(p => p.id === id) || null;
+    if (itemToEdit) {
+      setMasterItemToEdit(itemToEdit);
+      setMasterFormItemType(itemToEdit.type);
+      setIsMasterFormOpen(true);
+    }
+  }
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
@@ -106,8 +117,8 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         methods.setValue('partyId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
-    setMasterFormItemType(null);
-    toast({ title: `${newItem.type} "${newItem.name}" added successfully and selected!` });
+    setMasterItemToEdit(null);
+    toast({ title: `${newItem.type} "${newItem.name}" added/updated successfully!` });
   };
 
   const processSubmit = React.useCallback((values: ReceiptFormValues) => {
@@ -211,6 +222,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                             const currentParty = parties.find(p => p.id === currentPartyValue);
                             handleOpenMasterForm(currentParty?.type || 'Customer');
                         }}
+                        onEdit={handleEditMasterItem}
                       />
                       <FormMessage />
                     </FormItem>
@@ -298,15 +310,16 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         </DialogContent>
       </Dialog>
 
-      {isMasterFormOpen && masterFormItemType && (
+      {isMasterFormOpen && (
         <MasterForm
           isOpen={isMasterFormOpen}
           onClose={() => {
             setIsMasterFormOpen(false);
-            setMasterFormItemType(null);
+            setMasterItemToEdit(null);
           }}
           onSubmit={handleMasterFormSubmit}
-          itemTypeFromButton={masterFormItemType} 
+          initialData={masterItemToEdit}
+          itemTypeFromButton={masterFormItemType!} 
         />
       )}
     </>

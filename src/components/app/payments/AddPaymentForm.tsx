@@ -58,6 +58,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
 
   const getDefaultValues = React.useCallback((): PaymentFormValues => {
     if (paymentToEdit) {
@@ -93,16 +94,26 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   }, [isOpen, reset, getDefaultValues]);
 
   const handleOpenMasterForm = (type: MasterItemType = "Supplier") => {
+    setMasterItemToEdit(null);
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
+  
+  const handleEditMasterItem = (id: string) => {
+    const itemToEdit = parties.find(p => p.id === id) || null;
+    if (itemToEdit) {
+      setMasterItemToEdit(itemToEdit);
+      setMasterFormItemType(itemToEdit.type);
+      setIsMasterFormOpen(true);
+    }
+  }
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
     setIsMasterFormOpen(false);
-    setMasterFormItemType(null);
+    setMasterItemToEdit(null);
     methods.setValue('partyId', newItem.id, { shouldValidate: true });
-    toast({ title: `${newItem.type} "${newItem.name}" added and selected.` });
+    toast({ title: `${newItem.type} "${newItem.name}" added/updated successfully.` });
   };
 
   const processSubmit = (values: PaymentFormValues) => {
@@ -204,6 +215,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                             const currentParty = parties.find(p => p.id === currentPartyValue);
                             handleOpenMasterForm(currentParty?.type || 'Supplier');
                         }}
+                        onEdit={handleEditMasterItem}
                       />
                       <FormMessage />
                     </FormItem>
@@ -280,15 +292,16 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
         </DialogContent>
       </Dialog>
 
-      {isMasterFormOpen && masterFormItemType && (
+      {isMasterFormOpen && (
         <MasterForm
           isOpen={isMasterFormOpen}
           onClose={() => {
             setIsMasterFormOpen(false);
-            setMasterFormItemType(null);
+            setMasterItemToEdit(null);
           }}
           onSubmit={handleMasterFormSubmit}
-          itemTypeFromButton={masterFormItemType}
+          initialData={masterItemToEdit}
+          itemTypeFromButton={masterFormItemType!}
         />
       )}
     </>

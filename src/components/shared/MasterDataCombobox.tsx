@@ -5,7 +5,7 @@ import * as React from "react";
 import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, Plus, ChevronsUpDown } from "lucide-react";
+import { Check, Plus, ChevronsUpDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
@@ -27,6 +27,7 @@ interface MasterDataComboboxProps {
   notFoundMessage?: string;
   addNewLabel?: string;
   onAddNew?: () => void;
+  onEdit?: (value: string) => void; // New prop for editing
   disabled?: boolean;
   className?: string;
   triggerId?: string;
@@ -41,6 +42,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   notFoundMessage = "No match found.",
   addNewLabel = "Add New",
   onAddNew,
+  onEdit,
   disabled,
   className,
   triggerId,
@@ -91,6 +93,15 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
       setSearch("");
     }
   };
+  
+  const handleEdit = (e: React.MouseEvent, value: string) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(value);
+      setOpen(false);
+      setSearch("");
+    }
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -165,6 +176,17 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                               className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
                           />
                           <span className="flex-grow truncate">{option.label}</span>
+                          {onEdit && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
+                                onClick={(e) => handleEdit(e, option.value)}
+                                aria-label={`Edit ${option.label}`}
+                            >
+                                <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
                         </div>
                       </TooltipTrigger>
                       {option.tooltipContent && (

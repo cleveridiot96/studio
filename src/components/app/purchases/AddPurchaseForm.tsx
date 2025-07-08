@@ -66,6 +66,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
 
 
@@ -185,17 +186,31 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         setValue("brokerageValue", agent.commission, { shouldValidate: true });
       }
     } else {
-        // Clear brokerage fields if agent is deselected
         setValue("brokerageType", undefined, { shouldValidate: true });
         setValue("brokerageValue", undefined, { shouldValidate: true });
     }
   }, [watchedAgentId, agents, setValue]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
+    setMasterItemToEdit(null);
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
   
+  const handleEditMasterItem = (type: MasterItemType, id: string) => {
+    let itemToEdit: MasterItem | null = null;
+    if (type === 'Supplier') itemToEdit = suppliers.find(i => i.id === id) || null;
+    else if (type === 'Agent') itemToEdit = agents.find(i => i.id === id) || null;
+    else if (type === 'Warehouse') itemToEdit = warehouses.find(i => i.id === id) || null;
+    else if (type === 'Transporter') itemToEdit = transporters.find(i => i.id === id) || null;
+
+    if (itemToEdit) {
+        setMasterItemToEdit(itemToEdit);
+        setMasterFormItemType(type);
+        setIsMasterFormOpen(true);
+    }
+  };
+
   const handleMasterFormSubmit = (newItem: MasterItem) => {
     onMasterDataUpdate(newItem.type, newItem);
     if (newItem.type === masterFormItemType) {
@@ -206,7 +221,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
-    toast({ title: `${newItem.type} "${newItem.name}" added successfully and selected!` });
+    toast({ title: `${newItem.type} "${newItem.name}" added/updated successfully!` });
   };
 
   const processSubmit = (values: PurchaseFormValues) => {
@@ -287,7 +302,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             <MasterDataCombobox value={field.value} onChange={field.onChange}
                                 options={suppliers.filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
                                 placeholder="Select Supplier" searchPlaceholder="Search suppliers..." notFoundMessage="No supplier found." 
-                                addNewLabel="Add New Supplier" onAddNew={() => handleOpenMasterForm("Supplier")} />
+                                addNewLabel="Add New Supplier" onAddNew={() => handleOpenMasterForm("Supplier")}
+                                onEdit={(id) => handleEditMasterItem("Supplier", id)}
+                             />
                             <FormMessage />
                           </FormItem>)} />
                        <FormField control={control} name="agentId" render={({ field }) => ( 
@@ -300,6 +317,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               placeholder="Select Agent"
                               addNewLabel="Add New Agent"
                               onAddNew={() => handleOpenMasterForm("Agent")}
+                              onEdit={(id) => handleEditMasterItem("Agent", id)}
                             />
                             <FormMessage />
                           </FormItem>)} />
@@ -309,7 +327,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             <MasterDataCombobox value={field.value} onChange={field.onChange}
                                 options={warehouses.filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
                                 placeholder="Select Location" searchPlaceholder="Search locations..." notFoundMessage="No location found."
-                                addNewLabel="Add New Location" onAddNew={() => handleOpenMasterForm("Warehouse")} />
+                                addNewLabel="Add New Location" onAddNew={() => handleOpenMasterForm("Warehouse")} 
+                                onEdit={(id) => handleEditMasterItem("Warehouse", id)}
+                                />
                             <FormMessage />
                           </FormItem>)} />
                   </div>
@@ -431,6 +451,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <MasterDataCombobox value={field.value} onChange={field.onChange} 
                           options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
                           placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
+                          onEdit={(id) => handleEditMasterItem("Transporter", id)}
                         />
                         <FormMessage />
                       </FormItem>)} />
@@ -491,12 +512,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         </DialogContent>
       </Dialog>
 
-      {isMasterFormOpen && masterFormItemType && (
+      {isMasterFormOpen && (
         <MasterForm
           isOpen={isMasterFormOpen}
-          onClose={() => { setIsMasterFormOpen(false); setMasterFormItemType(null); }}
+          onClose={() => { setIsMasterFormOpen(false); setMasterItemToEdit(null); }}
           onSubmit={handleMasterFormSubmit}
-          itemTypeFromButton={masterFormItemType}
+          initialData={masterItemToEdit}
+          itemTypeFromButton={masterFormItemType!}
         />
       )}
     </>

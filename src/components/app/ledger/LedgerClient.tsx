@@ -3,7 +3,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, PurchaseReturn, SaleReturn } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, PurchaseReturn, SaleReturn, MasterItemType } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -17,6 +17,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
+import { useToast } from "@/hooks/use-toast";
+import { MasterForm } from "@/components/app/masters/MasterForm";
+
 
 const MASTERS_KEYS = {
   customers: 'masterCustomers',
@@ -60,9 +63,17 @@ const initialLedgerData = {
 
 export function LedgerClient() {
   const [hydrated, setHydrated] = React.useState(false);
-  const [allMasters, setAllMasters] = React.useState<MasterItem[]>([]);
+  const { toast } = useToast();
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
+  
+  // Master data states
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.customers, memoizedEmptyArray);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.suppliers, memoizedEmptyArray);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.agents, memoizedEmptyArray);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.brokers, memoizedEmptyArray);
+
+  // Transaction states
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray, purchaseMigrator);
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray, salesMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
@@ -72,6 +83,9 @@ export function LedgerClient() {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const { financialYear: currentFinancialYearString } = useSettings();
 
+  const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
+  const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const partyIdFromQuery = searchParams.get('partyId');
@@ -80,28 +94,15 @@ export function LedgerClient() {
     setHydrated(true);
   }, []);
 
+  const allMasters = React.useMemo(() => {
+    if (!hydrated) return [];
+    const relevantMasters = [...customers, ...suppliers, ...agents, ...brokers]
+      .filter(m => m.type === 'Supplier' || m.type === 'Broker' || m.type === 'Agent' || m.type === 'Customer');
+    return relevantMasters.sort((a, b) => a.name.localeCompare(b.name));
+  }, [hydrated, customers, suppliers, agents, brokers]);
+
   React.useEffect(() => {
     if (hydrated) {
-      const loadedMasters: MasterItem[] = [];
-      Object.values(MASTERS_KEYS).forEach(key => {
-        const data = localStorage.getItem(key);
-        if (data) {
-          try {
-            const parsedDataArray = JSON.parse(data) as MasterItem[];
-            if (Array.isArray(parsedDataArray)) {
-                parsedDataArray.forEach(item => {
-                    if (item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.type === 'string') {
-                        loadedMasters.push(item);
-                    }
-                });
-            }
-          } catch (e) { console.error("Failed to parse master data from localStorage for key:", key, e); }
-        }
-      });
-      const relevantMasters = loadedMasters.filter(m => m.type === 'Supplier' || m.type === 'Broker' || m.type === 'Agent');
-      relevantMasters.sort((a, b) => a.name.localeCompare(b.name));
-      setAllMasters(relevantMasters);
-
       if (!dateRange) {
         const [startYearStr] = currentFinancialYearString.split('-');
         const startYear = parseInt(startYearStr, 10);
@@ -112,11 +113,11 @@ export function LedgerClient() {
         }
       }
       
-      if (partyIdFromQuery && relevantMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
+      if (partyIdFromQuery && allMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
         setSelectedPartyId(partyIdFromQuery);
       }
     }
-  }, [hydrated, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId]);
+  }, [hydrated, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
@@ -216,6 +217,30 @@ export function LedgerClient() {
     }
     setDateRange({ from, to });
   };
+  
+  const handleEditParty = (partyId: string) => {
+    const partyToEdit = allMasters.find(p => p.id === partyId);
+    if (partyToEdit) {
+      setMasterItemToEdit(partyToEdit);
+      setIsMasterFormOpen(true);
+    }
+  };
+
+  const handleMasterFormSubmit = (updatedItem: MasterItem) => {
+    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = {
+        'Customer': setCustomers,
+        'Supplier': setSuppliers,
+        'Agent': setAgents,
+        'Broker': setBrokers,
+    };
+    const setter = setters[updatedItem.type];
+    if (setter) {
+        setter(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a,b) => a.name.localeCompare(b.name)));
+        toast({ title: `${updatedItem.type} updated`, description: `Details for ${updatedItem.name} saved.` });
+    }
+    setIsMasterFormOpen(false);
+    setMasterItemToEdit(null);
+  };
 
 
   if (!hydrated) {
@@ -233,7 +258,9 @@ export function LedgerClient() {
                         triggerId="ledger-party-selector-trigger" value={selectedPartyId}
                         onChange={(value) => handlePartySelect(value || "")} options={partyOptions}
                         placeholder="Select Party..." searchPlaceholder="Search parties..."
-                        notFoundMessage="No party found." className="h-11 text-base" />
+                        notFoundMessage="No party found." className="h-11 text-base"
+                        onEdit={handleEditParty}
+                    />
                     <div className="flex gap-1">
                       <Button variant="outline" size="sm" onClick={() => setDatePreset('1m')}>1M</Button>
                       <Button variant="outline" size="sm" onClick={() => setDatePreset('3m')}>3M</Button>
@@ -375,6 +402,15 @@ export function LedgerClient() {
             <p className="text-sm text-muted-foreground mt-2">(Click here to select)</p>
           </div>
         </Card>
+      )}
+       {isMasterFormOpen && (
+        <MasterForm
+            isOpen={isMasterFormOpen}
+            onClose={() => { setIsMasterFormOpen(false); setMasterItemToEdit(null); }}
+            onSubmit={handleMasterFormSubmit}
+            initialData={masterItemToEdit}
+            itemTypeFromButton={masterItemToEdit?.type || 'Supplier'}
+        />
       )}
     </div>
   );

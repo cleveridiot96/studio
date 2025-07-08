@@ -56,6 +56,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [transportChargesManuallySet, setTransportChargesManuallySet] = React.useState(false);
   
   const formSchema = React.useMemo(() => locationTransferSchema(warehouses, transporters, availableStock, transferToEdit), [warehouses, transporters, availableStock, transferToEdit]);
@@ -147,8 +148,21 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
 
   const handleOpenMasterForm = (type: "Warehouse" | "Transporter") => {
+    setMasterItemToEdit(null);
     setMasterFormItemType(type as MasterItemType);
     setIsMasterFormOpen(true);
+  };
+  
+  const handleEditMasterItem = (type: "Warehouse" | "Transporter", id: string) => {
+    let itemToEdit: MasterItem | null = null;
+    if (type === 'Warehouse') itemToEdit = warehouses.find(i => i.id === id) || null;
+    else if (type === 'Transporter') itemToEdit = transporters.find(i => i.id === id) || null;
+
+    if (itemToEdit) {
+      setMasterItemToEdit(itemToEdit);
+      setMasterFormItemType(type);
+      setIsMasterFormOpen(true);
+    }
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
@@ -158,7 +172,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     }
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
-    toast({ title: `${newItem.type} "${newItem.name}" added successfully.` });
+    toast({ title: `${newItem.type} "${newItem.name}" added/updated successfully.` });
   };
 
   const processSubmit = (values: LocationTransferFormValues) => {
@@ -247,6 +261,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           options={warehouses.map(w => ({ value: w.id, label: w.name }))}
                           placeholder="Select Source"
                           onAddNew={() => handleOpenMasterForm("Warehouse")}
+                          onEdit={(id) => handleEditMasterItem("Warehouse", id)}
                         />
                         <FormMessage />
                       </FormItem>)}
@@ -259,6 +274,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           options={warehouses.map(w => ({ value: w.id, label: w.name }))}
                           placeholder="Select Destination"
                           onAddNew={() => handleOpenMasterForm("Warehouse")}
+                          onEdit={(id) => handleEditMasterItem("Warehouse", id)}
                         />
                         <FormMessage />
                       </FormItem>)}
@@ -341,6 +357,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           options={transporters.filter(t => t.type === 'Transporter').map(t => ({ value: t.id, label: t.name }))}
                           placeholder="Select Transporter"
                           onAddNew={() => handleOpenMasterForm("Transporter")}
+                          onEdit={(id) => handleEditMasterItem("Transporter", id)}
                         />
                         <FormMessage />
                       </FormItem>)}
@@ -394,12 +411,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         </DialogContent>
       </Dialog>
 
-      {isMasterFormOpen && masterFormItemType && (
+      {isMasterFormOpen && (
         <MasterForm
           isOpen={isMasterFormOpen}
-          onClose={() => { setIsMasterFormOpen(false); setMasterFormItemType(null); }}
+          onClose={() => { setIsMasterFormOpen(false); setMasterItemToEdit(null); }}
           onSubmit={handleMasterFormSubmit}
-          itemTypeFromButton={masterFormItemType}
+          initialData={masterItemToEdit}
+          itemTypeFromButton={masterFormItemType!}
         />
       )}
     </>

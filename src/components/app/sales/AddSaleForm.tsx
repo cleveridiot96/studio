@@ -70,6 +70,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
+  const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
@@ -153,10 +154,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         const quantity = Number(item.quantity) || 0;
 
         const lineSaleValue = netWeight * saleRate;
-        const linePurchaseValue = netWeight * purchaseRate; // Using raw purchase rate for gross profit
+        const linePurchaseValue = netWeight * purchaseRate;
         
         totalGoodsValue += lineSaleValue;
-        totalLandedCost += netWeight * landedCostPerKg; // Using landed cost for COGS
+        totalLandedCost += netWeight * landedCostPerKg;
         totalNetWeight += netWeight;
         totalQuantity += quantity;
         totalGrossProfit += (lineSaleValue - linePurchaseValue);
@@ -174,7 +175,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totalNetWeight;
     const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
     
-    // Net profit is based on landed cost
     const netProfit = totalGoodsValue - totalLandedCost - totalSaleSideExpenses;
 
     return { 
@@ -215,8 +215,22 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [selectedBrokerId, brokers, setValue]);
 
   const handleOpenMasterForm = (type: MasterItemType) => {
-    setIsMasterFormOpen(true);
+    setMasterItemToEdit(null);
     setMasterFormItemType(type);
+    setIsMasterFormOpen(true);
+  };
+  
+  const handleEditMasterItem = (type: MasterItemType, id: string) => {
+    let itemToEdit: MasterItem | null = null;
+    if (type === 'Customer') itemToEdit = customers.find(i => i.id === id) || null;
+    else if (type === 'Broker') itemToEdit = brokers.find(i => i.id === id) || null;
+    else if (type === 'Transporter') itemToEdit = transporters.find(i => i.id === id) || null;
+
+    if (itemToEdit) {
+        setMasterItemToEdit(itemToEdit);
+        setMasterFormItemType(type);
+        setIsMasterFormOpen(true);
+    }
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
@@ -224,8 +238,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     if (newItem.type === 'Customer') methods.setValue('customerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
-    setIsMasterFormOpen(false); setMasterFormItemType(null);
-    toast({ title: `${newItem.type} added and selected.` });
+    setIsMasterFormOpen(false); setMasterItemToEdit(null);
+    toast({ title: `${newItem.type} added/updated successfully.` });
   };
 
   const processSubmit = (values: SaleFormValues) => {
@@ -314,11 +328,25 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         </FormItem>)} />
                       <FormField control={control} name="customerId" render={({ field }) => (
                         <FormItem><FormLabel>Customer</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange} options={customers.map(c => ({ value: c.id, label: c.name }))} placeholder="Select Customer" onAddNew={() => handleOpenMasterForm("Customer")} /> <FormMessage />
+                          <MasterDataCombobox 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            options={customers.map(c => ({ value: c.id, label: c.name }))} 
+                            placeholder="Select Customer" 
+                            onAddNew={() => handleOpenMasterForm("Customer")}
+                            onEdit={(id) => handleEditMasterItem("Customer", id)}
+                          /> <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name="brokerId" render={({ field }) => (
                         <FormItem><FormLabel>Broker (Optional)</FormLabel>
-                          <MasterDataCombobox value={field.value} onChange={field.onChange} options={brokers.map(b => ({ value: b.id, label: b.name }))} placeholder="Select Broker" onAddNew={() => handleOpenMasterForm("Broker")} /> <FormMessage />
+                          <MasterDataCombobox 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            options={brokers.map(b => ({ value: b.id, label: b.name }))} 
+                            placeholder="Select Broker" 
+                            onAddNew={() => handleOpenMasterForm("Broker")} 
+                            onEdit={(id) => handleEditMasterItem("Broker", id)}
+                          /> <FormMessage />
                         </FormItem>)} />
                     </div>
                   </div>
@@ -409,6 +437,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             <MasterDataCombobox value={field.value} onChange={field.onChange}
                               options={transporters.filter(t => t.type === 'Transporter').map((t) => ({ value: t.id, label: t.name }))}
                               placeholder="Select Transporter" addNewLabel="Add New Transporter" onAddNew={() => handleOpenMasterForm("Transporter")}
+                              onEdit={(id) => handleEditMasterItem("Transporter", id)}
                             /> <FormMessage />
                           </FormItem>)} />
                          <FormField control={control} name="transportCost" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
@@ -496,7 +525,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           </TooltipProvider>
         </DialogContent>
       </Dialog>
-      {isMasterFormOpen && masterFormItemType && (<MasterForm isOpen={isMasterFormOpen} onClose={() => { setIsMasterFormOpen(false); setMasterFormItemType(null); }} onSubmit={handleMasterFormSubmit} itemTypeFromButton={masterFormItemType}/>)}
+      {isMasterFormOpen && (
+        <MasterForm 
+            isOpen={isMasterFormOpen} 
+            onClose={() => { setIsMasterFormOpen(false); setMasterItemToEdit(null); }} 
+            onSubmit={handleMasterFormSubmit}
+            initialData={masterItemToEdit}
+            itemTypeFromButton={masterFormItemType!}
+        />
+      )}
     </>
   );
 };
