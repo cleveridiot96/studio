@@ -31,7 +31,7 @@ import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema';
-import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter } from '@/lib/types';
+import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter, CostBreakdown } from '@/lib/types';
 import type { AggregatedStockItemForForm } from "./SalesClient";
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 import { useToast } from '@/hooks/use-toast';
@@ -151,10 +151,12 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     let totalNetWeight = 0;
     let totalQuantity = 0;
     let totalLandedCost = 0;
+    let totalBasePurchaseCost = 0;
 
     (items || []).forEach(item => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
-        const landedCostPerKg = stockInfo?.effectiveRate || stockInfo?.purchaseRate || 0;
+        const landedCostPerKg = stockInfo?.effectiveRate || 0;
+        const basePurchaseRate = stockInfo?.purchaseRate || 0;
         
         const netWeight = Number(item.netWeight) || 0;
         const saleRate = Number(item.rate) || 0;
@@ -164,6 +166,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         
         totalGoodsValue += lineSaleValue;
         totalLandedCost += netWeight * landedCostPerKg;
+        totalBasePurchaseCost += netWeight * basePurchaseRate;
         totalNetWeight += netWeight;
         totalQuantity += quantity;
     });
@@ -180,7 +183,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totalNetWeight;
     const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + (Number(miscExpenses) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
     
-    const grossProfit = totalGoodsValue - totalLandedCost;
+    const grossProfit = totalGoodsValue - totalBasePurchaseCost;
     const netProfit = grossProfit - totalSaleSideExpenses;
 
     return { 
@@ -188,6 +191,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       totalNetWeight,
       totalQuantity,
       billedAmount,
+      totalBasePurchaseCost,
       totalLandedCost,
       totalGrossProfit: grossProfit,
       totalSaleSideExpenses,
@@ -263,14 +267,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerName: selectedBroker?.name,
       items: values.items.map(item => {
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-          const landedCost = stock?.effectiveRate || stock?.purchaseRate || 0;
+          const landedCostPerKg = stock?.effectiveRate || 0;
+          const basePurchaseRate = stock?.purchaseRate || 0;
           const netWeight = item.netWeight || 0;
           const saleRate = item.rate || 0;
           const goodsValue = netWeight * saleRate;
 
           const itemProportion = summary.totalGoodsValue > 0 ? goodsValue / summary.totalGoodsValue : 0;
-          const apportionedExpenses = summary.totalSaleSideExpenses * itemProportion;
-          const itemNetProfit = goodsValue - (netWeight * landedCost) - apportionedExpenses;
+          const apportionedSaleExpenses = summary.totalSaleSideExpenses * itemProportion;
+
+          const itemGrossProfit = goodsValue - (netWeight * basePurchaseRate);
+          const itemNetProfit = itemGrossProfit - apportionedSaleExpenses;
           
           return {
               lotNumber: item.lotNumber,
@@ -278,8 +285,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               netWeight: netWeight,
               rate: saleRate,
               goodsValue: goodsValue,
-              purchaseRate: stock?.purchaseRate || 0,
-              costOfGoodsSold: netWeight * landedCost,
+              purchaseRate: basePurchaseRate,
+              costOfGoodsSold: netWeight * landedCostPerKg,
+              itemGrossProfit: itemGrossProfit,
               itemProfit: itemNetProfit,
               costBreakdown: stock?.costBreakdown,
           };
@@ -376,7 +384,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               }}
                               options={availableStock.map(s => ({
                                   value: s.lotNumber,
-                                  label: `${s.lotNumber} (Avl: ${s.currentBags} bags) @ ₹${Math.round(s.purchaseRate)}`,
+                                  label: `${s.lotNumber} (Avl: ${Math.round(s.currentBags)} bags) @ ₹${Math.round(s.purchaseRate)}`,
                                   tooltipContent: (
                                       <div>
                                           <p>Landed Cost: <span className="font-semibold">₹{Math.round(s.effectiveRate)}/kg</span></p>
@@ -389,7 +397,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           </FormItem>)} />
                         <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (
                           <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                            <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
+                            <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''} 
                               onChange={e => {
                                   const bagsVal = parseFloat(e.target.value) || undefined;
                                   itemField.onChange(bagsVal);
@@ -409,7 +417,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             <FormMessage />
                           </FormItem>)} />
                         <FormField control={control} name={`items.${index}.netWeight`} render={({ field: itemField }) => (
-                          <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''}
+                          <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
                               onChange={e => {
                                 setManualNetWeight(prev => ({ ...prev, [index]: true }));
                                 itemField.onChange(parseFloat(e.target.value) || undefined)
@@ -480,7 +488,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                  <FormMessage />
                               </FormItem>)} />
                             <div className="text-sm text-muted-foreground pt-7">
-                                = ₹{summary.calculatedBrokerageCommission.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                = ₹{Math.round(summary.calculatedBrokerageCommission).toLocaleString('en-IN')}
                             </div>
                          </div>
                        )}
@@ -497,20 +505,20 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       <AccordionContent>
                         <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{summary.totalGoodsValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>
+                              <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{Math.round(summary.totalGoodsValue).toLocaleString('en-IN')}</span></div>
                               
                               <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                   <span>Gross Profit:</span> 
                                   <Tooltip>
-                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
-                                      <TooltipContent><p>(Goods Value) - (Landed Purchase Cost)</p></TooltipContent>
+                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{Math.round(summary.totalGrossProfit).toLocaleString('en-IN')}</span></TooltipTrigger>
+                                      <TooltipContent><p>(Goods Value) - (Base Purchase Cost)</p></TooltipContent>
                                   </Tooltip>
                               </div>
 
                               <div className="flex justify-between text-red-600">
                                 <span>Less: All Expenses:</span>
                                   <Tooltip>
-                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">(-) ₹{summary.totalSaleSideExpenses.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span></TooltipTrigger>
+                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">(-) ₹{Math.round(summary.totalSaleSideExpenses).toLocaleString('en-IN')}</span></TooltipTrigger>
                                       <TooltipContent><p>Transport, Packing, Labour, Brokerage etc.</p></TooltipContent>
                                   </Tooltip>
                               </div>
@@ -518,15 +526,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                                   <span>Net Profit:</span> 
                                   <Tooltip>
-                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
+                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{Math.round(summary.netProfit).toLocaleString('en-IN')}</span></TooltipTrigger>
                                       <TooltipContent><p>(Gross Profit) - (Sale Expenses)</p></TooltipContent>
                                   </Tooltip>
                               </div>
                             </div>
 
                             <div className="border-t pt-2 mt-2">
-                              {watchedFormValues.isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{(Number(watchedFormValues.cbAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></div>}
-                              <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{summary.billedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p></div>
+                              {watchedFormValues.isCB && <div className="flex justify-between text-destructive"><span>Less: CB Deduction:</span> <span className="font-medium">(-) ₹{Math.round(Number(watchedFormValues.cbAmount) || 0).toLocaleString('en-IN')}</span></div>}
+                              <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{Math.round(summary.billedAmount).toLocaleString('en-IN')}</p></div>
                             </div>
                         </div>
                       </AccordionContent>

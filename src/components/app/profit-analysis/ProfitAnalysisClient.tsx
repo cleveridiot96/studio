@@ -118,17 +118,8 @@ export function ProfitAnalysisClient() {
         total: 0
       };
       saleLevelExpenses.total = Object.values(saleLevelExpenses).reduce((sum, val) => sum + val, 0);
-
-      const totalGoodsValueForApportionment = sale.items.reduce((sum, item) => sum + (item.goodsValue || 0), 0);
         
-      if (totalGoodsValueForApportionment === 0) return;
-
       sale.items.forEach(item => {
-        const itemProportion = (item.goodsValue || 0) / totalGoodsValueForApportionment;
-        const apportionedExpenses = saleLevelExpenses.total * itemProportion;
-        const costOfGoodsSold = item.costOfGoodsSold || 0;
-        const netProfit = (item.goodsValue || 0) - costOfGoodsSold - apportionedExpenses;
-        
         flattenedTransactions.push({
           saleId: sale.id,
           date: sale.date,
@@ -137,21 +128,21 @@ export function ProfitAnalysisClient() {
           lotNumber: item.lotNumber,
           saleNetWeightKg: item.netWeight,
           basePurchaseRate: item.purchaseRate,
-          landedCostPerKg: item.netWeight > 0 ? costOfGoodsSold / item.netWeight : 0,
+          landedCostPerKg: item.netWeight > 0 ? item.costOfGoodsSold / item.netWeight : 0,
           saleRatePerKg: item.rate,
           goodsValue: item.goodsValue,
-          costOfGoodsSold: costOfGoodsSold,
-          grossProfit: (item.goodsValue || 0) - costOfGoodsSold,
-          netProfit: netProfit,
+          costOfGoodsSold: item.costOfGoodsSold,
+          grossProfit: item.itemGrossProfit,
+          netProfit: item.itemProfit,
           costBreakdown: item.costBreakdown,
           saleExpenses: {
-            transport: sale.transportCost ? (sale.transportCost * itemProportion) : 0,
-            packing: sale.packingCost ? (sale.packingCost * itemProportion) : 0,
-            labour: sale.labourCost ? (sale.labourCost * itemProportion) : 0,
-            misc: sale.miscExpenses ? (sale.miscExpenses * itemProportion) : 0,
-            brokerage: sale.calculatedBrokerageCommission ? (sale.calculatedBrokerageCommission * itemProportion) : 0,
-            extraBrokerage: sale.calculatedExtraBrokerage ? (sale.calculatedExtraBrokerage * itemProportion) : 0,
-            total: apportionedExpenses,
+            transport: sale.transportCost ? (sale.transportCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
+            packing: sale.packingCost ? (sale.packingCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
+            labour: sale.labourCost ? (sale.labourCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
+            misc: sale.miscExpenses ? (sale.miscExpenses * (item.goodsValue / sale.totalGoodsValue)) : 0,
+            brokerage: sale.calculatedBrokerageCommission ? (sale.calculatedBrokerageCommission * (item.goodsValue / sale.totalGoodsValue)) : 0,
+            extraBrokerage: sale.calculatedExtraBrokerage ? (sale.calculatedExtraBrokerage * (item.goodsValue / sale.totalGoodsValue)) : 0,
+            total: saleLevelExpenses.total * (item.goodsValue / sale.totalGoodsValue),
           }
         });
       });
@@ -373,7 +364,7 @@ export function ProfitAnalysisClient() {
                             <div className="space-y-6">
                                 {itemsForSelectedSaleCalc.map((item, index) => {
                                     const { costBreakdown, saleExpenses } = item;
-                                    const effectiveSaleRate = item.saleRatePerKg - (saleExpenses.total / item.saleNetWeightKg);
+                                    const effectiveSaleRate = item.saleNetWeightKg > 0 ? (item.goodsValue - saleExpenses.total) / item.saleNetWeightKg : 0;
                                     return (
                                         <Card key={index} className="bg-muted/30 p-4">
                                             <CardHeader className="p-0 pb-3">
@@ -422,7 +413,7 @@ export function ProfitAnalysisClient() {
                                                     </div>
                                                 </div>
                                                 <div className="text-center text-xl font-bold mt-4 pt-2 border-t">
-                                                    TOTAL NET PROFIT FOR {item.saleNetWeightKg} KG: <span className={cn("ml-2", item.netProfit >=0 ? 'text-primary' : 'text-destructive')}>₹{item.netProfit.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                                                    TOTAL NET PROFIT FOR {item.saleNetWeightKg} KG: <span className={cn("ml-2", item.netProfit >=0 ? 'text-primary' : 'text-destructive')}>₹{Math.round(item.netProfit).toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
                                                 </div>
                                             </div>
                                         </Card>

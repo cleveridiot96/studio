@@ -118,7 +118,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
               </tr>
               <tr className="font-bold border-t">
                 <td>GROSS PROFIT</td>
-                <td className="text-right">₹{Math.round((sale.totalGoodsValue || 0) - (sale.totalCostOfGoodsSold || 0)).toLocaleString()}</td>
+                <td className="text-right">₹{Math.round(sale.totalGrossProfit || 0).toLocaleString()}</td>
               </tr>
               <tr>
                 <td>LESS: SALE EXPENSES</td>

@@ -86,7 +86,8 @@ export interface SaleItem {
   // New fields for profit calculation
   purchaseRate: number; // The raw purchase rate for this lot.
   costOfGoodsSold: number; // The full landed cost for this portion of goods.
-  itemProfit?: number; // Optional profit calculation per item
+  itemGrossProfit: number;
+  itemProfit: number; // Net profit for this item
   costBreakdown?: CostBreakdown;
 }
 
@@ -112,8 +113,8 @@ export interface Sale {
   
   // New profit fields
   totalCostOfGoodsSold: number; // Sum of items' costOfGoods
-  totalGrossProfit?: number; // Optional: totalGoodsValue - totalCostOfGoodsSold before sale-side expenses
-  totalCalculatedProfit?: number; // This is the final Net Profit
+  totalGrossProfit: number; 
+  totalCalculatedProfit: number; // This is the final Net Profit
   
   // Expenses for the entire sale
   transporterId?: string;
@@ -312,6 +313,17 @@ export interface TransactionalProfitInfo {
   costOfGoodsSold: number;
   grossProfit: number;
   netProfit: number;
+  // Breakdown
+  costBreakdown?: CostBreakdown;
+  saleExpenses: {
+    transport: number;
+    packing: number;
+    labour: number;
+    misc: number;
+    brokerage: number;
+    extraBrokerage: number;
+    total: number;
+  }
 }
 
 export interface MonthlyProfitInfo {
