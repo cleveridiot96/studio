@@ -14,7 +14,7 @@ import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { locationTransferSchema, type LocationTransferFormValues } from "@/lib/schemas/locationTransferSchema";
-import type { MasterItem, Warehouse, Transporter, LocationTransfer, MasterItemType } from "@/lib/types";
+import type { MasterItem, Warehouse, Transporter, LocationTransfer, MasterItemType, CostBreakdown } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,8 @@ interface AggregatedStockItemForForm {
   currentBags: number;
   currentWeight: number;
   averageWeightPerBag: number;
+  effectiveRate: number; // This is the existing landed cost
+  costBreakdown: CostBreakdown;
 }
 
 interface AddLocationTransferFormProps {
@@ -108,14 +110,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     name: "items",
   });
 
-  const watchedFormValues = watch();
+  const watchedItems = watch("items");
 
   const transferSummary = React.useMemo(() => {
-    const totalBags = (watchedFormValues.items || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
-    const totalNetWeight = (watchedFormValues.items || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
-    const totalGrossWeight = (watchedFormValues.items || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
+    const totalBags = (watchedItems || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
+    const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
+    const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
     return { totalBags, totalNetWeight, totalGrossWeight };
-  }, [watchedFormValues.items]);
+  }, [watchedItems]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -128,13 +130,16 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       const grossWeight = transferSummary.totalGrossWeight;
       if (typeof transportRate === 'number' && grossWeight > 0) {
           setValue('transportCharges', Math.round(transportRate * grossWeight), { shouldValidate: true });
+      } else {
+          setValue('transportCharges', undefined, { shouldValidate: true });
       }
   }, [transferSummary.totalGrossWeight, getValues, setValue, watch('transportRate')]);
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
-    if (!watchedFormValues.fromWarehouseId) return [];
+    const fromWarehouseId = watch('fromWarehouseId');
+    if (!fromWarehouseId) return [];
     return availableStock
-      .filter(item => item.locationId === watchedFormValues.fromWarehouseId && item.currentBags > 0)
+      .filter(item => item.locationId === fromWarehouseId && item.currentBags > 0)
       .map(item => ({
         value: item.lotNumber,
         label: `${item.lotNumber} (Avl: ${Math.round(item.currentBags)} bags)`,
@@ -142,7 +147,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         averageWeightPerBag: item.averageWeightPerBag,
       }))
       .sort((a,b) => a.label.localeCompare(b.label));
-  }, [availableStock, watchedFormValues.fromWarehouseId]);
+  }, [availableStock, watch('fromWarehouseId')]);
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
 
@@ -319,7 +324,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             onChange={itemField.onChange}
                             options={availableLotsOptions}
                             placeholder="Select Lot"
-                            disabled={!watchedFormValues.fromWarehouseId}
+                            disabled={!watch('fromWarehouseId')}
                           />
                           <FormMessage />
                         </FormItem>)}
@@ -334,7 +339,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               itemField.onChange(bagsVal);
                               setValue(`items.${index}.grossWeightToTransfer`, (bagsVal || 0) * 50, { shouldValidate: true });
                               const lotValue = watch(`items.${index}.originalLotNumber`);
-                              const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watchedFormValues.fromWarehouseId);
+                              const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watch('fromWarehouseId'));
                               const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
                               let newNetWeight;
                               if (bagsVal && bagsVal > 0 && !isNaN(avgWeightPerBag)) {

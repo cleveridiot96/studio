@@ -184,7 +184,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + (Number(miscExpenses) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
     
     const grossProfit = totalGoodsValue - totalBasePurchaseCost;
-    const netProfit = grossProfit - totalSaleSideExpenses;
+    const netProfit = totalGoodsValue - totalLandedCost - totalSaleSideExpenses;
 
     return { 
       totalGoodsValue,
@@ -277,7 +277,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           const apportionedSaleExpenses = summary.totalSaleSideExpenses * itemProportion;
 
           const itemGrossProfit = goodsValue - (netWeight * basePurchaseRate);
-          const itemNetProfit = itemGrossProfit - apportionedSaleExpenses;
+          const itemNetProfit = goodsValue - (netWeight * landedCostPerKg) - apportionedSaleExpenses;
           
           return {
               lotNumber: item.lotNumber,
@@ -527,7 +527,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                   <span>Net Profit:</span> 
                                   <Tooltip>
                                       <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{Math.round(summary.netProfit).toLocaleString('en-IN')}</span></TooltipTrigger>
-                                      <TooltipContent><p>(Gross Profit) - (Sale Expenses)</p></TooltipContent>
+                                      <TooltipContent><p>(Goods Value) - (Landed Cost) - (Sale Expenses)</p></TooltipContent>
                                   </Tooltip>
                               </div>
                             </div>

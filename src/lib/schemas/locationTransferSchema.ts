@@ -84,7 +84,7 @@ export const locationTransferSchema = (
       if (item.bagsToTransfer > availableBagsInStock) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Bags (${item.bagsToTransfer}) exceed available stock (${Math.round(availableBagsInStock)}).`,
+          message: `Bags (${Math.round(item.bagsToTransfer)}) exceed available stock (${Math.round(availableBagsInStock)}).`,
           path: ["items", index, "bagsToTransfer"],
         });
       }
