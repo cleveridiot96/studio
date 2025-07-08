@@ -77,9 +77,9 @@ const SearchBar = () => {
                     onSelect={() => handleSelectResult(item.href)}
                     className="cursor-pointer"
                   >
-                    <div className="flex flex-col">
+                    <div className="flex flex-col uppercase">
                       <span className="font-medium">{item.title}</span>
-                      <span className="text-xs text-muted-foreground capitalize">
+                      <span className="text-xs text-muted-foreground uppercase">
                         {item.type} {item.date ? `- ${format(parseISO(item.date), 'dd/MM/yy')}` : ''}
                       </span>
                     </div>

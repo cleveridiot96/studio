@@ -111,7 +111,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between text-sm", !value && "text-muted-foreground", className)}
+          className={cn("w-full justify-between text-sm uppercase", !value && "text-muted-foreground", className)}
           disabled={disabled}
         >
           <span className="truncate">
@@ -166,7 +166,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         <div
                           onClick={() => handleSelect(option.value)}
                           className={cn(
-                            "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                            "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground uppercase",
                             value === option.value && "font-semibold"
                           )}
                           role="option"

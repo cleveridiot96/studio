@@ -334,7 +334,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                       <div className="space-y-2">
                         {fields.map((item, index) => (
                           <div key={item.id} className="flex items-center gap-2 p-2 border rounded-md">
-                            <div className="flex-grow">
+                            <div className="flex-grow uppercase">
                                 <p className="font-semibold">{item.billVakkal}</p>
                                 <p className="text-xs text-muted-foreground">Due: ₹{pendingBills.find(b=>b.id === item.billId)?.due.toLocaleString('en-IN') || item.billTotal?.toLocaleString('en-IN')} | Date: {item.billDate ? format(parseISO(item.billDate), 'dd/MM/yy') : ''}</p>
                             </div>
@@ -360,7 +360,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                                         <ScrollArea className="h-48">
                                             {pendingBills.filter(pb => !fields.some(f => f.billId === pb.id)).map(bill => (
                                                 <CommandItem key={bill.id} onSelect={() => { addBillToAllocate(bill); setIsBillPopoverOpen(false); }}>
-                                                    <div className="flex justify-between w-full">
+                                                    <div className="flex justify-between w-full uppercase">
                                                         <span>{bill.billNumber || bill.id.slice(-5)} ({bill.items.map(i=>i.lotNumber).join(', ')})</span>
                                                         <span className="font-semibold">₹{bill.due.toLocaleString('en-IN')}</span>
                                                     </div>

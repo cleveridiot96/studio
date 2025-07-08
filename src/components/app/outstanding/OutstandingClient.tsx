@@ -113,13 +113,13 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                         </TableHeader>
                         <TableBody>
                             {sortedData.map(item => (
-                                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
+                                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50 uppercase" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
                                     <TableCell className="font-medium">{item.partyName}</TableCell>
                                     <TableCell>{item.vakkal}</TableCell>
                                     <TableCell className="font-bold text-right">₹{item.balance.toLocaleString('en-IN')}</TableCell>
                                     <TableCell>{format(parseISO(item.dueDate), 'dd/MM/yy')}</TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className={cn({
+                                        <Badge variant="outline" className={cn("uppercase", {
                                             'bg-green-100 text-green-800 border-green-300': item.status === 'Paid',
                                             'bg-yellow-100 text-yellow-800 border-yellow-300': item.status === 'Partially Paid' || item.status === 'Pending',
                                             'bg-red-100 text-red-800 border-red-300': item.status === 'Overdue',
@@ -207,34 +207,36 @@ export function OutstandingClient() {
     }
 
     const processTransactions = (transactions: (Sale | Purchase)[], type: 'Sale' | 'Purchase'): OutstandingTransaction[] => {
-        return transactions.filter(tx => periodFilter(tx.date)).map(tx => {
+        return transactions.filter(tx => periodFilter(tx.date)).flatMap(tx => {
             const partyId = type === 'Sale' ? ((tx as Sale).brokerId || (tx as Sale).customerId) : ((tx as Purchase).agentId || (tx as Purchase).supplierId);
             const party = allMasters.find(m => m.id === partyId);
-            const amount = type === 'Sale' ? (tx as Sale).billedAmount : (tx as Purchase).totalAmount;
             
-            const vakkal = (tx.items.map(i => i.lotNumber)).join(', ');
-            
-            const paymentPool = paymentPools.get(partyId) || 0;
-            const paid = Math.min(paymentPool, amount);
-            const balance = amount - paid;
-            
-            if (paymentPool > 0) {
-                paymentPools.set(partyId, paymentPool - paid);
-            }
-            
-            const dueDate = format(addDays(parseISO(tx.date), 30), 'yyyy-MM-dd'); // Assuming 30 days due date
-            const isOverdue = new Date() > parseISO(dueDate) && balance > 0;
+            return tx.items.map(item => {
+              const itemProportion = tx.totalGoodsValue > 0 ? item.goodsValue / tx.totalGoodsValue : (1 / tx.items.length);
+              const amount = (type === 'Sale' ? (tx as Sale).billedAmount : (tx as Purchase).totalAmount) * itemProportion;
 
-            let status: OutstandingTransaction['status'] = 'Pending';
-            if (balance <= 0.01) status = 'Paid';
-            else if (paid > 0) status = 'Partially Paid';
-            
-            if (isOverdue && status !== 'Paid') status = 'Overdue';
+              const paymentPool = paymentPools.get(partyId) || 0;
+              const paid = Math.min(paymentPool, amount);
+              const balance = amount - paid;
+              
+              if (paymentPool > 0) {
+                  paymentPools.set(partyId, paymentPool - paid);
+              }
+              
+              const dueDate = format(addDays(parseISO(tx.date), 30), 'yyyy-MM-dd'); // Assuming 30 days due date
+              const isOverdue = new Date() > parseISO(dueDate) && balance > 0;
 
-            return {
-                id: tx.id, partyId: partyId, partyName: party?.name || 'Unknown Party', partyType: party?.type || 'Unknown',
-                type, vakkal, date: tx.date, dueDate, amount, paid, balance, status,
-            };
+              let status: OutstandingTransaction['status'] = 'Pending';
+              if (balance <= 0.01) status = 'Paid';
+              else if (paid > 0) status = 'Partially Paid';
+              
+              if (isOverdue && status !== 'Paid') status = 'Overdue';
+
+              return {
+                  id: `${tx.id}-${item.lotNumber}`, partyId: partyId, partyName: party?.name || 'Unknown Party', partyType: party?.type || 'Unknown',
+                  type, vakkal: item.lotNumber, date: tx.date, dueDate, amount, paid, balance, status,
+              };
+            });
         }).filter(tx => tx.balance > 0.01);
     };
 

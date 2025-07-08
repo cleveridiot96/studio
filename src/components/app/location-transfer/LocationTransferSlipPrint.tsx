@@ -17,7 +17,7 @@ export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps>
   const totalGrossWeight = transfer.items.reduce((sum, item) => sum + item.grossWeightToTransfer, 0);
 
   return (
-    <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
+    <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles uppercase">
       <style jsx global>{`
         .print-chitti-styles { font-family: sans-serif; line-height: 1.4; }
         .print-chitti-styles h1, .print-chitti-styles h2, .print-chitti-styles h3 { margin-top: 0.5em; margin-bottom: 0.25em; }

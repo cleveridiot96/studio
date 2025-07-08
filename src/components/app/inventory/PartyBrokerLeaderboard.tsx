@@ -46,7 +46,7 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
             </TableHeader>
             <TableBody>
               {stockListData.map((item, index) => (
-                <TableRow key={`${item.lotNumber}-${item.locationId}`}>
+                <TableRow key={`${item.lotNumber}-${item.locationId}`} className="uppercase">
                   <TableCell className="font-bold">{index + 1}</TableCell>
                   <TableCell className="font-medium">{item.lotNumber}</TableCell>
                   <TableCell>{item.locationName}</TableCell>

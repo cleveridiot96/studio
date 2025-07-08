@@ -41,7 +41,7 @@ const SaleReturnTableComponent: React.FC<SaleReturnTableProps> = ({ data, onEdit
           </TableHeader>
           <TableBody>
             {data.map((sr) => (
-              <TableRow key={sr.id}>
+              <TableRow key={sr.id} className="uppercase">
                 <TableCell>{format(parseISO(sr.date), "dd/MM/yy")}</TableCell>
                 <TableCell>
                   <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{sr.originalBillNumber || sr.originalSaleId.slice(-5)}</span></TooltipTrigger>

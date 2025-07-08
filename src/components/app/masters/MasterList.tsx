@@ -76,7 +76,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
             const TypeIcon = typeIconMap[item.type] || Users;
             const isFixed = fixedItemIds.includes(item.id);
             return (
-              <TableRow key={item.id}>
+              <TableRow key={item.id} className="uppercase">
                 <TableCell className="font-medium whitespace-nowrap p-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -92,7 +92,7 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
                 </TableCell>
                 {showTypeColumn && (
                   <TableCell className="whitespace-nowrap p-2">
-                    <Badge variant="secondary" className="text-xs capitalize">
+                    <Badge variant="secondary" className="text-xs uppercase">
                       <TypeIcon className="w-3 h-3 mr-1.5" />
                       {item.type}
                     </Badge>

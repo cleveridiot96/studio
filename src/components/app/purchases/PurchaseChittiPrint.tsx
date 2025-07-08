@@ -15,7 +15,7 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
   const totalExpenses = (purchase.transportCharges || 0) + (purchase.packingCharges || 0) + (purchase.labourCharges || 0) + (purchase.brokerageCharges || 0) + (purchase.miscExpenses || 0);
 
   return (
-    <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
+    <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles uppercase">
       <style jsx global>{`
         .print-chitti-styles { font-family: Arial, sans-serif; line-height: 1.4; }
         .print-chitti-styles h1, .print-chitti-styles h2 { margin: 0; padding: 0; }

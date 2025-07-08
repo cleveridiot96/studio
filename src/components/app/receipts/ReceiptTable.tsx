@@ -54,10 +54,10 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
           </TableHeader>
           <TableBody>
             {data.map((receipt) => (
-              <TableRow key={receipt.id}>
+              <TableRow key={receipt.id} className="uppercase">
                 <TableCell>{format(parseISO(receipt.date), "dd/MM/yy")}</TableCell>
                 <TableCell>{receipt.partyName || receipt.partyId}</TableCell>
-                <TableCell><Badge variant="secondary">{receipt.partyType}</Badge></TableCell>
+                <TableCell><Badge variant="secondary" className="uppercase">{receipt.partyType}</Badge></TableCell>
                 <TableCell className="text-right font-semibold">{receipt.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-right">{receipt.cashDiscount?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                 <TableCell>{receipt.paymentMethod}</TableCell>

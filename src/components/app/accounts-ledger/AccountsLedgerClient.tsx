@@ -371,7 +371,7 @@ export function AccountsLedgerClient() {
         <Card id="ledger-t-account" className="shadow-lg p-4 flex flex-col flex-1">
           <CardHeader className="text-center">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
-            <CardTitle className="text-2xl text-primary flex items-center justify-center">
+            <CardTitle className="text-2xl text-primary flex items-center justify-center uppercase">
               <BookCopy className="mr-3 h-7 w-7 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type})
             </CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -405,8 +405,8 @@ export function AccountsLedgerClient() {
                                     <TableRow key={tx.id}>
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>
-                                        <div className="flex items-center gap-2">
-                                          <Badge variant="outline">{tx.type}</Badge>
+                                        <div className="flex items-center gap-2 uppercase">
+                                          <Badge variant="outline" className="uppercase">{tx.type}</Badge>
                                           {tx.transactionDetails ? (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
@@ -462,8 +462,8 @@ export function AccountsLedgerClient() {
                                     <TableRow key={tx.id}>
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary">{tx.type}</Badge>
+                                        <div className="flex items-center gap-2 uppercase">
+                                            <Badge variant="secondary" className="uppercase">{tx.type}</Badge>
                                             {tx.transactionDetails ? (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
@@ -504,7 +504,7 @@ export function AccountsLedgerClient() {
                   <span className={financialLedgerData.balanceType === 'Dr' ? 'text-green-700' : 'text-red-700'}>
                       ₹{Math.abs(financialLedgerData.closingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {financialLedgerData.balanceType}
                   </span>
-                  <p className="text-xs text-muted-foreground font-normal">({financialLedgerData.balanceType === 'Dr' ? 'Receivable from party' : 'Payable to party'})</p>
+                  <p className="text-xs text-muted-foreground font-normal uppercase">({financialLedgerData.balanceType === 'Dr' ? 'Receivable from party' : 'Payable to party'})</p>
               </div>
           </CardFooter>
         </Card>
@@ -518,10 +518,10 @@ export function AccountsLedgerClient() {
         >
           <div className="text-center">
             <BookCopy className="h-16 w-16 text-accent mb-4 mx-auto" />
-            <p className="text-xl text-muted-foreground">
+            <p className="text-xl text-muted-foreground uppercase">
               {allMasters.length === 0 && hydrated ? "No parties found." : "Please select a party to view their accounts ledger."}
             </p>
-            <p className="text-sm text-muted-foreground mt-2">(Click here to select)</p>
+            <p className="text-sm text-muted-foreground mt-2 uppercase">(Click here to select)</p>
           </div>
         </Card>
       )}

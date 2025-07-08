@@ -168,7 +168,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          {field.value ? format(field.value, "dd/MM/yy") : <span>Pick a date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -201,7 +201,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
                 </FormItem>)}
               />
               {selectedOriginalPurchase && (
-                <div className="p-3 border rounded-md bg-muted/50 text-sm">
+                <div className="p-3 border rounded-md bg-muted/50 text-sm uppercase">
                   <p><strong>Lot(s):</strong> {selectedOriginalPurchase.items.map(i => i.lotNumber).join(', ')}</p>
                   <p><strong>Supplier:</strong> {selectedOriginalPurchase.supplierName || selectedOriginalPurchase.supplierId}</p>
                   <p><strong>Original Rate:</strong> ₹{selectedOriginalPurchase.items[0]?.rate.toFixed(2)}/kg</p>

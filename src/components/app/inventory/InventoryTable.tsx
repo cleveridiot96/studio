@@ -52,6 +52,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
             <TableRow
               key={`${item.lotNumber}-${item.locationId}`}
               className={cn(
+                "uppercase",
                 isArchivedView ? 'bg-muted/40' : '',
                 !isArchivedView && item.isDeadStock && "bg-destructive text-destructive-foreground",
                 !isArchivedView && !item.isDeadStock && item.currentBags <= 0 && "bg-red-50 dark:bg-red-900/30",
@@ -68,13 +69,13 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               <TableCell>{item.sourceType === 'Transfer' ? item.sourceDetails : 'Purchase'}</TableCell>
               <TableCell>{item.purchaseDate ? format(parseISO(item.purchaseDate), 'dd/MM/yy') : 'N/A'}</TableCell>
               <TableCell className="text-center">
-                {isArchivedView ? (<Badge variant="outline">Archived</Badge>) :
-                item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :
-                item.currentBags <= 0 ? (<Badge variant="destructive">Zero Stock</Badge>) :
-                item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100">Low Stock</Badge>) :
-                (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white"><TrendingUp className="h-3 w-3 mr-1" /> Fast</Badge>) :
-                (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white"><TrendingDown className="h-3 w-3 mr-1" /> Slow</Badge>) :
-                (<Badge variant="secondary">In Stock</Badge>)}
+                {isArchivedView ? (<Badge variant="outline" className="uppercase">Archived</Badge>) :
+                item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground uppercase">Dead Stock</Badge>) :
+                item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase">Zero Stock</Badge>) :
+                item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">Low Stock</Badge>) :
+                (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white uppercase"><TrendingUp className="h-3 w-3 mr-1" /> Fast</Badge>) :
+                (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase"><TrendingDown className="h-3 w-3 mr-1" /> Slow</Badge>) :
+                (<Badge variant="secondary" className="uppercase">In Stock</Badge>)}
               </TableCell>
               <TableCell className="text-center no-print">
                 <DropdownMenu>

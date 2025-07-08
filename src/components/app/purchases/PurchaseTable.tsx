@@ -78,7 +78,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   key={purchase.id}
                   onClick={() => hasMultipleItems && toggleRow(purchase.id)}
                   className={cn(
-                    "text-xs",
+                    "text-xs uppercase",
                     hasMultipleItems && "cursor-pointer bg-purple-50/50 dark:bg-purple-900/20",
                     isExpanded && "!bg-purple-100 dark:!bg-purple-900/50 font-semibold"
                   )}
@@ -163,7 +163,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <TableCell className="p-1" colSpan={2}></TableCell>
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
-                  <TableRow key={`${purchase.id}-item-${index}`} className="bg-purple-50 dark:bg-purple-900/40 text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50">
+                  <TableRow key={`${purchase.id}-item-${index}`} className="bg-purple-50 dark:bg-purple-900/40 text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50 uppercase">
                       <TableCell className="p-1" />
                       <TableCell className="p-1 font-medium" colSpan={4}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>

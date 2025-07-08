@@ -84,7 +84,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   key={sale.id}
                   onClick={() => hasMultipleItems && toggleRow(sale.id)}
                   className={cn(
-                    "text-xs",
+                    "text-xs uppercase",
                     hasMultipleItems && "cursor-pointer bg-blue-50/50 dark:bg-blue-900/20",
                     isExpanded && "!bg-blue-100 dark:!bg-blue-900/50 font-semibold"
                   )}
@@ -164,7 +164,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     <TableCell className="p-1" colSpan={3}></TableCell>
                 </TableRow>,
                 ...sale.items.map((item, index) => (
-                  <TableRow key={`${sale.id}-item-${index}`} className="bg-blue-50 dark:bg-blue-900/40 text-xs hover:bg-blue-100/50 dark:hover:bg-blue-800/50">
+                  <TableRow key={`${sale.id}-item-${index}`} className="bg-blue-50 dark:bg-blue-900/40 text-xs hover:bg-blue-100/50 dark:hover:bg-blue-800/50 uppercase">
                       <TableCell className="p-1" />
                       <TableCell className="p-1 font-medium" colSpan={3}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>
@@ -201,4 +201,3 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
-

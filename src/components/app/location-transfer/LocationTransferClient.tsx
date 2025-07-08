@@ -344,7 +344,7 @@ export function LocationTransferClient() {
                         <TableBody>
                             {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
                             {aggregatedStockForForm.map(item => (
-                                <TableRow key={`${item.locationId}-${item.lotNumber}`}>
+                                <TableRow key={`${item.locationId}-${item.lotNumber}`} className="uppercase">
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName}</span></TooltipTrigger><TooltipContent><p>{item.locationName}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
@@ -365,7 +365,7 @@ export function LocationTransferClient() {
                   <TableBody>
                     {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
                     {expandedTransfers.map(transfer => (
-                      <TableRow key={`${transfer.id}-${transfer.item.originalLotNumber}`}>
+                      <TableRow key={`${transfer.id}-${transfer.item.originalLotNumber}`} className="uppercase">
                         <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>

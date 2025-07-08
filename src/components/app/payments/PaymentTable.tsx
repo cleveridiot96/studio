@@ -53,10 +53,10 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
           </TableHeader>
           <TableBody>
             {data.map((payment) => (
-              <TableRow key={payment.id}>
+              <TableRow key={payment.id} className="uppercase">
                 <TableCell>{format(parseISO(payment.date), "dd/MM/yy")}</TableCell>
                 <TableCell>{payment.partyName || payment.partyId}</TableCell>
-                <TableCell><Badge variant="secondary">{payment.partyType}</Badge></TableCell>
+                <TableCell><Badge variant="secondary" className="uppercase">{payment.partyType}</Badge></TableCell>
                 <TableCell>{payment.paymentMethod}</TableCell>
                 <TableCell className="truncate max-w-xs">
                   {payment.notes ? (

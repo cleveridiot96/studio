@@ -16,7 +16,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
   const totalSaleSideExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
 
   return (
-    <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles">
+    <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles uppercase">
       <style jsx global>{`
         .print-chitti-styles { font-family: sans-serif; line-height: 1.4; }
         .print-chitti-styles h1, .print-chitti-styles h2, .print-chitti-styles h3 { margin-top: 0.5em; margin-bottom: 0.25em; }
@@ -153,5 +153,3 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
     </div>
   );
 };
-
-  

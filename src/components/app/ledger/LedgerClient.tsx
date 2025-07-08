@@ -279,7 +279,7 @@ export function LedgerClient() {
         <Card id="ledger-t-account" className="shadow-lg p-4 flex flex-col flex-1">
           <CardHeader className="text-center">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
-            <CardTitle className="text-2xl text-primary flex items-center justify-center">
+            <CardTitle className="text-2xl text-primary flex items-center justify-center uppercase">
               <BookUser className="mr-3 h-7 w-7 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type})
             </CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -311,7 +311,7 @@ export function LedgerClient() {
                                   <TableRow><TableCell colSpan={5} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.debitTransactions.map(tx => (
-                                    <TableRow key={tx.id}>
+                                    <TableRow key={tx.id} className="uppercase">
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
                                       <TableCell>{tx.party}</TableCell>
@@ -357,7 +357,7 @@ export function LedgerClient() {
                                   <TableRow><TableCell colSpan={5} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.creditTransactions.map(tx => (
-                                    <TableRow key={tx.id}>
+                                    <TableRow key={tx.id} className="uppercase">
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
                                       <TableCell>{tx.party}</TableCell>
@@ -385,10 +385,10 @@ export function LedgerClient() {
           <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
               <div className="text-right font-bold text-lg">
                   <span>Closing Stock Balance: </span>
-                  <span className={ledgerData.closingStock.kg >= 0 ? 'text-green-700' : 'text-red-700'}>
+                  <span className={`uppercase ${ledgerData.closingStock.kg >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {ledgerData.closingStock.bags.toLocaleString()} Bags / {ledgerData.closingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})} kg
                   </span>
-                  <p className="text-xs text-muted-foreground font-normal">(Debit - Credit for the selected period)</p>
+                  <p className="text-xs text-muted-foreground font-normal uppercase">(Debit - Credit for the selected period)</p>
               </div>
           </CardFooter>
         </Card>
@@ -397,8 +397,8 @@ export function LedgerClient() {
           onClick={() => { document.getElementById('ledger-party-selector-trigger')?.click(); }}>
           <div className="text-center">
             <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />
-            <p className="text-xl text-muted-foreground">{allMasters.length === 0 && hydrated ? "No suppliers/brokers/agents found." : "Please select a party to view their stock ledger."}</p>
-            <p className="text-sm text-muted-foreground mt-2">(Click here to select)</p>
+            <p className="text-xl text-muted-foreground uppercase">{allMasters.length === 0 && hydrated ? "No suppliers/brokers/agents found." : "Please select a party to view their stock ledger."}</p>
+            <p className="text-sm text-muted-foreground mt-2 uppercase">(Click here to select)</p>
           </div>
         </Card>
       )}

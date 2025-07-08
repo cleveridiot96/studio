@@ -177,7 +177,7 @@ export function ProfitAnalysisClient() {
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Net Profit (Selected Period)</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className={`text-2xl font-bold ${(kpiData.totalNetProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{(kpiData.totalNetProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Sales Value</CardTitle><BarChart3 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{(kpiData.totalSalesValue || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
             <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Avg. Profit / Sale</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{(kpiData.avgProfitPerSale || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Sale</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground">Profit: ₹{(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Sale</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate uppercase">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground">Profit: ₹{(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</p></CardContent></Card>
         </div>
 
         <Tabs defaultValue="transactional" className="w-full">
@@ -209,7 +209,7 @@ export function ProfitAnalysisClient() {
                                     </TableHeader>
                                     <TableBody>
                                         {filteredTransactionsForPeriod.map((tx, index) => (
-                                            <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`}>
+                                            <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`} className="uppercase">
                                                 <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
                                                 <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
@@ -246,7 +246,7 @@ export function ProfitAnalysisClient() {
                                     </TableHeader>
                                     <TableBody>
                                         {monthlySummaryForFY.map(m => (
-                                            <TableRow key={m.monthKey} onClick={() => handleMonthClick(m.monthKey)} className="cursor-pointer hover:bg-muted">
+                                            <TableRow key={m.monthKey} onClick={() => handleMonthClick(m.monthKey)} className="cursor-pointer hover:bg-muted uppercase">
                                                 <TableCell className="font-medium px-2 py-1 text-xs">{m.monthYear}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{m.transactionCount}</TableCell>
                                                 <TableCell className={`text-right font-semibold px-2 py-1 text-xs ${(m.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{(m.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
