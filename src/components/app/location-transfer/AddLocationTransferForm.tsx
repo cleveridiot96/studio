@@ -209,12 +209,28 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   };
 
   const handleNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (e.target.value === '0') {
-      const fieldName = e.target.name;
-      methods.setValue(fieldName as any, undefined, { shouldValidate: true });
+    const target = e.target;
+    if (target.value === '0') {
+      const fieldName = target.name as keyof LocationTransferFormValues;
+      // This type assertion is complex due to nested fields.
+      // We will handle it carefully.
+      if (typeof fieldName === 'string' && fieldName.startsWith('items.')) {
+         setValue(fieldName as any, undefined, { shouldValidate: true });
+      } else {
+         setValue(fieldName as any, undefined, { shouldValidate: true });
+      }
     } else {
-      e.target.select();
+      target.select();
     }
+  };
+  
+  const handleItemNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>, fieldName: any) => {
+     const target = e.target;
+     if (target.value === '0') {
+        setValue(fieldName, undefined, { shouldValidate: true });
+     } else {
+        target.select();
+     }
   };
 
   if (!isOpen) return null;
@@ -240,7 +256,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                {field.value ? format(field.value, "dd/MM/yy") : <span>Pick a date</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
@@ -310,7 +326,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField}
                             value={itemField.value ?? ''}
-                            onFocus={handleNumericInputFocus}
+                            onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.bagsToTransfer`)}
                             onChange={e => {
                               const bagsVal = parseFloat(e.target.value) || undefined;
                               itemField.onChange(bagsVal);
@@ -330,13 +346,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''} onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.netWeightToTransfer`)} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.grossWeightToTransfer`)} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
@@ -386,7 +402,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     )} />
                     <FormField control={control} name="transportCharges" render={({ field }) => (
                         <FormItem><FormLabel>Total Transport (₹)</FormLabel>
-                            <FormControl><Input type="number" step="0.01" placeholder="Calculated..." {...field}
+                            <FormControl><Input type="number" step="0.01" placeholder="Auto-calculated" {...field}
                                 value={field.value ?? ''}
                                 onFocus={handleNumericInputFocus}
                                 onChange={e => {

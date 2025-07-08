@@ -46,7 +46,6 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
               <TableHead>Party Name</TableHead>
               <TableHead>Party Type</TableHead>
               <TableHead>Method</TableHead>
-              <TableHead>Source</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead className="text-right">Amount (₹)</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
@@ -59,7 +58,6 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
                 <TableCell>{payment.partyName || payment.partyId}</TableCell>
                 <TableCell><Badge variant="secondary">{payment.partyType}</Badge></TableCell>
                 <TableCell>{payment.paymentMethod}</TableCell>
-                <TableCell>{payment.source || 'N/A'}</TableCell>
                 <TableCell className="truncate max-w-xs">
                   {payment.notes ? (
                     <Tooltip>

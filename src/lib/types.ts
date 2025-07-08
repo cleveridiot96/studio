@@ -169,6 +169,13 @@ export interface InventoryItem {
   purchaseDate?: string;
 }
 
+export interface AllocatedBill {
+  billId: string;
+  amount: number;
+  billDate?: string;
+  billTotal?: number;
+  billVakkal?: string;
+}
 export interface Payment {
   id: string;
   date: string; // ISO string date
@@ -180,7 +187,7 @@ export interface Payment {
   notes?: string;
   source?: string;
   transactionType: 'Against Bill' | 'On Account';
-  againstBills?: { billId: string; allocated: number }[];
+  allocatedBills?: AllocatedBill[];
 }
 
 export interface Receipt {
@@ -193,7 +200,7 @@ export interface Receipt {
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   notes?: string;
   transactionType: 'Against Bill' | 'On Account';
-  againstBills?: { billId: string; allocated: number }[];
+  allocatedBills?: AllocatedBill[];
   cashDiscount?: number; // Optional - amount of discount given at time of receipt
   source?: string;
 }

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter } from "@/lib/types";
+import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter, Purchase, Sale } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
+const PURCHASES_STORAGE_KEY = 'purchasesData';
 
 const initialPaymentsData: Payment[] = [];
 
@@ -45,6 +46,7 @@ export function PaymentsClient() {
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyMasters);
 
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
@@ -167,6 +169,8 @@ export function PaymentsClient() {
           parties={allPaymentParties}
           onMasterDataUpdate={handleMasterDataUpdate}
           paymentToEdit={paymentToEdit}
+          allPurchases={purchases}
+          allPayments={payments}
         />
       )}
 

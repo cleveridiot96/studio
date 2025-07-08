@@ -48,7 +48,6 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
               <TableHead className="text-right">Amount (₹)</TableHead>
               <TableHead className="text-right">Discount (₹)</TableHead>
               <TableHead>Method</TableHead>
-              <TableHead>Source</TableHead>
               <TableHead>Notes</TableHead>
               <TableHead className="text-center w-[80px]">Actions</TableHead>
             </TableRow>
@@ -62,7 +61,6 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
                 <TableCell className="text-right font-semibold">{receipt.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-right">{receipt.cashDiscount?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                 <TableCell>{receipt.paymentMethod}</TableCell>
-                <TableCell>{receipt.source || 'N/A'}</TableCell>
                 <TableCell className="truncate max-w-xs">
                   {receipt.notes ? (
                     <Tooltip>

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Receipt, MasterItem, MasterItemType, Customer, Broker } from "@/lib/types";
+import type { Receipt, MasterItem, MasterItemType, Customer, Broker, Sale } from "@/lib/types";
 import { ReceiptTable } from "./ReceiptTable";
 import { AddReceiptForm } from "./AddReceiptForm";
 import { useToast } from "@/hooks/use-toast";
@@ -22,10 +22,13 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { salesMigrator } from '@/lib/dataMigrators';
+
 
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
+const SALES_STORAGE_KEY = 'salesData';
 
 // Initial data sets - changed to empty arrays for clean slate on format
 const initialReceiptsData: Receipt[] = [];
@@ -41,6 +44,7 @@ export function ReceiptsClient() {
   const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
@@ -156,6 +160,8 @@ export function ReceiptsClient() {
           parties={allReceiptParties}
           onMasterDataUpdate={handleMasterDataUpdate}
           receiptToEdit={receiptToEdit}
+          allSales={sales}
+          allReceipts={receipts}
         />
       )}
 

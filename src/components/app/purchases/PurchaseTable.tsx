@@ -64,7 +64,6 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead className="h-10 px-2 text-right">Net Wt.(kg)</TableHead>
               <TableHead className="h-10 px-2 text-right">Goods Value (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Landed Rate (₹/kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Brokerage (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Total Cost (₹)</TableHead>
               <TableHead className="h-10 px-2 text-center">Actions</TableHead>
             </TableRow>
@@ -117,7 +116,6 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   <TableCell className="p-2 text-right font-medium">
                     {(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
-                  <TableCell className="p-2 text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                   <TableCell className="p-2 text-right font-semibold">
                     {(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
@@ -160,10 +158,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <TableCell className="p-1 font-semibold text-muted-foreground" colSpan={4}>Vakkal Breakdown</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value (₹)</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value (₹)</TableCell>
                     <TableCell className="p-1" colSpan={2}></TableCell>
-                    <TableCell className="p-1 w-10" />
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
                   <TableRow key={`${purchase.id}-item-${index}`} className="bg-purple-50 dark:bg-purple-900/40 text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50">
@@ -171,10 +168,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                       <TableCell className="p-1 font-medium" colSpan={4}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-1">{item.netWeight.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-1 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="text-right p-1">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="p-1" colSpan={2}></TableCell>
-                      <TableCell className="p-1" />
                   </TableRow>
                 ))
               ] : [];
