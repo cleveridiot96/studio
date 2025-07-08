@@ -351,7 +351,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                    {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot No.</FormLabel>
+                        <FormItem className="md:col-span-3"><FormLabel>Vakkal/Lot No.</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="e.g., AB/6 or BU-5" 
@@ -399,6 +399,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <FormItem className="md:col-span-2"><FormLabel>Rate</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)}/></FormControl>
                           <FormMessage /></FormItem>)} />
+                      <div className="md:col-span-2">
+                        <FormLabel>Goods Value (₹)</FormLabel>
+                        <div className="font-medium text-sm h-10 flex items-center px-3 border border-dashed rounded-md bg-muted/50 text-foreground/80">
+                            {(summary.itemsWithLandedCost[index]?.goodsValue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </div>
+                      </div>
                       <div className="md:col-span-1 flex items-end justify-end">
                         <Button type="button" variant="destructive" size="icon" onClick={() => (fields.length > 1 ? remove(index) : null)} disabled={fields.length <= 1}>
                           <Trash2 className="h-4 w-4" />
