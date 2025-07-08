@@ -131,6 +131,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   
   const watchedFormValues = watch();
+  const selectedBrokerId = watch("brokerId");
 
   const summary = React.useMemo(() => {
     const {
@@ -196,23 +197,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
   }, [isOpen, saleToEdit, reset, getDefaultValues]);
 
-  const selectedBrokerId = watch("brokerId");
-
-  // Effect to auto-populate brokerage fields from the selected broker's master data.
   React.useEffect(() => {
     if (selectedBrokerId) {
       const broker = brokers.find(b => b.id === selectedBrokerId);
-      if (broker) {
-        // Set brokerage type and value from master data. User can still override manually.
-        setValue("brokerageType", broker.commissionType, { shouldValidate: true });
-        setValue("brokerageValue", broker.commission, { shouldValidate: true });
-      } else {
-        // Clear fields if broker is not found.
-        setValue("brokerageType", undefined, { shouldValidate: true });
-        setValue("brokerageValue", undefined, { shouldValidate: true });
-      }
+      // If broker is found, set values from master data. They can be undefined.
+      setValue("brokerageType", broker?.commissionType, { shouldValidate: true });
+      setValue("brokerageValue", broker?.commission, { shouldValidate: true });
     } else {
-      // Clear fields if no broker is selected.
+      // If no broker, clear the fields.
       setValue("brokerageType", undefined, { shouldValidate: true });
       setValue("brokerageValue", undefined, { shouldValidate: true });
     }

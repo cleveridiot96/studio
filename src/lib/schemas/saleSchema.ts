@@ -99,16 +99,19 @@ export const saleSchema = (
 
   // Brokerage validation, only if a broker is actually selected.
   if (data.brokerId) {
-    if (data.brokerageValue && data.brokerageValue > 0 && !data.brokerageType) {
+    const valueExists = data.brokerageValue !== undefined && data.brokerageValue > 0;
+    const typeExists = !!data.brokerageType;
+
+    if (valueExists && !typeExists) {
         ctx.addIssue({
             path: ["brokerageType"],
-            message: "Type is required when a value is entered.",
+            message: "Type is required when value is entered.",
         });
     }
-    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue <= 0)) {
+    if (typeExists && !valueExists) {
         ctx.addIssue({
             path: ["brokerageValue"],
-            message: "A positive value is required for the selected type.",
+            message: "Value is required when type is selected.",
         });
     }
   }

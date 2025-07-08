@@ -178,21 +178,14 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
   
-  // Effect to auto-populate brokerage fields from the selected agent's master data.
   React.useEffect(() => {
     if (watchedAgentId) {
       const agent = agents.find(a => a.id === watchedAgentId);
-      if (agent) {
-        // Set brokerage type and value. If they don't exist on the agent, they will be set to undefined.
-        setValue("brokerageType", agent.commissionType, { shouldValidate: true });
-        setValue("brokerageValue", agent.commission, { shouldValidate: true });
-      } else {
-        // If agent is not found (e.g., during initial load or data inconsistency), clear fields.
-        setValue("brokerageType", undefined, { shouldValidate: true });
-        setValue("brokerageValue", undefined, { shouldValidate: true });
-      }
+      // If agent is found, set values from master data. They can be undefined.
+      setValue("brokerageType", agent?.commissionType, { shouldValidate: true });
+      setValue("brokerageValue", agent?.commission, { shouldValidate: true });
     } else {
-      // If no agent is selected, ensure brokerage fields are cleared.
+      // If no agent, clear the fields.
       setValue("brokerageType", undefined, { shouldValidate: true });
       setValue("brokerageValue", undefined, { shouldValidate: true });
     }

@@ -45,19 +45,23 @@ export const purchaseSchema = (
   brokerageValue: z.coerce.number().optional(),
   miscExpenses: z.coerce.number().nonnegative("Expenses must be non-negative").optional(),
 }).superRefine((data, ctx) => {
-    // If brokerage value is entered, type is required.
-    if (data.brokerageValue && data.brokerageValue > 0 && !data.brokerageType) {
-        ctx.addIssue({
-            path: ["brokerageType"],
-            message: "Type is required when a value is entered.",
-        });
-    }
-    // If a brokerage type is selected, a value is required.
-    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue <= 0)) {
-        ctx.addIssue({
-            path: ["brokerageValue"],
-            message: "A positive value is required for the selected type.",
-        });
+    // If an agent is selected, then brokerage fields can be validated if needed
+    if (data.agentId) {
+        const valueExists = data.brokerageValue !== undefined && data.brokerageValue > 0;
+        const typeExists = !!data.brokerageType;
+
+        if (valueExists && !typeExists) {
+            ctx.addIssue({
+                path: ["brokerageType"],
+                message: "Type is required when value is entered.",
+            });
+        }
+        if (typeExists && !valueExists) {
+            ctx.addIssue({
+                path: ["brokerageValue"],
+                message: "Value is required when type is selected.",
+            });
+        }
     }
 
     const lotNumbers = new Set<string>();
