@@ -113,6 +113,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const watchedItems = watch("items");
   const watchedTransportRate = watch("transportRatePerKg");
 
+  const transferSummary = React.useMemo(() => {
+    const totalBags = (watchedItems || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
+    const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
+    const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
+    return { totalBags, totalNetWeight, totalGrossWeight };
+  }, [watchedItems]);
+
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
@@ -363,9 +370,16 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       </div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined })} className="mt-2">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
-                  </Button>
+                  <div className="flex justify-between items-start mt-2">
+                    <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined })}>
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
+                    </Button>
+                    <div className="p-3 border rounded-md bg-muted/50 text-right text-sm">
+                        <p className="font-semibold">Total Bags: <span className="font-bold text-primary">{transferSummary.totalBags.toLocaleString()}</span></p>
+                        <p className="font-semibold">Total Net Wt: <span className="font-bold text-primary">{transferSummary.totalNetWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} kg</span></p>
+                        <p className="font-semibold">Total Gross Wt: <span className="font-bold text-primary">{transferSummary.totalGrossWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} kg</span></p>
+                    </div>
+                  </div>
                    {typeof errors.items === 'object' && !Array.isArray(errors.items) && errors.items.message && (
                     <FormMessage>{errors.items.message as string}</FormMessage>
                    )}
