@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -113,11 +114,11 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-help underline decoration-dashed">
-                          {hasMultipleItems ? 'MULTIPLE' : (purchase.items[0]?.rate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          {hasMultipleItems ? 'MULTIPLE' : Math.round(purchase.items[0]?.rate || 0).toLocaleString('en-IN')}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="uppercase">LANDED RATE: ₹{(purchase.effectiveRate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        <p className="uppercase">LANDED RATE: ₹{Math.round(purchase.effectiveRate || 0).toLocaleString('en-IN')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
@@ -177,8 +178,8 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                       <TableCell className="p-1 font-medium uppercase" colSpan={4}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-1 uppercase">{Math.round(item.quantity).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right p-1 uppercase">{item.netWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-right p-1 uppercase">{(item.rate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-1 font-medium uppercase">{(item.landedCostPerKg || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{Math.round(item.rate || 0).toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right p-1 font-medium uppercase">{Math.round(item.landedCostPerKg || 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="text-right p-1 font-medium uppercase">{Math.round(item.goodsValue || 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="p-1" colSpan={1}></TableCell>
                   </TableRow>
@@ -196,3 +197,4 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 }
 
 export const PurchaseTable = React.memo(PurchaseTableComponent);
+    

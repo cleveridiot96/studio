@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Purchase } from "@/lib/types";
@@ -70,7 +71,7 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
                 <td>{item.lotNumber}</td>
                 <td className="text-right">{Math.round(item.quantity).toLocaleString('en-IN')}</td>
                 <td className="text-right">{item.netWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                <td className="text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td className="text-right">{Math.round(item.rate).toLocaleString('en-IN')}</td>
                 <td className="text-right">{Math.round(item.goodsValue).toLocaleString('en-IN')}</td>
               </tr>
             ))}
@@ -111,3 +112,4 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
     </div>
   );
 };
+    

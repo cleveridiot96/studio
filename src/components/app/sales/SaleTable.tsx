@@ -51,7 +51,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
   };
 
   if (data.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">No sales recorded yet.</p>;
+    return <p className="text-center text-muted-foreground py-8">NO SALES RECORDED YET.</p>;
   }
 
   return (
@@ -60,18 +60,18 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
         <Table className="min-w-full text-sm">
           <TableHeader>
             <TableRow>
-              <TableHead className="h-10 px-2">Date</TableHead>
-              <TableHead className="h-10 px-2">Bill No.</TableHead>
-              <TableHead className="h-10 px-2">Customer</TableHead>
-              <TableHead className="h-10 px-2">Vakkal / Lot(s)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Bags</TableHead>
-              <TableHead className="h-10 px-2 text-right">Net Wt.(kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Rate (₹/kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Total Goods Value (₹)</TableHead>
-              <TableHead className="h-10 px-2 text-right">CB Amt (₹)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Balance (₹)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Profit (₹)</TableHead>
-              <TableHead className="h-10 px-2 text-center">Actions</TableHead>
+              <TableHead className="h-10 px-2">DATE</TableHead>
+              <TableHead className="h-10 px-2">BILL NO.</TableHead>
+              <TableHead className="h-10 px-2">CUSTOMER</TableHead>
+              <TableHead className="h-10 px-2">VAKKAL / LOT(S)</TableHead>
+              <TableHead className="h-10 px-2 text-right">BAGS</TableHead>
+              <TableHead className="h-10 px-2 text-right">NET WT.(KG)</TableHead>
+              <TableHead className="h-10 px-2 text-right">RATE (₹/KG)</TableHead>
+              <TableHead className="h-10 px-2 text-right">TOTAL GOODS VALUE (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">CB AMT (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">BALANCE (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">PROFIT (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-center">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -109,34 +109,34 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                       {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 mt-0.5 ${isExpanded ? "rotate-180" : ""}`} />}
                     </div>
                   </TableCell>
-                  <TableCell className="p-2 text-right">{sale.totalQuantity.toLocaleString()}</TableCell>
+                  <TableCell className="p-2 text-right">{Math.round(sale.totalQuantity).toLocaleString()}</TableCell>
                   <TableCell className="p-2 text-right">{sale.totalNetWeight.toLocaleString()}</TableCell>
                   <TableCell className="p-2 text-right">
-                    {sale.items.length === 1 ? (sale.items[0].rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'Multiple'}
+                    {sale.items.length === 1 ? Math.round(sale.items[0].rate || 0).toLocaleString() : 'MULTIPLE'}
                   </TableCell>
                   <TableCell className="p-2 text-right font-semibold">
-                    {(sale.totalGoodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    {Math.round(sale.totalGoodsValue || 0).toLocaleString()}
                   </TableCell>
-                  <TableCell className="p-2 text-right text-destructive">{(sale.cbAmount || 0) > 0 ? (sale.cbAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</TableCell>
-                  <TableCell className="p-2 text-right font-bold text-orange-600">{(sale.balanceAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                  <TableCell className={`p-2 text-right font-semibold ${(sale.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>
-                    {(sale.totalCalculatedProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  <TableCell className="p-2 text-right text-destructive">{Math.round(sale.cbAmount || 0) > 0 ? Math.round(sale.cbAmount || 0).toLocaleString() : '-'}</TableCell>
+                  <TableCell className="p-2 text-right font-bold text-orange-600">{Math.round(sale.balanceAmount || 0).toLocaleString()}</TableCell>
+                  <TableCell className={`p-2 text-right font-semibold ${Math.round(sale.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                    {Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
                   </TableCell>
                   <TableCell className="p-2 text-center">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
+                            <span className="sr-only">ACTIONS</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => onEdit(sale)}>
-                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                            <Pencil className="mr-2 h-4 w-4" /> EDIT
                           </DropdownMenuItem>
                           {onDownloadPdf && (
                             <DropdownMenuItem onClick={() => onDownloadPdf(sale)}>
-                              <Download className="mr-2 h-4 w-4" /> Download Chitti (PDF)
+                              <Download className="mr-2 h-4 w-4" /> DOWNLOAD CHITTI (PDF)
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -144,7 +144,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                             onClick={() => onDelete(sale.id)}
                             className="text-destructive focus:text-destructive focus:bg-destructive/10"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            <Trash2 className="mr-2 h-4 w-4" /> DELETE
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -155,23 +155,23 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               const expandedSubRows = isExpanded && hasMultipleItems ? [
                 <TableRow key={`${sale.id}-sub-header`} className="bg-blue-100/50 dark:bg-blue-900/60 text-xs hover:bg-blue-100/60 dark:hover:bg-blue-900/70">
                     <TableCell className="p-1 w-10"></TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground" colSpan={3}>Vakkal Breakdown</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Profit</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground uppercase" colSpan={3}>VAKKAL BREAKDOWN</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">BAGS</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">NET WT</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">RATE</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">GOODS VALUE</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">PROFIT</TableCell>
                     <TableCell className="p-1" colSpan={3}></TableCell>
                 </TableRow>,
                 ...sale.items.map((item, index) => (
                   <TableRow key={`${sale.id}-item-${index}`} className="bg-blue-50 dark:bg-blue-900/40 text-xs hover:bg-blue-100/50 dark:hover:bg-blue-800/50 uppercase">
                       <TableCell className="p-1" />
-                      <TableCell className="p-1 font-medium" colSpan={3}>{item.lotNumber}</TableCell>
-                      <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-1">{item.netWeight.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-1">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-1 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className={`text-right p-1 font-medium ${(item.itemProfit || 0) >= 0 ? 'text-green-600' : 'text-red-700'}`}>{(item.itemProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="p-1 font-medium uppercase" colSpan={3}>{item.lotNumber}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{Math.round(item.quantity).toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{item.netWeight.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{Math.round(item.rate || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-1 font-medium uppercase">{Math.round(item.goodsValue || 0).toLocaleString()}</TableCell>
+                      <TableCell className={`text-right p-1 font-medium ${Math.round(item.itemProfit || 0) >= 0 ? 'text-green-600' : 'text-red-700'}`}>{Math.round(item.itemProfit || 0).toLocaleString()}</TableCell>
                       <TableCell className="p-1" colSpan={3}></TableCell>
                   </TableRow>
                 ))
@@ -191,13 +191,14 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
             onClick={prevPage}
             disabled={currentPage === 1}
           >
-            Previous
+            PREVIOUS
           </Button>
-          <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-          <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>Next</Button>
+          <span className="text-sm font-medium uppercase">PAGE {currentPage} OF {totalPages}</span>
+          <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>NEXT</Button>
         </div>
       )}
     </TooltipProvider>
   );
 }
 export const SaleTable = React.memo(SaleTableComponent);
+    

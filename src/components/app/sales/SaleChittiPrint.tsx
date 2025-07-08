@@ -35,21 +35,21 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
 
       <div className="text-center mb-4">
         <PrintHeaderSymbol className="text-lg" />
-        <h1 className="text-xl font-bold mt-1">Sale Voucher</h1>
+        <h1 className="text-xl font-bold mt-1">SALE VOUCHER</h1>
       </div>
 
       <div className="flex-between mb-2">
-        <span>Date: <strong>{format(parseISO(sale.date), "dd/MM/yy")}</strong></span>
-        <span>Bill No: <strong>{sale.billNumber || sale.id.slice(-6).toUpperCase()}</strong></span>
+        <span>DATE: <strong>{format(parseISO(sale.date), "dd/MM/yy")}</strong></span>
+        <span>BILL NO: <strong>{sale.billNumber || sale.id.slice(-6).toUpperCase()}</strong></span>
       </div>
       
       <div className="mb-2">
-        Customer: <strong>{sale.customerName || sale.customerId}</strong>
+        CUSTOMER: <strong>{sale.customerName || sale.customerId}</strong>
       </div>
       
       {sale.brokerName && (
         <div className="mb-2">
-          Broker: <strong>{sale.brokerName}</strong>
+          BROKER: <strong>{sale.brokerName}</strong>
         </div>
       )}
       
@@ -57,34 +57,34 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         <table className="text-xs">
           <thead>
             <tr>
-              <th>Vakkal / Lot No.</th>
-              <th className="text-right">Bags</th>
-              <th className="text-right">Net Wt (kg)</th>
-              <th className="text-right">Rate (₹/kg)</th>
-              <th className="text-right">Goods Value (₹)</th>
-              <th className="text-right">Profit (₹)</th>
+              <th>VAKKAL / LOT NO.</th>
+              <th className="text-right">BAGS</th>
+              <th className="text-right">NET WT (KG)</th>
+              <th className="text-right">RATE (₹/KG)</th>
+              <th className="text-right">GOODS VALUE (₹)</th>
+              <th className="text-right">PROFIT (₹)</th>
             </tr>
           </thead>
           <tbody>
             {sale.items.map((item, index) => (
                <tr key={index}>
                 <td>{item.lotNumber}</td>
-                <td className="text-right">{item.quantity.toLocaleString()}</td>
+                <td className="text-right">{Math.round(item.quantity).toLocaleString()}</td>
                 <td className="text-right">{item.netWeight.toLocaleString()}</td>
-                <td className="text-right">{(item.rate || 0).toFixed(2)}</td>
-                <td className="text-right">{(item.goodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td className={`text-right font-medium ${(item.itemProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {(item.itemProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <td className="text-right">{Math.round(item.rate || 0)}</td>
+                <td className="text-right">{Math.round(item.goodsValue || 0).toLocaleString()}</td>
+                <td className={`text-right font-medium ${Math.round(item.itemProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {Math.round(item.itemProfit || 0).toLocaleString()}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
               <tr className="font-bold">
-                  <td colSpan={4}>Total Goods Value</td>
-                  <td className="text-right">{(sale.totalGoodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td className={`text-right font-bold ${(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                    {(sale.totalCalculatedProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <td colSpan={4}>TOTAL GOODS VALUE</td>
+                  <td className="text-right">{Math.round(sale.totalGoodsValue || 0).toLocaleString()}</td>
+                  <td className={`text-right font-bold ${Math.round(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
                   </td>
               </tr>
           </tfoot>
@@ -94,13 +94,13 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
       <div className="mt-4 space-y-1">
         {displayCbDeduction > 0 && (
           <div className="flex-between text-destructive">
-            <span>Less: CB Deduction:</span>
-            <span className="font-bold">(-) ₹{displayCbDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span>LESS: CB DEDUCTION:</span>
+            <span className="font-bold">(-) ₹{Math.round(displayCbDeduction).toLocaleString()}</span>
           </div>
         )}
          <div className="flex-between border-t pt-2 mt-2">
-          <span className="font-bold text-base">Net Amount Payable:</span>
-          <span className="font-bold text-base">₹{(sale.billedAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="font-bold text-base">NET AMOUNT PAYABLE:</span>
+          <span className="font-bold text-base">₹{Math.round(sale.billedAmount || 0).toLocaleString()}</span>
         </div>
       </div>
       
@@ -109,25 +109,25 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         <table className="text-xs">
            <tbody>
               <tr>
-                <td>Total Goods Value</td>
-                <td className="text-right font-bold">₹{(sale.totalGoodsValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td>TOTAL GOODS VALUE</td>
+                <td className="text-right font-bold">₹{Math.round(sale.totalGoodsValue || 0).toLocaleString()}</td>
               </tr>
               <tr>
-                <td>Less: Total Cost of Goods</td>
-                <td className="text-right text-destructive">(-) ₹{(sale.totalCostOfGoodsSold || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td>LESS: TOTAL COST OF GOODS</td>
+                <td className="text-right text-destructive">(-) ₹{Math.round(sale.totalCostOfGoodsSold || 0).toLocaleString()}</td>
               </tr>
               <tr className="font-bold border-t">
-                <td>Gross Profit</td>
-                <td className="text-right">₹{((sale.totalGoodsValue || 0) - (sale.totalCostOfGoodsSold || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td>GROSS PROFIT</td>
+                <td className="text-right">₹{Math.round((sale.totalGoodsValue || 0) - (sale.totalCostOfGoodsSold || 0)).toLocaleString()}</td>
               </tr>
               <tr>
-                <td>Less: Sale Expenses</td>
-                <td className="text-right text-destructive">(-) ₹{totalSaleSideExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td>LESS: SALE EXPENSES</td>
+                <td className="text-right text-destructive">(-) ₹{Math.round(totalSaleSideExpenses).toLocaleString()}</td>
               </tr>
               <tr className="font-bold border-t-2 border-black text-base">
                 <td>NET PROFIT</td>
-                <td className={`text-right ${(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  ₹{(sale.totalCalculatedProfit || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                <td className={`text-right ${Math.round(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  ₹{Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
                 </td>
               </tr>
            </tbody>
@@ -136,20 +136,21 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
 
       {sale.notes && (
         <div className="mt-4 text-xs">
-          Notes: <strong>{sale.notes}</strong>
+          NOTES: <strong>{sale.notes}</strong>
         </div>
       )}
       
       <div className="mt-8 pt-8 flex-between text-xs">
         <div>
-          <p>Receiver's Signature</p>
+          <p>RECEIVER'S SIGNATURE</p>
           <p className="mt-8 border-t border-gray-400 pt-1">____________________</p>
         </div>
         <div>
-          <p>For STOCK MARKET TRACKER</p>
+          <p>FOR STOCK MARKET TRACKER</p>
            <p className="mt-8 border-t border-gray-400 pt-1">____________________</p>
         </div>
       </div>
     </div>
   );
 };
+    

@@ -26,7 +26,7 @@ interface InventoryTableProps {
 
 export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive, onUnarchive, isArchivedView = false }) => {
   if (!items || items.length === 0) {
-    return <p className="text-center text-muted-foreground py-8">{isArchivedView ? 'No archived inventory.' : 'No inventory for this selection.'}</p>;
+    return <p className="text-center text-muted-foreground py-8">{isArchivedView ? 'NO ARCHIVED INVENTORY.' : 'NO INVENTORY FOR THIS SELECTION.'}</p>;
   }
 
   return (
@@ -34,17 +34,17 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Vakkal/Lot</TableHead>
-            <TableHead>Party (Supplier)</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead className="text-right">Current Bags</TableHead>
-            <TableHead className="text-right">Current Wt (kg)</TableHead>
-            <TableHead className="text-right">Rate (₹/kg)</TableHead>
+            <TableHead>VAKKAL/LOT</TableHead>
+            <TableHead>PARTY (SUPPLIER)</TableHead>
+            <TableHead>LOCATION</TableHead>
+            <TableHead className="text-right">CURRENT BAGS</TableHead>
+            <TableHead className="text-right">CURRENT WT (KG)</TableHead>
+            <TableHead className="text-right">RATE (₹/KG)</TableHead>
             <TableHead className="text-right">COGS (₹)</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead>Last Updated</TableHead>
-            <TableHead className="text-center">Status</TableHead>
-            <TableHead className="text-center w-[80px] no-print">Actions</TableHead>
+            <TableHead>SOURCE</TableHead>
+            <TableHead>LAST UPDATED</TableHead>
+            <TableHead className="text-center">STATUS</TableHead>
+            <TableHead className="text-center w-[80px] no-print">ACTIONS</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -62,33 +62,33 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               <TableCell>{item.lotNumber}</TableCell>
               <TableCell>{item.supplierName || 'N/A'}</TableCell>
               <TableCell>{item.locationName}</TableCell>
-              <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
-              <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</TableCell>
-              <TableCell className="text-right">{item.purchaseRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-              <TableCell className="text-right font-medium">{item.cogs.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-              <TableCell>{item.sourceType === 'Transfer' ? item.sourceDetails : 'Purchase'}</TableCell>
+              <TableCell className="text-right font-medium">{Math.round(item.currentBags).toLocaleString()}</TableCell>
+              <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+              <TableCell className="text-right">{Math.round(item.purchaseRate).toLocaleString()}</TableCell>
+              <TableCell className="text-right font-medium">{Math.round(item.cogs).toLocaleString()}</TableCell>
+              <TableCell>{item.sourceType === 'Transfer' ? item.sourceDetails : 'PURCHASE'}</TableCell>
               <TableCell>{item.purchaseDate ? format(parseISO(item.purchaseDate), 'dd/MM/yy') : 'N/A'}</TableCell>
               <TableCell className="text-center">
-                {isArchivedView ? (<Badge variant="outline" className="uppercase">Archived</Badge>) :
-                item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground uppercase">Dead Stock</Badge>) :
-                item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase">Zero Stock</Badge>) :
-                item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">Low Stock</Badge>) :
-                (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white uppercase"><TrendingUp className="h-3 w-3 mr-1" /> Fast</Badge>) :
-                (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase"><TrendingDown className="h-3 w-3 mr-1" /> Slow</Badge>) :
-                (<Badge variant="secondary" className="uppercase">In Stock</Badge>)}
+                {isArchivedView ? (<Badge variant="outline" className="uppercase">ARCHIVED</Badge>) :
+                item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground uppercase">DEAD STOCK</Badge>) :
+                item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase">ZERO STOCK</Badge>) :
+                item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">LOW STOCK</Badge>) :
+                (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white uppercase"><TrendingUp className="h-3 w-3 mr-1" /> FAST</Badge>) :
+                (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase"><TrendingDown className="h-3 w-3 mr-1" /> SLOW</Badge>) :
+                (<Badge variant="secondary" className="uppercase">IN STOCK</Badge>)}
               </TableCell>
               <TableCell className="text-center no-print">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
                       <MoreVertical className="h-4 w-4" />
-                      <span className="sr-only">Actions</span>
+                      <span className="sr-only">ACTIONS</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {isArchivedView ? (
                       <DropdownMenuItem onClick={() => onUnarchive?.(item)} className="hover:!bg-green-100 dark:hover:!bg-green-800">
-                        <RotateCcw className="mr-2 h-4 w-4" /> Restore
+                        <RotateCcw className="mr-2 h-4 w-4" /> RESTORE
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem
@@ -96,7 +96,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
                         disabled={item.currentBags > 0}
                         className={item.currentBags <= 0 ? "hover:!bg-blue-100 dark:hover:!bg-blue-800" : ""}
                       >
-                        <Archive className="mr-2 h-4 w-4" /> Archive
+                        <Archive className="mr-2 h-4 w-4" /> ARCHIVE
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -109,3 +109,4 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
     </ScrollArea>
   );
 };
+    

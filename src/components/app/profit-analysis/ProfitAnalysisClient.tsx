@@ -162,49 +162,49 @@ export function ProfitAnalysisClient() {
         <Card className="shadow-lg">
           <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <CardTitle className="text-2xl text-primary flex items-center"><Rocket className="mr-3 h-7 w-7"/>Profit Analysis Dashboard</CardTitle>
+              <CardTitle className="text-2xl text-primary flex items-center"><Rocket className="mr-3 h-7 w-7"/>PROFIT ANALYSIS DASHBOARD</CardTitle>
               <div className="flex flex-wrap gap-2">
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange}/>
-                <Button variant="outline" size="sm" onClick={() => setDateFilter("thisMonth")}><CalendarDays className="mr-2 h-4 w-4"/>This Month</Button>
-                <Button variant="outline" size="sm" onClick={() => setDateFilter("lastMonth")}><CalendarDays className="mr-2 h-4 w-4"/>Last Month</Button>
-                <Button variant="outline" size="sm" onClick={() => setDateFilter("currentFY")}><CalendarDays className="mr-2 h-4 w-4"/>Current FY</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("thisMonth")}><CalendarDays className="mr-2 h-4 w-4"/>THIS MONTH</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("lastMonth")}><CalendarDays className="mr-2 h-4 w-4"/>LAST MONTH</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("currentFY")}><CalendarDays className="mr-2 h-4 w-4"/>CURRENT FY</Button>
               </div>
             </div>
           </CardHeader>
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Net Profit (Selected Period)</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className={`text-2xl font-bold ${(kpiData.totalNetProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{(kpiData.totalNetProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Sales Value</CardTitle><BarChart3 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{(kpiData.totalSalesValue || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Avg. Profit / Sale</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{(kpiData.avgProfitPerSale || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Top Sale</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate uppercase">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground">Profit: ₹{(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">NET PROFIT (SELECTED PERIOD)</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className={`text-2xl font-bold ${Math.round(kpiData.totalNetProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{Math.round(kpiData.totalNetProfit || 0).toLocaleString('en-IN')}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">TOTAL SALES VALUE</CardTitle><BarChart3 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{Math.round(kpiData.totalSalesValue || 0).toLocaleString('en-IN')}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">AVG. PROFIT / SALE</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{Math.round(kpiData.avgProfitPerSale || 0).toLocaleString('en-IN')}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">TOP SALE</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate uppercase">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground">PROFIT: ₹{Math.round(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN')}</p></CardContent></Card>
         </div>
 
         <Tabs defaultValue="transactional" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="transactional" className="text-base"><BarChart3 className="mr-2 h-5 w-5"/>Transactional Details</TabsTrigger>
-                <TabsTrigger value="monthly" className="text-base"><CalendarDays className="mr-2 h-5 w-5"/>Monthly Summary</TabsTrigger>
+                <TabsTrigger value="transactional" className="text-base uppercase"><BarChart3 className="mr-2 h-5 w-5"/>TRANSACTIONAL DETAILS</TabsTrigger>
+                <TabsTrigger value="monthly" className="text-base uppercase"><CalendarDays className="mr-2 h-5 w-5"/>MONTHLY SUMMARY</TabsTrigger>
             </TabsList>
             <TabsContent value="transactional" className="mt-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg">Transactional Profit Details (Selected Period)</CardTitle>
+                        <CardTitle className="text-lg uppercase">TRANSACTIONAL PROFIT DETAILS (SELECTED PERIOD)</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                          {filteredTransactionsForPeriod.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-10">No transactions for this period.</p>
+                            <p className="text-muted-foreground text-center py-10">NO TRANSACTIONS FOR THIS PERIOD.</p>
                          ) : (
                             <ScrollArea className="h-[60vh] rounded-md">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="px-2 py-2 text-xs">Date</TableHead>
-                                            <TableHead className="px-2 py-2 text-xs">Vakkal</TableHead>
-                                            <TableHead className="px-2 py-2 text-xs">Customer</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs">Value (₹)</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs">Cost (₹)</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs">Expenses (₹)</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs">Net Profit (₹)</TableHead>
+                                            <TableHead className="px-2 py-2 text-xs uppercase">DATE</TableHead>
+                                            <TableHead className="px-2 py-2 text-xs uppercase">VAKKAL</TableHead>
+                                            <TableHead className="px-2 py-2 text-xs uppercase">CUSTOMER</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">VALUE (₹)</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">COST (₹)</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">EXPENSES (₹)</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">NET PROFIT (₹)</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -213,10 +213,10 @@ export function ProfitAnalysisClient() {
                                                 <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
                                                 <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
-                                                <TableCell className="text-right px-2 py-1 text-xs">{(tx.goodsValueForProfitCalc || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                                                <TableCell className="text-right px-2 py-1 text-xs">{(tx.purchaseCostForSalePortion || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                                                <TableCell className="text-right px-2 py-1 text-xs">{(tx.totalExpenses || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
-                                                <TableCell className={`text-right font-bold px-2 py-1 text-xs ${(tx.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{(tx.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.goodsValueForProfitCalc || 0).toLocaleString('en-IN')}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.purchaseCostForSalePortion || 0).toLocaleString('en-IN')}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.totalExpenses || 0).toLocaleString('en-IN')}</TableCell>
+                                                <TableCell className={`text-right font-bold px-2 py-1 text-xs ${Math.round(tx.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{Math.round(tx.netProfit || 0).toLocaleString('en-IN')}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -229,19 +229,19 @@ export function ProfitAnalysisClient() {
             <TabsContent value="monthly" className="mt-4">
                  <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg">Monthly Summary (FY {currentFinancialYearString})</CardTitle>
+                        <CardTitle className="text-lg uppercase">MONTHLY SUMMARY (FY {currentFinancialYearString})</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                          {monthlySummaryForFY.length === 0 ? (
-                            <p className="text-muted-foreground text-center py-10">No monthly data to summarize.</p>
+                            <p className="text-muted-foreground text-center py-10">NO MONTHLY DATA TO SUMMARIZE.</p>
                          ) : (
                             <ScrollArea className="h-[60vh] rounded-md">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="px-2 py-2 text-xs">Month</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs">Transactions</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs">Net Profit</TableHead>
+                                            <TableHead className="px-2 py-2 text-xs uppercase">MONTH</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">TRANSACTIONS</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">NET PROFIT</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -249,7 +249,7 @@ export function ProfitAnalysisClient() {
                                             <TableRow key={m.monthKey} onClick={() => handleMonthClick(m.monthKey)} className="cursor-pointer hover:bg-muted uppercase">
                                                 <TableCell className="font-medium px-2 py-1 text-xs">{m.monthYear}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{m.transactionCount}</TableCell>
-                                                <TableCell className={`text-right font-semibold px-2 py-1 text-xs ${(m.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{(m.netProfit || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>
+                                                <TableCell className={`text-right font-semibold px-2 py-1 text-xs ${Math.round(m.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{Math.round(m.netProfit || 0).toLocaleString('en-IN')}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -264,3 +264,4 @@ export function ProfitAnalysisClient() {
     </TooltipProvider>
   );
 }
+    
