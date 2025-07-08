@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Purchase } from "@/lib/types";
@@ -37,20 +36,20 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
 
       <div className="text-center mb-2">
         <PrintHeaderSymbol className="text-base" />
-        <h2 className="text-lg font-bold mt-1">Purchase Voucher</h2>
+        <h2 className="text-lg font-bold mt-1">PURCHASE VOUCHER</h2>
       </div>
 
       <div className="flex-between mb-2">
-        <div className="font-bold">Purchase ID: {purchase.id.slice(-6).toUpperCase()}</div>
-        <div>Date: {format(parseISO(purchase.date), "dd/MM/yy")}</div>
+        <div className="font-bold">PURCHASE ID: {purchase.id.slice(-6).toUpperCase()}</div>
+        <div>DATE: {format(parseISO(purchase.date), "dd/MM/yy")}</div>
       </div>
       <hr />
 
       <div className="mt-2 space-y-1">
-        <div className="flex-between"><span>Supplier:</span><span className="font-bold">{purchase.supplierName || purchase.supplierId}</span></div>
-        {purchase.agentName && <div className="flex-between"><span>Agent:</span><span className="font-bold">{purchase.agentName}</span></div>}
-        {purchase.transporterName && <div className="flex-between"><span>Transporter:</span><span className="font-bold">{purchase.transporterName}</span></div>}
-        <div className="flex-between"><span>Location:</span><span className="font-bold">{purchase.locationName || purchase.locationId}</span></div>
+        <div className="flex-between"><span>SUPPLIER:</span><span className="font-bold">{purchase.supplierName || purchase.supplierId}</span></div>
+        {purchase.agentName && <div className="flex-between"><span>AGENT:</span><span className="font-bold">{purchase.agentName}</span></div>}
+        {purchase.transporterName && <div className="flex-between"><span>TRANSPORTER:</span><span className="font-bold">{purchase.transporterName}</span></div>}
+        <div className="flex-between"><span>LOCATION:</span><span className="font-bold">{purchase.locationName || purchase.locationId}</span></div>
       </div>
       <hr className="mt-2" />
 
@@ -58,28 +57,28 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
         <table className="text-xs">
           <thead>
             <tr>
-              <th>Vakkal/Lot No.</th>
-              <th className="text-right">Bags</th>
-              <th className="text-right">Net Wt (kg)</th>
-              <th className="text-right">Rate (₹/kg)</th>
-              <th className="text-right">Goods Value (₹)</th>
+              <th>VAKKAL/LOT NO.</th>
+              <th className="text-right">BAGS</th>
+              <th className="text-right">NET WT (KG)</th>
+              <th className="text-right">RATE (₹/KG)</th>
+              <th className="text-right">GOODS VALUE (₹)</th>
             </tr>
           </thead>
           <tbody>
             {purchase.items.map((item, index) => (
               <tr key={index}>
                 <td>{item.lotNumber}</td>
-                <td className="text-right">{item.quantity.toLocaleString()}</td>
-                <td className="text-right">{item.netWeight.toLocaleString()}</td>
-                <td className="text-right">{item.rate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                <td className="text-right">{item.goodsValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                <td className="text-right">{Math.round(item.quantity).toLocaleString('en-IN')}</td>
+                <td className="text-right">{item.netWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                <td className="text-right">{item.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td className="text-right">{Math.round(item.goodsValue).toLocaleString('en-IN')}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="font-bold">
-              <td colSpan={4}>Total Goods Value</td>
-              <td className="text-right">{purchase.totalGoodsValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td colSpan={4}>TOTAL GOODS VALUE</td>
+              <td className="text-right">{Math.round(purchase.totalGoodsValue).toLocaleString('en-IN')}</td>
             </tr>
           </tfoot>
         </table>
@@ -87,16 +86,16 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
 
       {totalExpenses > 0 && (
         <>
-          <div className="mt-1 mb-1 font-bold">Expenses:</div>
+          <div className="mt-1 mb-1 font-bold">EXPENSES:</div>
           <div className="space-y-1 text-xs">
-            {purchase.transportCharges && purchase.transportCharges > 0 && <div className="flex-between"><span>Transport:</span><span className="text-right">{purchase.transportCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
-            {purchase.packingCharges && purchase.packingCharges > 0 && <div className="flex-between"><span>Packing:</span><span className="text-right">{purchase.packingCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
-            {purchase.labourCharges && purchase.labourCharges > 0 && <div className="flex-between"><span>Labour:</span><span className="text-right">{purchase.labourCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
-            {purchase.brokerageCharges && purchase.brokerageCharges > 0 && <div className="flex-between"><span>Brokerage:</span><span className="text-right">{purchase.brokerageCharges.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
-            {purchase.miscExpenses && purchase.miscExpenses > 0 && <div className="flex-between"><span>Misc:</span><span className="text-right">{purchase.miscExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></div>}
+            {purchase.transportCharges && purchase.transportCharges > 0 && <div className="flex-between"><span>TRANSPORT:</span><span className="text-right">{Math.round(purchase.transportCharges).toLocaleString('en-IN')}</span></div>}
+            {purchase.packingCharges && purchase.packingCharges > 0 && <div className="flex-between"><span>PACKING:</span><span className="text-right">{Math.round(purchase.packingCharges).toLocaleString('en-IN')}</span></div>}
+            {purchase.labourCharges && purchase.labourCharges > 0 && <div className="flex-between"><span>LABOUR:</span><span className="text-right">{Math.round(purchase.labourCharges).toLocaleString('en-IN')}</span></div>}
+            {purchase.brokerageCharges && purchase.brokerageCharges > 0 && <div className="flex-between"><span>BROKERAGE:</span><span className="text-right">{Math.round(purchase.brokerageCharges).toLocaleString('en-IN')}</span></div>}
+            {purchase.miscExpenses && purchase.miscExpenses > 0 && <div className="flex-between"><span>MISC:</span><span className="text-right">{Math.round(purchase.miscExpenses).toLocaleString('en-IN')}</span></div>}
             <div className="flex-between py-1 border-t border-dashed mt-1 font-bold">
-                <span>Total Expenses:</span>
-                <span className="text-right">{totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span>TOTAL EXPENSES:</span>
+                <span className="text-right">{Math.round(totalExpenses).toLocaleString('en-IN')}</span>
             </div>
           </div>
         </>
@@ -106,7 +105,7 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
       <div className="flex-between font-bold text-base mt-1">
         <span>GRAND TOTAL:</span>
         <span className="underline-val">
-          ₹{purchase.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          ₹{Math.round(purchase.totalAmount).toLocaleString('en-IN')}
         </span>
       </div>
     </div>

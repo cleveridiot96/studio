@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -46,7 +45,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
   };
 
   if (data.length === 0) {
-    return <p className="text-center text-muted-foreground py-8 uppercase">No purchases recorded yet.</p>;
+    return <p className="text-center text-muted-foreground py-8 uppercase">NO PURCHASES RECORDED YET.</p>;
   }
 
   return (
@@ -55,17 +54,17 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
         <Table className="min-w-full text-sm">
           <TableHeader>
             <TableRow>
-              <TableHead className="h-10 px-2 uppercase">Date</TableHead>
-              <TableHead className="h-10 px-2 uppercase">Vakkal / Lot No.</TableHead>
-              <TableHead className="h-10 px-2 uppercase">Location</TableHead>
-              <TableHead className="h-10 px-2 uppercase">Supplier</TableHead>
-              <TableHead className="h-10 px-2 uppercase">Agent</TableHead>
-              <TableHead className="h-10 px-2 text-right uppercase">Bags</TableHead>
-              <TableHead className="h-10 px-2 text-right uppercase">Net Wt.(kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right uppercase">Rate (₹/kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right uppercase">Goods Value (₹)</TableHead>
-              <TableHead className="h-10 px-2 text-right uppercase">Total Cost (₹)</TableHead>
-              <TableHead className="h-10 px-2 text-center uppercase">Actions</TableHead>
+              <TableHead className="h-10 px-2 uppercase">DATE</TableHead>
+              <TableHead className="h-10 px-2 uppercase">VAKKAL / LOT NO.</TableHead>
+              <TableHead className="h-10 px-2 uppercase">LOCATION</TableHead>
+              <TableHead className="h-10 px-2 uppercase">SUPPLIER</TableHead>
+              <TableHead className="h-10 px-2 uppercase">AGENT</TableHead>
+              <TableHead className="h-10 px-2 text-right uppercase">BAGS</TableHead>
+              <TableHead className="h-10 px-2 text-right uppercase">NET WT.(KG)</TableHead>
+              <TableHead className="h-10 px-2 text-right uppercase">RATE (₹/KG)</TableHead>
+              <TableHead className="h-10 px-2 text-right uppercase">GOODS VALUE (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right uppercase">TOTAL COST (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-center uppercase">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -108,43 +107,43 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                       <TooltipContent><p className="uppercase">{purchase.agentName || ''}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
-                  <TableCell className="p-2 text-right uppercase">{purchase.totalQuantity}</TableCell>
-                  <TableCell className="p-2 text-right uppercase">{purchase.totalNetWeight.toLocaleString()}</TableCell>
+                  <TableCell className="p-2 text-right uppercase">{Math.round(purchase.totalQuantity).toLocaleString('en-IN')}</TableCell>
+                  <TableCell className="p-2 text-right uppercase">{purchase.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</TableCell>
                   <TableCell className="p-2 text-right font-medium uppercase">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="cursor-help underline decoration-dashed">
-                          {hasMultipleItems ? 'MULTIPLE' : (purchase.items[0]?.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          {hasMultipleItems ? 'MULTIPLE' : (purchase.items[0]?.rate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="uppercase">Landed Rate: ₹{(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                        <p className="uppercase">LANDED RATE: ₹{(purchase.effectiveRate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2 text-right uppercase">
-                    {(purchase.totalGoodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    {Math.round(purchase.totalGoodsValue || 0).toLocaleString('en-IN')}
                   </TableCell>
                   <TableCell className="p-2 text-right font-semibold uppercase">
-                    {(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    {Math.round(purchase.totalAmount || 0).toLocaleString('en-IN')}
                   </TableCell>
                   <TableCell className="p-2 text-center uppercase">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
+                          <span className="sr-only">ACTIONS</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEdit(purchase)}>
                           <Pencil className="mr-2 h-4 w-4" />
-                          <span className="uppercase">Edit</span>
+                          <span className="uppercase">EDIT</span>
                         </DropdownMenuItem>
                         {onDownloadPdf && (
                           <DropdownMenuItem onClick={() => onDownloadPdf(purchase)}>
                             <Download className="mr-2 h-4 w-4" />
-                            <span className="uppercase">Download PDF</span>
+                            <span className="uppercase">DOWNLOAD PDF</span>
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -153,7 +152,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                           className="text-destructive focus:text-destructive focus:bg-destructive/10"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          <span className="uppercase">Delete</span>
+                          <span className="uppercase">DELETE</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -164,23 +163,23 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               const expandedSubRows = isExpanded && hasMultipleItems ? [
                 <TableRow key={`${purchase.id}-sub-header`} className="bg-purple-100/50 dark:bg-purple-900/60 text-xs hover:bg-purple-100/60 dark:hover:bg-purple-900/70">
                     <TableCell className="p-1 w-10" />
-                    <TableCell className="p-1 font-semibold text-muted-foreground uppercase" colSpan={4}>Vakkal Breakdown</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">Bags</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">Net Wt</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">Rate</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">Landed Rate</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">Goods Value (₹)</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground uppercase" colSpan={4}>VAKKAL BREAKDOWN</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">BAGS</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">NET WT</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">RATE</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">LANDED COST/KG</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right uppercase">GOODS VALUE (₹)</TableCell>
                     <TableCell className="p-1" colSpan={1}></TableCell>
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
                   <TableRow key={`${purchase.id}-item-${index}`} className="bg-purple-50 dark:bg-purple-900/40 text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50 uppercase">
                       <TableCell className="p-1" />
                       <TableCell className="p-1 font-medium uppercase" colSpan={4}>{item.lotNumber}</TableCell>
-                      <TableCell className="text-right p-1 uppercase">{item.quantity.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-1 uppercase">{item.netWeight.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-1 uppercase">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-1 font-medium uppercase">{(item.landedCostPerKg || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-1 font-medium uppercase">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{Math.round(item.quantity).toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{item.netWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-right p-1 uppercase">{(item.rate || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 font-medium uppercase">{(item.landedCostPerKg || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 font-medium uppercase">{Math.round(item.goodsValue || 0).toLocaleString('en-IN')}</TableCell>
                       <TableCell className="p-1" colSpan={1}></TableCell>
                   </TableRow>
                 ))
