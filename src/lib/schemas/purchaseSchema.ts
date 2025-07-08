@@ -41,16 +41,25 @@ export const purchaseSchema = (
   brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
   brokerageValue: z.coerce.number().optional(),
   miscExpenses: z.coerce.number().nonnegative("Expenses must be non-negative").optional(),
-}).refine(data => {
-    if (data.agentId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0 )) {
-      return false;
+}).superRefine((data, ctx) => {
+    // If brokerage value is entered, type is required, and vice-versa
+    if (data.agentId) {
+        if (data.brokerageValue !== undefined && !data.brokerageType) {
+            ctx.addIssue({
+                path: ['brokerageType'],
+                message: 'Type is required if value is entered.',
+                code: z.ZodIssueCode.custom
+            });
+        }
+        if (data.brokerageType && data.brokerageValue === undefined) {
+            ctx.addIssue({
+                path: ['brokerageValue'],
+                message: 'Value is required if type is selected.',
+                code: z.ZodIssueCode.custom
+            });
+        }
     }
-    return true;
-  }, {
-    message: "Brokerage type and a valid value (non-negative) are required if an agent is selected.",
-    path: ["brokerageValue"],
-  })
-  .superRefine((data, ctx) => {
+
     const lotNumbers = new Set<string>();
     data.items.forEach((item, index) => {
       const upperCaseLotNumber = item.lotNumber.toUpperCase().trim();

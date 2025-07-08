@@ -184,6 +184,10 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         setValue("brokerageType", agent.commissionType, { shouldValidate: true });
         setValue("brokerageValue", agent.commission, { shouldValidate: true });
       }
+    } else {
+        // Clear brokerage fields if agent is deselected
+        setValue("brokerageType", undefined, { shouldValidate: true });
+        setValue("brokerageValue", undefined, { shouldValidate: true });
     }
   }, [watchedAgentId, agents, setValue]);
 
