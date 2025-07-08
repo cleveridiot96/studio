@@ -229,6 +229,8 @@ export interface LocationTransfer {
   miscExpenses?: number;
   items: LocationTransferItem[]; // Use the updated item type
   notes?: string;
+  totalExpenses?: number;
+  perKgExpense?: number;
 }
 
 

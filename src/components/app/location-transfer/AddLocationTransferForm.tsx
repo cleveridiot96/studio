@@ -186,6 +186,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const fromWarehouse = warehouses.find(w => w.id === values.fromWarehouseId);
     const toWarehouse = warehouses.find(w => w.id === values.toWarehouseId);
     const transporter = transporters.find(t => t.id === values.transporterId);
+    
+    const totalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.loadingCharges || 0) + (values.miscExpenses || 0);
+    const totalNetWeight = (values.items || []).reduce((sum, item) => sum + (item.netWeightToTransfer || 0), 0);
+    const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
 
     const transferData: LocationTransfer = {
       id: transferToEdit?.id || `lt-${Date.now()}`,
@@ -201,6 +205,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       packingCharges: values.packingCharges,
       loadingCharges: values.loadingCharges,
       miscExpenses: values.miscExpenses,
+      totalExpenses: totalExpenses,
+      perKgExpense: perKgExpense,
       items: values.items.map(item => ({
         originalLotNumber: item.originalLotNumber,
         newLotNumber: `${item.originalLotNumber}/${item.bagsToTransfer}`,

@@ -28,6 +28,8 @@ import { InventoryTable } from "./InventoryTable";
 import { cn } from "@/lib/utils";
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
+
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
@@ -77,9 +79,9 @@ export function InventoryClient() {
 
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); 
   const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [suppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyArray);
@@ -152,6 +154,7 @@ export function InventoryClient() {
         
         const originalPurchase = allPurchasesEver.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
         const sourceEffectiveRate = originalPurchase?.effectiveRate || 0;
+        const newEffectiveRate = sourceEffectiveRate + (transfer.perKgExpense || 0);
         
         if (!toEntry) {
           const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
@@ -169,7 +172,7 @@ export function InventoryClient() {
             currentBags: 0, currentWeight: 0,
             purchaseDate: originalPurchase?.date || transfer.date,
             purchaseRate: originalPurchase?.items.find(i => i.lotNumber === item.originalLotNumber)?.rate || 0,
-            effectiveRate: sourceEffectiveRate,
+            effectiveRate: newEffectiveRate,
             cogs: 0,
           };
           inventoryMap.set(toKey, toEntry);
@@ -177,6 +180,7 @@ export function InventoryClient() {
 
         toEntry.totalTransferredInBags += item.bagsToTransfer;
         toEntry.totalTransferredInWeight += item.netWeightToTransfer;
+        toEntry.effectiveRate = newEffectiveRate;
       });
     });
 
