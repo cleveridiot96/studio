@@ -7,7 +7,7 @@ import type { Sale, CostBreakdown } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator } from "lucide-react";
+import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator, ArrowDown, Zap, Plus, Minus } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, endOfDay } from "date-fns";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
@@ -17,7 +17,9 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { salesMigrator } from '@/lib/dataMigrators';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProfitBreakdownDialog } from "./ProfitBreakdownDialog";
+import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
+import { cn } from "@/lib/utils";
+
 
 const SALES_STORAGE_KEY = 'salesData';
 
@@ -65,11 +67,31 @@ interface ProfitKPIs {
   highestProfitSale: { id: string; profit: number, billNumber?: string };
 }
 
+const BreakdownRow: React.FC<{ label: string; value: number; isSub?: boolean; isTotal?: boolean; color?: 'green' | 'red' | 'blue' | 'orange' }> = ({ label, value, isSub = false, isTotal = false, color }) => (
+  <TableRow className={cn(isTotal && 'font-bold bg-muted/50 text-base', color === 'green' && 'text-green-600', color === 'red' && 'text-red-600', color === 'blue' && 'text-blue-600', color === 'orange' && 'text-orange-600')}>
+    <TableCell className={cn('py-1', isSub ? 'pl-8' : 'pl-4')}>
+      {isSub ? <span className="text-muted-foreground mr-1">↳</span> : <Plus className="h-3 w-3 inline-block mr-2" />}
+      {label}
+    </TableCell>
+    <TableCell className="text-right py-1 font-mono">₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+  </TableRow>
+);
+const DeductionRow: React.FC<{ label: string; value: number; isSub?: boolean; isTotal?: boolean; color?: 'green' | 'red' }> = ({ label, value, isSub = false, isTotal = false, color }) => (
+    <TableRow className={cn(isTotal && 'font-bold bg-muted/50 text-base', color === 'green' && 'text-green-600', color === 'red' && 'text-red-600')}>
+      <TableCell className={cn('py-1', isSub ? 'pl-8' : 'pl-4')}>
+        {isSub ? <span className="text-muted-foreground mr-1">↳</span> : <Minus className="h-3 w-3 inline-block mr-2" />}
+        {label}
+      </TableCell>
+      <TableCell className="text-right py-1 font-mono">(-) ₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+    </TableRow>
+  );
+
+
 export function ProfitAnalysisClient() {
   const [hydrated, setHydrated] = React.useState(false);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const { financialYear: currentFinancialYearString } = useSettings();
-  const [breakdownItem, setBreakdownItem] = React.useState<TransactionalProfitInfo | null>(null);
+  const [saleIdForCalc, setSaleIdForCalc] = React.useState<string | undefined>();
   
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
     const today = new Date();
@@ -206,6 +228,24 @@ export function ProfitAnalysisClient() {
     const monthDate = parseISO(`${monthKey}-01`);
     setDateRange({ from: startOfMonth(monthDate), to: endOfMonth(monthDate) });
   };
+  
+  const saleOptionsForCalc = React.useMemo(() => {
+    const uniqueSalesMap = new Map<string, { label: string; value: string }>();
+    allProfitTransactionsInFY.forEach(tx => {
+        if (!uniqueSalesMap.has(tx.saleId)) {
+            uniqueSalesMap.set(tx.saleId, {
+                value: tx.saleId,
+                label: `BILL #${tx.billNumber || tx.saleId.slice(-5)} - ${tx.customerName}`
+            });
+        }
+    });
+    return Array.from(uniqueSalesMap.values());
+  }, [allProfitTransactionsInFY]);
+
+  const itemsForSelectedSaleCalc = React.useMemo(() => {
+    if (!saleIdForCalc) return [];
+    return allProfitTransactionsInFY.filter(tx => tx.saleId === saleIdForCalc);
+  }, [saleIdForCalc, allProfitTransactionsInFY]);
 
   if (!hydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading profit analysis...</p></div>;
@@ -236,15 +276,14 @@ export function ProfitAnalysisClient() {
         </div>
 
         <Tabs defaultValue="transactional" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="transactional" className="text-base uppercase"><BarChart3 className="mr-2 h-5 w-5"/>TRANSACTIONAL DETAILS</TabsTrigger>
                 <TabsTrigger value="monthly" className="text-base uppercase"><CalendarDays className="mr-2 h-5 w-5"/>MONTHLY SUMMARY</TabsTrigger>
+                <TabsTrigger value="calculator" className="text-base uppercase"><Calculator className="mr-2 h-5 w-5"/>PROFIT CALCULATOR</TabsTrigger>
             </TabsList>
             <TabsContent value="transactional" className="mt-4">
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg uppercase">TRANSACTIONAL PROFIT DETAILS (SELECTED PERIOD)</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="text-lg uppercase">TRANSACTIONAL PROFIT DETAILS (SELECTED PERIOD)</CardTitle></CardHeader>
                     <CardContent className="p-0">
                          {filteredTransactionsForPeriod.length === 0 ? (
                             <p className="text-muted-foreground text-center py-10 uppercase">NO TRANSACTIONS FOR THIS PERIOD.</p>
@@ -253,7 +292,6 @@ export function ProfitAnalysisClient() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="px-2 py-2 text-xs uppercase w-[50px]">Info</TableHead>
                                             <TableHead className="px-2 py-2 text-xs uppercase">DATE</TableHead>
                                             <TableHead className="px-2 py-2 text-xs uppercase">CUSTOMER</TableHead>
                                             <TableHead className="px-2 py-2 text-xs uppercase">VAKKAL</TableHead>
@@ -267,11 +305,6 @@ export function ProfitAnalysisClient() {
                                     <TableBody>
                                         {filteredTransactionsForPeriod.map((tx, index) => (
                                             <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`} className="uppercase">
-                                                <TableCell className="px-2 py-1">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setBreakdownItem(tx)}>
-                                                        <Calculator className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                                 <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
@@ -291,9 +324,7 @@ export function ProfitAnalysisClient() {
             </TabsContent>
             <TabsContent value="monthly" className="mt-4">
                  <Card>
-                    <CardHeader>
-                        <CardTitle className="text-lg uppercase">MONTHLY SUMMARY (FY {currentFinancialYearString})</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="text-lg uppercase">MONTHLY SUMMARY (FY {currentFinancialYearString})</CardTitle></CardHeader>
                     <CardContent className="p-0">
                          {monthlySummaryForFY.length === 0 ? (
                             <p className="text-muted-foreground text-center py-10 uppercase">NO MONTHLY DATA TO SUMMARIZE.</p>
@@ -322,16 +353,90 @@ export function ProfitAnalysisClient() {
                     </CardContent>
                 </Card>
             </TabsContent>
+            <TabsContent value="calculator" className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg uppercase">PROFIT & COST CALCULATOR</CardTitle>
+                        <div className="pt-2">
+                            <MasterDataCombobox
+                                value={saleIdForCalc}
+                                onChange={setSaleIdForCalc}
+                                options={saleOptionsForCalc}
+                                placeholder="Select a Sale to Analyze..."
+                            />
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {!saleIdForCalc ? (
+                             <div className="text-center py-10 text-muted-foreground uppercase">Please select a sale to see its detailed cost breakdown.</div>
+                        ) : (
+                            <div className="space-y-6">
+                                {itemsForSelectedSaleCalc.map((item, index) => {
+                                    const { costBreakdown, saleExpenses } = item;
+                                    const effectiveSaleRate = item.saleRatePerKg - (saleExpenses.total / item.saleNetWeightKg);
+                                    return (
+                                        <Card key={index} className="bg-muted/30 p-4">
+                                            <CardHeader className="p-0 pb-3">
+                                                <CardTitle className="text-primary">ITEM: {item.lotNumber} ({item.saleNetWeightKg.toLocaleString()} KG)</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-0 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2 p-3 border rounded-lg bg-background">
+                                                    <h3 className="font-semibold text-lg text-primary flex items-center"><ArrowDown className="mr-2 h-5 w-5"/>LANDED COST/KG</h3>
+                                                    <Table><TableBody>
+                                                        <BreakdownRow label="Base Purchase Rate" value={costBreakdown?.baseRate || item.basePurchaseRate} />
+                                                        {costBreakdown?.purchaseExpenses && costBreakdown.purchaseExpenses > 0 && <BreakdownRow label="Purchase Expenses" value={costBreakdown.purchaseExpenses} isSub />}
+                                                        {costBreakdown?.transferExpenses && costBreakdown.transferExpenses > 0 && <BreakdownRow label="Transfer Expenses" value={costBreakdown.transferExpenses} isSub />}
+                                                        <TableRow className="bg-primary/10 font-bold text-primary text-base">
+                                                            <TableCell className="py-2 pl-4">✅ FINAL LANDED COST</TableCell>
+                                                            <TableCell className="py-2 text-right font-mono">₹{item.landedCostPerKg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                        </TableRow>
+                                                    </TableBody></Table>
+                                                </div>
+                                                <div className="space-y-2 p-3 border rounded-lg bg-background">
+                                                    <h3 className="font-semibold text-lg text-primary flex items-center"><Zap className="mr-2 h-5 w-5"/>SALE & PROFIT/KG</h3>
+                                                    <Table><TableBody>
+                                                        <BreakdownRow label="Sale Rate" value={item.saleRatePerKg} color="green" />
+                                                        {saleExpenses.brokerage > 0 && <DeductionRow label="Brokerage" value={saleExpenses.brokerage / item.saleNetWeightKg} isSub />}
+                                                        {saleExpenses.extraBrokerage > 0 && <DeductionRow label="Extra Brokerage" value={saleExpenses.extraBrokerage / item.saleNetWeightKg} isSub />}
+                                                        {saleExpenses.transport > 0 && <DeductionRow label="Transport" value={saleExpenses.transport / item.saleNetWeightKg} isSub />}
+                                                        {saleExpenses.packing > 0 && <DeductionRow label="Packing" value={saleExpenses.packing / item.saleNetWeightKg} isSub />}
+                                                        {saleExpenses.labour > 0 && <DeductionRow label="Labour" value={saleExpenses.labour / item.saleNetWeightKg} isSub />}
+                                                        {saleExpenses.misc > 0 && <DeductionRow label="Misc." value={saleExpenses.misc / item.saleNetWeightKg} isSub />}
+                                                        <TableRow className="bg-green-500/10 font-bold text-green-700 text-base">
+                                                            <TableCell className="py-2 pl-4">✅ EFFECTIVE SALE RATE</TableCell>
+                                                            <TableCell className="py-2 text-right font-mono">₹{effectiveSaleRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                                        </TableRow>
+                                                    </TableBody></Table>
+                                                </div>
+                                            </CardContent>
+                                            <div className="p-4 bg-background rounded-lg mt-4">
+                                                <h3 className="font-semibold text-center text-lg mb-2 uppercase">FINAL CALCULATION FOR THIS ITEM</h3>
+                                                <div className="flex justify-between items-center text-base">
+                                                    <div className="text-center"><p className="text-sm text-muted-foreground">EFFECTIVE SALE RATE</p><p className="font-bold text-lg text-green-600">₹{effectiveSaleRate.toFixed(2)}</p></div>
+                                                    <Minus className="h-6 w-6 text-muted-foreground" />
+                                                    <div className="text-center"><p className="text-sm text-muted-foreground">LANDED COST</p><p className="font-bold text-lg text-red-600">₹{item.landedCostPerKg.toFixed(2)}</p></div>
+                                                    <div className="font-extrabold text-2xl text-muted-foreground mx-2">=</div>
+                                                    <div className="text-center p-2 rounded-md bg-muted shadow-inner">
+                                                        <p className="text-sm text-muted-foreground">NET PROFIT/KG</p>
+                                                        <p className={cn("font-bold text-2xl", (effectiveSaleRate - item.landedCostPerKg) >= 0 ? 'text-primary' : 'text-destructive')}>₹{(effectiveSaleRate - item.landedCostPerKg).toFixed(2)}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-center text-xl font-bold mt-4 pt-2 border-t">
+                                                    TOTAL NET PROFIT FOR {item.saleNetWeightKg} KG: <span className={cn("ml-2", item.netProfit >=0 ? 'text-primary' : 'text-destructive')}>₹{item.netProfit.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
         </Tabs>
-        
-        {breakdownItem && (
-          <ProfitBreakdownDialog 
-            isOpen={!!breakdownItem} 
-            onClose={() => setBreakdownItem(null)}
-            item={breakdownItem}
-          />
-        )}
       </div>
     </TooltipProvider>
   );
 }
+
+    
