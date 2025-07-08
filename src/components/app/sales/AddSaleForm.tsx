@@ -198,17 +198,21 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const selectedBrokerId = watch("brokerId");
 
+  // Effect to auto-populate brokerage fields from the selected broker's master data.
   React.useEffect(() => {
     if (selectedBrokerId) {
       const broker = brokers.find(b => b.id === selectedBrokerId);
       if (broker) {
-        setValue("brokerageType", broker.commissionType || undefined, { shouldValidate: true });
+        // Set brokerage type and value from master data. User can still override manually.
+        setValue("brokerageType", broker.commissionType, { shouldValidate: true });
         setValue("brokerageValue", broker.commission, { shouldValidate: true });
       } else {
+        // Clear fields if broker is not found.
         setValue("brokerageType", undefined, { shouldValidate: true });
         setValue("brokerageValue", undefined, { shouldValidate: true });
       }
     } else {
+      // Clear fields if no broker is selected.
       setValue("brokerageType", undefined, { shouldValidate: true });
       setValue("brokerageValue", undefined, { shouldValidate: true });
     }
@@ -538,3 +542,5 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
+
+    
