@@ -151,7 +151,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     const totalExpenses = totalNonBrokerageExpenses + calculatedBrokerageCharges;
     const totalAmount = totalGoodsValue + totalExpenses;
     
-    const expensesPerKg = totalNetWeight > 0 ? totalNonBrokerageExpenses / totalNetWeight : 0;
+    const expensesPerKg = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
     
     const itemsWithLandedCost = itemsWithGoodsValue.map(item => {
         const itemRate = Number(item.rate) || 0;
@@ -245,6 +245,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         netWeight: item.netWeight || 0, 
         rate: item.rate || 0, 
         goodsValue: item.goodsValue || 0,
+        landedCostPerKg: item.landedCostPerKg,
       })),
       totalGoodsValue: summary.totalGoodsValue,
       totalQuantity: summary.totalQuantity,

@@ -33,6 +33,7 @@ export interface PurchaseItem {
   netWeight: number;
   rate: number;
   goodsValue: number; // Calculated: netWeight * rate
+  landedCostPerKg?: number; // effectiveRate for this specific item
 }
 
 export interface Purchase {
@@ -64,7 +65,7 @@ export interface Purchase {
 
   // Final calculated fields
   totalAmount: number; // totalGoodsValue + all expenses
-  effectiveRate: number; // Landed cost per kg: totalAmount / totalNetWeight
+  effectiveRate: number; // Average landed cost per kg for the whole purchase
   locationId: string; // All items in one purchase go to one location
   locationName?: string;
 }
@@ -309,4 +310,3 @@ export interface MonthlyProfitInfo {
   totalSalesValue: number; // Sum of goodsValue
   totalCostOfGoods: number;
 }
-

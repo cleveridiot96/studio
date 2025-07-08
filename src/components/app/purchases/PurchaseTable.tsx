@@ -62,8 +62,8 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead className="h-10 px-2 uppercase">Agent</TableHead>
               <TableHead className="h-10 px-2 text-right uppercase">Bags</TableHead>
               <TableHead className="h-10 px-2 text-right uppercase">Net Wt.(kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right uppercase">Goods Value (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right uppercase">Rate (₹/kg)</TableHead>
+              <TableHead className="h-10 px-2 text-right uppercase">Goods Value (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right uppercase">Total Cost (₹)</TableHead>
               <TableHead className="h-10 px-2 text-center uppercase">Actions</TableHead>
             </TableRow>
@@ -110,9 +110,6 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   </TableCell>
                   <TableCell className="p-2 text-right uppercase">{purchase.totalQuantity}</TableCell>
                   <TableCell className="p-2 text-right uppercase">{purchase.totalNetWeight.toLocaleString()}</TableCell>
-                  <TableCell className="p-2 text-right uppercase">
-                    {(purchase.totalGoodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </TableCell>
                   <TableCell className="p-2 text-right font-medium uppercase">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -124,6 +121,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                         <p className="uppercase">Landed Rate: ₹{(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                       </TooltipContent>
                     </Tooltip>
+                  </TableCell>
+                  <TableCell className="p-2 text-right uppercase">
+                    {(purchase.totalGoodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
                   <TableCell className="p-2 text-right font-semibold uppercase">
                     {(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
@@ -179,7 +179,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                       <TableCell className="text-right p-1 uppercase">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-1 uppercase">{item.netWeight.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-1 uppercase">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-1 font-medium uppercase">{(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 font-medium uppercase">{(item.landedCostPerKg || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="text-right p-1 font-medium uppercase">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="p-1" colSpan={1}></TableCell>
                   </TableRow>
