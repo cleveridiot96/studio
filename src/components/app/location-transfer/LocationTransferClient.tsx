@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown } from "@/lib/types";
+import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown, PurchaseItem, SaleItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,7 @@ import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -56,10 +57,11 @@ const initialLocationTransfers: LocationTransfer[] = [];
 export interface AggregatedStockItemForForm {
   lotNumber: string;
   locationId: string;
+  locationName?: string;
   currentBags: number;
-  currentWeight: number;
   averageWeightPerBag: number;
   effectiveRate: number; // This is the up-to-date landed cost per kg
+  purchaseRate: number; // The original base rate
   costBreakdown: CostBreakdown;
 }
 
@@ -103,106 +105,140 @@ export function LocationTransferClient() {
   const aggregatedStockForForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !hydrated) return [];
 
-    const stockMap = new Map<string, AggregatedStockItemForForm>();
-    const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+    const transactions: any[] = [
+        ...purchases.map(p => ({ ...p, txType: 'purchase' })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' })),
+        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' })),
+        ...sales.map(s => ({ ...s, txType: 'sale' })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' }))
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    fyPurchases.forEach(p => {
-        p.items.forEach(item => {
-            const key = `${item.lotNumber}-${p.locationId}`;
-            const purchaseExpensesPerKg = p.effectiveRate - item.rate;
-            stockMap.set(key, {
-                lotNumber: item.lotNumber,
-                locationId: p.locationId,
-                currentBags: item.quantity,
-                currentWeight: item.netWeight,
-                averageWeightPerBag: item.quantity > 0 ? item.netWeight / item.quantity : 50,
-                effectiveRate: p.effectiveRate,
-                costBreakdown: {
-                    baseRate: item.rate,
-                    purchaseExpenses: purchaseExpensesPerKg,
-                    transferExpenses: 0,
-                },
+    const inventoryState = new Map<string, { // key is lotNumber-locationId
+        bags: number;
+        weight: number;
+        landedCostPerKg: number;
+        costBreakdown: CostBreakdown;
+        purchaseRate: number;
+        locationName?: string;
+    }>();
+
+    for (const tx of transactions) {
+        if (!isDateInFinancialYear(tx.date, financialYear)) continue;
+
+        if (tx.txType === 'purchase') {
+            tx.items.forEach((item: PurchaseItem) => {
+                const key = `${item.lotNumber}-${tx.locationId}`;
+                const purchaseExpensesPerKg = tx.effectiveRate - item.rate;
+                inventoryState.set(key, {
+                    bags: item.quantity,
+                    weight: item.netWeight,
+                    landedCostPerKg: tx.effectiveRate,
+                    purchaseRate: item.rate,
+                    locationName: tx.locationName,
+                    costBreakdown: {
+                        baseRate: item.rate,
+                        purchaseExpenses: purchaseExpensesPerKg,
+                        transferExpenses: 0
+                    }
+                });
             });
-        });
-    });
-
-    const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
-    fyPurchaseReturns.forEach(pr => {
-        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-        if (originalPurchase) {
-            const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
-            const entry = stockMap.get(key);
-            if (entry) {
-                entry.currentBags -= pr.quantityReturned;
-                entry.currentWeight -= pr.netWeightReturned;
+        } else if (tx.txType === 'purchaseReturn') {
+            const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
+            if (originalPurchase) {
+                 const originalItem = originalPurchase.items.find(i => i.lotNumber === tx.originalLotNumber);
+                 if (originalItem) {
+                    const key = `${tx.originalLotNumber}-${originalPurchase.locationId}`;
+                    const entry = inventoryState.get(key);
+                    if (entry) {
+                        entry.bags -= tx.quantityReturned;
+                        entry.weight -= tx.netWeightReturned;
+                    }
+                 }
             }
+        } else if (tx.txType === 'locationTransfer') {
+            tx.items.forEach((item: LocationTransferItem) => {
+                const fromKey = `${item.originalLotNumber}-${tx.fromWarehouseId}`;
+                const fromEntry = inventoryState.get(fromKey);
+
+                if (fromEntry) {
+                    fromEntry.bags -= item.bagsToTransfer;
+                    fromEntry.weight -= item.netWeightToTransfer;
+
+                    const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
+                    const toEntry = inventoryState.get(toKey) || {
+                        bags: 0,
+                        weight: 0,
+                        landedCostPerKg: 0,
+                        purchaseRate: fromEntry.purchaseRate,
+                        locationName: tx.toWarehouseName,
+                        costBreakdown: { ...fromEntry.costBreakdown }
+                    };
+
+                    const newLandedCost = fromEntry.landedCostPerKg + (tx.perKgExpense || 0);
+                    
+                    const existingWeight = toEntry.weight;
+                    const existingTotalCost = existingWeight * toEntry.landedCostPerKg;
+                    const newWeight = item.netWeightToTransfer;
+                    const newTotalCost = newWeight * newLandedCost;
+                    
+                    const combinedWeight = existingWeight + newWeight;
+                    const combinedTotalCost = existingTotalCost + newTotalCost;
+                    
+                    toEntry.bags += item.bagsToTransfer;
+                    toEntry.weight = combinedWeight;
+                    toEntry.landedCostPerKg = combinedWeight > 0 ? combinedTotalCost / combinedWeight : newLandedCost;
+                    toEntry.costBreakdown.transferExpenses = (toEntry.costBreakdown.transferExpenses || 0) + (tx.perKgExpense || 0);
+                    
+                    inventoryState.set(toKey, toEntry);
+                }
+            });
+        } else if (tx.txType === 'sale') {
+            tx.items.forEach((item: SaleItem) => {
+                const saleLotKey = Array.from(inventoryState.keys()).find(k => k.startsWith(item.lotNumber));
+                const entry = saleLotKey ? inventoryState.get(saleLotKey) : undefined;
+                if (entry) {
+                    entry.bags -= item.quantity;
+                    entry.weight -= item.netWeight;
+                }
+            });
+        } else if (tx.txType === 'saleReturn') {
+             const originalSale = sales.find(s => s.id === tx.originalSaleId);
+             if (originalSale) {
+                 const originalItem = originalSale.items.find(i => i.lotNumber === tx.originalLotNumber);
+                 if (originalItem) {
+                    const mumbaiWarehouseId = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
+                    if (mumbaiWarehouseId) {
+                        const key = `${tx.originalLotNumber}-${mumbaiWarehouseId}`; // A simplification, assuming returns go to Mumbai
+                        const entry = inventoryState.get(key);
+                        if(entry) {
+                           entry.bags += tx.quantityReturned;
+                           entry.weight += tx.netWeightReturned;
+                        }
+                    }
+                 }
+             }
+        }
+    }
+
+    const result: AggregatedStockItemForForm[] = [];
+    inventoryState.forEach((value, key) => {
+        const [lotNumber, locationId] = key.split(/-(?!.*-)/);
+        if (value.bags > 0.001) {
+            result.push({
+                lotNumber: lotNumber,
+                locationId: locationId,
+                currentBags: value.bags,
+                averageWeightPerBag: value.bags > 0 ? value.weight / value.bags : 50,
+                effectiveRate: value.landedCostPerKg,
+                purchaseRate: value.purchaseRate,
+                locationName: value.locationName,
+                costBreakdown: value.costBreakdown
+            });
         }
     });
 
-    const fyLocationTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
-    fyLocationTransfers.forEach(transfer => {
-        transfer.items.forEach(item => {
-            const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
-            const fromEntry = stockMap.get(fromKey);
-            if (fromEntry) {
-                fromEntry.currentBags -= item.bagsToTransfer;
-                fromEntry.currentWeight -= item.netWeightToTransfer;
-            }
-
-            const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
-            const sourceEntry = fromEntry; 
-
-            const newEffectiveRate = (sourceEntry?.effectiveRate || 0) + (transfer.perKgExpense || 0);
-            const newCostBreakdown: CostBreakdown = {
-                baseRate: sourceEntry?.costBreakdown.baseRate || 0,
-                purchaseExpenses: sourceEntry?.costBreakdown.purchaseExpenses || 0,
-                transferExpenses: (sourceEntry?.costBreakdown.transferExpenses || 0) + (transfer.perKgExpense || 0),
-            };
-            
-            let toEntry = stockMap.get(toKey);
-            if (!toEntry) {
-                toEntry = {
-                    lotNumber: item.newLotNumber,
-                    locationId: transfer.toWarehouseId,
-                    currentBags: 0,
-                    currentWeight: 0,
-                    averageWeightPerBag: item.bagsToTransfer > 0 ? item.netWeightToTransfer / item.bagsToTransfer : 50,
-                    effectiveRate: 0, // Will be updated below
-                    costBreakdown: { baseRate: 0, purchaseExpenses: 0, transferExpenses: 0 }
-                };
-            }
-            toEntry.currentBags += item.bagsToTransfer;
-            toEntry.currentWeight += item.netWeightToTransfer;
-            toEntry.effectiveRate = newEffectiveRate;
-            toEntry.costBreakdown = newCostBreakdown;
-            stockMap.set(toKey, toEntry);
-        });
-    });
-
-    const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
-    fySales.forEach(s => {
-        s.items.forEach(item => {
-            const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
-            const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
-            if (entry) {
-                entry.currentBags -= item.quantity;
-                entry.currentWeight -= item.netWeight;
-            }
-        });
-    });
-
-    const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
-    fySaleReturns.forEach(sr => {
-      const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
-      const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
-      if (entry) {
-        entry.currentBags += sr.quantityReturned;
-        entry.currentWeight += sr.netWeightReturned;
-      }
-    });
-
-    return Array.from(stockMap.values()).filter(item => item.currentBags > 0.001);
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear]);
+    return result;
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, hydrated, financialYear]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
@@ -362,7 +398,7 @@ export function LocationTransferClient() {
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName || item.locationId}</span></TooltipTrigger><TooltipContent><p>{item.locationName || item.locationId}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell className="text-right font-medium">{Math.round(item.currentBags).toLocaleString()}</TableCell>
-                                    <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>
+                                    <TableCell className="text-right">{item.averageWeightPerBag ? (item.currentBags * item.averageWeightPerBag).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) : 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
