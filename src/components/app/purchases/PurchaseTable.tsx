@@ -17,13 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, Printer, Download, ChevronDown } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Download, ChevronDown } from "lucide-react";
 import type { Purchase } from "@/lib/types";
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface PurchaseTableProps {
   data: Purchase[];
