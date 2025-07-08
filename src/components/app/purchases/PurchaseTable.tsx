@@ -51,20 +51,20 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
   return (
     <TooltipProvider>
       <ScrollArea className="rounded-md border shadow-sm h-[60vh]">
-        <Table className="min-w-full">
+        <Table className="min-w-full text-sm">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px] whitespace-nowrap">Date</TableHead>
-              <TableHead>Vakkal / Lot No.</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Bags</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Net Wt.(kg)</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Landed Rate (₹/kg)</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Brokerage (₹)</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Total Cost (₹)</TableHead>
-              <TableHead className="text-center w-[80px] whitespace-nowrap">Actions</TableHead>
+              <TableHead className="h-10 px-2">Date</TableHead>
+              <TableHead className="h-10 px-2">Vakkal / Lot No.</TableHead>
+              <TableHead className="h-10 px-2">Location</TableHead>
+              <TableHead className="h-10 px-2">Supplier</TableHead>
+              <TableHead className="h-10 px-2">Agent</TableHead>
+              <TableHead className="h-10 px-2 text-right">Bags</TableHead>
+              <TableHead className="h-10 px-2 text-right">Net Wt.(kg)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Landed Rate (₹/kg)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Brokerage (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Total Cost (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -77,48 +77,49 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   key={purchase.id}
                   onClick={() => hasMultipleItems && toggleRow(purchase.id)}
                   className={cn(
-                    hasMultipleItems && "cursor-pointer",
-                    isExpanded && "bg-purple-50 dark:bg-purple-900/40"
+                    "text-xs",
+                    hasMultipleItems && "cursor-pointer bg-purple-50/50 dark:bg-purple-900/20",
+                    isExpanded && "!bg-purple-100 dark:!bg-purple-900/50 font-semibold"
                   )}
                   data-state={isExpanded ? 'open' : 'closed'}
                 >
-                  <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
-                  <TableCell>
-                    <div className="flex items-start gap-2">
+                  <TableCell className="p-2">{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
+                  <TableCell className="p-2 align-top">
+                    <div className="flex items-start gap-1">
                       <span className="whitespace-normal break-words">
                         {purchase.items.map(i => i.lotNumber).join(', ')}
                       </span>
-                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 mt-1 ${isExpanded ? "rotate-180" : ""}`} />}
+                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 mt-0.5 ${isExpanded ? "rotate-180" : ""}`} />}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="p-2">
                     <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.locationName || purchase.locationId}</span></TooltipTrigger>
                       <TooltipContent><p>{purchase.locationName || purchase.locationId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="p-2">
                     <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.supplierName || purchase.supplierId}</span></TooltipTrigger>
                       <TooltipContent><p>{purchase.supplierName || purchase.supplierId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="p-2">
                     <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || 'N/A'}</span></TooltipTrigger>
                       <TooltipContent><p>{purchase.agentName || 'N/A'}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
-                  <TableCell className="text-right">{purchase.totalQuantity}</TableCell>
-                  <TableCell className="text-right">{purchase.totalNetWeight.toLocaleString()}</TableCell>
-                   <TableCell className="text-right font-medium">
+                  <TableCell className="p-2 text-right">{purchase.totalQuantity}</TableCell>
+                  <TableCell className="p-2 text-right">{purchase.totalNetWeight.toLocaleString()}</TableCell>
+                   <TableCell className="p-2 text-right font-medium">
                     {(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
-                  <TableCell className="text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
-                  <TableCell className="text-right font-semibold">
+                  <TableCell className="p-2 text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
+                  <TableCell className="p-2 text-right font-semibold">
                     {(purchase.totalAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="p-2 text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
                           <span className="sr-only">Actions</span>
                         </Button>
@@ -150,23 +151,23 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 
               const expandedSubRows = isExpanded && hasMultipleItems ? [
                 <TableRow key={`${purchase.id}-sub-header`} className="bg-purple-100/50 dark:bg-purple-900/60 text-xs hover:bg-purple-100/60 dark:hover:bg-purple-900/70">
-                    <TableCell className="p-2 w-10" />
-                    <TableCell className="p-2 font-semibold text-muted-foreground" colSpan={4}>Vakkal Breakdown</TableCell>
-                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Bags</TableCell>
-                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
-                    <TableCell className="p-2 font-semibold text-muted-foreground text-right">Rate</TableCell>
-                    <TableCell className="p-2 font-semibold text-muted-foreground text-right" colSpan={2}>Value</TableCell>
-                    <TableCell className="p-2 w-10" />
+                    <TableCell className="p-1 w-10" />
+                    <TableCell className="p-1 font-semibold text-muted-foreground" colSpan={4}>Vakkal Breakdown</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right" colSpan={2}>Value</TableCell>
+                    <TableCell className="p-1 w-10" />
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
                   <TableRow key={`${purchase.id}-item-${index}`} className="bg-purple-50 dark:bg-purple-900/40 text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50">
-                      <TableCell className="p-2" />
-                      <TableCell className="p-2 font-medium" colSpan={4}>{item.lotNumber}</TableCell>
-                      <TableCell className="text-right p-2">{item.quantity.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-2">{item.netWeight.toLocaleString()}</TableCell>
-                      <TableCell className="text-right p-2">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-2 font-medium" colSpan={2}>{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="p-2" />
+                      <TableCell className="p-1" />
+                      <TableCell className="p-1 font-medium" colSpan={4}>{item.lotNumber}</TableCell>
+                      <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-1">{item.netWeight.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-1">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="text-right p-1 font-medium" colSpan={2}>{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="p-1" />
                   </TableRow>
                 ))
               ] : [];
