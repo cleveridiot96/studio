@@ -202,7 +202,7 @@ export function LocationTransferClient() {
     });
 
     return Array.from(stockMap.values()).filter(item => item.currentBags > 0.001);
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, isSalesClientHydrated, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
