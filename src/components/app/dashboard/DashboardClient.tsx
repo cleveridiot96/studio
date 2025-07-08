@@ -230,10 +230,10 @@ const DashboardClient = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <Link href="/sales" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg"><Card className="shadow-md border-green-500/50 bg-green-50 dark:bg-green-900/30 h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-green-700 dark:text-green-300 uppercase">Net Sales</CardTitle><DollarSign className="h-5 w-5 text-green-600 dark:text-green-400"/></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">₹{salesSummary.totalAmount.toLocaleString()}</div><p className="text-xs text-muted-foreground uppercase">{salesSummary.totalBags.toLocaleString()} Bags, {salesSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
+            <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">₹{Math.round(salesSummary.totalAmount).toLocaleString()}</div><p className="text-xs text-muted-foreground uppercase">{Math.round(salesSummary.totalBags).toLocaleString()} Bags, {salesSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
         <Link href="/purchases" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg"><Card className="shadow-md border-blue-500/50 bg-blue-50 dark:bg-blue-900/30 h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-blue-700 dark:text-blue-300 uppercase">Net Purchases</CardTitle><ShoppingBag className="h-5 w-5 text-blue-600 dark:text-blue-400"/></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{purchaseSummary.totalAmount.toLocaleString()}</div><p className="text-xs text-muted-foreground uppercase">{purchaseSummary.totalBags.toLocaleString()} Bags, {purchaseSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
+            <CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{Math.round(purchaseSummary.totalAmount).toLocaleString()}</div><p className="text-xs text-muted-foreground uppercase">{Math.round(purchaseSummary.totalBags).toLocaleString()} Bags, {purchaseSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
         <Link href="/inventory" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg"><Card className="shadow-md border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/30 h-full">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-yellow-700 dark:text-yellow-300 uppercase">Stock Summary</CardTitle><Package className="h-5 w-5 text-yellow-600 dark:text-yellow-400"/></CardHeader>
             <CardContent>
@@ -243,9 +243,6 @@ const DashboardClient = () => {
             </CardContent></Card></Link>
       </div>
       <div className="grid grid-cols-1 gap-6">
-        <Link href="/profit-analysis" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
-          <ProfitSummary sales={sales} purchases={purchases} locationTransfers={locationTransfers} />
-        </Link>
         <OutstandingSummary />
       </div>
     </div>
