@@ -243,7 +243,7 @@ export function LocationTransferClient() {
           const xOffset = (pdfWidth - imgWidth) / 2;
           const yOffset = (pdfHeight - imgHeight) / 2;
           pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
-          const timestamp = format(new Date(), 'yyyyMMddHHmmss');
+          const timestamp = format(new Date(), 'ddMMyy_HHmm');
           pdf.save(`TransferSlip_${transferForPdf.id.slice(-4)}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Slip for transfer ${transferForPdf.id.slice(-4)} downloaded.` });
         } catch (err) {

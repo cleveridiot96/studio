@@ -71,7 +71,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           transportRatePerKg: transferToEdit.transportRatePerKg || DEFAULT_TRANSPORT_RATE_PER_KG,
           transportCharges: transferToEdit.transportCharges,
           packingCharges: transferToEdit.packingCharges,
-          loadingCharges: transferToEdit.loadingCharges,
+          labourCharges: transferToEdit.labourCharges,
           miscExpenses: transferToEdit.miscExpenses,
           notes: transferToEdit.notes || "",
           items: transferToEdit.items.map(item => ({
@@ -90,7 +90,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         transportRatePerKg: DEFAULT_TRANSPORT_RATE_PER_KG,
         transportCharges: undefined,
         packingCharges: undefined,
-        loadingCharges: undefined,
+        labourCharges: undefined,
         miscExpenses: undefined,
         notes: "",
         items: [{ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined }],
@@ -118,7 +118,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
     const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
     return { totalBags, totalNetWeight, totalGrossWeight };
-  }, [watchedItems]);
+  }, [JSON.stringify(watchedItems)]); // Depend on stringified value to ensure re-calculation
 
   React.useEffect(() => {
     if (isOpen) {
@@ -187,7 +187,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const toWarehouse = warehouses.find(w => w.id === values.toWarehouseId);
     const transporter = transporters.find(t => t.id === values.transporterId);
     
-    const totalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.loadingCharges || 0) + (values.miscExpenses || 0);
+    const totalExpenses = (values.transportCharges || 0) + (values.packingCharges || 0) + (values.labourCharges || 0) + (values.miscExpenses || 0);
     const totalNetWeight = (values.items || []).reduce((sum, item) => sum + (item.netWeightToTransfer || 0), 0);
     const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
 
@@ -203,7 +203,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       transportRatePerKg: values.transportRatePerKg,
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
-      loadingCharges: values.loadingCharges,
+      labourCharges: values.labourCharges,
       miscExpenses: values.miscExpenses,
       totalExpenses: totalExpenses,
       perKgExpense: perKgExpense,
@@ -225,8 +225,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const target = e.target;
     if (target.value === '0') {
       const fieldName = target.name as keyof LocationTransferFormValues;
-      // This type assertion is complex due to nested fields.
-      // We will handle it carefully.
       if (typeof fieldName === 'string' && fieldName.startsWith('items.')) {
          setValue(fieldName as any, undefined, { shouldValidate: true });
       } else {
@@ -436,6 +434,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
+                 <div className="p-4 border rounded-md shadow-sm">
+                  <h3 className="text-lg font-medium mb-3 text-primary">Other Standard Expenses (Optional)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                   </div>
+                </div>
+
 
                 <FormField control={control} name="notes" render={({ field }) => (
                   <FormItem className="p-4 border rounded-md shadow-sm">

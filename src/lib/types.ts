@@ -225,7 +225,7 @@ export interface LocationTransfer {
   transportRatePerKg?: number;
   transportCharges?: number;
   packingCharges?: number;
-  loadingCharges?: number;
+  labourCharges?: number;
   miscExpenses?: number;
   items: LocationTransferItem[]; // Use the updated item type
   notes?: string;

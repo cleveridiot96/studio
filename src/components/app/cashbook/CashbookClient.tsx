@@ -35,8 +35,8 @@ interface CashLedgerTransaction {
   date: string; // YYYY-MM-DD
   type: 'Receipt' | 'Payment';
   particulars: string;
-  debit: number;
-  credit: number;
+  debit: number; // Inflow
+  credit: number; // Outflow
   balance: number;
 }
 
@@ -135,9 +135,9 @@ export function CashbookClient() {
 
     let runningBalance = calculatedOpeningBalance;
     const entries: CashLedgerTransaction[] = periodTransactions.map(tx => {
-        const credit = tx.type === 'Receipt' ? tx.amount : 0;
-        const debit = tx.type === 'Payment' ? tx.amount : 0;
-        runningBalance = runningBalance + credit - debit;
+        const debit = tx.type === 'Receipt' ? tx.amount : 0;
+        const credit = tx.type === 'Payment' ? tx.amount : 0;
+        runningBalance = runningBalance + debit - credit;
         
         const particularDetails = `${tx.type === 'Receipt' ? 'From' : 'To'} ${tx.partyName || tx.partyId} (${tx.partyType})` +
                                   (tx.source ? ` (Src: ${tx.source})` : '');
@@ -249,8 +249,8 @@ export function CashbookClient() {
                 <TableRow>
                   <TableHead className="w-[100px]">Date</TableHead>
                   <TableHead>Particulars</TableHead>
-                  <TableHead className="text-right">Debit (Out)</TableHead>
-                  <TableHead className="text-right">Credit (In)</TableHead>
+                  <TableHead className="text-right">Debit (In)</TableHead>
+                  <TableHead className="text-right">Credit (Out)</TableHead>
                   <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
               </TableHeader>
@@ -262,10 +262,10 @@ export function CashbookClient() {
                     <TableRow key={tx.id} className={cn(tx.type === 'Receipt' ? 'bg-green-50/50' : 'bg-red-50/50')}>
                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                       <TableCell className="truncate max-w-sm">{tx.particulars}</TableCell>
-                      <TableCell className="text-right font-mono text-red-600">
+                      <TableCell className="text-right font-mono text-green-700">
                         {tx.debit > 0 ? tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-green-700">
+                      <TableCell className="text-right font-mono text-red-600">
                         {tx.credit > 0 ? tx.credit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-semibold font-mono">{tx.balance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>

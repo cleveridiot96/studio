@@ -24,7 +24,7 @@ export const locationTransferSchema = (
   transportRatePerKg: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   transportCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   packingCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  loadingCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  labourCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   miscExpenses: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   notes: z.string().optional(),
   items: z.array(

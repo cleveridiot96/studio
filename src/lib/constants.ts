@@ -11,4 +11,5 @@ export const FIXED_EXPENSES: Readonly<MasterItem[]> = [
     { id: 'fixed-exp-packing', name: 'Packing Charges', type: 'Expense' },
     { id: 'fixed-exp-labour', name: 'Labour Charges', type: 'Expense' },
     { id: 'fixed-exp-misc', name: 'Misc Expenses', type: 'Expense' },
+    { id: 'fixed-exp-transport', name: 'Transport Charges', type: 'Expense' },
 ];
