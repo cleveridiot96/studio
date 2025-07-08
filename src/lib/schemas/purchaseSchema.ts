@@ -38,27 +38,26 @@ export const purchaseSchema = (
   transportCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
   packingCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
   labourCharges: z.coerce.number().nonnegative("Charges must be non-negative").optional(),
-  brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
+  brokerageType: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.enum(['Fixed', 'Percentage']).optional()
+  ),
   brokerageValue: z.coerce.number().optional(),
   miscExpenses: z.coerce.number().nonnegative("Expenses must be non-negative").optional(),
 }).superRefine((data, ctx) => {
-    // If brokerage value is entered, type is required, and vice-versa.
-    const typeExists = !!data.brokerageType;
-    const valueExists = data.brokerageValue !== undefined && data.brokerageValue >= 0;
-
-    if (typeExists !== valueExists) { // If one exists without the other
-        if (typeExists && !valueExists) {
-            ctx.addIssue({
-                path: ["brokerageValue"],
-                message: "Value is required for the selected type.",
-            });
-        }
-        if (!typeExists && valueExists) {
-            ctx.addIssue({
-                path: ["brokerageType"],
-                message: "Type is required if a value is entered.",
-            });
-        }
+    // If brokerage value is entered, type is required.
+    if (data.brokerageValue && data.brokerageValue > 0 && !data.brokerageType) {
+        ctx.addIssue({
+            path: ["brokerageType"],
+            message: "Type is required when a value is entered.",
+        });
+    }
+    // If a brokerage type is selected, a value is required.
+    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue <= 0)) {
+        ctx.addIssue({
+            path: ["brokerageValue"],
+            message: "A positive value is required for the selected type.",
+        });
     }
 
     const lotNumbers = new Set<string>();

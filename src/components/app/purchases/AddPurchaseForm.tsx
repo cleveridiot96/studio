@@ -182,16 +182,13 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     if (watchedAgentId) {
       const agent = agents.find(a => a.id === watchedAgentId);
       if (agent) {
-        // Explicitly set to undefined if master data is missing to avoid passing invalid values to enum
         setValue("brokerageType", agent.commissionType || undefined, { shouldValidate: true });
         setValue("brokerageValue", agent.commission, { shouldValidate: true });
       } else {
-        // Agent ID exists but no agent found (e.g., deleted), clear fields
         setValue("brokerageType", undefined, { shouldValidate: true });
         setValue("brokerageValue", undefined, { shouldValidate: true });
       }
     } else {
-        // No agent selected, clear fields
         setValue("brokerageType", undefined, { shouldValidate: true });
         setValue("brokerageValue", undefined, { shouldValidate: true });
     }

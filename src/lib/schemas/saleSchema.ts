@@ -37,7 +37,10 @@ export const saleSchema = (
   packingCost: z.coerce.number().optional(),
   labourCost: z.coerce.number().optional(),
   
-  brokerageType: z.enum(['Fixed', 'Percentage']).optional(),
+  brokerageType: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.enum(['Fixed', 'Percentage']).optional()
+  ),
   brokerageValue: z.coerce.number().optional(),
   extraBrokeragePerKg: z.coerce.number().optional(),
   
@@ -94,23 +97,20 @@ export const saleSchema = (
     }
   }
 
-  // Brokerage validation
-  const typeExists = !!data.brokerageType;
-  const valueExists = data.brokerageValue !== undefined && data.brokerageValue >= 0;
-
-  if (typeExists !== valueExists) { // If one exists without the other
-      if (typeExists && !valueExists) {
-          ctx.addIssue({
-              path: ["brokerageValue"],
-              message: "Value is required for the selected type.",
-          });
-      }
-      if (!typeExists && valueExists) {
-          ctx.addIssue({
-              path: ["brokerageType"],
-              message: "Type is required if a value is entered.",
-          });
-      }
+  // Brokerage validation, only if a broker is actually selected.
+  if (data.brokerId) {
+    if (data.brokerageValue && data.brokerageValue > 0 && !data.brokerageType) {
+        ctx.addIssue({
+            path: ["brokerageType"],
+            message: "Type is required when a value is entered.",
+        });
+    }
+    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue <= 0)) {
+        ctx.addIssue({
+            path: ["brokerageValue"],
+            message: "A positive value is required for the selected type.",
+        });
+    }
   }
 });
 
