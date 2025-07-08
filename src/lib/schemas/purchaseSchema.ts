@@ -38,23 +38,23 @@ export const purchaseSchema = (
   transportCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
   packingCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
   labourCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
-  brokerageType: z.preprocess(
+  commissionType: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.enum(['Fixed', 'Percentage']).optional()
   ),
-  brokerageValue: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  commission: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   miscExpenses: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Expenses must be non-negative").optional()),
 }).superRefine((data, ctx) => {
     if (data.agentId) {
-        if (data.brokerageValue !== undefined && data.brokerageType === undefined) {
+        if (data.commission !== undefined && data.commissionType === undefined) {
             ctx.addIssue({
-                path: ["brokerageType"],
+                path: ["commissionType"],
                 message: "Type is required when value is entered.",
             });
         }
-        if (data.brokerageType !== undefined && data.brokerageValue === undefined) {
+        if (data.commissionType !== undefined && data.commission === undefined) {
             ctx.addIssue({
-                path: ["brokerageValue"],
+                path: ["commission"],
                 message: "Value is required when type is selected.",
             });
         }

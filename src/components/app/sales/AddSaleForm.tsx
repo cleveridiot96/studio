@@ -92,8 +92,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         transportCost: saleToEdit.transportCost,
         packingCost: saleToEdit.packingCost,
         labourCost: saleToEdit.labourCost,
-        brokerageType: saleToEdit.brokerageType,
-        brokerageValue: saleToEdit.brokerageValue,
+        commissionType: saleToEdit.commissionType,
+        commission: saleToEdit.commission,
         extraBrokeragePerKg: saleToEdit.extraBrokeragePerKg,
         notes: saleToEdit.notes || "",
       };
@@ -110,8 +110,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transportCost: undefined,
       packingCost: undefined,
       labourCost: undefined,
-      brokerageType: undefined,
-      brokerageValue: undefined,
+      commissionType: undefined,
+      commission: undefined,
       extraBrokeragePerKg: undefined,
       notes: "",
     };
@@ -136,7 +136,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const summary = React.useMemo(() => {
     const {
         items, isCB, cbAmount, transportCost, packingCost, labourCost,
-        brokerageType, brokerageValue, extraBrokeragePerKg, brokerId
+        commissionType, commission, extraBrokeragePerKg, brokerId
     } = watchedFormValues;
       
     let totalGoodsValue = 0;
@@ -163,9 +163,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const billedAmount = isCB ? totalGoodsValue - (Number(cbAmount) || 0) : totalGoodsValue;
 
     const calculatedBrokerageCommission = (() => {
-      if (!brokerId || brokerageValue === undefined || brokerageValue < 0) return 0;
-      if (brokerageType === "Percentage") return totalGoodsValue * (brokerageValue / 100);
-      if (brokerageType === "Fixed") return brokerageValue;
+      if (!brokerId || commission === undefined || commission < 0) return 0;
+      if (commissionType === "Percentage") return totalGoodsValue * (commission / 100);
+      if (commissionType === "Fixed") return commission;
       return 0;
     })();
 
@@ -200,13 +200,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   React.useEffect(() => {
     if (selectedBrokerId) {
       const broker = brokers.find(b => b.id === selectedBrokerId);
-      // If broker is found, set values from master data. They can be undefined.
-      setValue("brokerageType", broker?.commissionType, { shouldValidate: true });
-      setValue("brokerageValue", broker?.commission, { shouldValidate: true });
+      setValue("commissionType", broker?.commissionType, { shouldValidate: true });
+      setValue("commission", broker?.commission, { shouldValidate: true });
     } else {
-      // If no broker, clear the fields.
-      setValue("brokerageType", undefined, { shouldValidate: true });
-      setValue("brokerageValue", undefined, { shouldValidate: true });
+      setValue("commissionType", undefined, { shouldValidate: true });
+      setValue("commission", undefined, { shouldValidate: true });
     }
   }, [selectedBrokerId, brokers, setValue]);
 
@@ -283,8 +281,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transportCost: values.transportCost,
       packingCost: values.packingCost,
       labourCost: values.labourCost,
-      brokerageType: values.brokerageType,
-      brokerageValue: values.brokerageValue,
+      commissionType: values.commissionType,
+      commission: values.commission,
       extraBrokeragePerKg: values.extraBrokeragePerKg,
       calculatedBrokerageCommission: summary.calculatedBrokerageCommission,
       calculatedExtraBrokerage: summary.calculatedExtraBrokerage,
@@ -425,7 +423,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   </div>
 
                   <div className="p-4 border rounded-md shadow-sm">
-                      <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Brokerage</h3>
+                      <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Commission</h3>
                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
                          <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
@@ -441,8 +439,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                        </div>
                        {selectedBrokerId && (
                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t items-end">
-                            <FormField control={control} name="brokerageType" render={({ field }) => (
-                              <FormItem><FormLabel>Brokerage Type</FormLabel>
+                            <FormField control={control} name="commissionType" render={({ field }) => (
+                              <FormItem><FormLabel>Commission Type</FormLabel>
                                 <ShadSelect onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                   <SelectContent>
                                     <SelectItem value="Fixed">Fixed (₹)</SelectItem>
@@ -450,13 +448,13 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                   </SelectContent>
                                 </ShadSelect><FormMessage />
                               </FormItem>)} />
-                            <FormField control={control} name="brokerageValue" render={({ field }) => (
+                            <FormField control={control} name="commission" render={({ field }) => (
                               <FormItem><FormLabel>Value</FormLabel>
                                 <div className="relative">
                                   <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''} onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                    className={watch('brokerageType') === 'Percentage' ? "pr-8" : ""}
+                                    className={watch('commissionType') === 'Percentage' ? "pr-8" : ""}
                                   /></FormControl>
-                                  {watch('brokerageType') === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                  {watch('commissionType') === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
                                 </div><FormMessage />
                               </FormItem>)} />
                             <FormField control={control} name="extraBrokeragePerKg" render={({ field }) => (

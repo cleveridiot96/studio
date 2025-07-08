@@ -37,11 +37,11 @@ export const saleSchema = (
   packingCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   labourCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   
-  brokerageType: z.preprocess(
+  commissionType: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.enum(['Fixed', 'Percentage']).optional()
   ),
-  brokerageValue: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  commission: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   extraBrokeragePerKg: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   
   notes: z.string().optional(),
@@ -99,15 +99,15 @@ export const saleSchema = (
 
   // Brokerage validation, only if a broker is actually selected.
   if (data.brokerId) {
-    if (data.brokerageValue !== undefined && data.brokerageType === undefined) {
+    if (data.commission !== undefined && data.commissionType === undefined) {
         ctx.addIssue({
-            path: ["brokerageType"],
+            path: ["commissionType"],
             message: "Type is required when value is entered.",
         });
     }
-    if (data.brokerageType !== undefined && data.brokerageValue === undefined) {
+    if (data.commissionType !== undefined && data.commission === undefined) {
         ctx.addIssue({
-            path: ["brokerageValue"],
+            path: ["commission"],
             message: "Value is required when type is selected.",
         });
     }

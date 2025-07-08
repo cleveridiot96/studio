@@ -87,8 +87,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         transportCharges: purchaseToEdit.transportCharges,
         packingCharges: purchaseToEdit.packingCharges,
         labourCharges: purchaseToEdit.labourCharges,
-        brokerageType: purchaseToEdit.brokerageType,
-        brokerageValue: purchaseToEdit.brokerageValue,
+        commissionType: purchaseToEdit.commissionType,
+        commission: purchaseToEdit.commission,
         miscExpenses: purchaseToEdit.miscExpenses,
       };
     }
@@ -102,8 +102,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       transportCharges: undefined,
       packingCharges: undefined,
       labourCharges: undefined,
-      brokerageType: undefined,
-      brokerageValue: undefined,
+      commissionType: undefined,
+      commission: undefined,
       miscExpenses: undefined,
     };
   }, [purchaseToEdit]);
@@ -122,7 +122,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   
   const summary = React.useMemo(() => {
     const { 
-        items, agentId, brokerageType, brokerageValue, 
+        items, agentId, commissionType, commission, 
         transportCharges, packingCharges, labourCharges, miscExpenses 
     } = watchedFormValues;
 
@@ -142,9 +142,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     });
 
     const calculatedBrokerageCharges = (() => {
-      if (!agentId || brokerageValue === undefined || brokerageValue < 0) return 0;
-      if (brokerageType === "Percentage") return totalGoodsValue * (brokerageValue / 100);
-      if (brokerageType === "Fixed") return brokerageValue;
+      if (!agentId || commission === undefined || commission < 0) return 0;
+      if (commissionType === "Percentage") return totalGoodsValue * (commission / 100);
+      if (commissionType === "Fixed") return commission;
       return 0;
     })();
 
@@ -181,13 +181,11 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   React.useEffect(() => {
     if (watchedAgentId) {
       const agent = agents.find(a => a.id === watchedAgentId);
-      // If agent is found, set values from master data. They can be undefined.
-      setValue("brokerageType", agent?.commissionType, { shouldValidate: true });
-      setValue("brokerageValue", agent?.commission, { shouldValidate: true });
+      setValue("commissionType", agent?.commissionType, { shouldValidate: true });
+      setValue("commission", agent?.commission, { shouldValidate: true });
     } else {
-      // If no agent, clear the fields.
-      setValue("brokerageType", undefined, { shouldValidate: true });
-      setValue("brokerageValue", undefined, { shouldValidate: true });
+      setValue("commissionType", undefined, { shouldValidate: true });
+      setValue("commission", undefined, { shouldValidate: true });
     }
   }, [watchedAgentId, agents, setValue]);
 
@@ -254,8 +252,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
-      brokerageType: values.brokerageType,
-      brokerageValue: values.brokerageValue,
+      commissionType: values.commissionType,
+      commission: values.commission,
       brokerageCharges: summary.calculatedBrokerageCharges,
       miscExpenses: values.miscExpenses,
       totalAmount,
@@ -335,9 +333,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                   </div>
                   {watchedFormValues.agentId && (
                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mt-4 pt-4 border-t">
-                        <div className="font-medium text-sm md:col-span-1 pt-7 text-muted-foreground">Brokerage Details:</div>
-                        <FormField control={control} name="brokerageType" render={({ field }) => (
-                              <FormItem><FormLabel>Brokerage Type</FormLabel>
+                        <div className="font-medium text-sm md:col-span-1 pt-7 text-muted-foreground">Commission Details:</div>
+                        <FormField control={control} name="commissionType" render={({ field }) => (
+                              <FormItem><FormLabel>Commission Type</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                   <SelectContent>
@@ -348,14 +346,14 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                 <FormMessage />
                               </FormItem>
                             )} />
-                        <FormField control={control} name="brokerageValue" render={({ field }) => (
+                        <FormField control={control} name="commission" render={({ field }) => (
                               <FormItem><FormLabel>Value</FormLabel>
                                 <div className="relative">
                                   <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
                                     onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                    className={watchedFormValues.brokerageType === 'Percentage' ? "pr-8" : ""}
+                                    className={watchedFormValues.commissionType === 'Percentage' ? "pr-8" : ""}
                                   /></FormControl>
-                                  {watchedFormValues.brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                                  {watchedFormValues.commissionType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
                                 </div>
                                 <FormMessage />
                               </FormItem>

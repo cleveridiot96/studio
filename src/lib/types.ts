@@ -57,8 +57,8 @@ export interface Purchase {
   transportCharges?: number;
   packingCharges?: number;
   labourCharges?: number;
-  brokerageType?: 'Fixed' | 'Percentage';
-  brokerageValue?: number;
+  commissionType?: 'Fixed' | 'Percentage';
+  commission?: number;
   brokerageCharges?: number; // Calculated brokerage
   miscExpenses?: number;
 
@@ -113,8 +113,8 @@ export interface Sale {
   transportCost?: number;
   packingCost?: number;
   labourCost?: number;
-  brokerageType?: 'Fixed' | 'Percentage';
-  brokerageValue?: number;
+  commissionType?: 'Fixed' | 'Percentage';
+  commission?: number;
   extraBrokeragePerKg?: number;
 
   // Calculated brokerage for the entire sale
