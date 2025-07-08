@@ -118,7 +118,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
   const watchedFormValues = watch();
-  const watchedAgentId = watch("agentId");
   
   const summary = React.useMemo(() => {
     const { 
@@ -178,16 +177,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
   
-  React.useEffect(() => {
-    if (watchedAgentId) {
-      const agent = agents.find(a => a.id === watchedAgentId);
-      setValue("commissionType", agent?.commissionType, { shouldValidate: true });
-      setValue("commission", agent?.commission, { shouldValidate: true });
+  const handleAgentChange = (agentId: string | undefined) => {
+    setValue("agentId", agentId, { shouldValidate: true });
+    if (agentId) {
+        const agent = agents.find(a => a.id === agentId);
+        setValue("commissionType", agent?.commissionType, { shouldValidate: true });
+        setValue("commission", agent?.commission, { shouldValidate: true });
     } else {
-      setValue("commissionType", undefined, { shouldValidate: true });
-      setValue("commission", undefined, { shouldValidate: true });
+        setValue("commissionType", undefined, { shouldValidate: true });
+        setValue("commission", undefined, { shouldValidate: true });
     }
-  }, [watchedAgentId, agents, setValue]);
+  };
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterItemToEdit(null);
@@ -310,7 +310,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             <FormLabel>Agent (Optional)</FormLabel>
                             <MasterDataCombobox
                               value={field.value}
-                              onChange={field.onChange}
+                              onChange={handleAgentChange}
                               options={agents.filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
                               placeholder="Select Agent"
                               addNewLabel="Add New Agent"
@@ -521,5 +521,3 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
-
-    

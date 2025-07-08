@@ -131,7 +131,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
   
   const watchedFormValues = watch();
-  const selectedBrokerId = watch("brokerId");
 
   const summary = React.useMemo(() => {
     const {
@@ -197,16 +196,17 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     }
   }, [isOpen, saleToEdit, reset, getDefaultValues]);
 
-  React.useEffect(() => {
-    if (selectedBrokerId) {
-      const broker = brokers.find(b => b.id === selectedBrokerId);
-      setValue("commissionType", broker?.commissionType, { shouldValidate: true });
-      setValue("commission", broker?.commission, { shouldValidate: true });
+  const handleBrokerChange = (brokerId: string | undefined) => {
+    setValue("brokerId", brokerId, { shouldValidate: true });
+    if (brokerId) {
+        const broker = brokers.find(b => b.id === brokerId);
+        setValue("commissionType", broker?.commissionType, { shouldValidate: true });
+        setValue("commission", broker?.commission, { shouldValidate: true });
     } else {
-      setValue("commissionType", undefined, { shouldValidate: true });
-      setValue("commission", undefined, { shouldValidate: true });
+        setValue("commissionType", undefined, { shouldValidate: true });
+        setValue("commission", undefined, { shouldValidate: true });
     }
-  }, [selectedBrokerId, brokers, setValue]);
+  };
 
   const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterItemToEdit(null);
@@ -334,7 +334,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                         <FormItem><FormLabel>Broker (Optional)</FormLabel>
                           <MasterDataCombobox 
                             value={field.value} 
-                            onChange={field.onChange} 
+                            onChange={handleBrokerChange} 
                             options={brokers.map(b => ({ value: b.id, label: b.name }))} 
                             placeholder="Select Broker" 
                             onAddNew={() => handleOpenMasterForm("Broker")} 
@@ -437,7 +437,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                          <FormField control={control} name="packingCost" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                          <FormField control={control} name="labourCost" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                        </div>
-                       {selectedBrokerId && (
+                       {watchedFormValues.brokerId && (
                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t items-end">
                             <FormField control={control} name="commissionType" render={({ field }) => (
                               <FormItem><FormLabel>Commission Type</FormLabel>
@@ -532,5 +532,3 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 };
 
 export const AddSaleForm = React.memo(AddSaleFormComponent);
-
-    
