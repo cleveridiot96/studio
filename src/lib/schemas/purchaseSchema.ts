@@ -4,12 +4,9 @@ import type { MasterItem } from '@/lib/types';
 
 const purchaseItemSchema = z.object({
     lotNumber: z.string().min(1, "Vakkal/Lot number is required."),
-    quantity: z.coerce.number().min(0.01, "Number of bags must be greater than 0.").optional(),
-    netWeight: z.coerce.number().min(0.01, "Net weight must be greater than 0.").optional(),
-    rate: z.coerce.number().min(0.01, "Rate per KG must be greater than 0.").optional(),
-}).refine(data => data.quantity && data.netWeight && data.rate, {
-    message: "Bags, Net Weight, and Rate are all required for each item.",
-    path: ["lotNumber"], // Attach error to a field for visibility
+    quantity: z.coerce.number({required_error: "Bags are required."}).min(0.01, "Bags must be > 0."),
+    netWeight: z.coerce.number({required_error: "Net Wt. is required."}).min(0.01, "Net weight must be > 0."),
+    rate: z.coerce.number({required_error: "Rate is required."}).min(0.01, "Rate per KG must be > 0."),
 });
 
 export const purchaseSchema = (
