@@ -18,13 +18,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, Printer, Download, ChevronDown } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Download, ChevronDown } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format, parseISO } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface SaleTableProps {
   data: Sale[];
@@ -67,8 +66,9 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               <TableHead className="h-10 px-2">Vakkal / Lot(s)</TableHead>
               <TableHead className="h-10 px-2 text-right">Bags</TableHead>
               <TableHead className="h-10 px-2 text-right">Net Wt.(kg)</TableHead>
-              <TableHead className="h-10 px-2">Broker</TableHead>
               <TableHead className="h-10 px-2 text-right">Billed Amt (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">CB Amt (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Balance (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Profit (₹)</TableHead>
               <TableHead className="h-10 px-2 text-center">Actions</TableHead>
             </TableRow>
@@ -110,12 +110,9 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   </TableCell>
                   <TableCell className="p-2 text-right">{sale.totalQuantity.toLocaleString()}</TableCell>
                   <TableCell className="p-2 text-right">{sale.totalNetWeight.toLocaleString()}</TableCell>
-                  <TableCell className="p-2">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.brokerName || ''}</span></TooltipTrigger>
-                      <TooltipContent><p>{sale.brokerName || ''}</p></TooltipContent>
-                    </Tooltip>
-                  </TableCell>
                   <TableCell className="p-2 text-right font-semibold">{(sale.billedAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                  <TableCell className="p-2 text-right text-destructive">{(sale.cbAmount || 0) > 0 ? (sale.cbAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</TableCell>
+                  <TableCell className="p-2 text-right font-bold text-orange-600">{(sale.balanceAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                   <TableCell className={`p-2 text-right font-semibold ${(sale.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>
                     {(sale.totalCalculatedProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
@@ -158,7 +155,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Profit</TableCell>
-                    <TableCell className="p-1 w-10"></TableCell>
+                    <TableCell className="p-1" colSpan={2}></TableCell>
                 </TableRow>,
                 ...sale.items.map((item, index) => (
                   <TableRow key={`${sale.id}-item-${index}`} className="bg-blue-50 dark:bg-blue-900/40 text-xs hover:bg-blue-100/50 dark:hover:bg-blue-800/50">
@@ -169,7 +166,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                       <TableCell className="text-right p-1">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="text-right p-1 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className={`text-right p-1 font-medium ${(item.itemProfit || 0) >= 0 ? 'text-green-600' : 'text-red-700'}`}>{(item.itemProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="p-1"></TableCell>
+                      <TableCell className="p-1" colSpan={2}></TableCell>
                   </TableRow>
                 ))
               ] : [];

@@ -26,7 +26,6 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { format as formatDateFn, parseISO } from 'date-fns';
 import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
@@ -86,64 +85,9 @@ export function SalesClient() {
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedEmptyArray);
+  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedEmptyArray);
 
   React.useEffect(() => setIsSalesClientHydrated(true), []);
-
-  const filteredSales = React.useMemo(() => {
-    if (isAppHydrating || !isSalesClientHydrated) return [];
-    
-    const fySales = sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
-
-    const enrichedSales = fySales.map(sale => {
-        if (!sale || !sale.items) return null;
-
-        const totalGoodsValue = sale.items.reduce((acc, item) => acc + (item.goodsValue || 0), 0);
-        
-        const billedAmount = (sale.isCB && sale.cbAmount) 
-            ? totalGoodsValue - sale.cbAmount 
-            : totalGoodsValue;
-
-        const totalCostOfGoodsSold = sale.items.reduce((acc, item) => acc + (item.costOfGoodsSold || 0), 0);
-        
-        const grossProfit = totalGoodsValue - totalCostOfGoodsSold;
-        
-        const totalSaleSideExpenses = (sale.transportCost || 0) + 
-                                      (sale.packingCost || 0) + 
-                                      (sale.labourCost || 0) + 
-                                      (sale.calculatedBrokerageCommission || 0) + 
-                                      (sale.calculatedExtraBrokerage || 0);
-
-        const netProfit = grossProfit - totalSaleSideExpenses;
-        
-        const itemLevelProfits = sale.items.map(item => {
-            const itemGrossProfit = (item.goodsValue || 0) - (item.costOfGoodsSold || 0);
-            return {
-                ...item,
-                itemProfit: itemGrossProfit, // Simplified to just gross for line item display
-            };
-        });
-
-        return {
-            ...sale,
-            items: itemLevelProfits,
-            totalGoodsValue,
-            billedAmount,
-            totalCostOfGoodsSold,
-            totalGrossProfit: grossProfit,
-            totalExpenses: totalSaleSideExpenses,
-            netProfit,
-        };
-    }).filter(Boolean) as Sale[];
-
-    return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-}, [sales, financialYear, isAppHydrating, isSalesClientHydrated]);
-
-
-  const filteredSaleReturns = React.useMemo(() => {
-    if (isAppHydrating || !isSalesClientHydrated) return [];
-    return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
-  }, [saleReturns, financialYear, isAppHydrating, isSalesClientHydrated]);
 
   const aggregatedStockForSalesForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
@@ -162,14 +106,15 @@ export function SalesClient() {
     fyPurchases.forEach(p => {
         if (!p || !p.items) return;
         p.items.forEach(item => {
-            const entry = stockMap.get(item.lotNumber) || { currentBags: 0, currentWeight: 0, effectiveRate: p.effectiveRate, purchaseRate: item.rate, locationId: p.locationId, locationName: p.locationName };
-            entry.currentBags += item.quantity;
-            entry.currentWeight += item.netWeight;
-            entry.effectiveRate = p.effectiveRate;
-            entry.purchaseRate = item.rate;
-            entry.locationId = p.locationId;
-            entry.locationName = p.locationName;
-            stockMap.set(item.lotNumber, entry);
+            const key = `${item.lotNumber}-${p.locationId}`;
+            stockMap.set(key, {
+                currentBags: item.quantity,
+                currentWeight: item.netWeight,
+                effectiveRate: p.effectiveRate,
+                purchaseRate: item.rate,
+                locationId: p.locationId,
+                locationName: p.locationName
+            });
         });
     });
 
@@ -179,7 +124,8 @@ export function SalesClient() {
         if (originalPurchase) {
           const originalItem = originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber);
           if (originalItem) {
-            const entry = stockMap.get(originalItem.lotNumber);
+            const key = `${originalItem.lotNumber}-${originalPurchase.locationId}`;
+            const entry = stockMap.get(key);
             if (entry) {
                 entry.currentBags -= pr.quantityReturned;
                 entry.currentWeight -= pr.netWeightReturned;
@@ -192,27 +138,30 @@ export function SalesClient() {
     fyLocationTransfers.forEach(transfer => {
         if (!transfer || !transfer.items) return;
         transfer.items.forEach(item => {
-            const fromEntry = stockMap.get(item.originalLotNumber);
+            const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
+            const fromEntry = stockMap.get(fromKey);
             if (fromEntry) {
                 fromEntry.currentBags -= item.bagsToTransfer;
                 fromEntry.currentWeight -= item.netWeightToTransfer;
             }
 
-            const toEntry = stockMap.get(item.newLotNumber);
-            const sourceEntry = fromEntry || stockMap.get(item.originalLotNumber);
-            if (toEntry) {
-                toEntry.currentBags += item.bagsToTransfer;
-                toEntry.currentWeight += item.netWeightToTransfer;
-            } else {
-                stockMap.set(item.newLotNumber, {
-                    currentBags: item.bagsToTransfer,
-                    currentWeight: item.netWeightToTransfer,
-                    effectiveRate: sourceEntry?.effectiveRate || 0,
+            const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+            let toEntry = stockMap.get(toKey);
+            const sourceEntry = fromEntry; 
+
+            if (!toEntry) {
+                toEntry = {
+                    currentBags: 0,
+                    currentWeight: 0,
+                    effectiveRate: (sourceEntry?.effectiveRate || 0) + (transfer.perKgExpense || 0),
                     purchaseRate: sourceEntry?.purchaseRate || 0,
                     locationId: transfer.toWarehouseId,
                     locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
-                });
+                };
             }
+            toEntry.currentBags += item.bagsToTransfer;
+            toEntry.currentWeight += item.netWeightToTransfer;
+            stockMap.set(toKey, toEntry);
         });
     });
 
@@ -220,7 +169,8 @@ export function SalesClient() {
     fySales.forEach(s => {
         if (!s || !s.items) return;
         s.items.forEach(item => {
-            const entry = stockMap.get(item.lotNumber);
+            const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
+            const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
             if (entry) {
                 entry.currentBags -= item.quantity;
                 entry.currentWeight -= item.netWeight;
@@ -230,19 +180,20 @@ export function SalesClient() {
     
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
-      const entry = stockMap.get(sr.originalLotNumber);
+      const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
+      const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
       if (entry) {
         entry.currentBags += sr.quantityReturned;
         entry.currentWeight += sr.netWeightReturned;
       }
     });
 
-
     const result: AggregatedStockItemForForm[] = [];
     stockMap.forEach((value, key) => {
+        const lotNumber = key.substring(0, key.lastIndexOf('-'));
         if (value.currentBags > 0.001) {
             result.push({ 
-                lotNumber: key, 
+                lotNumber: lotNumber,
                 currentBags: value.currentBags,
                 effectiveRate: value.effectiveRate,
                 purchaseRate: value.purchaseRate,
@@ -252,16 +203,47 @@ export function SalesClient() {
             });
         }
     });
-
-    const MUMBAI_WAREHOUSE_ID = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
-    if (!MUMBAI_WAREHOUSE_ID) {
-        console.warn("Mumbai warehouse ID not found in constants. Cannot filter stock for sales.");
-        return result; 
-    }
-
-    return result.filter(item => item.locationId === MUMBAI_WAREHOUSE_ID);
+    
+    return result;
 
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
+
+
+  const filteredSales = React.useMemo(() => {
+    if (isAppHydrating || !isSalesClientHydrated) return [];
+    const fySales = sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
+
+    const enrichedSales = fySales.map(sale => {
+      if (!sale || !sale.items) return null;
+
+      let totalPaid = 0;
+      receipts.forEach(receipt => {
+        if(receipt.againstBills) {
+          receipt.againstBills.forEach(bill => {
+            if (bill.billId === sale.id) {
+              totalPaid += bill.amount;
+            }
+          });
+        }
+      });
+      const balanceAmount = sale.billedAmount - totalPaid;
+
+      return {
+        ...sale,
+        paidAmount: totalPaid,
+        balanceAmount: balanceAmount,
+      };
+
+    }).filter(Boolean) as Sale[];
+
+    return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [sales, receipts, financialYear, isAppHydrating, isSalesClientHydrated]);
+
+
+  const filteredSaleReturns = React.useMemo(() => {
+    if (isAppHydrating || !isSalesClientHydrated) return [];
+    return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
+  }, [saleReturns, financialYear, isAppHydrating, isSalesClientHydrated]);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -280,32 +262,13 @@ export function SalesClient() {
         : [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
     });
 
-    if (sale.isCB && sale.cbAmount && sale.cbAmount > 0) {
-        const accountableParty = sale.brokerId ? brokers.find(b => b.id === sale.brokerId) : customers.find(c => c.id === sale.customerId);
-        if(accountableParty) {
-            const cbReceipt: Receipt = {
-                id: `receipt-cb-${sale.id}`,
-                date: sale.date,
-                partyId: accountableParty.id,
-                partyName: accountableParty.name,
-                partyType: accountableParty.type as 'Broker' | 'Customer',
-                amount: sale.cbAmount,
-                paymentMethod: 'Cash',
-                notes: `Auto-generated for CB on Sale Bill: ${sale.billNumber || sale.id}`,
-            };
-            setReceipts(prev => [cbReceipt, ...prev.filter(r => r.id !== cbReceipt.id)]);
-            toast({ title: "CB Recorded", description: `A receipt of ₹${sale.cbAmount} has been auto-generated for the cut bill.` });
-        }
-    }
-
-
     toast({
       title: "Success!",
       description: isEditing ? "Sale updated." : "Sale added."
     });
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
-  }, [sales, setSales, brokers, customers, setReceipts, toast]);
+  }, [sales, setSales, toast]);
 
   const handleEditSale = React.useCallback((sale: Sale) => { setSaleToEdit(sale); setIsAddSaleFormOpen(true); }, []);
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => { setSaleToDeleteId(saleId); setShowDeleteConfirm(true); }, []);

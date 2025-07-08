@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -8,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, MoreVertical, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign } from "lucide-react";
+import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +26,6 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
 import { cn } from "@/lib/utils";
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
-import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 
 
@@ -152,11 +150,11 @@ export function InventoryClient() {
         const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
         let toEntry = inventoryMap.get(toKey);
         
-        const originalPurchase = allPurchasesEver.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
-        const sourceEffectiveRate = originalPurchase?.effectiveRate || 0;
+        const sourceEffectiveRate = fromItem?.effectiveRate || 0;
         const newEffectiveRate = sourceEffectiveRate + (transfer.perKgExpense || 0);
         
         if (!toEntry) {
+          const originalPurchase = allPurchasesEver.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
           const originalSupplier = suppliers.find(s => s.id === originalPurchase?.supplierId);
           toEntry = {
             lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId,

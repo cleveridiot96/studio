@@ -113,16 +113,20 @@ export interface Sale {
   transportCost?: number;
   packingCost?: number;
   labourCost?: number;
+  miscExpenses?: number;
   commissionType?: 'Fixed' | 'Percentage';
   commission?: number;
   extraBrokeragePerKg?: number;
-  miscExpenses?: number;
-
+  
   // Calculated brokerage for the entire sale
   calculatedBrokerageCommission?: number;
   calculatedExtraBrokerage?: number;
   
   notes?: string;
+
+  // For outstanding balance calculation
+  paidAmount?: number;
+  balanceAmount?: number;
 }
 
 
@@ -223,7 +227,6 @@ export interface LocationTransfer {
   toWarehouseName?: string;
   transporterId?: string;
   transporterName?: string;
-  transportRatePerKg?: number;
   transportCharges?: number;
   packingCharges?: number;
   labourCharges?: number;

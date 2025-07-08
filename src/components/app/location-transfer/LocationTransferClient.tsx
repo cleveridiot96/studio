@@ -3,17 +3,16 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn } from "@/lib/types";
+import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { LocationTransferSlipPrint } from "./LocationTransferSlipPrint";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, parseISO } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -60,6 +59,10 @@ interface AggregatedStockItem {
   currentBags: number;
   currentWeight: number;
   averageWeightPerBag: number;
+}
+
+interface ExpandedTransferHistoryItem extends LocationTransfer {
+  item: LocationTransferItem;
 }
 
 export function LocationTransferClient() {
@@ -258,9 +261,23 @@ export function LocationTransferClient() {
     }
   }, [transferForPdf, toast]);
 
-  const transfersFilteredByFY = React.useMemo(() => {
-      if (isAppHydrating || !hydrated) return [];
-      return locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+  const expandedTransfers = React.useMemo(() => {
+    if (isAppHydrating || !hydrated) return [];
+    const filtered = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    
+    const flatList: ExpandedTransferHistoryItem[] = [];
+    filtered.forEach(transfer => {
+      if (transfer.items && transfer.items.length > 0) {
+        transfer.items.forEach(item => {
+          flatList.push({
+            ...transfer,
+            item: item,
+          });
+        });
+      }
+    });
+
+    return flatList.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [locationTransfers, financialYear, isAppHydrating, hydrated]);
   
   const addButtonDynamicClass = React.useMemo(() => {
@@ -338,31 +355,34 @@ export function LocationTransferClient() {
           </TabsContent>
           <TabsContent value="transferHistory">
             <CardContent className="pt-6">
-              <CardDescription className="mb-4 text-sm no-print">History of transfers for FY {financialYear}.</CardDescription>
+              <CardDescription className="mb-4 text-sm no-print">History of transfers for FY {financialYear}. Each row represents one item in a transfer.</CardDescription>
               <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                 <Table size="sm">
-                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Items</TableHead><TableHead>Notes</TableHead><TableHead className="text-center no-print">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Vakkal</TableHead><TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Weight</TableHead><TableHead className="text-center no-print">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {transfersFilteredByFY.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
-                    {transfersFilteredByFY.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).map(transfer => (
-                      <TableRow key={transfer.id}>
+                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
+                    {expandedTransfers.map(transfer => (
+                      <TableRow key={`${transfer.id}-${transfer.item.originalLotNumber}`}>
                         <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell>
-                          <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[200px] inline-block">{transfer.items.map(i => `${i.originalLotNumber} (${i.bagsToTransfer} bags)`).join(', ')}</span></TooltipTrigger>
-                            <TooltipContent><ul className="list-disc pl-4">{transfer.items.map(i => <li key={i.newLotNumber}>{`"${i.originalLotNumber}" → "${i.newLotNumber}" (${i.bagsToTransfer} bags)`}</li>)}</ul></TooltipContent>
+                          <Tooltip><TooltipTrigger asChild>
+                            <span className="truncate max-w-[200px] inline-block">{transfer.item.originalLotNumber} → {transfer.item.newLotNumber}</span>
+                          </TooltipTrigger>
+                            <TooltipContent><p>{transfer.item.originalLotNumber} → {transfer.item.newLotNumber}</p></TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell className="truncate max-w-xs">{transfer.notes ? (<Tooltip><TooltipTrigger asChild><span>{transfer.notes}</span></TooltipTrigger><TooltipContent><p>{transfer.notes}</p></TooltipContent></Tooltip>) : 'N/A'}</TableCell>
+                        <TableCell className="text-right">{transfer.item.bagsToTransfer}</TableCell>
+                        <TableCell className="text-right">{transfer.item.netWeightToTransfer}</TableCell>
                         <TableCell className="text-center no-print">
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions</span></Button></DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions for {transfer.id}</span></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditTransfer(transfer)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditTransfer(transfer)}><Edit className="mr-2 h-4 w-4" /> Edit Full Transfer</DropdownMenuItem>
                               <DropdownMenuItem onClick={() => triggerDownloadTransferPdf(transfer)}><Download className="mr-2 h-4 w-4" /> Download Slip</DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleDeleteTransferAttempt(transfer)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteTransferAttempt(transfer)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Full Transfer</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

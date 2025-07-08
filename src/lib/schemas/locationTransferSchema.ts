@@ -21,7 +21,6 @@ export const locationTransferSchema = (
   toWarehouseId: z.string().min(1, "Destination warehouse is required.")
     .refine(id => warehouses.some(w => w.id === id), { message: "Invalid destination warehouse." }),
   transporterId: z.string().optional(),
-  transportRatePerKg: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   transportCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   packingCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   labourCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
@@ -40,7 +39,7 @@ export const locationTransferSchema = (
   if (data.fromWarehouseId && data.toWarehouseId && data.fromWarehouseId === data.toWarehouseId) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Source and destination warehouses cannot be the same.",
+      message: "Source and destination cannot be the same.",
       path: ["toWarehouseId"],
     });
   }
@@ -53,7 +52,7 @@ export const locationTransferSchema = (
         if (lotNumbers.has(item.originalLotNumber)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: `Duplicate vakkal. Please consolidate into one line.`,
+                message: `Duplicate vakkal. Consolidate into one line.`,
                 path: ["items", index, "originalLotNumber"],
             });
         }
