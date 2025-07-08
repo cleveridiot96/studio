@@ -71,7 +71,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         source: receiptToEdit.source || "",
         notes: receiptToEdit.notes || "",
         cashDiscount: receiptToEdit.cashDiscount || undefined,
-        relatedSaleIds: receiptToEdit.relatedSaleIds || [],
+        againstBills: receiptToEdit.againstBills || [],
       };
     }
     return {
@@ -83,7 +83,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       source: "",
       notes: "",
       cashDiscount: undefined,
-      relatedSaleIds: [],
+      againstBills: [],
     };
   }, [receiptToEdit]);
 
@@ -146,10 +146,10 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       transactionType: values.transactionType,
+      againstBills: values.transactionType === 'Against Bill' ? values.againstBills : [],
       source: values.source,
       notes: values.notes,
       cashDiscount: values.cashDiscount || 0,
-      relatedSaleIds: values.relatedSaleIds || [],
     };
     onSubmit(receiptData);
     setIsSubmitting(false);

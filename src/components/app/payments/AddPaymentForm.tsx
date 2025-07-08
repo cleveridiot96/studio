@@ -70,6 +70,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
         transactionType: paymentToEdit.transactionType || 'On Account',
         source: paymentToEdit.source || "",
         notes: paymentToEdit.notes || "",
+        againstBills: paymentToEdit.againstBills || [],
       };
     }
     return {
@@ -80,6 +81,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       transactionType: 'On Account',
       source: "",
       notes: "",
+      againstBills: [],
     };
   }, [paymentToEdit]);
 
@@ -141,6 +143,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       amount: values.amount,
       paymentMethod: values.paymentMethod,
       transactionType: values.transactionType,
+      againstBills: values.transactionType === 'Against Bill' ? values.againstBills : [],
       source: values.source,
       notes: values.notes,
     };

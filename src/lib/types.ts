@@ -192,11 +192,10 @@ export interface Receipt {
   amount: number; // Actual amount received
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   notes?: string;
-  relatedSaleIds?: string[]; // Optional - to tag which invoices this receipt settles
-  cashDiscount?: number; // Optional - amount of discount given at time of receipt
-  source?: string;
   transactionType: 'Against Bill' | 'On Account';
   againstBills?: { billId: string; allocated: number }[];
+  cashDiscount?: number; // Optional - amount of discount given at time of receipt
+  source?: string;
 }
 
 export interface LocationTransferItem {

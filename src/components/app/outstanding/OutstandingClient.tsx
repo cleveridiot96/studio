@@ -8,12 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format, differenceInDays, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { format, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { useSettings } from "@/contexts/SettingsContext";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
@@ -64,6 +63,14 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
             const valB = b[sortKey];
 
             if (typeof valA === 'string' && typeof valB === 'string') {
+                try {
+                  // Attempt to parse as dates for date columns
+                  if (sortKey === 'date' || sortKey === 'dueDate') {
+                    const dateA = parseISO(valA).getTime();
+                    const dateB = parseISO(valB).getTime();
+                    return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+                  }
+                } catch (e) { /* fall through to string compare */ }
                 return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             }
             if (typeof valA === 'number' && typeof valB === 'number') {
@@ -134,7 +141,6 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
 export function OutstandingClient() {
   const [hydrated, setHydrated] = useState(false);
   const [selectedPartyId, setSelectedPartyId] = useState<string | undefined>();
-  const [filterType, setFilterType] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { financialYear: currentFinancialYearString } = useSettings();
 
@@ -167,11 +173,19 @@ export function OutstandingClient() {
   const allMasters = useMemo(() => [...customers, ...suppliers, ...agents, ...brokers], [customers, suppliers, agents, brokers]);
   
   const { receivables, payables, totalReceivable, totalPayable, netOutstanding } = useMemo(() => {
-    if (!hydrated || !dateRange?.from) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
+    if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
     
+    // Create a pool of all payments made by each party
     const paymentPools = new Map<string, number>();
+    
+    // Initial opening balances
+    allMasters.forEach(m => {
+        const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
+        paymentPools.set(m.id, (paymentPools.get(m.id) || 0) - openingBalance);
+    });
+
     receipts.forEach(r => paymentPools.set(r.partyId, (paymentPools.get(r.partyId) || 0) + r.amount + (r.cashDiscount || 0)));
-    payments.forEach(p => paymentPools.set(p.partyId, (paymentPools.get(p.partyId) || 0) + p.amount));
+    payments.forEach(p => paymentPools.set(p.partyId, (paymentPools.get(p.partyId) || 0) - p.amount));
     purchaseReturns.forEach(pr => {
         const p = purchases.find(p => p.id === pr.originalPurchaseId);
         if (p) {
@@ -183,20 +197,22 @@ export function OutstandingClient() {
         const s = sales.find(s => s.id === sr.originalSaleId);
         if (s) {
             const partyId = s.brokerId || s.customerId;
-            paymentPools.set(partyId, (paymentPools.get(partyId) || 0) + sr.returnAmount);
+            paymentPools.set(partyId, (paymentPools.get(partyId) || 0) - sr.returnAmount);
         }
     });
 
-    const periodSales = sales.filter(s => s && s.date && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }));
-    const periodPurchases = purchases.filter(p => p && p.date && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }));
+    const periodFilter = (date: string) => {
+        if (!dateRange?.from) return true;
+        return isWithinInterval(parseISO(date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) })
+    }
 
     const processTransactions = (transactions: (Sale | Purchase)[], type: 'Sale' | 'Purchase'): OutstandingTransaction[] => {
-        return transactions.map(tx => {
-            const partyId = type === 'Sale' ? (tx as Sale).brokerId || (tx as Sale).customerId : (tx as Purchase).agentId || (tx as Purchase).supplierId;
+        return transactions.filter(tx => periodFilter(tx.date)).map(tx => {
+            const partyId = type === 'Sale' ? ((tx as Sale).brokerId || (tx as Sale).customerId) : ((tx as Purchase).agentId || (tx as Purchase).supplierId);
             const party = allMasters.find(m => m.id === partyId);
             const amount = type === 'Sale' ? (tx as Sale).billedAmount : (tx as Purchase).totalAmount;
             
-            const vakkal = (type === 'Sale' ? (tx as Sale).items.map(i => i.lotNumber) : (tx as Purchase).items.map(i => i.lotNumber)).join(', ');
+            const vakkal = (tx.items.map(i => i.lotNumber)).join(', ');
             
             const paymentPool = paymentPools.get(partyId) || 0;
             const paid = Math.min(paymentPool, amount);
@@ -216,36 +232,23 @@ export function OutstandingClient() {
             if (isOverdue && status !== 'Paid') status = 'Overdue';
 
             return {
-                id: tx.id,
-                partyId: partyId,
-                partyName: party?.name || 'Unknown Party',
-                partyType: party?.type || 'Unknown',
-                type,
-                vakkal,
-                date: tx.date,
-                dueDate,
-                amount,
-                paid,
-                balance,
-                status,
+                id: tx.id, partyId: partyId, partyName: party?.name || 'Unknown Party', partyType: party?.type || 'Unknown',
+                type, vakkal, date: tx.date, dueDate, amount, paid, balance, status,
             };
         }).filter(tx => tx.balance > 0.01);
     };
 
-    const receivables = processTransactions(periodSales, 'Sale');
-    const payables = processTransactions(periodPurchases, 'Purchase');
+    const receivablesList = processTransactions(sales, 'Sale');
+    const payablesList = processTransactions(purchases, 'Purchase');
     
-    const totalReceivable = receivables.reduce((sum, item) => sum + item.balance, 0);
-    const totalPayable = payables.reduce((sum, item) => sum + item.balance, 0);
+    const totalReceivable = receivablesList.reduce((sum, item) => sum + item.balance, 0);
+    const totalPayable = payablesList.reduce((sum, item) => sum + item.balance, 0);
 
     return { 
-        receivables, 
-        payables, 
-        totalReceivable, 
-        totalPayable,
+        receivables: receivablesList, payables: payablesList, 
+        totalReceivable, totalPayable,
         netOutstanding: totalReceivable - totalPayable
     };
-
   }, [hydrated, purchases, sales, receipts, payments, allMasters, purchaseReturns, saleReturns, dateRange]);
   
   const partyOptions = useMemo(() => {
@@ -257,22 +260,15 @@ export function OutstandingClient() {
   }, [receivables, payables, allMasters]);
 
   const filteredData = useMemo(() => {
-    let combined = [];
-    if (filterType === 'all') combined = [...receivables, ...payables];
-    else if (filterType === 'sales') combined = receivables;
-    else if (filterType === 'purchases') combined = payables;
-    else if (filterType === 'overdue') combined = [...receivables, ...payables].filter(item => item.status === 'Overdue');
-    else combined = [...receivables, ...payables];
+    let combinedReceivables = receivables;
+    let combinedPayables = payables;
 
     if (selectedPartyId) {
-        combined = combined.filter(item => item.partyId === selectedPartyId);
+        combinedReceivables = combinedReceivables.filter(item => item.partyId === selectedPartyId);
+        combinedPayables = combinedPayables.filter(item => item.partyId === selectedPartyId);
     }
-
-    return {
-        receivables: combined.filter(t => t.type === 'Sale'),
-        payables: combined.filter(t => t.type === 'Purchase'),
-    };
-  }, [receivables, payables, selectedPartyId, filterType]);
+    return { receivables: combinedReceivables, payables: combinedPayables };
+  }, [receivables, payables, selectedPartyId]);
 
   const setDatePreset = (preset: '1m' | '3m' | '6m' | '1y') => {
     const to = endOfDay(new Date());
@@ -290,7 +286,7 @@ export function OutstandingClient() {
   if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 
   return (
-    <div className="space-y-6 print-area p-4">
+    <div className="space-y-4 print-area p-4 flex flex-col h-full">
         <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
         
         <div className="no-print">
@@ -310,7 +306,7 @@ export function OutstandingClient() {
               </Card>
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-center my-4 gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-center my-4 gap-2">
                 <MasterDataCombobox 
                     value={selectedPartyId}
                     onChange={(value) => setSelectedPartyId(value)}
@@ -324,23 +320,12 @@ export function OutstandingClient() {
                      <Button variant="outline" size="sm" onClick={() => setDatePreset('3m')}>3M</Button>
                      <Button variant="outline" size="sm" onClick={() => setDatePreset('6m')}>6M</Button>
                      <Button variant="outline" size="sm" onClick={() => setDatePreset('1y')}>1Y</Button>
-                    <Select value={filterType} onValueChange={setFilterType}>
-                        <SelectTrigger className="w-full md:w-40">
-                            <SelectValue placeholder="Filter" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        <SelectItem value="sales">Sales</SelectItem>
-                        <SelectItem value="purchases">Purchases</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                        </SelectContent>
-                    </Select>
                     <Button variant="outline" size="icon" onClick={() => window.print()} title="Print"><Printer className="h-5 w-5" /></Button>
                 </div>
             </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-grow">
             <OutstandingTable data={filteredData.receivables} title="Receivables (Sales)" themeColor="green" />
             <OutstandingTable data={filteredData.payables} title="Payables (Purchases)" themeColor="orange" />
         </div>

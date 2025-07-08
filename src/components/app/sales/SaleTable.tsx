@@ -111,8 +111,8 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   <TableCell className="p-2 text-right">{sale.totalQuantity.toLocaleString()}</TableCell>
                   <TableCell className="p-2 text-right">{sale.totalNetWeight.toLocaleString()}</TableCell>
                   <TableCell className="p-2">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.brokerName || sale.brokerId || 'N/A'}</span></TooltipTrigger>
-                      <TooltipContent><p>{sale.brokerName || sale.brokerId || 'N/A'}</p></TooltipContent>
+                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.brokerName || ''}</span></TooltipTrigger>
+                      <TooltipContent><p>{sale.brokerName || ''}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2 text-right font-semibold">{(sale.billedAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>

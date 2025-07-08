@@ -347,7 +347,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                               </FormItem>
                             )} />
                         <FormField control={control} name="commission" render={({ field }) => (
-                              <FormItem><FormLabel>Value</FormLabel>
+                              <FormItem><FormLabel>Commission Value</FormLabel>
                                 <div className="relative">
                                   <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
                                     onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
