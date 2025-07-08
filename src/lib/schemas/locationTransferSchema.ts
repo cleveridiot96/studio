@@ -30,9 +30,9 @@ export const locationTransferSchema = (
   items: z.array(
     z.object({
         originalLotNumber: z.string().min(1, "Vakkal/Lot number is required."),
-        bagsToTransfer: z.coerce.number().min(0.01, "Bags must be > 0."),
-        netWeightToTransfer: z.coerce.number().min(0.01, "Net weight must be > 0."),
-        grossWeightToTransfer: z.coerce.number().min(0.01, "Gross weight must be > 0."),
+        bagsToTransfer: z.coerce.number({required_error: "Bags are required."}).min(0.01, "Bags must be > 0."),
+        netWeightToTransfer: z.coerce.number({required_error: "Net Wt. is required."}).min(0.01, "Net weight must be > 0."),
+        grossWeightToTransfer: z.coerce.number({required_error: "Gross Wt. is required."}).min(0.01, "Gross weight must be > 0."),
     })
   ).min(1, "At least one item must be added to the transfer."),
 }).superRefine((data, ctx) => {
@@ -46,7 +46,20 @@ export const locationTransferSchema = (
   }
 
   // Validate items
+  const lotNumbers = new Set<string>();
   data.items.forEach((item, index) => {
+    // Check for duplicate lots within the same form
+    if (item.originalLotNumber) {
+        if (lotNumbers.has(item.originalLotNumber)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Duplicate vakkal. Please consolidate into one line.`,
+                path: ["items", index, "originalLotNumber"],
+            });
+        }
+        lotNumbers.add(item.originalLotNumber);
+    }
+
     const stockInfo = availableStock.find(
       s => s.lotNumber === item.originalLotNumber && s.locationId === data.fromWarehouseId
     );

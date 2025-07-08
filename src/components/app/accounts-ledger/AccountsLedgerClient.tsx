@@ -1,5 +1,4 @@
 
-
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -140,7 +139,7 @@ export function AccountsLedgerClient() {
             const brokerageAmount = p.brokerageCharges || 0;
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Goods from ${p.supplierName} (Bill: ${p.id.slice(-5)})`,
+                particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')} (Bill: ${p.id.slice(-5)})`,
                 debit: 0, credit: mainPayable
             });
             if(brokerageAmount > 0) {
@@ -153,7 +152,7 @@ export function AccountsLedgerClient() {
         } else if (p.supplierId === partyId) {
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Goods (Agent: ${p.agentName || 'None'}, Bill: ${p.id.slice(-5)})`,
+                particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')} (Agent: ${p.agentName || 'None'})`,
                 debit: 0, credit: mainPayable
             });
         }
@@ -171,7 +170,7 @@ export function AccountsLedgerClient() {
         if(accountablePartyId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `Sale to ${s.customerName} (Bill: ${s.billNumber || 'N/A'})`,
+                particulars: `To: ${s.customerName} (Vakkal: ${s.items.map(i=>i.lotNumber).join(', ')})`,
                 debit: s.billedAmount, credit: 0,
             });
         }

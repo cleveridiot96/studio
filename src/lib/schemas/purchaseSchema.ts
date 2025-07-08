@@ -66,7 +66,7 @@ export const purchaseSchema = (
       if (upperCaseLotNumber && lotNumbers.has(upperCaseLotNumber)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Duplicate. Try adding '/A' or similar.`,
+          message: `Duplicate. Try adding a suffix like '/A' or '/B'.`,
           path: ["items", index, "lotNumber"],
         });
       }

@@ -93,7 +93,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         loadingCharges: undefined,
         miscExpenses: undefined,
         notes: "",
-        items: [{ originalLotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0, grossWeightToTransfer: 0 }],
+        items: [{ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined }],
       };
   }, [transferToEdit]);
 
@@ -103,7 +103,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     mode: 'onChange'
   });
 
-  const { control, handleSubmit, reset, watch, setValue, formState: { errors } } = methods;
+  const { control, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = methods;
   const { fields, append, remove } = useFieldArray({
     control,
     name: "items",
@@ -126,11 +126,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const totalGrossWeight = watchedItems.reduce((acc, item) => acc + (item.grossWeightToTransfer || 0), 0);
     const rate = watchedTransportRate || 0;
     if (totalGrossWeight > 0 && rate > 0) {
-        setValue('transportCharges', parseFloat((totalGrossWeight * rate).toFixed(2)), { shouldValidate: true });
-    } else if (!transportChargesManuallySet) {
+        const calculatedCharges = parseFloat((totalGrossWeight * rate).toFixed(2));
+        if (getValues('transportCharges') !== calculatedCharges) {
+            setValue('transportCharges', calculatedCharges, { shouldValidate: true });
+        }
+    } else if (getValues('transportCharges') !== undefined) {
         setValue('transportCharges', undefined);
     }
-  }, [watchedItems, watchedTransportRate, setValue, transportChargesManuallySet]);
+  }, [watchedItems, watchedTransportRate, setValue, transportChargesManuallySet, getValues]);
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
     if (!watchedFromWarehouseId) return [];
@@ -171,7 +174,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     }
     setIsMasterFormOpen(false);
-    setMasterFormItemType(null);
+    setMasterItemToEdit(null);
     toast({ title: `${newItem.type} "${newItem.name}" added/updated successfully.` });
   };
 
@@ -198,9 +201,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       items: values.items.map(item => ({
         originalLotNumber: item.originalLotNumber,
         newLotNumber: `${item.originalLotNumber}/${item.bagsToTransfer}`,
-        bagsToTransfer: item.bagsToTransfer,
-        netWeightToTransfer: item.netWeightToTransfer,
-        grossWeightToTransfer: item.grossWeightToTransfer,
+        bagsToTransfer: item.bagsToTransfer!,
+        netWeightToTransfer: item.netWeightToTransfer!,
+        grossWeightToTransfer: item.grossWeightToTransfer!,
       })),
       notes: values.notes,
     };
@@ -211,12 +214,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const handleNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (e.target.value === '0') {
-      // Find the corresponding RHF field and set its value to undefined
       const fieldName = e.target.name;
-      const rfhField = methods.getFieldState(fieldName as keyof LocationTransferFormValues);
-      if (rfhField) {
-        methods.setValue(fieldName as keyof LocationTransferFormValues, undefined as any, { shouldValidate: true });
-      }
+      methods.setValue(fieldName as keyof LocationTransferFormValues, undefined as any, { shouldValidate: true });
     } else {
       e.target.select();
     }
@@ -352,7 +351,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       </div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: 0, netWeightToTransfer: 0, grossWeightToTransfer: 0 })} className="mt-2">
+                  <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined })} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
                   </Button>
                    {typeof errors.items === 'object' && !Array.isArray(errors.items) && errors.items.message && (
@@ -380,7 +379,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormItem><FormLabel>Rate (₹/kg)</FormLabel>
                             <FormControl><Input type="number" step="0.01" placeholder="e.g. 17" {...field}
                                 value={field.value ?? ''}
-                                onFocus={(e) => e.target.select()}
+                                onFocus={handleNumericInputFocus}
                                 onChange={e => {
                                     field.onChange(parseFloat(e.target.value) || undefined);
                                     setTransportChargesManuallySet(false);
@@ -393,7 +392,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormItem><FormLabel>Total Transport (₹)</FormLabel>
                             <FormControl><Input type="number" step="0.01" placeholder="Calculated..." {...field}
                                 value={field.value ?? ''}
-                                onFocus={(e) => { e.target.select(); setTransportChargesManuallySet(true); }}
+                                onFocus={handleNumericInputFocus}
                                 onChange={e => {
                                     field.onChange(parseFloat(e.target.value) || undefined);
                                     setTransportChargesManuallySet(true);
@@ -402,7 +401,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             <FormMessage />
                         </FormItem>
                     )} />
-                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={(e) => e.target.select()} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
 
