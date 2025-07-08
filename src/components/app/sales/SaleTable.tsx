@@ -66,7 +66,8 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
               <TableHead className="h-10 px-2">Vakkal / Lot(s)</TableHead>
               <TableHead className="h-10 px-2 text-right">Bags</TableHead>
               <TableHead className="h-10 px-2 text-right">Net Wt.(kg)</TableHead>
-              <TableHead className="h-10 px-2 text-right">Billed Amt (₹)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Rate (₹/kg)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Total Goods Value (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">CB Amt (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Balance (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Profit (₹)</TableHead>
@@ -110,7 +111,12 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   </TableCell>
                   <TableCell className="p-2 text-right">{sale.totalQuantity.toLocaleString()}</TableCell>
                   <TableCell className="p-2 text-right">{sale.totalNetWeight.toLocaleString()}</TableCell>
-                  <TableCell className="p-2 text-right font-semibold">{(sale.billedAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                  <TableCell className="p-2 text-right">
+                    {sale.items.length === 1 ? (sale.items[0].rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : 'Multiple'}
+                  </TableCell>
+                  <TableCell className="p-2 text-right font-semibold">
+                    {(sale.totalGoodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </TableCell>
                   <TableCell className="p-2 text-right text-destructive">{(sale.cbAmount || 0) > 0 ? (sale.cbAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</TableCell>
                   <TableCell className="p-2 text-right font-bold text-orange-600">{(sale.balanceAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                   <TableCell className={`p-2 text-right font-semibold ${(sale.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>
@@ -155,18 +161,18 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Profit</TableCell>
-                    <TableCell className="p-1" colSpan={2}></TableCell>
+                    <TableCell className="p-1" colSpan={3}></TableCell>
                 </TableRow>,
                 ...sale.items.map((item, index) => (
                   <TableRow key={`${sale.id}-item-${index}`} className="bg-blue-50 dark:bg-blue-900/40 text-xs hover:bg-blue-100/50 dark:hover:bg-blue-800/50">
-                      <TableCell className="p-1"></TableCell>
+                      <TableCell className="p-1" />
                       <TableCell className="p-1 font-medium" colSpan={3}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-1">{item.netWeight.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-1">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="text-right p-1 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className={`text-right p-1 font-medium ${(item.itemProfit || 0) >= 0 ? 'text-green-600' : 'text-red-700'}`}>{(item.itemProfit || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="p-1" colSpan={2}></TableCell>
+                      <TableCell className="p-1" colSpan={3}></TableCell>
                   </TableRow>
                 ))
               ] : [];
