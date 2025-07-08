@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -58,19 +57,19 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
   return (
     <TooltipProvider>
       <ScrollArea className="rounded-md border shadow-sm h-[60vh]">
-        <Table className="min-w-full whitespace-nowrap">
+        <Table className="min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Date</TableHead>
+              <TableHead className="w-[100px] whitespace-nowrap">Date</TableHead>
               <TableHead>Bill No.</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Vakkal / Lot(s)</TableHead>
-              <TableHead className="text-right">Total Bags</TableHead>
-              <TableHead className="text-right">Total Net Wt.(kg)</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Total Bags</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Total Net Wt.(kg)</TableHead>
               <TableHead>Broker</TableHead>
-              <TableHead className="text-right">Billed Amt (₹)</TableHead>
-              <TableHead className="text-right">Profit (₹)</TableHead>
-              <TableHead className="text-center w-[80px]">Actions</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Billed Amt (₹)</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Profit (₹)</TableHead>
+              <TableHead className="text-center w-[80px] whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -100,27 +99,11 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     </Tooltip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                       {hasMultipleItems ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="flex items-center gap-1 cursor-help">
-                              <span>{sale.items[0]?.lotNumber}</span>
-                              <Badge variant="secondary" className="px-1.5 py-0">+{sale.items.length - 1}</Badge>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <ul className="list-disc pl-4 text-sm">
-                              {sale.items.map((item, index) => (
-                                <li key={index}>{item.lotNumber} ({item.quantity} bags)</li>
-                              ))}
-                            </ul>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span>{sale.items[0]?.lotNumber || 'N/A'}</span>
-                      )}
-                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />}
+                    <div className="flex items-start gap-2">
+                       <span className="whitespace-normal break-words">
+                        {sale.items.map(i => i.lotNumber).join(', ')}
+                      </span>
+                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 mt-1 ${isExpanded ? "rotate-180" : ""}`} />}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">{sale.totalQuantity.toLocaleString()}</TableCell>

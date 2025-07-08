@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -53,20 +52,20 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
   return (
     <TooltipProvider>
       <ScrollArea className="rounded-md border shadow-sm h-[60vh]">
-        <Table className="min-w-full whitespace-nowrap">
+        <Table className="min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Date</TableHead>
+              <TableHead className="w-[100px] whitespace-nowrap">Date</TableHead>
               <TableHead>Vakkal / Lot No.</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Supplier</TableHead>
               <TableHead>Agent</TableHead>
-              <TableHead className="text-right">Bags</TableHead>
-              <TableHead className="text-right">Net Wt.(kg)</TableHead>
-              <TableHead className="text-right">Landed Rate (₹/kg)</TableHead>
-              <TableHead className="text-right">Brokerage (₹)</TableHead>
-              <TableHead className="text-right">Total Cost (₹)</TableHead>
-              <TableHead className="text-center w-[80px]">Actions</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Bags</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Net Wt.(kg)</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Landed Rate (₹/kg)</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Brokerage (₹)</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Total Cost (₹)</TableHead>
+              <TableHead className="text-center w-[80px] whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -86,27 +85,11 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                 >
                   <TableCell>{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {hasMultipleItems ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="flex items-center gap-1 cursor-help">
-                              <span>{purchase.items[0]?.lotNumber}</span>
-                              <Badge variant="secondary" className="px-1.5 py-0">+{purchase.items.length - 1}</Badge>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <ul className="list-disc pl-4 text-sm">
-                              {purchase.items.map((item, index) => (
-                                <li key={index}>{item.lotNumber} ({item.quantity} bags)</li>
-                              ))}
-                            </ul>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span>{purchase.items[0]?.lotNumber || 'N/A'}</span>
-                      )}
-                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />}
+                    <div className="flex items-start gap-2">
+                      <span className="whitespace-normal break-words">
+                        {purchase.items.map(i => i.lotNumber).join(', ')}
+                      </span>
+                      {hasMultipleItems && <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 mt-1 ${isExpanded ? "rotate-180" : ""}`} />}
                     </div>
                   </TableCell>
                   <TableCell>
