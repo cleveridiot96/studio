@@ -1,6 +1,6 @@
 
 "use client";
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,14 +8,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, differenceInDays, parseISO, addDays } from 'date-fns';
+import { format, differenceInDays, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
+import { useSettings } from "@/contexts/SettingsContext";
+import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
+import type { DateRange } from "react-day-picker";
 
 const keys = {
   purchases: 'purchasesData',
@@ -85,9 +88,9 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
     };
 
     return (
-        <Card className="flex flex-col flex-grow">
+        <Card className={`flex flex-col flex-grow shadow-md border-2 ${themeColor === 'green' ? 'border-green-200 bg-green-50/30' : 'border-orange-200 bg-orange-50/30'}`}>
             <CardHeader>
-                <CardTitle className={`text-xl font-semibold text-foreground`}>{title}</CardTitle>
+                <CardTitle className={`text-xl font-semibold ${themeColor === 'green' ? 'text-green-700' : 'text-orange-700'}`}>{title}</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-grow">
                 <ScrollArea className="h-[60vh]">
@@ -96,8 +99,6 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                             <TableRow>
                                 <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer">Party <SortIcon columnKey="partyName" /></TableHead>
                                 <TableHead onClick={() => handleSort('chittiNo')} className="cursor-pointer">Chitti No. <SortIcon columnKey="chittiNo" /></TableHead>
-                                <TableHead onClick={() => handleSort('amount')} className="cursor-pointer text-right">Amount <SortIcon columnKey="amount" /></TableHead>
-                                <TableHead onClick={() => handleSort('paid')} className="cursor-pointer text-right">Paid <SortIcon columnKey="paid" /></TableHead>
                                 <TableHead onClick={() => handleSort('balance')} className="cursor-pointer text-right">Balance <SortIcon columnKey="balance" /></TableHead>
                                 <TableHead onClick={() => handleSort('dueDate')} className="cursor-pointer">Due Date <SortIcon columnKey="dueDate" /></TableHead>
                                 <TableHead onClick={() => handleSort('status')} className="cursor-pointer">Status <SortIcon columnKey="status" /></TableHead>
@@ -105,11 +106,9 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                         </TableHeader>
                         <TableBody>
                             {sortedData.map(item => (
-                                <TableRow key={item.id} className="cursor-pointer" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
+                                <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
                                     <TableCell className="font-medium">{item.partyName}</TableCell>
                                     <TableCell>{item.chittiNo}</TableCell>
-                                    <TableCell className="text-right">₹{item.amount.toLocaleString('en-IN')}</TableCell>
-                                    <TableCell className="text-right">₹{item.paid.toLocaleString('en-IN')}</TableCell>
                                     <TableCell className="font-bold text-right">₹{item.balance.toLocaleString('en-IN')}</TableCell>
                                     <TableCell>{format(parseISO(item.dueDate), 'dd MMM yyyy')}</TableCell>
                                     <TableCell>
@@ -135,8 +134,22 @@ export function OutstandingClient() {
   const [hydrated, setHydrated] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const { financialYear: currentFinancialYearString } = useSettings();
 
-  React.useEffect(() => { setHydrated(true) }, []);
+  useEffect(() => { setHydrated(true) }, []);
+
+  useEffect(() => {
+    if (hydrated && !dateRange) {
+        const [startYearStr] = currentFinancialYearString.split('-');
+        const startYear = parseInt(startYearStr, 10);
+        if (!isNaN(startYear)) {
+          setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
+        } else {
+          setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
+        }
+    }
+  }, [hydrated, currentFinancialYearString, dateRange]);
 
   const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
   const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
@@ -153,7 +166,7 @@ export function OutstandingClient() {
   const allMasters = useMemo(() => [...customers, ...suppliers, ...agents, ...brokers], [customers, suppliers, agents, brokers]);
   
   const { receivables, payables, totalReceivable, totalPayable, netOutstanding } = useMemo(() => {
-    if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
+    if (!hydrated || !dateRange?.from) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
     
     const paymentPools = new Map<string, number>();
     receipts.forEach(r => paymentPools.set(r.partyId, (paymentPools.get(r.partyId) || 0) + r.amount + (r.cashDiscount || 0)));
@@ -172,6 +185,9 @@ export function OutstandingClient() {
             paymentPools.set(partyId, (paymentPools.get(partyId) || 0) + sr.returnAmount);
         }
     });
+
+    const periodSales = sales.filter(s => s && s.date && isWithinInterval(parseISO(s.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }));
+    const periodPurchases = purchases.filter(p => p && p.date && isWithinInterval(parseISO(p.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }));
 
     const processTransactions = (transactions: (Sale | Purchase)[], type: 'Sale' | 'Purchase'): OutstandingTransaction[] => {
         return transactions.map(tx => {
@@ -212,11 +228,11 @@ export function OutstandingClient() {
                 balance,
                 status,
             };
-        }).filter(tx => tx.balance > 0.01); // Only show items with a balance
+        }).filter(tx => tx.balance > 0.01);
     };
 
-    const receivables = processTransactions(sales, 'Sale');
-    const payables = processTransactions(purchases, 'Purchase');
+    const receivables = processTransactions(periodSales, 'Sale');
+    const payables = processTransactions(periodPurchases, 'Purchase');
     
     const totalReceivable = receivables.reduce((sum, item) => sum + item.balance, 0);
     const totalPayable = payables.reduce((sum, item) => sum + item.balance, 0);
@@ -229,7 +245,7 @@ export function OutstandingClient() {
         netOutstanding: totalReceivable - totalPayable
     };
 
-  }, [hydrated, purchases, sales, receipts, payments, allMasters, purchaseReturns, saleReturns]);
+  }, [hydrated, purchases, sales, receipts, payments, allMasters, purchaseReturns, saleReturns, dateRange]);
 
   const filteredData = useMemo(() => {
     let combined = [];
@@ -252,6 +268,19 @@ export function OutstandingClient() {
         payables: combined.filter(t => t.type === 'Purchase'),
     };
   }, [receivables, payables, searchQuery, filterType]);
+
+  const setDatePreset = (preset: '1m' | '3m' | '6m' | '1y') => {
+    const to = endOfDay(new Date());
+    let from;
+    switch (preset) {
+      case '1m': from = startOfDay(subMonths(to, 1)); break;
+      case '3m': from = startOfDay(subMonths(to, 3)); break;
+      case '6m': from = startOfDay(subMonths(to, 6)); break;
+      case '1y': from = startOfDay(subYears(to, 1)); break;
+    }
+    setDateRange({ from, to });
+  };
+
 
   if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 
@@ -279,11 +308,16 @@ export function OutstandingClient() {
             <div className="flex flex-col md:flex-row justify-between items-center my-4 gap-4">
                 <Input 
                     placeholder="Search by Party Name or Chitti No." 
-                    className="w-full md:w-1/2" 
+                    className="w-full md:w-1/3" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
+                     <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
+                     <Button variant="outline" size="sm" onClick={() => setDatePreset('1m')}>1M</Button>
+                     <Button variant="outline" size="sm" onClick={() => setDatePreset('3m')}>3M</Button>
+                     <Button variant="outline" size="sm" onClick={() => setDatePreset('6m')}>6M</Button>
+                     <Button variant="outline" size="sm" onClick={() => setDatePreset('1y')}>1Y</Button>
                     <Select value={filterType} onValueChange={setFilterType}>
                         <SelectTrigger className="w-full md:w-40">
                             <SelectValue placeholder="Filter" />
@@ -301,8 +335,8 @@ export function OutstandingClient() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <OutstandingTable data={filteredData.receivables} title="Receivables" themeColor="green" />
-            <OutstandingTable data={filteredData.payables} title="Payables" themeColor="orange" />
+            <OutstandingTable data={filteredData.receivables} title="Receivables (Sales)" themeColor="green" />
+            <OutstandingTable data={filteredData.payables} title="Payables (Purchases)" themeColor="orange" />
         </div>
     </div>
   )
