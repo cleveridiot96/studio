@@ -33,7 +33,7 @@ export interface PurchaseItem {
   netWeight: number;
   rate: number;
   goodsValue: number; // Calculated: netWeight * rate
-  landedCostPerKg?: number; // effectiveRate for this specific item
+  landedCostPerKg: number; 
 }
 
 export interface Purchase {
@@ -70,6 +70,12 @@ export interface Purchase {
   locationName?: string;
 }
 
+export interface CostBreakdown {
+  baseRate: number;
+  purchaseExpenses: number; // per kg
+  transferExpenses: number; // per kg
+}
+
 export interface SaleItem {
   lotNumber: string;
   quantity: number;
@@ -81,6 +87,7 @@ export interface SaleItem {
   purchaseRate: number; // The raw purchase rate for this lot.
   costOfGoodsSold: number; // The full landed cost for this portion of goods.
   itemProfit?: number; // Optional profit calculation per item
+  costBreakdown?: CostBreakdown;
 }
 
 export interface Sale {
@@ -296,10 +303,14 @@ export interface TransactionalProfitInfo {
   customerName?: string;
   lotNumber: string;
   saleNetWeightKg: number;
-  saleAmount: number; // This should be the billedAmount
-  goodsValueForProfitCalc: number; // The goodsValue used for profit calculation
-  purchaseCostForSalePortion: number;
-  totalExpenses: number;
+  // Rates
+  basePurchaseRate: number;
+  landedCostPerKg: number;
+  saleRatePerKg: number;
+  // Values
+  goodsValue: number;
+  costOfGoodsSold: number;
+  grossProfit: number;
   netProfit: number;
 }
 

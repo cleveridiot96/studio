@@ -281,6 +281,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               purchaseRate: stock?.purchaseRate || 0,
               costOfGoodsSold: netWeight * landedCost,
               itemProfit: itemNetProfit,
+              costBreakdown: stock?.costBreakdown,
           };
       }),
       totalGoodsValue: summary.totalGoodsValue,
@@ -375,10 +376,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               }}
                               options={availableStock.map(s => ({
                                   value: s.lotNumber,
-                                  label: `${s.lotNumber} (Avl: ${s.currentBags} bags) @ ₹${s.purchaseRate.toFixed(2)}`,
+                                  label: `${s.lotNumber} (Avl: ${s.currentBags} bags) @ ₹${Math.round(s.purchaseRate)}`,
                                   tooltipContent: (
                                       <div>
-                                          <p>Landed Cost: <span className="font-semibold">₹{s.effectiveRate.toFixed(2)}/kg</span></p>
+                                          <p>Landed Cost: <span className="font-semibold">₹{Math.round(s.effectiveRate)}/kg</span></p>
                                           <p>Location: <span className="font-semibold">{s.locationName || 'Unknown'}</span></p>
                                       </div>
                                   )

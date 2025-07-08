@@ -3,11 +3,11 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Sale } from "@/lib/types";
+import type { Sale, CostBreakdown } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy } from "lucide-react";
+import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, endOfDay } from "date-fns";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
@@ -17,10 +17,11 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { salesMigrator } from '@/lib/dataMigrators';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProfitBreakdownDialog } from "./ProfitBreakdownDialog";
 
 const SALES_STORAGE_KEY = 'salesData';
 
-interface TransactionalProfitInfo {
+export interface TransactionalProfitInfo {
   saleId: string;
   date: string;
   billNumber?: string;
@@ -36,6 +37,17 @@ interface TransactionalProfitInfo {
   costOfGoodsSold: number;
   grossProfit: number;
   netProfit: number;
+  // Breakdown
+  costBreakdown?: CostBreakdown;
+  saleExpenses: {
+    transport: number;
+    packing: number;
+    labour: number;
+    misc: number;
+    brokerage: number;
+    extraBrokerage: number;
+    total: number;
+  }
 }
 
 interface MonthlySummaryInfo {
@@ -57,6 +69,7 @@ export function ProfitAnalysisClient() {
   const [hydrated, setHydrated] = React.useState(false);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const { financialYear: currentFinancialYearString } = useSettings();
+  const [breakdownItem, setBreakdownItem] = React.useState<TransactionalProfitInfo | null>(null);
   
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
     const today = new Date();
@@ -73,14 +86,24 @@ export function ProfitAnalysisClient() {
     fySales.forEach(sale => {
       if (!sale.items || !Array.isArray(sale.items) || sale.items.length === 0) return;
 
-      const saleLevelExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
+      const saleLevelExpenses = {
+        transport: sale.transportCost || 0,
+        packing: sale.packingCost || 0,
+        labour: sale.labourCost || 0,
+        misc: sale.miscExpenses || 0,
+        brokerage: sale.calculatedBrokerageCommission || 0,
+        extraBrokerage: sale.calculatedExtraBrokerage || 0,
+        total: 0
+      };
+      saleLevelExpenses.total = Object.values(saleLevelExpenses).reduce((sum, val) => sum + val, 0);
+
       const totalGoodsValueForApportionment = sale.items.reduce((sum, item) => sum + (item.goodsValue || 0), 0);
         
       if (totalGoodsValueForApportionment === 0) return;
 
       sale.items.forEach(item => {
         const itemProportion = (item.goodsValue || 0) / totalGoodsValueForApportionment;
-        const apportionedExpenses = saleLevelExpenses * itemProportion;
+        const apportionedExpenses = saleLevelExpenses.total * itemProportion;
         const costOfGoodsSold = item.costOfGoodsSold || 0;
         const netProfit = (item.goodsValue || 0) - costOfGoodsSold - apportionedExpenses;
         
@@ -98,6 +121,16 @@ export function ProfitAnalysisClient() {
           costOfGoodsSold: costOfGoodsSold,
           grossProfit: (item.goodsValue || 0) - costOfGoodsSold,
           netProfit: netProfit,
+          costBreakdown: item.costBreakdown,
+          saleExpenses: {
+            transport: sale.transportCost ? (sale.transportCost * itemProportion) : 0,
+            packing: sale.packingCost ? (sale.packingCost * itemProportion) : 0,
+            labour: sale.labourCost ? (sale.labourCost * itemProportion) : 0,
+            misc: sale.miscExpenses ? (sale.miscExpenses * itemProportion) : 0,
+            brokerage: sale.calculatedBrokerageCommission ? (sale.calculatedBrokerageCommission * itemProportion) : 0,
+            extraBrokerage: sale.calculatedExtraBrokerage ? (sale.calculatedExtraBrokerage * itemProportion) : 0,
+            total: apportionedExpenses,
+          }
         });
       });
     });
@@ -220,13 +253,13 @@ export function ProfitAnalysisClient() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="px-2 py-2 text-xs uppercase w-[50px]">Info</TableHead>
                                             <TableHead className="px-2 py-2 text-xs uppercase">DATE</TableHead>
                                             <TableHead className="px-2 py-2 text-xs uppercase">CUSTOMER</TableHead>
                                             <TableHead className="px-2 py-2 text-xs uppercase">VAKKAL</TableHead>
                                             <TableHead className="text-right px-2 py-2 text-xs uppercase">QTY (KG)</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">BASE RATE</TableHead>
-                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">LANDED COST</TableHead>
                                             <TableHead className="text-right px-2 py-2 text-xs uppercase">SALE RATE</TableHead>
+                                            <TableHead className="text-right px-2 py-2 text-xs uppercase">LANDED COST</TableHead>
                                             <TableHead className="text-right px-2 py-2 text-xs uppercase">GROSS P/L</TableHead>
                                             <TableHead className="text-right px-2 py-2 text-xs uppercase">NET P/L</TableHead>
                                         </TableRow>
@@ -234,13 +267,17 @@ export function ProfitAnalysisClient() {
                                     <TableBody>
                                         {filteredTransactionsForPeriod.map((tx, index) => (
                                             <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`} className="uppercase">
+                                                <TableCell className="px-2 py-1">
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setBreakdownItem(tx)}>
+                                                        <Calculator className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                                 <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{tx.saleNetWeightKg.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.basePurchaseRate).toLocaleString()}</TableCell>
-                                                <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.landedCostPerKg).toLocaleString()}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.saleRatePerKg).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.landedCostPerKg).toLocaleString()}</TableCell>
                                                 <TableCell className={`text-right font-medium px-2 py-1 text-xs ${tx.grossProfit >= 0 ? 'text-cyan-600' : 'text-orange-600'}`}>{Math.round(tx.grossProfit).toLocaleString()}</TableCell>
                                                 <TableCell className={`text-right font-bold px-2 py-1 text-xs ${tx.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{Math.round(tx.netProfit).toLocaleString()}</TableCell>
                                             </TableRow>
@@ -286,6 +323,14 @@ export function ProfitAnalysisClient() {
                 </Card>
             </TabsContent>
         </Tabs>
+        
+        {breakdownItem && (
+          <ProfitBreakdownDialog 
+            isOpen={!!breakdownItem} 
+            onClose={() => setBreakdownItem(null)}
+            item={breakdownItem}
+          />
+        )}
       </div>
     </TooltipProvider>
   );

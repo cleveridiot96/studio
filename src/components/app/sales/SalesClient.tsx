@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -52,6 +52,7 @@ export interface AggregatedStockItemForForm {
   averageWeightPerBag: number;
   locationId: string;
   locationName?: string;
+  costBreakdown: CostBreakdown;
 }
 
 export function SalesClient() {
@@ -93,12 +94,13 @@ export function SalesClient() {
     if (isAppHydrating || !isSalesClientHydrated) return [];
 
     const stockMap = new Map<string, {
-        currentBags: number,
-        currentWeight: number,
-        effectiveRate: number,
-        purchaseRate: number,
-        locationId: string,
-        locationName?: string,
+        currentBags: number;
+        currentWeight: number;
+        effectiveRate: number;
+        purchaseRate: number;
+        locationId: string;
+        locationName?: string;
+        costBreakdown: CostBreakdown;
     }>();
 
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
@@ -107,13 +109,20 @@ export function SalesClient() {
         if (!p || !p.items) return;
         p.items.forEach(item => {
             const key = `${item.lotNumber}-${p.locationId}`;
+            const purchaseExpensesPerKg = p.effectiveRate - item.rate;
+
             stockMap.set(key, {
                 currentBags: item.quantity,
                 currentWeight: item.netWeight,
                 effectiveRate: p.effectiveRate,
                 purchaseRate: item.rate,
                 locationId: p.locationId,
-                locationName: p.locationName
+                locationName: p.locationName,
+                costBreakdown: {
+                    baseRate: item.rate,
+                    purchaseExpenses: purchaseExpensesPerKg,
+                    transferExpenses: 0,
+                },
             });
         });
     });
@@ -150,13 +159,21 @@ export function SalesClient() {
             const sourceEntry = fromEntry; 
 
             if (!toEntry) {
+                const newEffectiveRate = (sourceEntry?.effectiveRate || 0) + (transfer.perKgExpense || 0);
+                const newCostBreakdown: CostBreakdown = {
+                    baseRate: sourceEntry?.costBreakdown.baseRate || 0,
+                    purchaseExpenses: sourceEntry?.costBreakdown.purchaseExpenses || 0,
+                    transferExpenses: (sourceEntry?.costBreakdown.transferExpenses || 0) + (transfer.perKgExpense || 0),
+                };
+
                 toEntry = {
                     currentBags: 0,
                     currentWeight: 0,
-                    effectiveRate: (sourceEntry?.effectiveRate || 0) + (transfer.perKgExpense || 0),
+                    effectiveRate: newEffectiveRate,
                     purchaseRate: sourceEntry?.purchaseRate || 0,
                     locationId: transfer.toWarehouseId,
-                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name
+                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name,
+                    costBreakdown: newCostBreakdown,
                 };
             }
             toEntry.currentBags += item.bagsToTransfer;
@@ -199,7 +216,8 @@ export function SalesClient() {
                 purchaseRate: value.purchaseRate,
                 averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
                 locationId: value.locationId,
-                locationName: value.locationName
+                locationName: value.locationName,
+                costBreakdown: value.costBreakdown,
             });
         }
     });
