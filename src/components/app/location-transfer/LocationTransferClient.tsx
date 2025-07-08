@@ -340,14 +340,14 @@ export function LocationTransferClient() {
             <CardContent className="pt-6">
                 <CardDescription className="mb-4 text-sm no-print">Current stock levels for FY {financialYear}.</CardDescription>
                 <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
-                    <Table size="sm"><TableHeader><TableRow><TableHead>Warehouse</TableHead><TableHead>Vakkal/Lot</TableHead><TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Weight (kg)</TableHead></TableRow></TableHeader>
+                    <Table size="sm"><TableHeader><TableRow><TableHead>WAREHOUSE</TableHead><TableHead>VAKKAL/LOT</TableHead><TableHead className="text-right">BAGS</TableHead><TableHead className="text-right">WEIGHT (KG)</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
                             {aggregatedStockForForm.map(item => (
                                 <TableRow key={`${item.locationId}-${item.lotNumber}`} className="uppercase">
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName}</span></TooltipTrigger><TooltipContent><p>{item.locationName}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
-                                    <TableCell className="text-right font-medium">{item.currentBags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right font-medium">{Math.round(item.currentBags).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>
                                 </TableRow>
                             ))}
@@ -361,7 +361,7 @@ export function LocationTransferClient() {
               <CardDescription className="mb-4 text-sm no-print">History of transfers for FY {financialYear}. Each row represents one item in a transfer.</CardDescription>
               <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                 <Table size="sm">
-                  <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Vakkal</TableHead><TableHead className="text-right">Bags</TableHead><TableHead className="text-right">Weight</TableHead><TableHead className="text-center no-print">Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>DATE</TableHead><TableHead>FROM</TableHead><TableHead>TO</TableHead><TableHead>VAKKAL</TableHead><TableHead className="text-right">BAGS</TableHead><TableHead className="text-right">WEIGHT</TableHead><TableHead className="text-center no-print">ACTIONS</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
                     {expandedTransfers.map(transfer => (
@@ -376,7 +376,7 @@ export function LocationTransferClient() {
                             <TooltipContent><p>{transfer.item.originalLotNumber} → {transfer.item.newLotNumber}</p></TooltipContent>
                           </Tooltip>
                         </TableCell>
-                        <TableCell className="text-right">{transfer.item.bagsToTransfer}</TableCell>
+                        <TableCell className="text-right">{Math.round(transfer.item.bagsToTransfer)}</TableCell>
                         <TableCell className="text-right">{transfer.item.netWeightToTransfer}</TableCell>
                         <TableCell className="text-center no-print">
                           <DropdownMenu>

@@ -128,7 +128,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       .filter(item => item.locationId === watchedFromWarehouseId && item.currentBags > 0)
       .map(item => ({
         value: item.lotNumber,
-        label: `${item.lotNumber} (Avl: ${item.currentBags} bags)`,
+        label: `${item.lotNumber} (Avl: ${Math.round(item.currentBags)} bags)`,
         availableBags: item.currentBags,
         averageWeightPerBag: item.averageWeightPerBag,
       }))
@@ -188,11 +188,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
       miscExpenses: values.miscExpenses,
-      totalExpenses: totalExpenses,
+      totalExpenses: Math.round(totalExpenses),
       perKgExpense: perKgExpense,
       items: values.items.map(item => ({
         originalLotNumber: item.originalLotNumber,
-        newLotNumber: `${item.originalLotNumber}/${item.bagsToTransfer}`,
+        newLotNumber: `${item.originalLotNumber}/${Math.round(item.bagsToTransfer!)}`,
         bagsToTransfer: item.bagsToTransfer!,
         netWeightToTransfer: item.netWeightToTransfer!,
         grossWeightToTransfer: item.grossWeightToTransfer!,
@@ -360,9 +360,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
                     </Button>
                     <div className="p-3 border rounded-md bg-muted/50 text-right text-sm">
-                        <p className="font-semibold">Total Bags: <span className="font-bold text-primary">{transferSummary.totalBags.toLocaleString()}</span></p>
-                        <p className="font-semibold">Total Net Wt: <span className="font-bold text-primary">{transferSummary.totalNetWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} kg</span></p>
-                        <p className="font-semibold">Total Gross Wt: <span className="font-bold text-primary">{transferSummary.totalGrossWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} kg</span></p>
+                        <p className="font-semibold">TOTAL BAGS: <span className="font-bold text-primary">{Math.round(transferSummary.totalBags).toLocaleString()}</span></p>
+                        <p className="font-semibold">TOTAL NET WT: <span className="font-bold text-primary">{transferSummary.totalNetWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} KG</span></p>
+                        <p className="font-semibold">TOTAL GROSS WT: <span className="font-bold text-primary">{transferSummary.totalGrossWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} KG</span></p>
                     </div>
                   </div>
                    {typeof errors.items === 'object' && !Array.isArray(errors.items) && errors.items.message && (

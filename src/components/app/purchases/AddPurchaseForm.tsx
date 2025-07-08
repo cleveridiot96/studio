@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -490,7 +491,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             {summary.itemsWithLandedCost.map((item, index) => (
                                 <TableRow key={index}>
                                     <TableCell>{item.lotNumber || `ITEM ${index + 1}`}</TableCell>
-                                    <TableCell className="text-right font-medium">₹{(item.landedCostPerKg || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                    <TableCell className="text-right font-medium">₹{Math.round(item.landedCostPerKg || 0).toLocaleString('en-IN')}</TableCell>
                                 </TableRow>
                             ))}
                             </TableBody>

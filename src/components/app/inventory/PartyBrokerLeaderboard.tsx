@@ -37,11 +37,11 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Rank</TableHead>
-                <TableHead>Vakkal/Lot</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead className="text-right">Current Bags</TableHead>
-                <TableHead className="text-right">Current Weight (kg)</TableHead>
+                <TableHead>RANK</TableHead>
+                <TableHead>VAKKAL/LOT</TableHead>
+                <TableHead>LOCATION</TableHead>
+                <TableHead className="text-right">CURRENT BAGS</TableHead>
+                <TableHead className="text-right">CURRENT WEIGHT (KG)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -50,7 +50,7 @@ export const PartyBrokerLeaderboard: React.FC<PartyBrokerLeaderboardProps> = ({ 
                   <TableCell className="font-bold">{index + 1}</TableCell>
                   <TableCell className="font-medium">{item.lotNumber}</TableCell>
                   <TableCell>{item.locationName}</TableCell>
-                  <TableCell className="text-right font-bold">{item.currentBags.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-bold">{Math.round(item.currentBags).toLocaleString()}</TableCell>
                   <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })}</TableCell>
                 </TableRow>
               ))}

@@ -311,9 +311,9 @@ export function InventoryClient() {
             >
                 <CardTitle className="text-lg flex items-center gap-2"><WarehouseIcon className="h-5 w-5 text-primary"/>All Warehouses</CardTitle>
                 <div>
-                  <p className="text-2xl font-bold">{activeInventory.reduce((sum, item) => sum + item.currentBags, 0).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
-                  <p className="text-sm text-muted-foreground">{activeInventory.reduce((sum, item) => sum + item.currentWeight, 0).toLocaleString()} kg</p>
-                  <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{activeInventory.reduce((sum, item) => sum + item.cogs, 0).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
+                  <p className="text-2xl font-bold">{Math.round(activeInventory.reduce((sum, item) => sum + item.currentBags, 0)).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">BAGS</span></p>
+                  <p className="text-sm text-muted-foreground">{activeInventory.reduce((sum, item) => sum + item.currentWeight, 0).toLocaleString()} KG</p>
+                  <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(activeInventory.reduce((sum, item) => sum + item.cogs, 0)).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                 </div>
             </button>
             {warehouseSummary.map(wh => (
@@ -327,9 +327,9 @@ export function InventoryClient() {
               >
                   <CardTitle className="text-lg">{wh.name}</CardTitle>
                   <div>
-                    <p className="text-2xl font-bold">{wh.bags.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">Bags</span></p>
-                    <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} kg</p>
-                    <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{wh.totalValue.toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
+                    <p className="text-2xl font-bold">{Math.round(wh.bags).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">BAGS</span></p>
+                    <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} KG</p>
+                    <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(wh.totalValue).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                   </div>
               </button>
             ))}
@@ -358,5 +358,3 @@ export function InventoryClient() {
     </div>
   );
 }
-
-  
