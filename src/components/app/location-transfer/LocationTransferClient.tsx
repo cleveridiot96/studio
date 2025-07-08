@@ -205,7 +205,7 @@ export function LocationTransferClient() {
     }
   };
 
-  const handleMasterDataUpdate = React.useCallback((type: "Warehouse" | "Transporter", newItem: MasterItem) => {
+  const handleMasterDataUpdate = React.useCallback((type: "Warehouse" | "Transporter" | "Expense", newItem: MasterItem) => {
     if (type === "Warehouse") setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
     else if (type === "Transporter") setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
   }, [setWarehouses, setTransporters]);

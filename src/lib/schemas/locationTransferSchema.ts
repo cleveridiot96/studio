@@ -21,11 +21,11 @@ export const locationTransferSchema = (
   toWarehouseId: z.string().min(1, "Destination warehouse is required.")
     .refine(id => warehouses.some(w => w.id === id), { message: "Invalid destination warehouse." }),
   transporterId: z.string().optional(),
-  transportRatePerKg: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  transportCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  packingCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  labourCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  miscExpenses: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  transportRatePerKg: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
+  transportCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
+  packingCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
+  labourCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
+  miscExpenses: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   notes: z.string().optional(),
   items: z.array(
     z.object({

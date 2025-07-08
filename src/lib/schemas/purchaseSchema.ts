@@ -35,15 +35,15 @@ export const purchaseSchema = (
   items: z.array(purchaseItemSchema).min(1, "At least one purchase item is required."),
   
   // Expense Fields
-  transportCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
-  packingCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
-  labourCharges: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
+  transportCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
+  packingCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
+  labourCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
   commissionType: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.enum(['Fixed', 'Percentage']).optional()
   ),
-  commission: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  miscExpenses: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Expenses must be non-negative").optional()),
+  commission: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
+  miscExpenses: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Expenses must be non-negative").optional()),
 }).superRefine((data, ctx) => {
     if (data.agentId) {
         if (data.commission !== undefined && data.commissionType === undefined) {

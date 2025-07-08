@@ -442,7 +442,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Expenses</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
                      <FormField control={control} name="transporterId" render={({ field }) => (
                       <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
                         <MasterDataCombobox value={field.value} onChange={field.onChange} 

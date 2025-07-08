@@ -20,8 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 
-const DEFAULT_TRANSPORT_RATE_PER_KG = 17;
-
 interface AggregatedStockItemForForm {
   lotNumber: string;
   locationId: string;
@@ -37,7 +35,7 @@ interface AddLocationTransferFormProps {
   warehouses: Warehouse[];
   transporters: Transporter[];
   availableStock: AggregatedStockItemForForm[];
-  onMasterDataUpdate: (type: "Warehouse" | "Transporter", item: MasterItem) => void;
+  onMasterDataUpdate: (type: "Warehouse" | "Transporter" | "Expense", item: MasterItem) => void;
   transferToEdit?: LocationTransfer | null;
 }
 
@@ -68,7 +66,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           fromWarehouseId: transferToEdit.fromWarehouseId,
           toWarehouseId: transferToEdit.toWarehouseId,
           transporterId: transferToEdit.transporterId || undefined,
-          transportRatePerKg: transferToEdit.transportRatePerKg || DEFAULT_TRANSPORT_RATE_PER_KG,
+          transportRatePerKg: transferToEdit.transportRatePerKg,
           transportCharges: transferToEdit.transportCharges,
           packingCharges: transferToEdit.packingCharges,
           labourCharges: transferToEdit.labourCharges,
@@ -87,7 +85,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         fromWarehouseId: undefined,
         toWarehouseId: undefined,
         transporterId: undefined,
-        transportRatePerKg: DEFAULT_TRANSPORT_RATE_PER_KG,
+        transportRatePerKg: undefined,
         transportCharges: undefined,
         packingCharges: undefined,
         labourCharges: undefined,
@@ -118,7 +116,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
     const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
     return { totalBags, totalNetWeight, totalGrossWeight };
-  }, [JSON.stringify(watchedItems)]); // Depend on stringified value to ensure re-calculation
+  }, [watchedItems]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -153,7 +151,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
 
-  const handleOpenMasterForm = (type: "Warehouse" | "Transporter") => {
+  const handleOpenMasterForm = (type: "Warehouse" | "Transporter" | "Expense") => {
     setMasterItemToEdit(null);
     setMasterFormItemType(type as MasterItemType);
     setIsMasterFormOpen(true);
@@ -172,7 +170,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type as "Warehouse" | "Transporter", newItem);
+    onMasterDataUpdate(newItem.type as "Warehouse" | "Transporter" | "Expense", newItem);
     if (newItem.type === "Transporter") {
         methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     }
@@ -225,9 +223,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const target = e.target;
     if (target.value === '0') {
       const fieldName = target.name as keyof LocationTransferFormValues;
-      if (typeof fieldName === 'string' && fieldName.startsWith('items.')) {
-         setValue(fieldName as any, undefined, { shouldValidate: true });
-      } else {
+      if (typeof fieldName === 'string') {
          setValue(fieldName as any, undefined, { shouldValidate: true });
       }
     } else {
@@ -237,7 +233,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   
   const handleItemNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>, fieldName: any) => {
      const target = e.target;
-     if (target.value === '0') {
+     if (target.value === '0' || target.value === '') {
         setValue(fieldName, undefined, { shouldValidate: true });
      } else {
         target.select();
@@ -391,9 +387,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Transfer Expenses (Optional)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                     <FormField control={control} name="transporterId" render={({ field }) => (
-                      <FormItem className="lg:col-span-2"><FormLabel>Transporter</FormLabel>
+                      <FormItem className="lg:col-span-1"><FormLabel>Transporter</FormLabel>
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
@@ -431,17 +427,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             <FormMessage />
                         </FormItem>
                     )} />
-                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                  </div>
-                </div>
-                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Other Standard Expenses (Optional)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                      <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                   </div>
+                    <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Expenses (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                  </div>
                 </div>
-
 
                 <FormField control={control} name="notes" render={({ field }) => (
                   <FormItem className="p-4 border rounded-md shadow-sm">

@@ -36,7 +36,8 @@ export const saleSchema = (
   transportCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   packingCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   labourCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  
+  miscExpenses: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+
   commissionType: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.enum(['Fixed', 'Percentage']).optional()

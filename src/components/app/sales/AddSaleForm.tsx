@@ -92,6 +92,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         transportCost: saleToEdit.transportCost,
         packingCost: saleToEdit.packingCost,
         labourCost: saleToEdit.labourCost,
+        miscExpenses: saleToEdit.miscExpenses,
         commissionType: saleToEdit.commissionType,
         commission: saleToEdit.commission,
         extraBrokeragePerKg: saleToEdit.extraBrokeragePerKg,
@@ -110,6 +111,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transportCost: undefined,
       packingCost: undefined,
       labourCost: undefined,
+      miscExpenses: undefined,
       commissionType: undefined,
       commission: undefined,
       extraBrokeragePerKg: undefined,
@@ -134,7 +136,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   const summary = React.useMemo(() => {
     const {
-        items, isCB, cbAmount, transportCost, packingCost, labourCost,
+        items, isCB, cbAmount, transportCost, packingCost, labourCost, miscExpenses,
         commissionType, commission, extraBrokeragePerKg, brokerId
     } = watchedFormValues;
       
@@ -169,7 +171,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     })();
 
     const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totalNetWeight;
-    const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
+    const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + (Number(miscExpenses) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
     
     const grossProfit = totalGoodsValue - totalLandedCost;
     const netProfit = grossProfit - totalSaleSideExpenses;
@@ -286,6 +288,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       transportCost: values.transportCost,
       packingCost: values.packingCost,
       labourCost: values.labourCost,
+      miscExpenses: values.miscExpenses,
       commissionType: values.commissionType,
       commission: values.commission,
       extraBrokeragePerKg: values.extraBrokeragePerKg,
@@ -429,7 +432,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
                   <div className="p-4 border rounded-md shadow-sm">
                       <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Commission</h3>
-                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
                          <FormField control={control} name="transporterId" render={({ field }) => (
                           <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
                             <MasterDataCombobox value={field.value} onChange={field.onChange}
@@ -441,6 +444,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                          <FormField control={control} name="transportCost" render={({ field }) => (<FormItem><FormLabel>Transport (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                          <FormField control={control} name="packingCost" render={({ field }) => (<FormItem><FormLabel>Packing (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                          <FormField control={control} name="labourCost" render={({ field }) => (<FormItem><FormLabel>Labour (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                         <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 150" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                        </div>
                        {watchedFormValues.brokerId && (
                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t items-end">

@@ -116,6 +116,7 @@ export interface Sale {
   commissionType?: 'Fixed' | 'Percentage';
   commission?: number;
   extraBrokeragePerKg?: number;
+  miscExpenses?: number;
 
   // Calculated brokerage for the entire sale
   calculatedBrokerageCommission?: number;

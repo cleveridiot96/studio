@@ -125,7 +125,8 @@ export function CashbookClient() {
 
     combinedTransactions.forEach(tx => {
         if (parseISO(tx.date) < startOfDay(dateRange.from!)) {
-            calculatedOpeningBalance += (tx.type === 'Receipt' ? tx.amount : -tx.amount);
+            const amount = tx.type === 'Receipt' ? tx.amount : -tx.amount;
+            calculatedOpeningBalance += amount;
         }
     });
 
@@ -135,6 +136,7 @@ export function CashbookClient() {
 
     let runningBalance = calculatedOpeningBalance;
     const entries: CashLedgerTransaction[] = periodTransactions.map(tx => {
+        // Correct Accounting: Receipt is a DEBIT (inflow) to Cash, Payment is a CREDIT (outflow) from Cash.
         const debit = tx.type === 'Receipt' ? tx.amount : 0;
         const credit = tx.type === 'Payment' ? tx.amount : 0;
         runningBalance = runningBalance + debit - credit;
@@ -292,6 +294,8 @@ export function CashbookClient() {
           parties={allPaymentParties}
           onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
           paymentToEdit={paymentToEdit}
+          allPurchases={[]} // Pass empty as cashbook doesn't need full purchase data for allocation
+          allPayments={payments}
         />
       )}
 
@@ -303,6 +307,8 @@ export function CashbookClient() {
           parties={allReceiptParties}
           onMasterDataUpdate={handleMasterDataUpdateFromCashbook}
           receiptToEdit={receiptToEdit}
+          allSales={[]} // Pass empty as cashbook doesn't need full sale data for allocation
+          allReceipts={receipts}
         />
       )}
     </div>
