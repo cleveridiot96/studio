@@ -7,7 +7,7 @@ import type { Sale, CostBreakdown } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator, ArrowDown, Zap, Plus, Minus } from "lucide-react";
+import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator, ArrowDown, Zap, Plus, Minus, Info } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, endOfDay } from "date-fns";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
@@ -401,20 +401,28 @@ export function ProfitAnalysisClient() {
                                                 </div>
                                             </CardContent>
                                             <div className="p-4 bg-background rounded-lg mt-4">
-                                                <h3 className="font-semibold text-center text-lg mb-2 uppercase">FINAL CALCULATION FOR THIS ITEM</h3>
+                                                <h3 className="font-semibold text-center text-lg mb-2 uppercase">Final Calculation For This Item</h3>
                                                 <div className="flex justify-between items-center text-base">
                                                     <div className="text-center"><p className="text-sm text-muted-foreground">EFFECTIVE SALE RATE</p><p className="font-bold text-lg text-green-600">₹{effectiveSaleRate.toFixed(2)}</p></div>
                                                     <Minus className="h-6 w-6 text-muted-foreground" />
-                                                    <div className="text-center"><p className="text-sm text-muted-foreground">LANDED COST</p><p className="font-bold text-lg text-red-600">₹{item.landedCostPerKg.toFixed(2)}</p></div>
+                                                     <div className="text-center">
+                                                        <p className="text-sm text-muted-foreground">LANDED COST</p>
+                                                        <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <p className="font-bold text-lg text-red-600 underline decoration-dashed cursor-help">₹{item.landedCostPerKg.toFixed(2)}</p>
+                                                          </TooltipTrigger>
+                                                          <TooltipContent>Base Rate: {item.costBreakdown?.baseRate.toFixed(2)} + Purchase Exp: {item.costBreakdown?.purchaseExpenses.toFixed(2)} + Transfer Exp: {item.costBreakdown?.transferExpenses.toFixed(2)}</TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
                                                     <div className="font-extrabold text-2xl text-muted-foreground mx-2">=</div>
-                                                    <div className="text-center p-2 rounded-md bg-muted shadow-inner">
+                                                     <div className="text-center p-2 rounded-md bg-muted shadow-inner">
                                                         <p className="text-sm text-muted-foreground">NET PROFIT/KG</p>
                                                         <p className={cn("font-bold text-2xl", (effectiveSaleRate - item.landedCostPerKg) >= 0 ? 'text-primary' : 'text-destructive')}>₹{(effectiveSaleRate - item.landedCostPerKg).toFixed(2)}</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-center text-xl font-bold mt-4 pt-2 border-t">
+                                                 <div className="text-center text-xl font-bold mt-4 pt-2 border-t">
                                                     TOTAL NET PROFIT FOR {item.saleNetWeightKg} KG: <span className={cn("ml-2", item.netProfit >=0 ? 'text-primary' : 'text-destructive')}>₹{Math.round(item.netProfit).toLocaleString('en-IN', {minimumFractionDigits:2})}</span>
-                                                </div>
+                                                 </div>
                                             </div>
                                         </Card>
                                     );
@@ -429,5 +437,3 @@ export function ProfitAnalysisClient() {
     </TooltipProvider>
   );
 }
-
-    
