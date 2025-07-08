@@ -49,6 +49,22 @@ export const purchaseSchema = (
   }, {
     message: "Brokerage type and a valid value (non-negative) are required if an agent is selected.",
     path: ["brokerageValue"],
-});
+  })
+  .superRefine((data, ctx) => {
+    const lotNumbers = new Set<string>();
+    data.items.forEach((item, index) => {
+      const upperCaseLotNumber = item.lotNumber.toUpperCase().trim();
+      if (upperCaseLotNumber && lotNumbers.has(upperCaseLotNumber)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Duplicate. Try adding '/A' or similar.`,
+          path: ["items", index, "lotNumber"],
+        });
+      }
+      if (upperCaseLotNumber) {
+        lotNumbers.add(upperCaseLotNumber);
+      }
+    });
+  });
 
 export type PurchaseFormValues = z.infer<ReturnType<typeof purchaseSchema>>;
