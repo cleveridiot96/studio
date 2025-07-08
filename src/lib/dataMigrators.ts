@@ -4,7 +4,7 @@ import type { Purchase, Sale } from './types';
 /**
  * Migrates purchase data from a potential single-item format (with top-level lotNumber, quantity etc.)
  * to the new multi-item format (with an 'items' array).
- * This ensures backwards compatibility with data stored in localStorage.
+ * This also adds the 'landedCostPerKg' to each item if it's missing.
  * @param storedValue The raw value from localStorage.
  * @returns An array of Purchase objects in the new format.
  */
@@ -13,10 +13,10 @@ export const purchaseMigrator = (storedValue: any): Purchase[] => {
         return storedValue.map(p => {
             if (!p) return null; // Handle null/undefined items in array
 
-            // If it's an old single-item record (has lotNumber but no items array)
+            // First, handle migration from single-item to multi-item structure
             if (p.lotNumber && !p.items) {
                 const goodsValue = (p.netWeight || 0) * (p.rate || 0);
-                return {
+                p = {
                     ...p,
                     items: [{
                         lotNumber: p.lotNumber,
@@ -30,15 +30,33 @@ export const purchaseMigrator = (storedValue: any): Purchase[] => {
                     totalNetWeight: p.netWeight,
                 };
             }
-            // If the record is just missing an items array, initialize it
-             if (!p.items) {
+            
+            // Ensure items array exists
+            if (!p.items) {
                 p.items = [];
             }
+
+            // Now, calculate and add landedCostPerKg to each item if it's missing
+            const totalNonBrokerageExpenses = (p.transportCharges || 0) + (p.packingCharges || 0) + (p.labourCharges || 0) + (p.miscExpenses || 0);
+            const totalExpenses = totalNonBrokerageExpenses + (p.brokerageCharges || 0);
+            const expensesPerKg = p.totalNetWeight > 0 ? totalExpenses / p.totalNetWeight : 0;
+
+            p.items = p.items.map((item: any) => {
+                // If landedCostPerKg is missing, calculate it
+                if (item.landedCostPerKg === undefined) {
+                    const itemRate = Number(item.rate) || 0;
+                    const landedCostPerKg = itemRate + expensesPerKg;
+                    return { ...item, landedCostPerKg: parseFloat(landedCostPerKg.toFixed(2)) };
+                }
+                return item;
+            });
+
             return p;
-        }).filter(Boolean) as Purchase[]; // Filter out any null items that were in the array
+        }).filter(Boolean) as Purchase[];
     }
-    return []; // Return empty array if stored value is not an array
+    return [];
 };
+
 
 /**
  * Migrates sales data from a potential single-item format to the new multi-item format.

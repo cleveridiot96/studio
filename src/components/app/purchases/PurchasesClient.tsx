@@ -31,7 +31,7 @@ import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { purchaseMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
 const initialPurchasesData: Purchase[] = [];
 const initialPurchaseReturnsData: PurchaseReturn[] = [];
@@ -44,6 +44,7 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
+const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
 export function PurchasesClient() {
   const { toast } = useToast();
@@ -62,6 +63,7 @@ export function PurchasesClient() {
   const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
@@ -84,21 +86,26 @@ export function PurchasesClient() {
   
   React.useEffect(() => {
     if (isPurchasesClientHydrated) {
-        const warehousesMap = new Map(warehouses.map(item => [item.id, item]));
-        let updated = false;
-        FIXED_WAREHOUSES.forEach(fixedWarehouse => {
-            const existing = warehousesMap.get(fixedWarehouse.id);
-            if (!existing || existing.name !== fixedWarehouse.name) {
-                warehousesMap.set(fixedWarehouse.id, { ...fixedWarehouse });
-                updated = true;
-            }
-        });
+        const fixedItemsUpdater = (currentItems: MasterItem[], fixedItems: readonly MasterItem[], setter: React.Dispatch<React.SetStateAction<MasterItem[]>>) => {
+            const itemsMap = new Map(currentItems.map(item => [item.id, item]));
+            let updated = false;
+            fixedItems.forEach(fixedItem => {
+                const existing = itemsMap.get(fixedItem.id);
+                if (!existing || existing.name !== fixedItem.name) {
+                    itemsMap.set(fixedItem.id, { ...fixedItem });
+                    updated = true;
+                }
+            });
 
-        if (updated) {
-            setWarehouses(Array.from(warehousesMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
-        }
+            if (updated) {
+                setter(Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
+            }
+        };
+        
+        fixedItemsUpdater(warehouses, FIXED_WAREHOUSES, setWarehouses);
+        fixedItemsUpdater(expenses, FIXED_EXPENSES, setExpenses);
     }
-  }, [isPurchasesClientHydrated, warehouses, setWarehouses]);
+  }, [isPurchasesClientHydrated, warehouses, setWarehouses, expenses, setExpenses]);
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !isPurchasesClientHydrated) return [];
@@ -197,10 +204,10 @@ export function PurchasesClient() {
   }, [purchaseReturnToDeleteId, setPurchaseReturns, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { Supplier: setSuppliers, Agent: setAgents, Warehouse: setWarehouses, Transporter: setTransporters };
+    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { Supplier: setSuppliers, Agent: setAgents, Warehouse: setWarehouses, Transporter: setTransporters, Expense: setExpenses };
     const setter = setters[type];
     if (setter) setter(prev => { const newSet = new Map(prev.map(item => [item.id, item])); newSet.set(newItem.id, newItem); return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name)); });
-  }, [setSuppliers, setAgents, setWarehouses, setTransporters]);
+  }, [setSuppliers, setAgents, setWarehouses, setTransporters, setExpenses]);
 
   const openAddPurchaseForm = React.useCallback(() => {
     setPurchaseToEdit(null);
@@ -268,7 +275,7 @@ export function PurchasesClient() {
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
-        <h1 className="text-3xl font-bold text-foreground">Purchases & Returns (FY {financialYear})</h1>
+        <h1 className="text-3xl font-bold text-foreground uppercase">Purchases & Returns (FY {financialYear})</h1>
       </div>
 
       <Tabs defaultValue="purchases" className="w-full" onValueChange={setActiveTab}>
@@ -312,6 +319,7 @@ export function PurchasesClient() {
           agents={agents as Agent[]}
           warehouses={warehouses as Warehouse[]}
           transporters={transporters as Transporter[]}
+          expenses={expenses}
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />
