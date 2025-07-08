@@ -114,19 +114,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const totalExpenses = (transportCharges || 0) + (packingCharges || 0) + (labourCharges || 0) + (miscExpenses || 0);
     const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
     
-    const itemsWithCosts = (items || []).map(item => {
-        const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === watchedFormValues.fromWarehouseId);
-        const originalLandedCost = stockInfo?.effectiveRate || 0;
-        const finalLandedCost = originalLandedCost + perKgExpense;
-        return {
-            lotNumber: item.originalLotNumber,
-            originalLandedCost,
-            finalLandedCost
-        };
-    });
-
-    return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense, itemsWithCosts };
-  }, [watchedFormValues, availableStock]);
+    return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense };
+  }, [watchedFormValues]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -411,9 +400,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Expenses (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
                 </div>
-                
-                {transferSummary.itemsWithCosts.length > 0 && transferSummary.totalNetWeight > 0 && (
-                 <div className="p-4 border rounded-md shadow-sm bg-muted/50">
+
+                <div className="p-4 border rounded-md shadow-sm bg-muted/50">
                     <h3 className="text-lg font-medium mb-3 text-primary">Cost Calculation & Final Landed Costs</h3>
                      <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Net Wt: {transferSummary.totalNetWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{transferSummary.perKgExpense.toFixed(2)}/kg Transfer Cost</span></p>
                      <ScrollArea className="h-40">
@@ -427,20 +415,29 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                  </TableRow>
                              </TableHeader>
                              <TableBody>
-                                {transferSummary.itemsWithCosts.map((item, index) => (
-                                    <TableRow key={index} className="uppercase">
-                                        <TableCell>{item.lotNumber}</TableCell>
-                                        <TableCell className="text-right">₹{item.originalLandedCost.toFixed(2)}</TableCell>
-                                        <TableCell className="text-right">(+) ₹{transferSummary.perKgExpense.toFixed(2)}</TableCell>
-                                        <TableCell className="text-right font-bold text-primary">₹{item.finalLandedCost.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                ))}
+                                {fields.map((field, index) => {
+                                    const itemValues = watch(`items.${index}`);
+                                    const stockInfo = availableStock.find(s => s.lotNumber === itemValues.originalLotNumber && s.locationId === watch('fromWarehouseId'));
+                                    const originalLandedCost = stockInfo?.effectiveRate || 0;
+                                    const perKgExpense = transferSummary.perKgExpense || 0;
+                                    const finalLandedCost = originalLandedCost > 0 ? originalLandedCost + perKgExpense : 0;
+
+                                    return (
+                                        <TableRow key={field.id} className="uppercase">
+                                            <TableCell>{itemValues.originalLotNumber || "N/A"}</TableCell>
+                                            <TableCell className="text-right">₹{originalLandedCost.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">(+) ₹{perKgExpense.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right font-bold text-primary">₹{finalLandedCost.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                                {fields.length === 0 && (
+                                    <TableRow><TableCell colSpan={4} className="text-center">Add items to see cost calculation.</TableCell></TableRow>
+                                )}
                              </TableBody>
                          </Table>
                      </ScrollArea>
                  </div>
-                )}
-
 
                 <FormField control={control} name="notes" render={({ field }) => (
                   <FormItem className="p-4 border rounded-md shadow-sm">
@@ -474,3 +471,5 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
+
+    

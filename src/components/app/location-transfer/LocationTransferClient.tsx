@@ -39,7 +39,7 @@ import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -487,3 +487,5 @@ export function LocationTransferClient() {
     </div>
   );
 }
+
+    
