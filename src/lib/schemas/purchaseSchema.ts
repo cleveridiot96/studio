@@ -42,22 +42,20 @@ export const purchaseSchema = (
   brokerageValue: z.coerce.number().optional(),
   miscExpenses: z.coerce.number().nonnegative("Expenses must be non-negative").optional(),
 }).superRefine((data, ctx) => {
-    // If brokerage value is entered, type is required, and vice-versa
-    if (data.agentId) {
-        if (data.brokerageValue !== undefined && !data.brokerageType) {
-            ctx.addIssue({
-                path: ['brokerageType'],
-                message: 'Type is required if value is entered.',
-                code: z.ZodIssueCode.custom
-            });
-        }
-        if (data.brokerageType && data.brokerageValue === undefined) {
-            ctx.addIssue({
-                path: ['brokerageValue'],
-                message: 'Value is required if type is selected.',
-                code: z.ZodIssueCode.custom
-            });
-        }
+    // If brokerage value is entered, type is required, and vice-versa. This is now independent of agent selection.
+    if ((data.brokerageValue !== undefined && data.brokerageValue >= 0) && !data.brokerageType) {
+        ctx.addIssue({
+            path: ['brokerageType'],
+            message: 'Type is required if value is entered.',
+            code: z.ZodIssueCode.custom
+        });
+    }
+    if (data.brokerageType && (data.brokerageValue === undefined || data.brokerageValue < 0)) {
+        ctx.addIssue({
+            path: ['brokerageValue'],
+            message: 'Value is required if type is selected.',
+            code: z.ZodIssueCode.custom
+        });
     }
 
     const lotNumbers = new Set<string>();
