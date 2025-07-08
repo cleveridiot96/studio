@@ -209,6 +209,19 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     onClose();
   };
 
+  const handleNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value === '0') {
+      // Find the corresponding RHF field and set its value to undefined
+      const fieldName = e.target.name;
+      const rfhField = methods.getFieldState(fieldName as keyof LocationTransferFormValues);
+      if (rfhField) {
+        methods.setValue(fieldName as keyof LocationTransferFormValues, undefined as any, { shouldValidate: true });
+      }
+    } else {
+      e.target.select();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -302,7 +315,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField}
                             value={itemField.value ?? ''}
-                            onFocus={(e) => e.target.select()}
+                            onFocus={handleNumericInputFocus}
                             onChange={e => {
                               const bagsVal = parseFloat(e.target.value) || undefined;
                               itemField.onChange(bagsVal);
@@ -322,13 +335,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''} onFocus={(e) => e.target.select()} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} onFocus={(e) => e.target.select()} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
