@@ -28,6 +28,7 @@ export default function DashboardPage() {
   };
 
   const quickActions = [
+    // Core Operations
     {
       title: "Purchases",
       description: "Record and manage purchases",
@@ -43,25 +44,18 @@ export default function DashboardPage() {
       className: "bg-blue-600 hover:bg-blue-700 text-white",
     },
     {
-      title: "Inventory",
-      description: "View and manage stock",
-      href: "/inventory",
-      iconName: "Package",
-      className: "bg-teal-600 hover:bg-teal-700 text-white",
-    },
-    {
       title: "Location Transfer",
       description: "Transfer stock between locations",
       href: "/location-transfer",
       iconName: "ArrowRightLeft",
       className: "bg-cyan-600 hover:bg-cyan-700 text-white",
     },
-     {
-      title: "Outstanding Balances",
-      description: "Receivables & Payables",
-      href: "/outstanding",
-      iconName: "ClipboardList",
-      className: "bg-yellow-500 hover:bg-yellow-600 text-black",
+    {
+      title: "Inventory",
+      description: "View and manage stock",
+      href: "/inventory",
+      iconName: "Package",
+      className: "bg-teal-600 hover:bg-teal-700 text-white",
     },
     {
       title: "Payments",
@@ -78,18 +72,26 @@ export default function DashboardPage() {
       className: "bg-green-600 hover:bg-green-700 text-white",
     },
     {
+      title: "Cash Book",
+      description: "Track cash transactions",
+      href: "/cashbook",
+      iconName: "BookOpen",
+      className: "bg-pink-600 hover:bg-pink-700 text-white",
+    },
+    {
       title: "Master Data",
       description: "Manage people & companies",
       href: "/masters",
       iconName: "Users",
       className: "bg-sky-600 hover:bg-sky-700 text-white",
     },
+    // Analysis & Ledgers
     {
-      title: "Cash Book",
-      description: "Track cash transactions",
-      href: "/cashbook",
-      iconName: "BookOpen",
-      className: "bg-pink-600 hover:bg-pink-700 text-white",
+      title: "Outstanding Balances",
+      description: "Receivables & Payables",
+      href: "/outstanding",
+      iconName: "ClipboardList",
+      className: "bg-yellow-500 hover:bg-yellow-600 text-black",
     },
     {
       title: "Stock Ledger",
@@ -112,6 +114,7 @@ export default function DashboardPage() {
       iconName: "Rocket",
       className: "bg-green-500 hover:bg-green-600 text-white",
     },
+    // Data Management
     {
       title: "Backup Data",
       description: "Save your application data",
