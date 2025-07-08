@@ -29,20 +29,20 @@ export const saleSchema = (
   items: z.array(saleItemSchema(availableStock)).min(1, "At least one sale item is required."),
 
   isCB: z.boolean().optional().default(false),
-  cbAmount: z.coerce.number().optional(),
+  cbAmount: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   billNumber: z.string().optional(),
 
   transporterId: z.string().optional().refine(id => !id || transporters.some(t => t.id === id), { message: "Invalid transporter." }),
-  transportCost: z.coerce.number().optional(),
-  packingCost: z.coerce.number().optional(),
-  labourCost: z.coerce.number().optional(),
+  transportCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  packingCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  labourCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   
   brokerageType: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.enum(['Fixed', 'Percentage']).optional()
   ),
-  brokerageValue: z.coerce.number().optional(),
-  extraBrokeragePerKg: z.coerce.number().optional(),
+  brokerageValue: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  extraBrokeragePerKg: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
   
   notes: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -99,16 +99,13 @@ export const saleSchema = (
 
   // Brokerage validation, only if a broker is actually selected.
   if (data.brokerId) {
-    const valueExists = data.brokerageValue !== undefined && data.brokerageValue > 0;
-    const typeExists = !!data.brokerageType;
-
-    if (valueExists && !typeExists) {
+    if (data.brokerageValue !== undefined && data.brokerageType === undefined) {
         ctx.addIssue({
             path: ["brokerageType"],
             message: "Type is required when value is entered.",
         });
     }
-    if (typeExists && !valueExists) {
+    if (data.brokerageType !== undefined && data.brokerageValue === undefined) {
         ctx.addIssue({
             path: ["brokerageValue"],
             message: "Value is required when type is selected.",

@@ -17,7 +17,10 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
   source: z.string().optional(),
   notes: z.string().optional(),
   relatedSaleIds: z.array(z.string()).optional(), // Optional: for linking to sales
-  cashDiscount: z.coerce.number().nonnegative("Cash discount cannot be negative.").optional().default(0),
+  cashDiscount: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.coerce.number().nonnegative("Cash discount cannot be negative.").optional().default(0)
+  ),
 });
 
 export type ReceiptFormValues = z.infer<ReturnType<typeof receiptSchema>>;

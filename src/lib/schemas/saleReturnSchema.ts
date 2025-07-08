@@ -16,8 +16,8 @@ const getAvailableForSaleReturn = (
     }, { bags: 0, weight: 0 });
 
   return {
-    availableBags: sale.quantity - returnedForThisSale.bags,
-    availableWeight: sale.netWeight - returnedForThisSale.weight,
+    availableBags: sale.totalQuantity - returnedForThisSale.bags,
+    availableWeight: sale.totalNetWeight - returnedForThisSale.weight,
   };
 };
 
@@ -33,7 +33,7 @@ export const saleReturnSchema = (
   netWeightReturned: z.coerce.number().min(0.01, "Net weight returned must be > 0."),
   returnReason: z.string().optional(),
   notes: z.string().optional(),
-  restockingFee: z.coerce.number().nonnegative("Restocking fee cannot be negative.").optional(),
+  restockingFee: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().nonnegative("Restocking fee cannot be negative.").optional()),
 }).superRefine((data, ctx) => {
   const originalSale = allSales.find(s => s.id === data.originalSaleId);
   if (!originalSale) {
