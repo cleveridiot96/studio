@@ -21,6 +21,7 @@ export const locationTransferSchema = (
   toWarehouseId: z.string().min(1, "Destination warehouse is required.")
     .refine(id => warehouses.some(w => w.id === id), { message: "Invalid destination warehouse." }),
   transporterId: z.string().optional(),
+  transportRate: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   transportCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   packingCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   labourCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
@@ -83,7 +84,7 @@ export const locationTransferSchema = (
       if (item.bagsToTransfer > availableBagsInStock) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Bags (${item.bagsToTransfer}) exceed available stock (${availableBagsInStock}).`,
+          message: `Bags (${item.bagsToTransfer}) exceed available stock (${Math.round(availableBagsInStock)}).`,
           path: ["items", index, "bagsToTransfer"],
         });
       }
@@ -92,5 +93,3 @@ export const locationTransferSchema = (
 });
 
 export type LocationTransferFormValues = z.infer<ReturnType<typeof locationTransferSchema>>;
-
-  

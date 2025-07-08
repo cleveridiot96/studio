@@ -118,7 +118,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="uppercase">LANDED RATE: ₹{Math.round(purchase.effectiveRate || 0).toLocaleString('en-IN')}</p>
+                        <p className="uppercase">Avg. Landed Rate: ₹{Math.round(purchase.effectiveRate || 0).toLocaleString('en-IN')}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
@@ -197,4 +197,3 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
 }
 
 export const PurchaseTable = React.memo(PurchaseTableComponent);
-    

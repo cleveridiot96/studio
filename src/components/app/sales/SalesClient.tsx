@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+import { FIXED_WAREHOUSES } from '@/lib/constants';
 
 
 const SALES_STORAGE_KEY = 'salesData';
@@ -205,6 +206,7 @@ export function SalesClient() {
       }
     });
 
+    const mumbaiWarehouseId = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
     const result: AggregatedStockItemForForm[] = [];
     stockMap.forEach((value, key) => {
         const lotNumber = key.substring(0, key.lastIndexOf('-'));
@@ -222,7 +224,7 @@ export function SalesClient() {
         }
     });
     
-    return result;
+    return result.filter(item => item.locationId === mumbaiWarehouseId);
 
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
 

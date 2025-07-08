@@ -87,7 +87,7 @@ export interface SaleItem {
   purchaseRate: number; // The raw purchase rate for this lot.
   costOfGoodsSold: number; // The full landed cost for this portion of goods.
   itemGrossProfit: number;
-  itemProfit: number; // Net profit for this item
+  itemNetProfit: number; // Net profit for this item
   costBreakdown?: CostBreakdown;
 }
 
@@ -236,6 +236,7 @@ export interface LocationTransfer {
   toWarehouseName?: string;
   transporterId?: string;
   transporterName?: string;
+  transportRate?: number;
   transportCharges?: number;
   packingCharges?: number;
   labourCharges?: number;

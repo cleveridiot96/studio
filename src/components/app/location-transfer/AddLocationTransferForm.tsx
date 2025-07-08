@@ -67,6 +67,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
           fromWarehouseId: transferToEdit.fromWarehouseId,
           toWarehouseId: transferToEdit.toWarehouseId,
           transporterId: transferToEdit.transporterId || undefined,
+          transportRate: transferToEdit.transportRate,
           transportCharges: transferToEdit.transportCharges,
           packingCharges: transferToEdit.packingCharges,
           labourCharges: transferToEdit.labourCharges,
@@ -85,6 +86,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         fromWarehouseId: undefined,
         toWarehouseId: undefined,
         transporterId: undefined,
+        transportRate: 17,
         transportCharges: undefined,
         packingCharges: undefined,
         labourCharges: undefined,
@@ -106,26 +108,33 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     name: "items",
   });
 
-  const watchedFromWarehouseId = watch("fromWarehouseId");
-  const watchedItems = watch("items");
+  const watchedFormValues = watch();
 
   const transferSummary = React.useMemo(() => {
-    const totalBags = (watchedItems || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
-    const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
-    const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
+    const totalBags = (watchedFormValues.items || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
+    const totalNetWeight = (watchedFormValues.items || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
+    const totalGrossWeight = (watchedFormValues.items || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
     return { totalBags, totalNetWeight, totalGrossWeight };
-  }, [watchedItems]);
+  }, [watchedFormValues.items]);
 
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
     }
   }, [isOpen, transferToEdit, reset, getDefaultValues]);
+  
+  React.useEffect(() => {
+      const { transportRate } = getValues();
+      const grossWeight = transferSummary.totalGrossWeight;
+      if (typeof transportRate === 'number' && grossWeight > 0) {
+          setValue('transportCharges', Math.round(transportRate * grossWeight), { shouldValidate: true });
+      }
+  }, [transferSummary.totalGrossWeight, getValues, setValue, watch('transportRate')]);
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
-    if (!watchedFromWarehouseId) return [];
+    if (!watchedFormValues.fromWarehouseId) return [];
     return availableStock
-      .filter(item => item.locationId === watchedFromWarehouseId && item.currentBags > 0)
+      .filter(item => item.locationId === watchedFormValues.fromWarehouseId && item.currentBags > 0)
       .map(item => ({
         value: item.lotNumber,
         label: `${item.lotNumber} (Avl: ${Math.round(item.currentBags)} bags)`,
@@ -133,7 +142,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         averageWeightPerBag: item.averageWeightPerBag,
       }))
       .sort((a,b) => a.label.localeCompare(b.label));
-  }, [availableStock, watchedFromWarehouseId]);
+  }, [availableStock, watchedFormValues.fromWarehouseId]);
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
 
@@ -184,6 +193,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       toWarehouseName: toWarehouse?.name || values.toWarehouseId,
       transporterId: values.transporterId,
       transporterName: transporter?.name,
+      transportRate: values.transportRate,
       transportCharges: values.transportCharges,
       packingCharges: values.packingCharges,
       labourCharges: values.labourCharges,
@@ -309,7 +319,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             onChange={itemField.onChange}
                             options={availableLotsOptions}
                             placeholder="Select Lot"
-                            disabled={!watchedFromWarehouseId}
+                            disabled={!watchedFormValues.fromWarehouseId}
                           />
                           <FormMessage />
                         </FormItem>)}
@@ -324,7 +334,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               itemField.onChange(bagsVal);
                               setValue(`items.${index}.grossWeightToTransfer`, (bagsVal || 0) * 50, { shouldValidate: true });
                               const lotValue = watch(`items.${index}.originalLotNumber`);
-                              const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watchedFromWarehouseId);
+                              const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watchedFormValues.fromWarehouseId);
                               const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
                               let newNetWeight;
                               if (bagsVal && bagsVal > 0 && !isNaN(avgWeightPerBag)) {
@@ -361,8 +371,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     </Button>
                     <div className="p-3 border rounded-md bg-muted/50 text-right text-sm">
                         <p className="font-semibold">TOTAL BAGS: <span className="font-bold text-primary">{Math.round(transferSummary.totalBags).toLocaleString()}</span></p>
-                        <p className="font-semibold">TOTAL NET WT: <span className="font-bold text-primary">{transferSummary.totalNetWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} KG</span></p>
-                        <p className="font-semibold">TOTAL GROSS WT: <span className="font-bold text-primary">{transferSummary.totalGrossWeight.toLocaleString(undefined, {minimumFractionDigits: 2})} KG</span></p>
+                        <p className="font-semibold">TOTAL NET WT: <span className="font-bold text-primary">{transferSummary.totalNetWeight.toLocaleString(undefined, {minimumFractionDigits:2})} KG</span></p>
+                        <p className="font-semibold">TOTAL GROSS WT: <span className="font-bold text-primary">{transferSummary.totalGrossWeight.toLocaleString(undefined, {minimumFractionDigits:2})} KG</span></p>
                     </div>
                   </div>
                    {typeof errors.items === 'object' && !Array.isArray(errors.items) && errors.items.message && (
@@ -372,9 +382,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Transfer Expenses (Optional)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
-                    <FormField control={control} name="transporterId" render={({ field }) => (
-                      <FormItem className="lg:col-span-1"><FormLabel>Transporter</FormLabel>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+                     <FormField control={control} name="transporterId" render={({ field }) => (
+                      <FormItem className="col-span-full sm:col-span-2"><FormLabel>Transporter</FormLabel>
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
@@ -384,9 +394,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           onEdit={(id) => handleEditMasterItem("Transporter", id)}
                         />
                         <FormMessage />
-                      </FormItem>)}
-                    />
-                     <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 5000" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                      </FormItem>)} />
+                     <FormField control={control} name="transportRate" render={({ field }) => (<FormItem><FormLabel>Transport Rate (₹/kg)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 17" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name="transportCharges" render={({ field }) => (<FormItem><FormLabel>Transport Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Auto-calculated" {...field} value={field.value ?? ''} readOnly className="bg-muted/70" /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={control} name="packingCharges" render={({ field }) => (<FormItem><FormLabel>Packing Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 500" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                      <FormField control={control} name="labourCharges" render={({ field }) => (<FormItem><FormLabel>Labour Charges (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={control} name="miscExpenses" render={({ field }) => (<FormItem><FormLabel>Misc. Expenses (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="e.g. 300" {...field} value={field.value ?? ''} onFocus={handleNumericInputFocus} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
