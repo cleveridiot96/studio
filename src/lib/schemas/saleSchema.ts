@@ -9,12 +9,9 @@ interface AggregatedStockItemForSchema {
 
 const saleItemSchema = (availableStock: AggregatedStockItemForSchema[]) => z.object({
   lotNumber: z.string().min(1, "Vakkal/Lot is required.").refine(lotNum => availableStock.some(item => item.lotNumber === lotNum), { message: "Lot not in stock." }),
-  quantity: z.coerce.number().min(0.01, "Bags must be > 0.").optional(),
-  netWeight: z.coerce.number().min(0.01, "Net weight must be > 0.").optional(),
-  rate: z.coerce.number().min(0.01, "Rate must be > 0.").optional(),
-}).refine(data => data.quantity && data.netWeight && data.rate, {
-    message: "Bags, Net Weight, and Rate are all required for each item.",
-    path: ["lotNumber"], // Attach error to a field for visibility
+  quantity: z.coerce.number({required_error: "Bags are required."}).min(0.01, "Bags must be > 0."),
+  netWeight: z.coerce.number({required_error: "Net Wt. is required."}).min(0.01, "Net weight must be > 0."),
+  rate: z.coerce.number({required_error: "Rate is required."}).min(0.01, "Rate per KG must be > 0."),
 });
 
 export const saleSchema = (
@@ -98,12 +95,22 @@ export const saleSchema = (
   }
 
   // Brokerage validation
-  if (data.brokerId && (!data.brokerageType || data.brokerageValue === undefined || data.brokerageValue < 0)) {
-    ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Brokerage type and a valid value (non-negative) are required if a broker is selected.",
-        path: ["brokerageValue"],
-    });
+  const typeExists = !!data.brokerageType;
+  const valueExists = data.brokerageValue !== undefined && data.brokerageValue >= 0;
+
+  if (typeExists !== valueExists) { // If one exists without the other
+      if (typeExists && !valueExists) {
+          ctx.addIssue({
+              path: ["brokerageValue"],
+              message: "Value is required for the selected type.",
+          });
+      }
+      if (!typeExists && valueExists) {
+          ctx.addIssue({
+              path: ["brokerageType"],
+              message: "Type is required if a value is entered.",
+          });
+      }
   }
 });
 

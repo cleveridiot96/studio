@@ -141,26 +141,22 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     let totalGoodsValue = 0;
     let totalNetWeight = 0;
     let totalQuantity = 0;
-    let totalGrossProfit = 0;
     let totalLandedCost = 0;
 
     (items || []).forEach(item => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
-        const purchaseRate = stockInfo?.purchaseRate || 0;
-        const landedCostPerKg = stockInfo?.effectiveRate || purchaseRate;
+        const landedCostPerKg = stockInfo?.effectiveRate || stockInfo?.purchaseRate || 0;
         
         const netWeight = Number(item.netWeight) || 0;
         const saleRate = Number(item.rate) || 0;
         const quantity = Number(item.quantity) || 0;
 
         const lineSaleValue = netWeight * saleRate;
-        const linePurchaseValue = netWeight * purchaseRate;
         
         totalGoodsValue += lineSaleValue;
         totalLandedCost += netWeight * landedCostPerKg;
         totalNetWeight += netWeight;
         totalQuantity += quantity;
-        totalGrossProfit += (lineSaleValue - linePurchaseValue);
     });
 
     const billedAmount = isCB ? totalGoodsValue - (Number(cbAmount) || 0) : totalGoodsValue;
@@ -175,7 +171,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const calculatedExtraBrokerage = (Number(extraBrokeragePerKg) || 0) * totalNetWeight;
     const totalSaleSideExpenses = (Number(transportCost) || 0) + (Number(packingCost) || 0) + (Number(labourCost) || 0) + calculatedBrokerageCommission + calculatedExtraBrokerage;
     
-    const netProfit = totalGoodsValue - totalLandedCost - totalSaleSideExpenses;
+    const grossProfit = totalGoodsValue - totalLandedCost;
+    const netProfit = grossProfit - totalSaleSideExpenses;
 
     return { 
       totalGoodsValue,
@@ -183,7 +180,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       totalQuantity,
       billedAmount,
       totalLandedCost,
-      totalGrossProfit,
+      totalGrossProfit: grossProfit, // Changed this name for clarity
       totalSaleSideExpenses,
       netProfit, 
       calculatedBrokerageCommission, 
@@ -205,12 +202,15 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     if (selectedBrokerId) {
       const broker = brokers.find(b => b.id === selectedBrokerId);
       if (broker) {
-        setValue("brokerageType", broker.commissionType, { shouldValidate: true });
+        setValue("brokerageType", broker.commissionType || undefined, { shouldValidate: true });
         setValue("brokerageValue", broker.commission, { shouldValidate: true });
+      } else {
+        setValue("brokerageType", undefined, { shouldValidate: true });
+        setValue("brokerageValue", undefined, { shouldValidate: true });
       }
     } else {
-      setValue("brokerageType", undefined);
-      setValue("brokerageValue", undefined);
+      setValue("brokerageType", undefined, { shouldValidate: true });
+      setValue("brokerageValue", undefined, { shouldValidate: true });
     }
   }, [selectedBrokerId, brokers, setValue]);
 
@@ -260,8 +260,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       brokerName: selectedBroker?.name,
       items: values.items.map(item => {
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
-          const purchaseRate = stock?.purchaseRate || 0;
-          const landedCost = stock?.effectiveRate || purchaseRate;
+          const landedCost = stock?.effectiveRate || stock?.purchaseRate || 0;
           const netWeight = item.netWeight || 0;
           const saleRate = item.rate || 0;
           const goodsValue = netWeight * saleRate;
@@ -272,7 +271,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               netWeight: netWeight,
               rate: saleRate,
               goodsValue: goodsValue,
-              purchaseRate: purchaseRate,
+              purchaseRate: stock?.purchaseRate || 0,
               costOfGoodsSold: netWeight * landedCost,
           };
       }),
@@ -488,7 +487,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             <span>Gross Profit:</span> 
                              <Tooltip>
                                 <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.totalGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
-                                <TooltipContent><p>(Goods Value) - (Raw Purchase Cost)</p></TooltipContent>
+                                <TooltipContent><p>(Goods Value) - (Landed Purchase Cost)</p></TooltipContent>
                             </Tooltip>
                         </div>
 
@@ -504,7 +503,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             <span>Net Profit:</span> 
                             <Tooltip>
                                 <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{summary.netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></TooltipTrigger>
-                                <TooltipContent><p>(Goods Value) - (Landed Cost) - (Sale Expenses)</p></TooltipContent>
+                                <TooltipContent><p>(Gross Profit) - (Sale Expenses)</p></TooltipContent>
                             </Tooltip>
                         </div>
                       </div>

@@ -182,10 +182,16 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     if (watchedAgentId) {
       const agent = agents.find(a => a.id === watchedAgentId);
       if (agent) {
-        setValue("brokerageType", agent.commissionType, { shouldValidate: true });
+        // Explicitly set to undefined if master data is missing to avoid passing invalid values to enum
+        setValue("brokerageType", agent.commissionType || undefined, { shouldValidate: true });
         setValue("brokerageValue", agent.commission, { shouldValidate: true });
+      } else {
+        // Agent ID exists but no agent found (e.g., deleted), clear fields
+        setValue("brokerageType", undefined, { shouldValidate: true });
+        setValue("brokerageValue", undefined, { shouldValidate: true });
       }
     } else {
+        // No agent selected, clear fields
         setValue("brokerageType", undefined, { shouldValidate: true });
         setValue("brokerageValue", undefined, { shouldValidate: true });
     }
@@ -338,7 +344,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                         <div className="font-medium text-sm md:col-span-1 pt-7 text-muted-foreground">Brokerage Details:</div>
                         <FormField control={control} name="brokerageType" render={({ field }) => (
                               <FormItem><FormLabel>Brokerage Type</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value} disabled={!watchedFormValues.agentId}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl><SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger></FormControl>
                                   <SelectContent>
                                     <SelectItem value="Fixed">Fixed (₹)</SelectItem>
@@ -353,7 +359,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                 <div className="relative">
                                   <FormControl><Input type="number" step="0.01" placeholder="Value" {...field} value={field.value ?? ''}
                                     onChange={e => { field.onChange(parseFloat(e.target.value) || undefined); }}
-                                    disabled={!watchedFormValues.agentId || !watchedFormValues.brokerageType}
                                     className={watchedFormValues.brokerageType === 'Percentage' ? "pr-8" : ""}
                                   /></FormControl>
                                   {watchedFormValues.brokerageType === 'Percentage' && <Percent className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
