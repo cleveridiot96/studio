@@ -125,13 +125,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     
     const totalGrossWeight = watchedItems.reduce((acc, item) => acc + (item.grossWeightToTransfer || 0), 0);
     const rate = watchedTransportRate || 0;
-    if (totalGrossWeight > 0 && rate > 0) {
-        const calculatedCharges = parseFloat((totalGrossWeight * rate).toFixed(2));
-        if (getValues('transportCharges') !== calculatedCharges) {
-            setValue('transportCharges', calculatedCharges, { shouldValidate: true });
-        }
-    } else if (getValues('transportCharges') !== undefined) {
-        setValue('transportCharges', undefined);
+    const calculatedCharges = parseFloat((totalGrossWeight * rate).toFixed(2));
+    if (getValues('transportCharges') !== calculatedCharges) {
+        setValue('transportCharges', calculatedCharges > 0 ? calculatedCharges : undefined, { shouldValidate: true });
     }
   }, [watchedItems, watchedTransportRate, setValue, transportChargesManuallySet, getValues]);
 
@@ -215,7 +211,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const handleNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     if (e.target.value === '0') {
       const fieldName = e.target.name;
-      methods.setValue(fieldName as keyof LocationTransferFormValues, undefined as any, { shouldValidate: true });
+      methods.setValue(fieldName as any, undefined, { shouldValidate: true });
     } else {
       e.target.select();
     }

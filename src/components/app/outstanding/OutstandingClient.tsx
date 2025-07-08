@@ -11,14 +11,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, differenceInDays, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { useSettings } from "@/contexts/SettingsContext";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
+import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 
 const keys = {
   purchases: 'purchasesData',
@@ -41,7 +41,7 @@ interface OutstandingTransaction {
   partyName: string;
   partyType: string;
   type: 'Sale' | 'Purchase';
-  chittiNo: string;
+  vakkal: string;
   date: string;
   dueDate: string;
   amount: number;
@@ -98,7 +98,7 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                         <TableHeader>
                             <TableRow>
                                 <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer">Party <SortIcon columnKey="partyName" /></TableHead>
-                                <TableHead onClick={() => handleSort('chittiNo')} className="cursor-pointer">Chitti No. <SortIcon columnKey="chittiNo" /></TableHead>
+                                <TableHead onClick={() => handleSort('vakkal')} className="cursor-pointer">Vakkal No. <SortIcon columnKey="vakkal" /></TableHead>
                                 <TableHead onClick={() => handleSort('balance')} className="cursor-pointer text-right">Balance <SortIcon columnKey="balance" /></TableHead>
                                 <TableHead onClick={() => handleSort('dueDate')} className="cursor-pointer">Due Date <SortIcon columnKey="dueDate" /></TableHead>
                                 <TableHead onClick={() => handleSort('status')} className="cursor-pointer">Status <SortIcon columnKey="status" /></TableHead>
@@ -108,7 +108,7 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                             {sortedData.map(item => (
                                 <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/accounts-ledger?partyId=${item.partyId}`)}>
                                     <TableCell className="font-medium">{item.partyName}</TableCell>
-                                    <TableCell>{item.chittiNo}</TableCell>
+                                    <TableCell>{item.vakkal}</TableCell>
                                     <TableCell className="font-bold text-right">₹{item.balance.toLocaleString('en-IN')}</TableCell>
                                     <TableCell>{format(parseISO(item.dueDate), 'dd MMM yyyy')}</TableCell>
                                     <TableCell>
@@ -132,7 +132,7 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
 
 export function OutstandingClient() {
   const [hydrated, setHydrated] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPartyId, setSelectedPartyId] = useState<string | undefined>();
   const [filterType, setFilterType] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { financialYear: currentFinancialYearString } = useSettings();
@@ -195,7 +195,7 @@ export function OutstandingClient() {
             const party = allMasters.find(m => m.id === partyId);
             const amount = type === 'Sale' ? (tx as Sale).billedAmount : (tx as Purchase).totalAmount;
             
-            const chittiNo = type === 'Sale' ? (tx as Sale).billNumber || `S-${tx.id.slice(-4)}` : `P-${tx.id.slice(-4)}`;
+            const vakkal = (type === 'Sale' ? (tx as Sale).items.map(i => i.lotNumber) : (tx as Purchase).items.map(i => i.lotNumber)).join(', ');
             
             const paymentPool = paymentPools.get(partyId) || 0;
             const paid = Math.min(paymentPool, amount);
@@ -220,7 +220,7 @@ export function OutstandingClient() {
                 partyName: party?.name || 'Unknown Party',
                 partyType: party?.type || 'Unknown',
                 type,
-                chittiNo,
+                vakkal,
                 date: tx.date,
                 dueDate,
                 amount,
@@ -246,6 +246,14 @@ export function OutstandingClient() {
     };
 
   }, [hydrated, purchases, sales, receipts, payments, allMasters, purchaseReturns, saleReturns, dateRange]);
+  
+  const partyOptions = useMemo(() => {
+    const partiesWithBalance = new Set([...receivables, ...payables].map(tx => tx.partyId));
+    return allMasters
+        .filter(m => partiesWithBalance.has(m.id))
+        .map(m => ({ value: m.id, label: `${m.name} (${m.type})` }))
+        .sort((a,b) => a.label.localeCompare(b.label));
+  }, [receivables, payables, allMasters]);
 
   const filteredData = useMemo(() => {
     let combined = [];
@@ -255,19 +263,15 @@ export function OutstandingClient() {
     else if (filterType === 'overdue') combined = [...receivables, ...payables].filter(item => item.status === 'Overdue');
     else combined = [...receivables, ...payables];
 
-    if (searchQuery.trim() !== '') {
-        const lowerCaseQuery = searchQuery.toLowerCase();
-        combined = combined.filter(item => 
-            item.partyName.toLowerCase().includes(lowerCaseQuery) || 
-            item.chittiNo.toLowerCase().includes(lowerCaseQuery)
-        );
+    if (selectedPartyId) {
+        combined = combined.filter(item => item.partyId === selectedPartyId);
     }
 
     return {
         receivables: combined.filter(t => t.type === 'Sale'),
         payables: combined.filter(t => t.type === 'Purchase'),
     };
-  }, [receivables, payables, searchQuery, filterType]);
+  }, [receivables, payables, selectedPartyId, filterType]);
 
   const setDatePreset = (preset: '1m' | '3m' | '6m' | '1y') => {
     const to = endOfDay(new Date());
@@ -306,11 +310,12 @@ export function OutstandingClient() {
             </div>
 
             <div className="flex flex-col md:flex-row justify-between items-center my-4 gap-4">
-                <Input 
-                    placeholder="Search by Party Name or Chitti No." 
-                    className="w-full md:w-1/3" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                <MasterDataCombobox 
+                    value={selectedPartyId}
+                    onChange={(value) => setSelectedPartyId(value)}
+                    options={partyOptions}
+                    placeholder="Filter by Party..."
+                    className="w-full md:w-1/3"
                 />
                 <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
                      <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />

@@ -211,7 +211,7 @@ export function AccountsLedgerClient() {
         if (accountablePartyId === partyId) {
             transactions.push({
                 id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return',
-                particulars: `Return of ${pr.originalLotNumber}`,
+                particulars: `Return of Vakkal: ${pr.originalLotNumber}`,
                 debit: pr.returnAmount, credit: 0
             });
         }
@@ -224,7 +224,7 @@ export function AccountsLedgerClient() {
         if (accountablePartyId === partyId) {
              transactions.push({
                 id: `sret-${sr.id}`, date: sr.date, type: 'Sale Return',
-                particulars: `Return from ${sr.originalCustomerName} of ${sr.originalLotNumber}`,
+                particulars: `Return from ${sr.originalCustomerName} of Vakkal: ${sr.originalLotNumber}`,
                 debit: 0, credit: sr.returnAmount
             });
         }
