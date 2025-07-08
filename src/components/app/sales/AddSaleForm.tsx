@@ -156,7 +156,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     (items || []).forEach(item => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
         const landedCostPerKg = stockInfo?.effectiveRate || 0;
-        const basePurchaseRate = stockInfo?.purchaseRate || 0;
+        const basePurchaseRate = stockInfo?.costBreakdown?.baseRate || 0;
         
         const netWeight = Number(item.netWeight) || 0;
         const saleRate = Number(item.rate) || 0;
@@ -268,7 +268,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       items: values.items.map(item => {
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
           const landedCostPerKg = stock?.effectiveRate || 0;
-          const basePurchaseRate = stock?.purchaseRate || 0;
+          const basePurchaseRate = stock?.costBreakdown?.baseRate || 0;
           const netWeight = item.netWeight || 0;
           const saleRate = item.rate || 0;
           const goodsValue = netWeight * saleRate;
@@ -289,7 +289,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               costOfGoodsSold: netWeight * landedCostPerKg,
               itemGrossProfit: Math.round(itemGrossProfit),
               itemNetProfit: Math.round(itemNetProfit),
-              costBreakdown: stock?.costBreakdown,
+              costBreakdown: stock?.costBreakdown || { baseRate: 0, purchaseExpenses: 0, transferExpenses: 0 },
           };
       }),
       totalGoodsValue: Math.round(summary.totalGoodsValue),

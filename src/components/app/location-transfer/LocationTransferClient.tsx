@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem } from "@/lib/types";
+import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,17 +50,19 @@ const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
-// Initial data sets - changed to empty arrays for clean slate on format
 const initialLocationTransfers: LocationTransfer[] = [];
 
-interface AggregatedStockItem {
+// This interface is crucial for the form, providing it with all necessary cost data.
+export interface AggregatedStockItemForForm {
   lotNumber: string;
   locationId: string;
-  locationName: string;
   currentBags: number;
   currentWeight: number;
   averageWeightPerBag: number;
+  effectiveRate: number; // This is the up-to-date landed cost per kg
+  costBreakdown: CostBreakdown;
 }
+
 
 interface ExpandedTransferHistoryItem extends LocationTransfer {
   item: LocationTransferItem;
@@ -98,26 +100,30 @@ export function LocationTransferClient() {
     setHydrated(true);
   }, []);
 
-  const aggregatedStockForForm = React.useMemo(() => {
+  const aggregatedStockForForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !hydrated) return [];
 
-    const stockMap = new Map<string, AggregatedStockItem>();
-
+    const stockMap = new Map<string, AggregatedStockItemForForm>();
     const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
+
     fyPurchases.forEach(p => {
-      if (p.items && Array.isArray(p.items)) {
         p.items.forEach(item => {
-          const key = `${item.lotNumber}-${p.locationId}`;
-          stockMap.set(key, {
-              lotNumber: item.lotNumber,
-              locationId: p.locationId,
-              locationName: warehouses.find(w => w.id === p.locationId)?.name || p.locationId,
-              currentBags: item.quantity,
-              currentWeight: item.netWeight,
-              averageWeightPerBag: item.quantity > 0 ? item.netWeight / item.quantity : 50,
-          });
+            const key = `${item.lotNumber}-${p.locationId}`;
+            const purchaseExpensesPerKg = p.effectiveRate - item.rate;
+            stockMap.set(key, {
+                lotNumber: item.lotNumber,
+                locationId: p.locationId,
+                currentBags: item.quantity,
+                currentWeight: item.netWeight,
+                averageWeightPerBag: item.quantity > 0 ? item.netWeight / item.quantity : 50,
+                effectiveRate: p.effectiveRate,
+                costBreakdown: {
+                    baseRate: item.rate,
+                    purchaseExpenses: purchaseExpensesPerKg,
+                    transferExpenses: 0,
+                },
+            });
         });
-      }
     });
 
     const fyPurchaseReturns = purchaseReturns.filter(pr => isDateInFinancialYear(pr.date, financialYear));
@@ -144,26 +150,37 @@ export function LocationTransferClient() {
             }
 
             const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
+            const sourceEntry = fromEntry; 
+
+            const newEffectiveRate = (sourceEntry?.effectiveRate || 0) + (transfer.perKgExpense || 0);
+            const newCostBreakdown: CostBreakdown = {
+                baseRate: sourceEntry?.costBreakdown.baseRate || 0,
+                purchaseExpenses: sourceEntry?.costBreakdown.purchaseExpenses || 0,
+                transferExpenses: (sourceEntry?.costBreakdown.transferExpenses || 0) + (transfer.perKgExpense || 0),
+            };
+            
             let toEntry = stockMap.get(toKey);
             if (!toEntry) {
                 toEntry = {
                     lotNumber: item.newLotNumber,
                     locationId: transfer.toWarehouseId,
-                    locationName: warehouses.find(w => w.id === transfer.toWarehouseId)?.name || transfer.toWarehouseId,
                     currentBags: 0,
                     currentWeight: 0,
                     averageWeightPerBag: item.bagsToTransfer > 0 ? item.netWeightToTransfer / item.bagsToTransfer : 50,
+                    effectiveRate: 0, // Will be updated below
+                    costBreakdown: { baseRate: 0, purchaseExpenses: 0, transferExpenses: 0 }
                 };
             }
             toEntry.currentBags += item.bagsToTransfer;
             toEntry.currentWeight += item.netWeightToTransfer;
+            toEntry.effectiveRate = newEffectiveRate;
+            toEntry.costBreakdown = newCostBreakdown;
             stockMap.set(toKey, toEntry);
         });
     });
 
     const fySales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
     fySales.forEach(s => {
-      if (s.items && Array.isArray(s.items)) {
         s.items.forEach(item => {
             const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
             const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
@@ -172,23 +189,20 @@ export function LocationTransferClient() {
                 entry.currentWeight -= item.netWeight;
             }
         });
-      }
     });
 
     const fySaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     fySaleReturns.forEach(sr => {
-        const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
-        const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
-        if (entry) {
-            entry.currentBags += sr.quantityReturned;
-            entry.currentWeight += sr.netWeightReturned;
-        }
+      const saleReturnLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(sr.originalLotNumber));
+      const entry = saleReturnLotKey ? stockMap.get(saleReturnLotKey) : undefined;
+      if (entry) {
+        entry.currentBags += sr.quantityReturned;
+        entry.currentWeight += sr.netWeightReturned;
+      }
     });
 
-
-    return Array.from(stockMap.values()).filter(item => item.currentBags > 0)
-        .sort((a,b) => a.locationName.localeCompare(b.locationName) || a.lotNumber.localeCompare(b.lotNumber));
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, hydrated, isAppHydrating, financialYear]);
+    return Array.from(stockMap.values()).filter(item => item.currentBags > 0.001);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, isSalesClientHydrated, financialYear]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
@@ -345,7 +359,7 @@ export function LocationTransferClient() {
                             {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
                             {aggregatedStockForForm.map(item => (
                                 <TableRow key={`${item.locationId}-${item.lotNumber}`} className="uppercase">
-                                    <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName}</span></TooltipTrigger><TooltipContent><p>{item.locationName}</p></TooltipContent></Tooltip></TableCell>
+                                    <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName || item.locationId}</span></TooltipTrigger><TooltipContent><p>{item.locationName || item.locationId}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell className="text-right font-medium">{Math.round(item.currentBags).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">{item.currentWeight.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}</TableCell>

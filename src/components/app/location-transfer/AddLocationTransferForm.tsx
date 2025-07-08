@@ -21,16 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { AggregatedStockItemForForm } from './LocationTransferClient';
 
-interface AggregatedStockItemForForm {
-  lotNumber: string;
-  locationId: string;
-  currentBags: number;
-  currentWeight: number;
-  averageWeightPerBag: number;
-  effectiveRate: number; // This is the existing landed cost
-  costBreakdown: CostBreakdown;
-}
 
 interface AddLocationTransferFormProps {
   isOpen: boolean;
@@ -147,7 +139,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       const grossWeight = transferSummary.totalGrossWeight;
       if (typeof transportRate === 'number' && grossWeight > 0) {
           setValue('transportCharges', Math.round(transportRate * grossWeight), { shouldValidate: true });
-      } else {
+      } else if(getValues('transportCharges') !== undefined){
           setValue('transportCharges', undefined, { shouldValidate: true });
       }
   }, [transferSummary.totalGrossWeight, getValues, setValue, watch('transportRate')]);
@@ -220,7 +212,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       perKgExpense: transferSummary.perKgExpense,
       items: values.items.map(item => ({
         originalLotNumber: item.originalLotNumber,
-        newLotNumber: `${item.originalLotNumber}/${Math.round(item.bagsToTransfer!)}`,
+        newLotNumber: `${item.originalLotNumber}`, // Keep lot number the same on transfer
         bagsToTransfer: Math.round(item.bagsToTransfer!),
         netWeightToTransfer: item.netWeightToTransfer!,
         grossWeightToTransfer: item.grossWeightToTransfer!,
@@ -344,8 +336,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                       <FormField control={control} name={`items.${index}.bagsToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField}
-                            value={itemField.value ?? ''}
+                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
                             onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.bagsToTransfer`)}
                             onChange={e => {
                               const bagsVal = parseFloat(e.target.value) || undefined;
@@ -372,7 +363,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.grossWeightToTransfer`)} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} readOnly className="bg-muted/70" /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />

@@ -1,13 +1,10 @@
 
 import { z } from 'zod';
 import type { MasterItem, Sale } from '@/lib/types';
+import type { AggregatedStockItemForForm } from '../components/app/sales/SalesClient';
 
-interface AggregatedStockItemForSchema {
-  lotNumber: string;
-  currentBags: number;
-}
 
-const saleItemSchema = (availableStock: AggregatedStockItemForSchema[]) => z.object({
+const saleItemSchema = (availableStock: AggregatedStockItemForForm[]) => z.object({
   lotNumber: z.string().min(1, "Vakkal/Lot is required.").refine(lotNum => availableStock.some(item => item.lotNumber === lotNum), { message: "Lot not in stock." }),
   quantity: z.coerce.number({required_error: "Bags are required."}).min(0.01, "Bags must be > 0."),
   netWeight: z.coerce.number({required_error: "Net Wt. is required."}).min(0.01, "Net weight must be > 0."),
@@ -18,7 +15,7 @@ export const saleSchema = (
     customers: MasterItem[],
     transporters: MasterItem[],
     brokers: MasterItem[],
-    availableStock: AggregatedStockItemForSchema[],
+    availableStock: AggregatedStockItemForForm[],
     existingSales: Sale[],
     currentSaleIdToEdit?: string
 ) => z.object({

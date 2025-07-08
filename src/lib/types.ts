@@ -88,7 +88,7 @@ export interface SaleItem {
   costOfGoodsSold: number; // The full landed cost for this portion of goods.
   itemGrossProfit: number;
   itemNetProfit: number; // Net profit for this item
-  costBreakdown?: CostBreakdown;
+  costBreakdown: CostBreakdown;
 }
 
 export interface Sale {
@@ -315,7 +315,7 @@ export interface TransactionalProfitInfo {
   grossProfit: number;
   netProfit: number;
   // Breakdown
-  costBreakdown?: CostBreakdown;
+  costBreakdown: CostBreakdown;
   saleExpenses: {
     transport: number;
     packing: number;
