@@ -134,12 +134,13 @@ export function AccountsLedgerClient() {
         const totalTransportCharges = p.transportCharges || 0;
         const totalGoodsValue = p.totalGoodsValue || 0;
         const mainPayable = totalGoodsValue + (p.packingCharges || 0) + (p.labourCharges || 0) + (p.miscExpenses || 0);
+        const vakkals = p.items.map(i=>i.lotNumber).join(', ');
 
         if (p.agentId === partyId) {
             const brokerageAmount = p.brokerageCharges || 0;
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')} (Bill: ${p.id.slice(-5)})`,
+                particulars: `Vakkal: ${vakkals} (Bill: ${p.id.slice(-5)})`,
                 debit: 0, credit: mainPayable
             });
             if(brokerageAmount > 0) {
@@ -152,7 +153,7 @@ export function AccountsLedgerClient() {
         } else if (p.supplierId === partyId) {
              transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')} (Agent: ${p.agentName || 'None'})`,
+                particulars: `Vakkal: ${vakkals} (Agent: ${p.agentName || 'None'})`,
                 debit: 0, credit: mainPayable
             });
         }
@@ -167,10 +168,12 @@ export function AccountsLedgerClient() {
 
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
+        const vakkals = s.items.map(i=>i.lotNumber).join(', ');
+
         if(accountablePartyId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `To: ${s.customerName} (Vakkal: ${s.items.map(i=>i.lotNumber).join(', ')})`,
+                particulars: `To: ${s.customerName} (Vakkal: ${vakkals})`,
                 debit: s.billedAmount, credit: 0,
             });
         }
@@ -189,7 +192,7 @@ export function AccountsLedgerClient() {
     payments.filter(p => p.partyId === partyId).forEach(p => {
         const particularDetails = p.transactionType === 'On Account'
             ? `On Account Payment (${p.paymentMethod})`
-            : `Payment via ${p.paymentMethod} against Bill`;
+            : `Payment via ${p.paymentMethod} against Bill(s): ${p.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
         transactions.push({
             id: `pay-${p.id}`, date: p.date, type: 'Payment',
             particulars: particularDetails,
@@ -200,7 +203,7 @@ export function AccountsLedgerClient() {
     receipts.filter(r => r.partyId === partyId).forEach(r => {
         const particularDetails = r.transactionType === 'On Account'
             ? `On Account Receipt (${r.paymentMethod})`
-            : `Receipt via ${r.paymentMethod} against Bill`;
+            : `Receipt via ${r.paymentMethod} against Bill(s): ${r.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
         transactions.push({
             id: `receipt-${r.id}`, date: r.date, type: 'Receipt',
             particulars: particularDetails,

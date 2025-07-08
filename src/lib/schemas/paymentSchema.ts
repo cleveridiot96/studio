@@ -17,6 +17,10 @@ export const paymentSchema = (parties: MasterItem[]) => z.object({
   transactionType: z.enum(['Against Bill', 'On Account']).default('On Account'),
   source: z.string().optional(),
   notes: z.string().optional(),
+  againstBills: z.array(z.object({
+    billId: z.string(),
+    allocated: z.coerce.number()
+  })).optional(),
 });
 
 export type PaymentFormValues = z.infer<ReturnType<typeof paymentSchema>>;

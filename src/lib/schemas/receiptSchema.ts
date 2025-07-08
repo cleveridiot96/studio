@@ -17,11 +17,14 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
   transactionType: z.enum(['Against Bill', 'On Account']).default('On Account'),
   source: z.string().optional(),
   notes: z.string().optional(),
-  relatedSaleIds: z.array(z.string()).optional(), // Optional: for linking to sales
   cashDiscount: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.coerce.number().nonnegative("Cash discount cannot be negative.").optional().default(0)
   ),
+  againstBills: z.array(z.object({
+    billId: z.string(),
+    allocated: z.coerce.number()
+  })).optional(),
 });
 
 export type ReceiptFormValues = z.infer<ReturnType<typeof receiptSchema>>;
