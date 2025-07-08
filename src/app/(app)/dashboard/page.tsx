@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, type ChangeEvent } from 'react';
@@ -131,7 +132,7 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-8">
       <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" />
       <div className="text-left">
-        <h1 className="text-3xl font-bold text-foreground">Dashboard Central Hub</h1>
+        <h1 className="text-3xl font-bold text-foreground uppercase">Dashboard Central Hub</h1>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {quickActions.map((action) => (

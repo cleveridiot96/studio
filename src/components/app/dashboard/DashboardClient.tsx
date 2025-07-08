@@ -212,11 +212,11 @@ const DashboardClient = () => {
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, hydrated, isAppHydrating, currentFinancialYearString]);
 
 
-  if (isAppHydrating || !hydrated) return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">{[1,2,3].map(i => <Card key={i}><CardHeader><CardTitle>Loading...</CardTitle></CardHeader><CardContent><p>Wait...</p></CardContent></Card>)}</div>;
+  if (isAppHydrating || !hydrated) return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">{[1,2,3].map(i => <Card key={i}><CardHeader><CardTitle className="uppercase">Loading...</CardTitle></CardHeader><CardContent><p>Wait...</p></CardContent></Card>)}</div>;
   
   return (
     <div className='space-y-6'>
-      <div className="flex justify-between items-center"><h2 className="text-2xl font-semibold text-foreground">Summaries</h2>
+      <div className="flex justify-between items-center"><h2 className="text-2xl font-semibold text-foreground uppercase">Summaries</h2>
         <div className="w-auto sm:w-[220px]">
           <MasterDataCombobox
             value={selectedPeriod}
@@ -229,21 +229,23 @@ const DashboardClient = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
         <Link href="/sales" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg"><Card className="shadow-md border-green-500/50 bg-green-50 dark:bg-green-900/30 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-green-700 dark:text-green-300">Net Sales</CardTitle><DollarSign className="h-5 w-5 text-green-600 dark:text-green-400"/></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">₹{salesSummary.totalAmount.toLocaleString()}</div><p className="text-xs text-muted-foreground">{salesSummary.totalBags.toLocaleString()} Bags, {salesSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-green-700 dark:text-green-300 uppercase">Net Sales</CardTitle><DollarSign className="h-5 w-5 text-green-600 dark:text-green-400"/></CardHeader>
+            <CardContent><div className="text-2xl font-bold text-green-600 dark:text-green-400">₹{salesSummary.totalAmount.toLocaleString()}</div><p className="text-xs text-muted-foreground uppercase">{salesSummary.totalBags.toLocaleString()} Bags, {salesSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
         <Link href="/purchases" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg"><Card className="shadow-md border-blue-500/50 bg-blue-50 dark:bg-blue-900/30 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-blue-700 dark:text-blue-300">Net Purchases</CardTitle><ShoppingBag className="h-5 w-5 text-blue-600 dark:text-blue-400"/></CardHeader>
-            <CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{purchaseSummary.totalAmount.toLocaleString()}</div><p className="text-xs text-muted-foreground">{purchaseSummary.totalBags.toLocaleString()} Bags, {purchaseSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-blue-700 dark:text-blue-300 uppercase">Net Purchases</CardTitle><ShoppingBag className="h-5 w-5 text-blue-600 dark:text-blue-400"/></CardHeader>
+            <CardContent><div className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{purchaseSummary.totalAmount.toLocaleString()}</div><p className="text-xs text-muted-foreground uppercase">{purchaseSummary.totalBags.toLocaleString()} Bags, {purchaseSummary.totalNetWeight.toLocaleString()} kg</p></CardContent></Card></Link>
         <Link href="/inventory" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg"><Card className="shadow-md border-yellow-500/50 bg-yellow-50 dark:bg-yellow-900/30 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-yellow-700 dark:text-yellow-300">Stock Summary</CardTitle><Package className="h-5 w-5 text-yellow-600 dark:text-yellow-400"/></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-base font-medium text-yellow-700 dark:text-yellow-300 uppercase">Stock Summary</CardTitle><Package className="h-5 w-5 text-yellow-600 dark:text-yellow-400"/></CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stockSummary.totalBags.toLocaleString()} Bags</div><p className="text-xs text-muted-foreground">Total: {stockSummary.totalNetWeight.toLocaleString()} kg</p>
+              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{Math.round(stockSummary.totalBags).toLocaleString()} Bags</div><p className="text-xs text-muted-foreground uppercase">Total: {stockSummary.totalNetWeight.toLocaleString()} kg</p>
               {Object.keys(stockSummary.byLocation).length > 0 && <hr className="my-2 border-yellow-500/30"/>}
-              <div className="mt-2 space-y-1 text-xs max-h-24 overflow-y-auto">{Object.values(stockSummary.byLocation).map(loc=>(<div key={loc.name} className="flex justify-between"><span className="text-yellow-700 dark:text-yellow-300 truncate pr-2">{loc.name}:</span><span className='font-medium text-yellow-600 dark:text-yellow-400 whitespace-nowrap'>{loc.bags.toLocaleString()} Bags ({loc.netWeight.toLocaleString()} kg)</span></div>))}</div>
+              <div className="mt-2 space-y-1 text-xs max-h-24 overflow-y-auto">{Object.values(stockSummary.byLocation).map(loc=>(<div key={loc.name} className="flex justify-between uppercase"><span className="text-yellow-700 dark:text-yellow-300 truncate pr-2">{loc.name}:</span><span className='font-medium text-yellow-600 dark:text-yellow-400 whitespace-nowrap'>{Math.round(loc.bags).toLocaleString()} Bags ({loc.netWeight.toLocaleString()} kg)</span></div>))}</div>
             </CardContent></Card></Link>
       </div>
       <div className="grid grid-cols-1 gap-6">
-        <ProfitSummary sales={sales} purchases={purchases} locationTransfers={locationTransfers} />
+        <Link href="/profit-analysis" className="block hover:shadow-lg transition-shadow duration-200 rounded-lg">
+          <ProfitSummary sales={sales} purchases={purchases} locationTransfers={locationTransfers} />
+        </Link>
         <OutstandingSummary />
       </div>
     </div>
