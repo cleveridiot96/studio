@@ -21,7 +21,7 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
     (val) => (val === "" ? undefined : val),
     z.coerce.number().nonnegative("Cash discount cannot be negative.").optional().default(0)
   ),
-  allocatedBills: z.array(z.object({
+  againstBills: z.array(z.object({
     billId: z.string(),
     amount: z.coerce.number().min(0.01, "Allocation must be positive"),
     billDate: z.string().optional(),
@@ -31,17 +31,17 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
 }).superRefine((data, ctx) => {
     if (data.transactionType === 'Against Bill') {
         const totalReceiptAmount = (data.amount || 0) + (data.cashDiscount || 0);
-        if (!data.allocatedBills || data.allocatedBills.length === 0) {
+        if (!data.againstBills || data.againstBills.length === 0) {
             ctx.addIssue({
-                path: ['allocatedBills'],
+                path: ['againstBills'],
                 message: 'Please select at least one bill to allocate receipt against.',
                 code: z.ZodIssueCode.custom
             });
         } else {
-            const totalAllocated = data.allocatedBills.reduce((sum, bill) => sum + bill.amount, 0);
+            const totalAllocated = data.againstBills.reduce((sum, bill) => sum + bill.amount, 0);
             if (totalAllocated > totalReceiptAmount) {
                 ctx.addIssue({
-                    path: ['allocatedBills'],
+                    path: ['againstBills'],
                     message: `Total allocated amount (₹${totalAllocated.toFixed(2)}) cannot exceed the receipt amount + discount (₹${totalReceiptAmount.toFixed(2)}).`,
                     code: z.ZodIssueCode.custom
                 });

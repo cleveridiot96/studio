@@ -187,7 +187,7 @@ export interface Payment {
   notes?: string;
   source?: string;
   transactionType: 'Against Bill' | 'On Account';
-  allocatedBills?: AllocatedBill[];
+  againstBills?: AllocatedBill[];
 }
 
 export interface Receipt {
@@ -200,7 +200,7 @@ export interface Receipt {
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   notes?: string;
   transactionType: 'Against Bill' | 'On Account';
-  allocatedBills?: AllocatedBill[];
+  againstBills?: AllocatedBill[];
   cashDiscount?: number; // Optional - amount of discount given at time of receipt
   source?: string;
 }

@@ -17,7 +17,7 @@ export const paymentSchema = (parties: MasterItem[]) => z.object({
   transactionType: z.enum(['Against Bill', 'On Account']).default('On Account'),
   source: z.string().optional(),
   notes: z.string().optional(),
-  allocatedBills: z.array(z.object({
+  againstBills: z.array(z.object({
     billId: z.string(),
     amount: z.coerce.number().min(0.01, "Allocation must be positive"),
     billDate: z.string().optional(),
@@ -26,17 +26,17 @@ export const paymentSchema = (parties: MasterItem[]) => z.object({
   })).optional(),
 }).superRefine((data, ctx) => {
     if (data.transactionType === 'Against Bill') {
-        if (!data.allocatedBills || data.allocatedBills.length === 0) {
+        if (!data.againstBills || data.againstBills.length === 0) {
             ctx.addIssue({
-                path: ['allocatedBills'],
+                path: ['againstBills'],
                 message: 'Please select at least one bill to allocate payment against.',
                 code: z.ZodIssueCode.custom
             });
         } else {
-            const totalAllocated = data.allocatedBills.reduce((sum, bill) => sum + bill.amount, 0);
+            const totalAllocated = data.againstBills.reduce((sum, bill) => sum + bill.amount, 0);
             if (totalAllocated > data.amount) {
                 ctx.addIssue({
-                    path: ['allocatedBills'],
+                    path: ['againstBills'],
                     message: `Total allocated amount (₹${totalAllocated.toFixed(2)}) cannot exceed the payment amount (₹${data.amount.toFixed(2)}).`,
                     code: z.ZodIssueCode.custom
                 });
