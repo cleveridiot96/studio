@@ -46,7 +46,7 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
   { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
   { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-[#efb924] hover:bg-[#efb924]/90 text-black data-[state=active]:bg-[#efb924] data-[state=active]:text-black' },
+  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-[#531253] hover:bg-[#531253]/90 text-white data-[state=active]:bg-[#531253] data-[state=active]:text-white' },
   { value: "Expense", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
@@ -278,8 +278,7 @@ export default function MastersPage() {
               className={cn(
                 "py-3 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
                 tab.colorClass,
-                tab.value === 'Broker' && 'data-[state=active]:!text-black',
-                tab.value === 'Transporter' && 'data-[state=active]:!text-black'
+                tab.value === 'Broker' && 'data-[state=active]:!text-black'
               )}
             >
               <tab.icon className="w-5 h-5 mr-2" /> {tab.label}
