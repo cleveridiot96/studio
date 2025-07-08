@@ -155,7 +155,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Value</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Profit</TableCell>
                     <TableCell className="p-1 w-10"></TableCell>
                 </TableRow>,

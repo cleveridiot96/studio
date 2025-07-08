@@ -156,7 +156,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right" colSpan={2}>Value</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right" colSpan={2}>Goods Value</TableCell>
                     <TableCell className="p-1 w-10" />
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
