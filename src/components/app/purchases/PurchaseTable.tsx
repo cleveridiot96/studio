@@ -61,6 +61,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
               <TableHead className="h-10 px-2">Agent</TableHead>
               <TableHead className="h-10 px-2 text-right">Bags</TableHead>
               <TableHead className="h-10 px-2 text-right">Net Wt.(kg)</TableHead>
+              <TableHead className="h-10 px-2 text-right">Goods Value (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Landed Rate (₹/kg)</TableHead>
               <TableHead className="h-10 px-2 text-right">Brokerage (₹)</TableHead>
               <TableHead className="h-10 px-2 text-right">Total Cost (₹)</TableHead>
@@ -103,13 +104,16 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || 'N/A'}</span></TooltipTrigger>
-                      <TooltipContent><p>{purchase.agentName || 'N/A'}</p></TooltipContent>
+                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || ''}</span></TooltipTrigger>
+                      <TooltipContent><p>{purchase.agentName || ''}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2 text-right">{purchase.totalQuantity}</TableCell>
                   <TableCell className="p-2 text-right">{purchase.totalNetWeight.toLocaleString()}</TableCell>
-                   <TableCell className="p-2 text-right font-medium">
+                  <TableCell className="p-2 text-right">
+                    {(purchase.totalGoodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                  </TableCell>
+                  <TableCell className="p-2 text-right font-medium">
                     {(purchase.effectiveRate || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                   </TableCell>
                   <TableCell className="p-2 text-right">{purchase.brokerageCharges?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
@@ -155,8 +159,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <TableCell className="p-1 font-semibold text-muted-foreground" colSpan={4}>Vakkal Breakdown</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right" colSpan={2}>Goods Value</TableCell>
+                    <TableCell className="p-1" colSpan={2}></TableCell>
                     <TableCell className="p-1 w-10" />
                 </TableRow>,
                 ...purchase.items.map((item, index) => (
@@ -165,8 +170,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                       <TableCell className="p-1 font-medium" colSpan={4}>{item.lotNumber}</TableCell>
                       <TableCell className="text-right p-1">{item.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right p-1">{item.netWeight.toLocaleString()}</TableCell>
+                      <TableCell className="text-right p-1 font-medium">{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell className="text-right p-1">{(item.rate || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                      <TableCell className="text-right p-1 font-medium" colSpan={2}>{(item.goodsValue || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell className="p-1" colSpan={2}></TableCell>
                       <TableCell className="p-1" />
                   </TableRow>
                 ))
