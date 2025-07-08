@@ -260,7 +260,7 @@ export function CashbookClient() {
                 ) : (
                   cashLedgerData.entries.map((tx) => (
                     <TableRow key={tx.id} className={cn(tx.type === 'Receipt' ? 'bg-green-50/50' : 'bg-red-50/50')}>
-                      <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                       <TableCell className="truncate max-w-sm">{tx.particulars}</TableCell>
                       <TableCell className="text-right font-mono text-red-600">
                         {tx.debit > 0 ? tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}

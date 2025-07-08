@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, Printer } from "lucide-react";
 import type { Receipt } from "@/lib/types";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -56,7 +56,7 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
           <TableBody>
             {data.map((receipt) => (
               <TableRow key={receipt.id}>
-                <TableCell>{format(new Date(receipt.date), "dd-MM-yy")}</TableCell>
+                <TableCell>{format(parseISO(receipt.date), "dd/MM/yy")}</TableCell>
                 <TableCell>{receipt.partyName || receipt.partyId}</TableCell>
                 <TableCell><Badge variant="secondary">{receipt.partyType}</Badge></TableCell>
                 <TableCell className="text-right font-semibold">{receipt.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>

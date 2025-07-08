@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, Printer } from "lucide-react";
 import type { Payment } from "@/lib/types";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,7 +55,7 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
           <TableBody>
             {data.map((payment) => (
               <TableRow key={payment.id}>
-                <TableCell>{format(new Date(payment.date), "dd-MM-yy")}</TableCell>
+                <TableCell>{format(parseISO(payment.date), "dd/MM/yy")}</TableCell>
                 <TableCell>{payment.partyName || payment.partyId}</TableCell>
                 <TableCell><Badge variant="secondary">{payment.partyType}</Badge></TableCell>
                 <TableCell>{payment.paymentMethod}</TableCell>

@@ -41,7 +41,7 @@ const PurchaseReturnTableComponent: React.FC<PurchaseReturnTableProps> = ({ data
           <TableBody>
             {data.map((pr) => (
               <TableRow key={pr.id}>
-                <TableCell>{format(parseISO(pr.date), "dd-MM-yy")}</TableCell>
+                <TableCell>{format(parseISO(pr.date), "dd/MM/yy")}</TableCell>
                 <TableCell>
                   <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{pr.originalLotNumber}</span></TooltipTrigger>
                     <TooltipContent><p>Original Purchase ID: {pr.originalPurchaseId}</p></TooltipContent>

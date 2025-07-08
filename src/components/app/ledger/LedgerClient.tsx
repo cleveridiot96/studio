@@ -284,7 +284,7 @@ export function LedgerClient() {
               <BookUser className="mr-3 h-7 w-7 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type})
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Period: {dateRange?.from ? format(dateRange.from, "dd-MM-yyyy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd-MM-yyyy") : 'End'}
+              Period: {dateRange?.from ? format(dateRange.from, "dd/MM/yy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd/MM/yy") : 'End'}
             </p>
           </CardHeader>
           <CardContent className="flex flex-col flex-grow min-h-0">
@@ -313,7 +313,7 @@ export function LedgerClient() {
                                 ) : (
                                   ledgerData.debitTransactions.map(tx => (
                                     <TableRow key={tx.id}>
-                                      <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
                                       <TableCell>{tx.party}</TableCell>
                                       <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
@@ -359,7 +359,7 @@ export function LedgerClient() {
                                 ) : (
                                   ledgerData.creditTransactions.map(tx => (
                                     <TableRow key={tx.id}>
-                                      <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
                                       <TableCell>{tx.party}</TableCell>
                                       <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>

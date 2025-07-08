@@ -38,7 +38,6 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
-import { format as formatDateFn } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 
@@ -244,7 +243,7 @@ export function LocationTransferClient() {
           const xOffset = (pdfWidth - imgWidth) / 2;
           const yOffset = (pdfHeight - imgHeight) / 2;
           pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
-          const timestamp = formatDateFn(new Date(), 'yyyyMMddHHmmss');
+          const timestamp = format(new Date(), 'yyyyMMddHHmmss');
           pdf.save(`TransferSlip_${transferForPdf.id.slice(-4)}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Slip for transfer ${transferForPdf.id.slice(-4)} downloaded.` });
         } catch (err) {
@@ -347,7 +346,7 @@ export function LocationTransferClient() {
                     {transfersFilteredByFY.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
                     {transfersFilteredByFY.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime()).map(transfer => (
                       <TableRow key={transfer.id}>
-                        <TableCell>{format(parseISO(transfer.date), "dd-MM-yy")}</TableCell>
+                        <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell>

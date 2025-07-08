@@ -39,7 +39,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
       </div>
 
       <div className="flex-between mb-2">
-        <span>Date: <strong>{format(parseISO(sale.date), "dd-MM-yyyy")}</strong></span>
+        <span>Date: <strong>{format(parseISO(sale.date), "dd/MM/yy")}</strong></span>
         <span>Bill No: <strong>{sale.billNumber || sale.id.slice(-6).toUpperCase()}</strong></span>
       </div>
       

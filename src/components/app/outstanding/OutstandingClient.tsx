@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, differenceInDays, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
@@ -110,7 +110,7 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                                     <TableCell className="font-medium">{item.partyName}</TableCell>
                                     <TableCell>{item.vakkal}</TableCell>
                                     <TableCell className="font-bold text-right">₹{item.balance.toLocaleString('en-IN')}</TableCell>
-                                    <TableCell>{format(parseISO(item.dueDate), 'dd MMM yyyy')}</TableCell>
+                                    <TableCell>{format(parseISO(item.dueDate), 'dd/MM/yy')}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className={cn({
                                             'bg-green-100 text-green-800 border-green-300': item.status === 'Paid',
@@ -124,6 +124,7 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                             ))}
                         </TableBody>
                     </Table>
+                    <ScrollBar orientation="horizontal" />
                 </ScrollArea>
             </CardContent>
         </Card>
@@ -339,7 +340,7 @@ export function OutstandingClient() {
             </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <OutstandingTable data={filteredData.receivables} title="Receivables (Sales)" themeColor="green" />
             <OutstandingTable data={filteredData.payables} title="Payables (Purchases)" themeColor="orange" />
         </div>

@@ -179,6 +179,7 @@ export interface Payment {
   paymentMethod: 'Cash' | 'Bank' | 'UPI';
   notes?: string;
   source?: string;
+  transactionType?: 'Against Bill' | 'On Account';
 }
 
 export interface Receipt {
@@ -193,6 +194,7 @@ export interface Receipt {
   relatedSaleIds?: string[]; // Optional - to tag which invoices this receipt settles
   cashDiscount?: number; // Optional - amount of discount given at time of receipt
   source?: string;
+  transactionType?: 'Against Bill' | 'On Account';
 }
 
 export interface LocationTransferItem {

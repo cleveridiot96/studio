@@ -37,7 +37,7 @@ export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps>
       </div>
 
       <div className="flex-between mb-2">
-        <span>Date: <strong>{format(new Date(transfer.date), "dd-MM-yyyy")}</strong></span>
+        <span>Date: <strong>{format(new Date(transfer.date), "dd/MM/yy")}</strong></span>
         <span>Transfer ID: <strong>{transfer.id.slice(-6).toUpperCase()}</strong></span>
       </div>
       

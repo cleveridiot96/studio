@@ -42,7 +42,7 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
 
       <div className="flex-between mb-2">
         <div className="font-bold">Purchase ID: {purchase.id.slice(-6).toUpperCase()}</div>
-        <div>Date: {format(parseISO(purchase.date), "dd-MMM-yyyy")}</div>
+        <div>Date: {format(parseISO(purchase.date), "dd/MM/yy")}</div>
       </div>
       <hr />
 

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { searchData, type SearchableItem } from '@/lib/searchEngine';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
 import { Search as SearchIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -80,7 +80,7 @@ const SearchBar = () => {
                     <div className="flex flex-col">
                       <span className="font-medium">{item.title}</span>
                       <span className="text-xs text-muted-foreground capitalize">
-                        {item.type} {item.date ? `- ${format(new Date(item.date), 'dd MMM yy')}` : ''}
+                        {item.type} {item.date ? `- ${format(parseISO(item.date), 'dd/MM/yy')}` : ''}
                       </span>
                     </div>
                   </CommandItem>

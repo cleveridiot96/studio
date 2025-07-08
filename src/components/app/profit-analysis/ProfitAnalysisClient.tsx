@@ -210,7 +210,7 @@ export function ProfitAnalysisClient() {
                                     <TableBody>
                                         {filteredTransactionsForPeriod.map((tx, index) => (
                                             <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`}>
-                                                <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                                <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
                                                 <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{(tx.goodsValueForProfitCalc || 0).toLocaleString('en-IN', {maximumFractionDigits:0})}</TableCell>

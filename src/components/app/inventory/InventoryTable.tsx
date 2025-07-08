@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { AggregatedInventoryItem } from "./InventoryClient";
+import { format, parseISO } from 'date-fns';
 
 interface InventoryTableProps {
   items: AggregatedInventoryItem[];
@@ -65,7 +66,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
               <TableCell className="text-right">{item.purchaseRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
               <TableCell className="text-right font-medium">{item.cogs.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
               <TableCell>{item.sourceType === 'Transfer' ? item.sourceDetails : 'Purchase'}</TableCell>
-              <TableCell>{item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString() : 'N/A'}</TableCell>
+              <TableCell>{item.purchaseDate ? format(parseISO(item.purchaseDate), 'dd/MM/yy') : 'N/A'}</TableCell>
               <TableCell className="text-center">
                 {isArchivedView ? (<Badge variant="outline">Archived</Badge>) :
                 item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground">Dead Stock</Badge>) :

@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, Printer, Download, ChevronDown } from "lucide-react";
 import type { Sale } from "@/lib/types";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -88,7 +89,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   )}
                   data-state={isExpanded ? 'open' : 'closed'}
                 >
-                  <TableCell className="p-2">{format(new Date(sale.date), "dd-MM-yy")}</TableCell>
+                  <TableCell className="p-2">{format(parseISO(sale.date), "dd/MM/yy")}</TableCell>
                   <TableCell className="p-2">
                     <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.billNumber || 'N/A'}</span></TooltipTrigger>
                       <TooltipContent><p>{sale.billNumber || 'N/A'}</p></TooltipContent>

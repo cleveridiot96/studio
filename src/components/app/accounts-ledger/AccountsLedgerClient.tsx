@@ -187,19 +187,23 @@ export function AccountsLedgerClient() {
     });
 
     payments.filter(p => p.partyId === partyId).forEach(p => {
-        const particularDetails = `via ${p.paymentMethod}` + (p.source ? ` (Src: ${p.source})` : '');
+        const particularDetails = p.transactionType === 'On Account'
+            ? `On Account Payment (${p.paymentMethod})`
+            : `Payment via ${p.paymentMethod} against Bill`;
         transactions.push({
             id: `pay-${p.id}`, date: p.date, type: 'Payment',
-            particulars: `Payment ${particularDetails}`,
+            particulars: particularDetails,
             debit: p.amount, credit: 0
         });
     });
 
     receipts.filter(r => r.partyId === partyId).forEach(r => {
-        const particularDetails = `via ${r.paymentMethod}` + (r.source ? ` (Src: ${r.source})` : '');
+        const particularDetails = r.transactionType === 'On Account'
+            ? `On Account Receipt (${r.paymentMethod})`
+            : `Receipt via ${r.paymentMethod} against Bill`;
         transactions.push({
             id: `receipt-${r.id}`, date: r.date, type: 'Receipt',
-            particulars: `Receipt ${particularDetails}`,
+            particulars: particularDetails,
             debit: 0, credit: r.amount + (r.cashDiscount || 0)
         });
     });
@@ -368,7 +372,7 @@ export function AccountsLedgerClient() {
               <BookCopy className="mr-3 h-7 w-7 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type})
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Period: {dateRange?.from ? format(dateRange.from, "dd-MM-yyyy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd-MM-yyyy") : 'End'}
+              Period: {dateRange?.from ? format(dateRange.from, "dd/MM/yy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd/MM/yy") : 'End'}
             </p>
           </CardHeader>
 
@@ -396,7 +400,7 @@ export function AccountsLedgerClient() {
                                 ) : (
                                   financialLedgerData.debitTransactions.map(tx => (
                                     <TableRow key={tx.id}>
-                                      <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>
                                         <div className="flex items-center gap-2">
                                           <Badge variant="outline">{tx.type}</Badge>
@@ -453,7 +457,7 @@ export function AccountsLedgerClient() {
                                 ) : (
                                   financialLedgerData.creditTransactions.map(tx => (
                                     <TableRow key={tx.id}>
-                                      <TableCell>{format(parseISO(tx.date), "dd-MM-yy")}</TableCell>
+                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>
                                         <div className="flex items-center gap-2">
                                             <Badge variant="secondary">{tx.type}</Badge>

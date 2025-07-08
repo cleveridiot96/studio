@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, Download, ChevronDown } from "lucide-react";
 import type { Purchase } from "@/lib/types";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -84,7 +85,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                   )}
                   data-state={isExpanded ? 'open' : 'closed'}
                 >
-                  <TableCell className="p-2">{format(new Date(purchase.date), "dd-MM-yy")}</TableCell>
+                  <TableCell className="p-2">{format(parseISO(purchase.date), "dd/MM/yy")}</TableCell>
                   <TableCell className="p-2 align-top">
                     <div className="flex items-start gap-1">
                       <span className="whitespace-normal break-words">
@@ -159,7 +160,7 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     <TableCell className="p-1 font-semibold text-muted-foreground" colSpan={4}>Vakkal Breakdown</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Bags</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Net Wt</TableCell>
-                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value</TableCell>
+                    <TableCell className="p-1 font-semibold text-muted-foreground text-right">Goods Value (₹)</TableCell>
                     <TableCell className="p-1 font-semibold text-muted-foreground text-right">Rate</TableCell>
                     <TableCell className="p-1" colSpan={2}></TableCell>
                     <TableCell className="p-1 w-10" />

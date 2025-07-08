@@ -14,6 +14,7 @@ export const receiptSchema = (parties: MasterItem[]) => z.object({
   paymentMethod: z.enum(['Cash', 'Bank', 'UPI'], {
     required_error: "Payment method is required.",
   }),
+  transactionType: z.enum(['Against Bill', 'On Account']).default('On Account'),
   source: z.string().optional(),
   notes: z.string().optional(),
   relatedSaleIds: z.array(z.string()).optional(), // Optional: for linking to sales

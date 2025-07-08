@@ -67,6 +67,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
         partyId: receiptToEdit.partyId,
         amount: receiptToEdit.amount,
         paymentMethod: receiptToEdit.paymentMethod,
+        transactionType: receiptToEdit.transactionType || 'On Account',
         source: receiptToEdit.source || "",
         notes: receiptToEdit.notes || "",
         cashDiscount: receiptToEdit.cashDiscount || undefined,
@@ -78,6 +79,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       partyId: undefined,
       amount: undefined,
       paymentMethod: 'Cash',
+      transactionType: 'On Account',
       source: "",
       notes: "",
       cashDiscount: undefined,
@@ -143,6 +145,7 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
       partyType: selectedParty.type as MasterItemType,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
+      transactionType: values.transactionType,
       source: values.source,
       notes: values.notes,
       cashDiscount: values.cashDiscount || 0,
@@ -246,6 +249,27 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                     <FormItem>
                       <FormLabel>Cash Discount (₹, Optional)</FormLabel>
                       <FormControl><Input type="number" step="0.01" placeholder="e.g., 200" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={methods.control}
+                  name="transactionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Receipt Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || 'On Account'}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select receipt type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="On Account">On Account</SelectItem>
+                          <SelectItem value="Against Bill">Against Bill</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

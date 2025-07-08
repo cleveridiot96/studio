@@ -67,6 +67,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
         partyId: paymentToEdit.partyId,
         amount: paymentToEdit.amount,
         paymentMethod: paymentToEdit.paymentMethod,
+        transactionType: paymentToEdit.transactionType || 'On Account',
         source: paymentToEdit.source || "",
         notes: paymentToEdit.notes || "",
       };
@@ -76,6 +77,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       partyId: undefined, 
       amount: undefined,
       paymentMethod: 'Cash',
+      transactionType: 'On Account',
       source: "",
       notes: "",
     };
@@ -138,6 +140,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       partyType: selectedParty.type as MasterItemType,
       amount: values.amount,
       paymentMethod: values.paymentMethod,
+      transactionType: values.transactionType,
       source: values.source,
       notes: values.notes,
     };
@@ -228,6 +231,27 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                     <FormItem>
                       <FormLabel>Amount (₹)</FormLabel>
                       <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="transactionType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payment Type</FormLabel>
+                      <ShadSelect onValueChange={field.onChange} value={field.value || 'On Account'}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select payment type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="On Account">On Account</SelectItem>
+                          <SelectItem value="Against Bill">Against Bill</SelectItem>
+                        </SelectContent>
+                      </ShadSelect>
                       <FormMessage />
                     </FormItem>
                   )}
