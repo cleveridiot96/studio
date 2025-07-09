@@ -12,14 +12,14 @@ interface SaleChittiPrintProps {
 export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
   if (!sale) return null;
   
-  const displayCbDeduction = sale.isCB && sale.cbAmount !== undefined && sale.cbAmount > 0 ? sale.cbAmount : 0;
-  const totalSaleSideExpenses = (sale.transportCost || 0) + (sale.packingCost || 0) + (sale.labourCost || 0) + (sale.calculatedBrokerageCommission || 0) + (sale.calculatedExtraBrokerage || 0);
+  const cashDiscount = (sale.expenses || []).find(e => e.account === 'Cash Discount')?.amount || 0;
+  const totalSaleSideExpenses = (sale.expenses || []).filter(e => e.account !== 'Cash Discount').reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles uppercase">
       <style jsx global>{`
         .print-chitti-styles { font-family: sans-serif; line-height: 1.4; }
-        .print-chitti-styles h1, .print-chitti-styles h2, .print-chitti-styles h3 { margin-top: 0.5em; margin-bottom: 0.25em; }
+        .print-chitti-styles h1, .print-chitti-styles h2 { margin-top: 0.5em; margin-bottom: 0.25em; }
         .print-chitti-styles table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px; }
         .print-chitti-styles th, .print-chitti-styles td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
         .print-chitti-styles th { background-color: #f0f0f0; }
@@ -73,8 +73,8 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
                 <td className="text-right">{item.netWeight.toLocaleString()}</td>
                 <td className="text-right">{Math.round(item.rate || 0)}</td>
                 <td className="text-right">{Math.round(item.goodsValue || 0).toLocaleString()}</td>
-                <td className={`text-right font-medium ${Math.round(item.itemProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {Math.round(item.itemProfit || 0).toLocaleString()}
+                <td className={`text-right font-medium ${Math.round(item.itemNetProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  {Math.round(item.itemNetProfit || 0).toLocaleString()}
                 </td>
               </tr>
             ))}
@@ -92,10 +92,10 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
       )}
 
       <div className="mt-4 space-y-1">
-        {displayCbDeduction > 0 && (
+        {cashDiscount > 0 && (
           <div className="flex-between text-destructive">
-            <span>LESS: CB DEDUCTION:</span>
-            <span className="font-bold">(-) ₹{Math.round(displayCbDeduction).toLocaleString()}</span>
+            <span>LESS: CASH DISCOUNT:</span>
+            <span className="font-bold">(-) ₹{Math.round(cashDiscount).toLocaleString()}</span>
           </div>
         )}
          <div className="flex-between border-t pt-2 mt-2">
@@ -153,4 +153,3 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
     </div>
   );
 };
-    

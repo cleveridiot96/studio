@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem, PurchaseItem, LocationTransferItem } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem, PurchaseItem, LocationTransferItem, LedgerEntry } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES } from '@/lib/constants';
+import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
 
 const SALES_STORAGE_KEY = 'salesData';
@@ -44,6 +44,8 @@ const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
+const EXPENSES_STORAGE_KEY = 'masterExpenses';
+const LEDGER_STORAGE_KEY = 'ledgerData';
 const KEY_SEPARATOR = '_$_';
 
 export interface AggregatedStockItemForForm {
@@ -89,8 +91,27 @@ export function SalesClient() {
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedEmptyArray);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
+  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+
 
   React.useEffect(() => setIsSalesClientHydrated(true), []);
+  React.useEffect(() => {
+    if (isSalesClientHydrated) {
+        setExpenses(prev => {
+            const expenseMap = new Map(prev.map(e => [e.id, e]));
+            let updated = false;
+            FIXED_EXPENSES.forEach(fe => {
+                if (!expenseMap.has(fe.id)) {
+                    expenseMap.set(fe.id, fe);
+                    updated = true;
+                }
+            });
+            return updated ? Array.from(expenseMap.values()).sort((a,b)=>a.name.localeCompare(b.name)) : prev;
+        });
+    }
+  }, [isSalesClientHydrated, setExpenses]);
+
 
   const aggregatedStockForSalesForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !isSalesClientHydrated) return [];
@@ -267,13 +288,38 @@ export function SalesClient() {
         : [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
     });
 
+    if (sale.expenses && sale.expenses.length > 0) {
+      const newLedgerEntries: LedgerEntry[] = [];
+      sale.expenses.forEach(exp => {
+        if (exp.amount > 0) {
+          newLedgerEntries.push({
+            id: `ledger-${Date.now()}-${Math.random()}`,
+            date: sale.date,
+            type: 'Expense',
+            account: exp.account,
+            debit: exp.amount,
+            credit: 0,
+            paymentMode: exp.paymentMode,
+            party: exp.party || 'Self',
+            relatedVoucher: sale.id,
+            linkedTo: { voucherType: 'Sale', voucherId: sale.id },
+            remarks: `Expense for sale to ${sale.customerName}`
+          });
+        }
+      });
+       if (newLedgerEntries.length > 0) {
+            setLedgerData(prevLedger => [...prevLedger, ...newLedgerEntries]);
+            toast({ title: "Sale Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
+        }
+    }
+
     toast({
       title: "Success!",
       description: isEditing ? "Sale updated." : "Sale added."
     });
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
-  }, [sales, setSales, toast]);
+  }, [sales, setSales, setLedgerData, toast]);
 
   const handleEditSale = React.useCallback((sale: Sale) => { setSaleToEdit(sale); setIsAddSaleFormOpen(true); }, []);
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => { setSaleToDeleteId(saleId); setShowDeleteConfirm(true); }, []);
@@ -308,14 +354,15 @@ export function SalesClient() {
     const setters: Record<string, React.Dispatch<React.SetStateAction<any[]>>> = { 
         Customer: setCustomers, 
         Transporter: setTransporters, 
-        Broker: setBrokers 
+        Broker: setBrokers,
+        Expense: setExpenses
     };
     const setter = setters[type as keyof typeof setters];
     if (setter) {
       setter(prev => { const newSet = new Map(prev.map(item => [item.id, item])); newSet.set(newItem.id, newItem); return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name)); });
       toast({ title: `${newItem.type} updated.` });
     } else { toast({title: "Info", description: `Master type ${type} not handled here.`}); }
-  }, [setCustomers, setTransporters, setBrokers, toast]);
+  }, [setCustomers, setTransporters, setBrokers, setExpenses, toast]);
 
   const openAddSaleForm = React.useCallback(() => { setSaleToEdit(null); setIsAddSaleFormOpen(true); }, []);
   const closeAddSaleForm = React.useCallback(() => { setIsAddSaleFormOpen(false); setSaleToEdit(null); }, []);
@@ -385,7 +432,7 @@ export function SalesClient() {
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
-        <h1 className="text-3xl font-bold text-foreground">Sales & Returns (FY {financialYear})</h1>
+        <h1 className="text-3xl font-bold text-foreground uppercase">Sales & Returns (FY {financialYear})</h1>
       </div>
       
       <Tabs defaultValue="sales" className="w-full" onValueChange={setActiveTab}>
@@ -420,7 +467,7 @@ export function SalesClient() {
       </Tabs>
       
       <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white' }}>{saleForPdf && <SaleChittiPrint sale={saleForPdf} />}</div>
-      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} customers={customers as Customer[]} transporters={transporters as Transporter[]} brokers={brokers} availableStock={aggregatedStockForSalesForm} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
+      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} customers={customers as Customer[]} transporters={transporters as Transporter[]} brokers={brokers} availableStock={aggregatedStockForSalesForm} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} expenses={expenses} />}
       {isAddSaleReturnFormOpen && <AddSaleReturnForm isOpen={isAddSaleReturnFormOpen} onClose={closeAddSaleReturnForm} onSubmit={handleAddOrUpdateSaleReturn} sales={filteredSales} existingSaleReturns={saleReturns} saleReturnToEdit={saleReturnToEdit} />}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

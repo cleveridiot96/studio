@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import type { MasterItem, Sale } from '@/lib/types';
 import type { AggregatedStockItemForForm } from '../components/app/sales/SalesClient';
-
+import { expenseItemSchema } from './expenseItemSchema';
 
 const saleItemSchema = (availableStock: AggregatedStockItemForForm[]) => z.object({
   lotNumber: z.string().min(1, "Vakkal/Lot is required.").refine(lotNum => availableStock.some(item => item.lotNumber === lotNum), { message: "Lot not in stock." }),
@@ -20,27 +20,13 @@ export const saleSchema = (
     currentSaleIdToEdit?: string
 ) => z.object({
   date: z.date({ required_error: "Sale date is required." }),
+  billNumber: z.string().optional(),
   customerId: z.string().min(1, "Customer is required.").refine(id => customers.some(c => c.id === id), { message: "Invalid customer." }),
   brokerId: z.string().optional().refine(id => !id || brokers.some(b => b.id === id), { message: "Invalid broker." }),
   
   items: z.array(saleItemSchema(availableStock)).min(1, "At least one sale item is required."),
 
-  isCB: z.boolean().optional().default(false),
-  cbAmount: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  billNumber: z.string().optional(),
-
-  transporterId: z.string().optional().refine(id => !id || transporters.some(t => t.id === id), { message: "Invalid transporter." }),
-  transportCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  packingCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  labourCost: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  miscExpenses: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-
-  commissionType: z.preprocess(
-    (val) => (val === "" ? undefined : val),
-    z.enum(['Fixed', 'Percentage']).optional()
-  ),
-  commission: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
-  extraBrokeragePerKg: z.preprocess((val) => val === "" ? undefined : val, z.coerce.number().optional()),
+  expenses: z.array(expenseItemSchema).optional(),
   
   notes: z.string().optional(),
 }).superRefine((data, ctx) => {
@@ -56,7 +42,6 @@ export const saleSchema = (
     const stockInfo = availableStock.find(s => s.lotNumber === lotNumber);
     let availableBagsInStock = stockInfo?.currentBags || 0;
     
-    // If editing, add back the quantity of the lot from the original sale to allow for correct validation
     if (currentSaleIdToEdit) {
         const originalSale = existingSales.find(s => s.id === currentSaleIdToEdit);
         if(originalSale) {
@@ -69,45 +54,9 @@ export const saleSchema = (
       const itemIndex = data.items.findIndex(item => item.lotNumber === lotNumber);
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Total bags (${totalQuantity}) for ${lotNumber} exceed available stock (${availableBagsInStock}).`,
+        message: `Total bags (${totalQuantity}) for ${lotNumber} exceed available stock (${Math.round(availableBagsInStock)}).`,
         path: ["items", itemIndex, "quantity"],
       });
-    }
-  }
-
-  // CB Amount validation
-  if (data.isCB) {
-    if (data.cbAmount === undefined || data.cbAmount <= 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "CB amount is required and must be positive if 'CB' is checked.",
-        path: ["cbAmount"],
-      });
-    } else {
-        const totalGoodsValue = data.items.reduce((sum, item) => sum + ((item.netWeight || 0) * (item.rate || 0)), 0);
-        if (data.cbAmount > totalGoodsValue) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: `CB amount cannot exceed total goods value of ₹${totalGoodsValue.toFixed(2)}.`,
-                path: ["cbAmount"],
-            });
-        }
-    }
-  }
-
-  // Brokerage validation, only if a broker is actually selected.
-  if (data.brokerId) {
-    if (data.commission !== undefined && data.commissionType === undefined) {
-        ctx.addIssue({
-            path: ["commissionType"],
-            message: "Type is required when value is entered.",
-        });
-    }
-    if (data.commissionType !== undefined && data.commission === undefined) {
-        ctx.addIssue({
-            path: ["commission"],
-            message: "Value is required when type is selected.",
-        });
     }
   }
 });

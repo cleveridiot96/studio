@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Receipt, MasterItem, MasterItemType, Customer, Broker, Sale } from "@/lib/types";
+import type { Receipt, MasterItem, MasterItemType, Customer, Broker, Sale, LedgerEntry } from "@/lib/types";
 import { ReceiptTable } from "./ReceiptTable";
 import { AddReceiptForm } from "./AddReceiptForm";
 import { useToast } from "@/hooks/use-toast";
@@ -29,14 +29,15 @@ const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const SALES_STORAGE_KEY = 'salesData';
+const LEDGER_STORAGE_KEY = 'ledgerData';
 
-// Initial data sets - changed to empty arrays for clean slate on format
+
 const initialReceiptsData: Receipt[] = [];
 
 export function ReceiptsClient() {
   const { toast } = useToast();
-  const { financialYear, isAppHydrating } = useSettings(); // Use isAppHydrating
-  const [hydrated, setHydrated] = React.useState(false); // Local hydration
+  const { financialYear, isAppHydrating } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false);
   const memoizedInitialReceipts = React.useMemo(() => initialReceiptsData, []);
   const memoizedEmptyMasters = React.useMemo(() => [], []);
 
@@ -45,6 +46,8 @@ export function ReceiptsClient() {
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
+  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
@@ -78,9 +81,29 @@ export function ReceiptsClient() {
         return [receipt, ...prevReceipts];
       }
     });
+
+    const newLedgerEntry: LedgerEntry = {
+        id: `ledger-${receipt.id}`,
+        date: receipt.date,
+        type: 'Receipt',
+        account: `${receipt.partyType} Receivable`,
+        debit: 0,
+        credit: receipt.amount + (receipt.cashDiscount || 0), // Receipt credits the party's account
+        paymentMode: receipt.paymentMethod,
+        party: receipt.partyName,
+        partyId: receipt.partyId,
+        relatedVoucher: receipt.id,
+        linkedTo: {
+            voucherType: 'Sale',
+            voucherId: receipt.id,
+        },
+        remarks: `Receipt from ${receipt.partyName}: ${receipt.notes || ''}`
+    };
+    setLedgerData(prev => [...prev.filter(l => l.id !== `ledger-${receipt.id}`), newLedgerEntry]);
+
     setReceiptToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
-  }, [setReceipts, toast, receipts]); 
+  }, [setReceipts, setLedgerData, toast, receipts]); 
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);
@@ -95,11 +118,12 @@ export function ReceiptsClient() {
   const confirmDeleteReceipt = React.useCallback(() => {
     if (receiptToDeleteId) {
       setReceipts(prev => prev.filter(r => r.id !== receiptToDeleteId));
+      setLedgerData(prev => prev.filter(l => l.id !== `ledger-${receiptToDeleteId}`));
       toast({ title: "Success!", description: "Receipt deleted successfully.", variant: "destructive" });
       setReceiptToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  }, [receiptToDeleteId, setReceipts, toast]);
+  }, [receiptToDeleteId, setReceipts, setLedgerData, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     switch (type) {

@@ -12,7 +12,7 @@ interface PurchaseChittiPrintProps {
 export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purchase }) => {
   if (!purchase) return null;
   
-  const totalExpenses = (purchase.transportCharges || 0) + (purchase.packingCharges || 0) + (purchase.labourCharges || 0) + (purchase.brokerageCharges || 0) + (purchase.miscExpenses || 0);
+  const totalExpenses = (purchase.expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles uppercase">
@@ -89,11 +89,12 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
         <>
           <div className="mt-1 mb-1 font-bold">EXPENSES:</div>
           <div className="space-y-1 text-xs">
-            {purchase.transportCharges && purchase.transportCharges > 0 && <div className="flex-between"><span>TRANSPORT:</span><span className="text-right">{Math.round(purchase.transportCharges).toLocaleString('en-IN')}</span></div>}
-            {purchase.packingCharges && purchase.packingCharges > 0 && <div className="flex-between"><span>PACKING:</span><span className="text-right">{Math.round(purchase.packingCharges).toLocaleString('en-IN')}</span></div>}
-            {purchase.labourCharges && purchase.labourCharges > 0 && <div className="flex-between"><span>LABOUR:</span><span className="text-right">{Math.round(purchase.labourCharges).toLocaleString('en-IN')}</span></div>}
-            {purchase.brokerageCharges && purchase.brokerageCharges > 0 && <div className="flex-between"><span>BROKERAGE:</span><span className="text-right">{Math.round(purchase.brokerageCharges).toLocaleString('en-IN')}</span></div>}
-            {purchase.miscExpenses && purchase.miscExpenses > 0 && <div className="flex-between"><span>MISC:</span><span className="text-right">{Math.round(purchase.miscExpenses).toLocaleString('en-IN')}</span></div>}
+            {(purchase.expenses || []).map((exp, index) => (
+              <div key={index} className="flex-between">
+                <span>{exp.account}:</span>
+                <span className="text-right">{Math.round(exp.amount).toLocaleString('en-IN')}</span>
+              </div>
+            ))}
             <div className="flex-between py-1 border-t border-dashed mt-1 font-bold">
                 <span>TOTAL EXPENSES:</span>
                 <span className="text-right">{Math.round(totalExpenses).toLocaleString('en-IN')}</span>
@@ -112,4 +113,3 @@ export const PurchaseChittiPrint: React.FC<PurchaseChittiPrintProps> = ({ purcha
     </div>
   );
 };
-    

@@ -40,15 +40,10 @@ export interface TransactionalProfitInfo {
   grossProfit: number;
   netProfit: number;
   // Breakdown
-  costBreakdown?: CostBreakdown;
+  costBreakdown: CostBreakdown;
   saleExpenses: {
-    transport: number;
-    packing: number;
-    labour: number;
-    misc: number;
-    brokerage: number;
-    extraBrokerage: number;
     total: number;
+    [key: string]: number;
   }
 }
 
@@ -108,16 +103,11 @@ export function ProfitAnalysisClient() {
     fySales.forEach(sale => {
       if (!sale.items || !Array.isArray(sale.items) || sale.items.length === 0) return;
 
-      const saleLevelExpenses = {
-        transport: sale.transportCost || 0,
-        packing: sale.packingCost || 0,
-        labour: sale.labourCost || 0,
-        misc: sale.miscExpenses || 0,
-        brokerage: sale.calculatedBrokerageCommission || 0,
-        extraBrokerage: sale.calculatedExtraBrokerage || 0,
-        total: 0
-      };
-      saleLevelExpenses.total = Object.values(saleLevelExpenses).reduce((sum, val) => sum + val, 0);
+      const saleExpensesBreakdown: { total: number; [key: string]: number; } = { total: 0 };
+      (sale.expenses || []).forEach(exp => {
+        saleExpensesBreakdown[exp.account] = (saleExpensesBreakdown[exp.account] || 0) + exp.amount;
+        saleExpensesBreakdown.total += exp.amount;
+      });
         
       sale.items.forEach(item => {
         flattenedTransactions.push({
@@ -135,15 +125,7 @@ export function ProfitAnalysisClient() {
           grossProfit: item.itemGrossProfit,
           netProfit: item.itemNetProfit,
           costBreakdown: item.costBreakdown,
-          saleExpenses: {
-            transport: sale.transportCost ? (sale.transportCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
-            packing: sale.packingCost ? (sale.packingCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
-            labour: sale.labourCost ? (sale.labourCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
-            misc: sale.miscExpenses ? (sale.miscExpenses * (item.goodsValue / sale.totalGoodsValue)) : 0,
-            brokerage: sale.calculatedBrokerageCommission ? (sale.calculatedBrokerageCommission * (item.goodsValue / sale.totalGoodsValue)) : 0,
-            extraBrokerage: sale.calculatedExtraBrokerage ? (sale.calculatedExtraBrokerage * (item.goodsValue / sale.totalGoodsValue)) : 0,
-            total: saleLevelExpenses.total * (item.goodsValue / sale.totalGoodsValue),
-          }
+          saleExpenses: saleExpensesBreakdown
         });
       });
     });
@@ -387,12 +369,10 @@ export function ProfitAnalysisClient() {
                                                     <h3 className="font-semibold text-lg text-primary flex items-center"><Zap className="mr-2 h-5 w-5"/>SALE & PROFIT/KG</h3>
                                                     <Table><TableBody>
                                                         <BreakdownRow label="Sale Rate" value={item.saleRatePerKg} color="green" />
-                                                        {saleExpenses.brokerage > 0 ? <DeductionRow label="Brokerage" value={saleExpenses.brokerage / item.saleNetWeightKg} isSub /> : null}
-                                                        {saleExpenses.extraBrokerage > 0 ? <DeductionRow label="Extra Brokerage" value={saleExpenses.extraBrokerage / item.saleNetWeightKg} isSub /> : null}
-                                                        {saleExpenses.transport > 0 ? <DeductionRow label="Transport" value={saleExpenses.transport / item.saleNetWeightKg} isSub /> : null}
-                                                        {saleExpenses.packing > 0 ? <DeductionRow label="Packing" value={saleExpenses.packing / item.saleNetWeightKg} isSub /> : null}
-                                                        {saleExpenses.labour > 0 ? <DeductionRow label="Labour" value={saleExpenses.labour / item.saleNetWeightKg} isSub /> : null}
-                                                        {saleExpenses.misc > 0 ? <DeductionRow label="Misc." value={saleExpenses.misc / item.saleNetWeightKg} isSub /> : null}
+                                                        {Object.entries(saleExpenses).map(([key, value]) => {
+                                                          if(key === 'total' || value <= 0) return null;
+                                                          return <DeductionRow key={key} label={key} value={value / item.saleNetWeightKg} isSub />
+                                                        })}
                                                         <TableRow className="bg-green-500/10 font-bold text-green-700 text-base">
                                                             <TableCell className="py-2 pl-4">✅ EFFECTIVE SALE RATE</TableCell>
                                                             <TableCell className="py-2 text-right font-mono">₹{effectiveSaleRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
@@ -437,5 +417,3 @@ export function ProfitAnalysisClient() {
     </TooltipProvider>
   );
 }
-
-    

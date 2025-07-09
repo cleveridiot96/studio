@@ -35,7 +35,6 @@ import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 

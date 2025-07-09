@@ -1,6 +1,7 @@
 
 import { z } from 'zod';
 import type { MasterItem } from '@/lib/types';
+import { expenseItemSchema } from './expenseItemSchema';
 
 const purchaseItemSchema = z.object({
     lotNumber: z.string().min(1, "Vakkal/Lot number is required."),
@@ -14,7 +15,7 @@ export const purchaseSchema = (
     agents: MasterItem[], 
     warehouses: MasterItem[], 
     transporters: MasterItem[],
-    brokers: MasterItem[]
+    expenses: MasterItem[]
 ) => z.object({
   date: z.date({
     required_error: "Purchase date is required.",
@@ -34,32 +35,9 @@ export const purchaseSchema = (
 
   items: z.array(purchaseItemSchema).min(1, "At least one purchase item is required."),
   
-  // Expense Fields
-  transportCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
-  packingCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
-  labourCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Charges must be non-negative").optional()),
-  commissionType: z.preprocess(
-    (val) => (val === "" ? undefined : val),
-    z.enum(['Fixed', 'Percentage']).optional()
-  ),
-  commission: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
-  miscExpenses: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().nonnegative("Expenses must be non-negative").optional()),
-}).superRefine((data, ctx) => {
-    if (data.agentId) {
-        if (data.commission !== undefined && data.commissionType === undefined) {
-            ctx.addIssue({
-                path: ["commissionType"],
-                message: "Type is required when value is entered.",
-            });
-        }
-        if (data.commissionType !== undefined && data.commission === undefined) {
-            ctx.addIssue({
-                path: ["commission"],
-                message: "Value is required when type is selected.",
-            });
-        }
-    }
+  expenses: z.array(expenseItemSchema).optional(),
 
+}).superRefine((data, ctx) => {
     const lotNumbers = new Set<string>();
     data.items.forEach((item, index) => {
       const upperCaseLotNumber = item.lotNumber.toUpperCase().trim();

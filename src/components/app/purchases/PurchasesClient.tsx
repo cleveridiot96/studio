@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn, Sale, LocationTransfer } from "@/lib/types";
+import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn, Sale, LocationTransfer, LedgerEntry } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { PurchaseChittiPrint } from "./PurchaseChittiPrint";
@@ -33,37 +33,34 @@ import { cn } from "@/lib/utils";
 import { purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
-const initialPurchasesData: Purchase[] = [];
-const initialPurchaseReturnsData: PurchaseReturn[] = [];
-
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
-const SALES_STORAGE_KEY = 'salesData'; // For checking dependencies
-const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData'; // For checking dependencies
+const SALES_STORAGE_KEY = 'salesData';
+const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
+const LEDGER_STORAGE_KEY = 'ledgerData';
 
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
 
-  const memoizedInitialPurchases = React.useMemo(() => initialPurchasesData, []);
-  const memoizedInitialPurchaseReturns = React.useMemo(() => initialPurchaseReturnsData, []);
-  const memoizedEmptyMasters = React.useMemo(() => [], []);
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases, purchaseMigrator);
-  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedInitialPurchaseReturns);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
+  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyMasters);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyArray);
+  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyArray);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
+  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
@@ -118,13 +115,44 @@ export function PurchasesClient() {
   }, [purchaseReturns, financialYear, isAppHydrating, isPurchasesClientHydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
+    const isEditing = purchases.some(p => p.id === purchase.id);
     setPurchases(prevPurchases => {
-      const isEditing = prevPurchases.some(p => p.id === purchase.id);
       return isEditing ? prevPurchases.map(p => p.id === purchase.id ? purchase : p) : [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
     });
+    
+    // Add ledger entries for expenses
+    if (purchase.expenses && purchase.expenses.length > 0) {
+        const newLedgerEntries: LedgerEntry[] = [];
+        purchase.expenses.forEach(exp => {
+            if (exp.amount > 0) {
+                newLedgerEntries.push({
+                    id: `ledger-${Date.now()}-${Math.random()}`,
+                    date: purchase.date,
+                    type: 'Expense',
+                    account: exp.account,
+                    debit: exp.amount,
+                    credit: 0,
+                    paymentMode: exp.paymentMode,
+                    party: exp.party || 'Self',
+                    relatedVoucher: purchase.id,
+                    linkedTo: {
+                        voucherType: 'Purchase',
+                        voucherId: purchase.id,
+                    },
+                    remarks: `Expense for purchase from ${purchase.supplierName}`
+                });
+            }
+        });
+
+        if (newLedgerEntries.length > 0) {
+            setLedgerData(prevLedger => [...prevLedger, ...newLedgerEntries]);
+            toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
+        }
+    }
+
     setPurchaseToEdit(null);
-    toast({ title: "Success!", description: purchases.some(p=>p.id === purchase.id) ? "Purchase updated." : "Purchase added." });
-  }, [setPurchases, toast, purchases]);
+    toast({ title: "Success!", description: isEditing ? "Purchase updated." : "Purchase added." });
+  }, [setPurchases, setLedgerData, toast, purchases]);
 
   const handleEditPurchase = (purchase: Purchase) => {
     setPurchaseToEdit(purchase);

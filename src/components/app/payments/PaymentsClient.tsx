@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter, Purchase, Sale } from "@/lib/types";
+import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter, Purchase, Sale, LedgerEntry } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,8 @@ const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
+const LEDGER_STORAGE_KEY = 'ledgerData';
+
 
 const initialPaymentsData: Payment[] = [];
 
@@ -47,6 +49,7 @@ export function PaymentsClient() {
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyMasters);
+  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
@@ -86,9 +89,30 @@ export function PaymentsClient() {
         return [{ ...payment, id: payment.id || `payment-${Date.now()}` }, ...prevPayments];
       }
     });
+
+    // Add a single, simple ledger entry for the payment itself
+    const newLedgerEntry: LedgerEntry = {
+        id: `ledger-${payment.id}`,
+        date: payment.date,
+        type: 'Payment',
+        account: `${payment.partyType} Payable`, // General account for payments
+        debit: payment.amount, // Payment debits the party's account
+        credit: 0,
+        paymentMode: payment.paymentMethod,
+        party: payment.partyName,
+        partyId: payment.partyId,
+        relatedVoucher: payment.id,
+        linkedTo: {
+            voucherType: 'Purchase', // Assuming payments are mostly for purchases
+            voucherId: payment.id,
+        },
+        remarks: `Payment made: ${payment.notes || ''}`
+    };
+    setLedgerData(prev => [...prev.filter(l => l.id !== `ledger-${payment.id}`), newLedgerEntry]);
+    
     setPaymentToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
-  }, [setPayments, toast, payments]);
+  }, [setPayments, setLedgerData, toast, payments]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -103,11 +127,12 @@ export function PaymentsClient() {
   const confirmDeletePayment = React.useCallback(() => {
     if (paymentToDeleteId) {
       setPayments(prev => prev.filter(p => p.id !== paymentToDeleteId));
+      setLedgerData(prev => prev.filter(l => l.id !== `ledger-${paymentToDeleteId}`));
       toast({ title: "Success!", description: "Payment deleted successfully.", variant: "destructive" });
       setPaymentToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  }, [paymentToDeleteId, setPayments, toast]);
+  }, [paymentToDeleteId, setPayments, setLedgerData, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { 

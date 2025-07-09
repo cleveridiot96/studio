@@ -48,20 +48,12 @@ export interface Purchase {
   transporterName?: string;
   
   items: PurchaseItem[];
+  expenses?: ExpenseItem[]; // Replaces all individual expense fields
 
   // Aggregated values from items
   totalGoodsValue: number;
   totalQuantity: number;
   totalNetWeight: number;
-
-  // Expenses for the entire purchase
-  transportCharges?: number;
-  packingCharges?: number;
-  labourCharges?: number;
-  commissionType?: 'Fixed' | 'Percentage';
-  commission?: number;
-  brokerageCharges?: number; // Calculated brokerage
-  miscExpenses?: number;
 
   // Final calculated fields
   totalAmount: number; // totalGoodsValue + all expenses
@@ -95,8 +87,6 @@ export interface Sale {
   id: string;
   date: string; // ISO string date
   billNumber?: string;
-  isCB?: boolean;
-  cbAmount?: number;
 
   customerId: string;
   customerName?: string;
@@ -104,10 +94,11 @@ export interface Sale {
   brokerName?: string;
 
   items: SaleItem[];
+  expenses?: ExpenseItem[]; // Replaces all individual expense fields
 
   // Aggregated values
   totalGoodsValue: number;
-  billedAmount: number; // This is the final amount on the chitthi (totalGoodsValue - cbAmount)
+  billedAmount: number; // This is the final amount on the chitthi
   totalQuantity: number;
   totalNetWeight: number;
   
@@ -116,20 +107,8 @@ export interface Sale {
   totalGrossProfit: number; 
   totalCalculatedProfit: number; // This is the final Net Profit
   
-  // Expenses for the entire sale
   transporterId?: string;
   transporterName?: string;
-  transportCost?: number;
-  packingCost?: number;
-  labourCost?: number;
-  miscExpenses?: number;
-  commissionType?: 'Fixed' | 'Percentage';
-  commission?: number;
-  extraBrokeragePerKg?: number;
-  
-  // Calculated brokerage for the entire sale
-  calculatedBrokerageCommission?: number;
-  calculatedExtraBrokerage?: number;
   
   notes?: string;
 
@@ -231,7 +210,7 @@ export interface LocationTransferItem {
 export interface ExpenseItem {
   account: string; // This will be the name of the expense, e.g., "Transport Charges"
   amount: number;
-  paymentMode: 'Cash' | 'Bank' | 'Pending';
+  paymentMode: 'Cash' | 'Bank' | 'Pending' | 'Auto-adjusted';
   party?: string; // Optional party name, free text for now
 }
 
@@ -245,9 +224,9 @@ export interface LedgerEntry {
   paymentMode?: 'Cash' | 'Bank' | 'Pending' | 'Auto-adjusted';
   party?: string; // Party Name
   partyId?: string; // Link to master item
-  relatedVoucher?: string; // e.g., "CHITTI-234" or Purchase/Sale ID
+  relatedVoucher?: string; // e.g., "PUR-123" or "SALE-456"
   linkedTo?: {
-    voucherType: 'Transfer' | 'Purchase' | 'Sales';
+    voucherType: 'Transfer' | 'Purchase' | 'Sale';
     voucherId: string;
   };
   remarks?: string;
@@ -323,13 +302,8 @@ export interface TransactionalProfitInfo {
   // Breakdown
   costBreakdown: CostBreakdown;
   saleExpenses: {
-    transport: number;
-    packing: number;
-    labour: number;
-    misc: number;
-    brokerage: number;
-    extraBrokerage: number;
     total: number;
+    [key: string]: number; // Allow any expense account
   }
 }
 
