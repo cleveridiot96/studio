@@ -361,15 +361,35 @@ export function LocationTransferClient() {
             <CardContent className="pt-6">
                 <CardDescription className="mb-4 text-sm no-print">Current stock levels for FY {financialYear}.</CardDescription>
                 <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
-                    <Table size="sm"><TableHeader><TableRow><TableHead>WAREHOUSE</TableHead><TableHead>VAKKAL/LOT</TableHead><TableHead className="text-right">BAGS</TableHead><TableHead className="text-right">WEIGHT (KG)</TableHead></TableRow></TableHeader>
+                    <Table size="sm"><TableHeader><TableRow>
+                        <TableHead>WAREHOUSE</TableHead>
+                        <TableHead>VAKKAL/LOT</TableHead>
+                        <TableHead className="text-right">BAGS</TableHead>
+                        <TableHead className="text-right">WEIGHT (KG)</TableHead>
+                        <TableHead className="text-right">LANDED RATE (₹/KG)</TableHead>
+                    </TableRow></TableHeader>
                         <TableBody>
-                            {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
+                            {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={5} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
                             {aggregatedStockForForm.map(item => (
                                 <TableRow key={`${item.locationId}-${item.lotNumber}`} className="uppercase">
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName || item.locationId}</span></TooltipTrigger><TooltipContent><p>{item.locationName || item.locationId}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell className="text-right font-medium">{Math.round(item.currentBags).toLocaleString()}</TableCell>
                                     <TableCell className="text-right">{item.averageWeightPerBag ? (item.currentBags * item.averageWeightPerBag).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) : 'N/A'}</TableCell>
+                                    <TableCell className="text-right font-semibold text-primary">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="cursor-help underline decoration-dashed">
+                                                    {item.effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Base: ₹{item.costBreakdown.baseRate.toFixed(2)}</p>
+                                                <p>Purchase Exp: ₹{item.costBreakdown.purchaseExpenses.toFixed(2)}</p>
+                                                <p>Transfer Exp: ₹{item.costBreakdown.transferExpenses.toFixed(2)}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -458,4 +478,3 @@ export function LocationTransferClient() {
     </div>
   );
 }
-
