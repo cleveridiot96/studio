@@ -228,6 +228,31 @@ export interface LocationTransferItem {
   preTransferLandedCost?: number;
 }
 
+export interface ExpenseItem {
+  account: string; // This will be the name of the expense, e.g., "Transport Charges"
+  amount: number;
+  paymentMode: 'Cash' | 'Bank' | 'Pending';
+  party?: string; // Optional party name, free text for now
+}
+
+export interface LedgerEntry {
+  id: string; // uuid
+  date: string; // ISO string
+  type: 'Expense' | 'Payment' | 'Receipt' | 'Purchase' | 'Sale' | 'Opening Balance';
+  account: string; // e.g., "Transport Charges", "Broker Commission", "Sales"
+  debit: number;
+  credit: number;
+  paymentMode?: 'Cash' | 'Bank' | 'Pending' | 'Auto-adjusted';
+  party?: string; // Party Name
+  partyId?: string; // Link to master item
+  relatedVoucher?: string; // e.g., "CHITTI-234" or Purchase/Sale ID
+  linkedTo?: {
+    voucherType: 'Transfer' | 'Purchase' | 'Sales';
+    voucherId: string;
+  };
+  remarks?: string;
+}
+
 export interface LocationTransfer {
   id: string;
   date: string; // ISO string date
@@ -237,17 +262,13 @@ export interface LocationTransfer {
   toWarehouseName?: string;
   transporterId?: string;
   transporterName?: string;
-  transportRate?: number;
-  transportCharges?: number;
-  packingCharges?: number;
-  labourCharges?: number;
-  miscExpenses?: number;
   items: LocationTransferItem[];
   notes?: string;
   totalNetWeight?: number;
   totalGrossWeight?: number;
-  totalExpenses?: number;
+  totalExpenses?: number; // Sum of all expenses in the array
   perKgExpense?: number;
+  expenses?: ExpenseItem[]; // The new flexible expense array
 }
 
 
@@ -258,24 +279,6 @@ export interface CashBookEntry {
   inflow?: number;
   outflow?: number;
   balance: number;
-}
-
-export interface LedgerEntry {
-  id:string;
-  date: string; // ISO string date
-  description: string; // This will be our "Particulars"
-  debit?: number;
-  credit?: number;
-  balance: number; // This is the running balance for the ledger view
-  vchType?: string;
-  refNo?: string;
-  rate?: number;
-  netWeight?: number;
-  transactionAmount?: number;
-  customerName?: string;
-  supplierName?: string;
-  cashDiscount?: number;
-  relatedDocId: string; // To link back to original Sale/Purchase/Payment/Receipt ID
 }
 
 

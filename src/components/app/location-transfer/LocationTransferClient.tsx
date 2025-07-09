@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown, PurchaseItem, SaleItem } from "@/lib/types";
+import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown, PurchaseItem, SaleItem, LedgerEntry, ExpenseItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
-import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+import { salesMigrator, purchaseMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
 
@@ -50,6 +50,7 @@ const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
+const LEDGER_STORAGE_KEY = 'ledgerData';
 
 export interface AggregatedStockItemForForm {
   lotNumber: string;
@@ -76,7 +77,7 @@ export function LocationTransferClient() {
 
   const memoizedEmptyArray = React.useMemo(() => [], []);
 
-  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
+  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray, locationTransferMigrator);
   const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
@@ -84,6 +85,7 @@ export function LocationTransferClient() {
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
+  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
@@ -148,28 +150,33 @@ export function LocationTransferClient() {
                 const fromEntry = stockMap.get(fromKey);
 
                 if (fromEntry) {
-                    const costOfGoodsToTransfer = (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer;
+                    const costOfGoodsToTransfer = fromEntry.currentWeight > 0 ? (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer : 0;
+                    
                     fromEntry.currentBags -= item.bagsToTransfer;
                     fromEntry.currentWeight -= item.netWeightToTransfer;
                     fromEntry.totalCost -= costOfGoodsToTransfer;
 
                     const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
-                    const toEntry = stockMap.get(toKey) || {
-                        currentBags: 0,
-                        currentWeight: 0,
-                        totalCost: 0,
-                        purchaseRate: fromEntry.purchaseRate,
-                        locationName: tx.toWarehouseName,
-                        costBreakdown: { ...fromEntry.costBreakdown }
-                    };
+                    let toEntry = stockMap.get(toKey);
 
-                    const proportionalTransferExpense = (tx.perKgExpense || 0) * item.netWeightToTransfer;
-                    const newTotalCostForThisChunk = costOfGoodsToTransfer + proportionalTransferExpense;
+                    if (!toEntry) {
+                        toEntry = {
+                            currentBags: 0,
+                            currentWeight: 0,
+                            totalCost: 0,
+                            purchaseRate: fromEntry.purchaseRate,
+                            locationName: tx.toWarehouseName,
+                            costBreakdown: { ...fromEntry.costBreakdown }
+                        };
+                    }
                     
+                    const perKgExpense = (tx.perKgExpense || 0);
+                    const newTotalCostForThisChunk = costOfGoodsToTransfer + (perKgExpense * item.netWeightToTransfer);
+
                     toEntry.currentBags += item.bagsToTransfer;
                     toEntry.currentWeight += item.netWeightToTransfer;
                     toEntry.totalCost += newTotalCostForThisChunk;
-                    toEntry.costBreakdown.transferExpenses += (tx.perKgExpense || 0);
+                    toEntry.costBreakdown.transferExpenses += perKgExpense;
 
                     stockMap.set(toKey, toEntry);
                 }
@@ -219,8 +226,40 @@ export function LocationTransferClient() {
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
     setLocationTransfers(prev => {
- return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
-    });    toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
+      return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
+    });
+    
+    // Add ledger entries for expenses
+    if (transfer.expenses && transfer.expenses.length > 0) {
+        const newLedgerEntries: LedgerEntry[] = [];
+        transfer.expenses.forEach(exp => {
+            if (exp.amount > 0) {
+                newLedgerEntries.push({
+                    id: `ledger-${Date.now()}-${Math.random()}`,
+                    date: transfer.date,
+                    type: 'Expense',
+                    account: exp.account,
+                    debit: exp.amount,
+                    credit: 0,
+                    paymentMode: exp.paymentMode,
+                    party: exp.party || 'Self',
+                    relatedVoucher: transfer.id,
+                    linkedTo: {
+                        voucherType: 'Transfer',
+                        voucherId: transfer.id,
+                    },
+                    remarks: `Expense for transfer from ${transfer.fromWarehouseName} to ${transfer.toWarehouseName}`
+                });
+            }
+        });
+
+        if (newLedgerEntries.length > 0) {
+            setLedgerData(prevLedger => [...prevLedger, ...newLedgerEntries]);
+            toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
+        }
+    }
+
+    toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
     setTransferToEdit(null);
   };
 

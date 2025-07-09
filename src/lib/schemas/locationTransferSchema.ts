@@ -1,6 +1,6 @@
 
 import { z } from 'zod';
-import type { Warehouse, Transporter, LocationTransfer } from '@/lib/types';
+import type { Warehouse, Transporter, LocationTransfer, MasterItem } from '@/lib/types';
 
 interface AggregatedStockItemForSchema {
   lotNumber: string;
@@ -8,6 +8,13 @@ interface AggregatedStockItemForSchema {
   currentBags: number;
   averageWeightPerBag: number; // Used for default weight calculation if not manually overridden
 }
+
+const expenseItemSchema = z.object({
+  account: z.string().min(1, "Expense account is required."),
+  amount: z.coerce.number().min(0.01, "Amount must be positive."),
+  paymentMode: z.enum(['Cash', 'Bank', 'Pending']),
+  party: z.string().optional(),
+});
 
 export const locationTransferSchema = (
     warehouses: Warehouse[],
@@ -21,11 +28,6 @@ export const locationTransferSchema = (
   toWarehouseId: z.string().min(1, "Destination warehouse is required.")
     .refine(id => warehouses.some(w => w.id === id), { message: "Invalid destination warehouse." }),
   transporterId: z.string().optional(),
-  transportRate: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
-  transportCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
-  packingCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
-  labourCharges: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
-  miscExpenses: z.preprocess((val) => val === "" || val === null ? undefined : val, z.coerce.number().optional()),
   notes: z.string().optional(),
   items: z.array(
     z.object({
@@ -35,6 +37,7 @@ export const locationTransferSchema = (
         grossWeightToTransfer: z.coerce.number({required_error: "Gross Wt. is required."}).min(0.01, "Gross weight must be > 0."),
     })
   ).min(1, "At least one item must be added to the transfer."),
+  expenses: z.array(expenseItemSchema).optional(),
 }).superRefine((data, ctx) => {
   // Prevent transfer to the same warehouse
   if (data.fromWarehouseId && data.toWarehouseId && data.fromWarehouseId === data.toWarehouseId) {

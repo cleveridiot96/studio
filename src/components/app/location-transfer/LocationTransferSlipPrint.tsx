@@ -15,6 +15,7 @@ export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps>
   const totalBags = transfer.items.reduce((sum, item) => sum + item.bagsToTransfer, 0);
   const totalNetWeight = transfer.items.reduce((sum, item) => sum + item.netWeightToTransfer, 0);
   const totalGrossWeight = transfer.items.reduce((sum, item) => sum + item.grossWeightToTransfer, 0);
+  const totalExpenses = (transfer.expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
     <div className="p-4 bg-white text-black w-[550px] text-sm print-chitti-styles uppercase">
@@ -84,10 +85,10 @@ export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps>
         </tfoot>
       </table>
       
-       {transfer.transportCharges && transfer.transportCharges > 0 && (
+       {totalExpenses > 0 && (
          <div className="mt-4 text-xs font-bold flex-between">
-           <span>Total Transport Charges:</span>
-           <span>₹{transfer.transportCharges.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+           <span>Total Transfer Charges:</span>
+           <span>₹{totalExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
          </div>
        )}
 
