@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
-export const APP_NAME = "STOCK MARKET TRACKER";
+export const APP_NAME = "Kisan Khata Sahayak";
 export const APP_ICON = LineChart;
 
 // Icon colors will now represent background colors for the icon's circle
