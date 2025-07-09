@@ -111,15 +111,29 @@ export function LocationTransferClient() {
     }>();
 
     const transactions = [
-        ...purchases.map(p => ({ ...p, txType: 'purchase' })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' })),
-        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' })),
-        ...sales.map(s => ({ ...s, txType: 'sale' })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' }))
+        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
+        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
+        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     for (const tx of transactions) {
         if (!isDateInFinancialYear(tx.date, financialYear)) continue;
+        
+        const keyPrefix = tx.txType === 'purchase' ? tx.items[0]?.lotNumber :
+                          tx.txType === 'purchaseReturn' ? tx.originalLotNumber :
+                          tx.txType === 'locationTransfer' ? tx.items[0]?.originalLotNumber :
+                          tx.txType === 'sale' ? tx.items[0]?.lotNumber :
+                          tx.txType === 'saleReturn' ? tx.originalLotNumber :
+                          '';
+
+        const locationId = tx.txType === 'purchase' ? tx.locationId :
+                           tx.txType === 'purchaseReturn' ? purchases.find(p=>p.id===tx.originalPurchaseId)?.locationId :
+                           tx.txType === 'locationTransfer' ? tx.fromWarehouseId :
+                           tx.txType === 'sale' ? purchases.find(p=>p.items.some(i => i.lotNumber === tx.items[0]?.lotNumber))?.locationId :
+                           tx.txType === 'saleReturn' ? purchases.find(p=>p.items.some(i => i.lotNumber === tx.originalLotNumber))?.locationId :
+                           '';
 
         if (tx.txType === 'purchase') {
             (tx.items || []).forEach((item: PurchaseItem) => {
@@ -382,7 +396,7 @@ export function LocationTransferClient() {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <span className="cursor-help underline decoration-dashed">
-                                                    {item.effectiveRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {Math.round(item.effectiveRate).toLocaleString('en-IN')}
                                                 </span>
                                             </TooltipTrigger>
                                             <TooltipContent>

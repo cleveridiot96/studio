@@ -407,7 +407,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <div className="p-4 border rounded-md shadow-sm bg-muted/50">
                     <h3 className="text-lg font-medium mb-3 text-primary">Cost Calculation & Final Landed Costs</h3>
-                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Net Wt: {transferSummary.totalNetWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{transferSummary.perKgExpense.toFixed(2)}/kg Transfer Cost</span></p>
+                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Net Wt: {transferSummary.totalNetWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{Math.round(transferSummary.perKgExpense).toLocaleString('en-IN')}/kg Transfer Cost</span></p>
                      <ScrollArea className="h-40">
                          <Table>
                              <TableHeader>
@@ -429,9 +429,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                     return (
                                         <TableRow key={field.id} className="uppercase">
                                             <TableCell>{itemValues.originalLotNumber || "N/A"}</TableCell>
-                                            <TableCell className="text-right">₹{originalLandedCost.toFixed(2)}</TableCell>
-                                            <TableCell className="text-right">(+) ₹{perKgExpense.toFixed(2)}</TableCell>
-                                            <TableCell className="text-right font-bold text-primary">₹{finalLandedCost.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">₹{Math.round(originalLandedCost).toLocaleString('en-IN')}</TableCell>
+                                            <TableCell className="text-right">(+) ₹{Math.round(perKgExpense).toLocaleString('en-IN')}</TableCell>
+                                            <TableCell className="text-right font-bold text-primary">₹{Math.round(finalLandedCost).toLocaleString('en-IN')}</TableCell>
                                         </TableRow>
                                     );
                                 })}
