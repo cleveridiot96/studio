@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import Link from 'next/link';
 import { Landmark, Package, Rocket, TrendingDown, TrendingUp } from 'lucide-react';
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear, getFinancialYearDateRange, isDateBeforeFinancialYear } from "@/lib/utils";
+import { isDateInFinancialYear, getFinancialYearDateRange } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
@@ -51,18 +51,19 @@ export const BalanceSheetClient = () => {
     const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
     
     // --- 1. Stock Valuation Logic ---
-    const { totalStockValue } = useMemo(() => {
-        if (isAppHydrating || !hydrated) return { totalStockValue: 0 };
+    const { totalStockValue, totalStockBags } = useMemo(() => {
+        if (isAppHydrating || !hydrated) return { totalStockValue: 0, totalStockBags: 0 };
     
-        const inventoryMap = new Map<string, { currentWeight: number; cogs: number }>();
+        const inventoryMap = new Map<string, { currentWeight: number; cogs: number; currentBags: number }>();
     
         const fyPurchases = purchases.filter(p => isDateInFinancialYear(p.date, currentFinancialYearString));
         fyPurchases.forEach(p => {
             p.items.forEach(item => {
                 const key = `${item.lotNumber}-${p.locationId}`;
                 const landedCost = item.landedCostPerKg || p.effectiveRate;
-                const existing = inventoryMap.get(key) || { currentWeight: 0, cogs: 0 };
+                const existing = inventoryMap.get(key) || { currentWeight: 0, cogs: 0, currentBags: 0 };
                 existing.currentWeight += item.netWeight;
+                existing.currentBags += item.quantity;
                 existing.cogs += item.netWeight * landedCost;
                 inventoryMap.set(key, existing);
             });
@@ -77,6 +78,7 @@ export const BalanceSheetClient = () => {
                 if (entry && entry.currentWeight > 0) {
                     const costPerKg = entry.cogs / entry.currentWeight;
                     entry.currentWeight -= pr.netWeightReturned;
+                    entry.currentBags -= pr.quantityReturned;
                     entry.cogs -= pr.netWeightReturned * costPerKg;
                 }
             }
@@ -91,16 +93,18 @@ export const BalanceSheetClient = () => {
                     const costPerKg = fromItem.cogs / fromItem.currentWeight;
                     const costOfTransferredGoods = item.netWeightToTransfer * costPerKg;
                     fromItem.currentWeight -= item.netWeightToTransfer;
+                    fromItem.currentBags -= item.bagsToTransfer;
                     fromItem.cogs -= costOfTransferredGoods;
                     
                     const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
                     let toItem = inventoryMap.get(toKey);
                     if (!toItem) {
-                        toItem = { currentWeight: 0, cogs: 0 };
+                        toItem = { currentWeight: 0, cogs: 0, currentBags: 0 };
                     }
                     
                     const perKgExpense = (transfer.perKgExpense || 0);
                     toItem.currentWeight += item.netWeightToTransfer;
+                    toItem.currentBags += item.bagsToTransfer;
                     toItem.cogs += costOfTransferredGoods + (perKgExpense * item.netWeightToTransfer);
                     inventoryMap.set(toKey, toItem);
                 }
@@ -116,6 +120,7 @@ export const BalanceSheetClient = () => {
                     const costPerKg = entry.cogs / entry.currentWeight;
                     entry.cogs -= item.netWeight * costPerKg;
                     entry.currentWeight -= item.netWeight;
+                    entry.currentBags -= item.quantity;
                 }
             });
         });
@@ -129,29 +134,32 @@ export const BalanceSheetClient = () => {
                 const originalItem = originalSale?.items.find(i => i.lotNumber === sr.originalLotNumber);
                 const costOfReturnedGoods = originalItem?.costOfGoodsSold || 0;
                 entry.currentWeight += sr.netWeightReturned;
+                entry.currentBags += sr.quantityReturned;
                 entry.cogs += costOfReturnedGoods;
             }
         });
 
         let totalValue = 0;
+        let totalBags = 0;
         inventoryMap.forEach(item => {
             if (item.currentWeight > 0.001) {
                 totalValue += item.cogs;
+                totalBags += item.currentBags;
             }
         });
 
-        return { totalStockValue: totalValue };
+        return { totalStockValue: totalValue, totalStockBags: totalBags };
     }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, hydrated, isAppHydrating, currentFinancialYearString]);
 
 
     // --- 2. Receivables & Payables Logic ---
-    const { totalReceivable, totalPayable } = useMemo(() => {
-        if (!hydrated) return { totalReceivable: 0, totalPayable: 0 };
+    const { totalReceivable, totalPayable, receivablePartiesCount, payablePartiesCount } = useMemo(() => {
+        if (!hydrated) return { totalReceivable: 0, totalPayable: 0, receivablePartiesCount: 0, payablePartiesCount: 0 };
         
         const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
         const balances = new Map<string, number>();
         const fyDateRange = getFinancialYearDateRange(currentFinancialYearString);
-        if (!fyDateRange) return { totalReceivable: 0, totalPayable: 0 };
+        if (!fyDateRange) return { totalReceivable: 0, totalPayable: 0, receivablePartiesCount: 0, payablePartiesCount: 0 };
         const fyEndDate = fyDateRange.end;
     
         allMasters.forEach(m => {
@@ -189,41 +197,33 @@ export const BalanceSheetClient = () => {
     
         let totalReceivable = 0;
         let totalPayable = 0;
+        let receivablePartiesCount = 0;
+        let payablePartiesCount = 0;
+
         balances.forEach((balance) => {
-            if (balance > 0) totalReceivable += balance;
-            else if (balance < 0) totalPayable += balance;
+            if (balance > 0.01) {
+                totalReceivable += balance;
+                receivablePartiesCount++;
+            } else if (balance < -0.01) {
+                totalPayable += balance;
+                payablePartiesCount++;
+            }
         });
     
-        return { totalReceivable, totalPayable: Math.abs(totalPayable) };
+        return { totalReceivable, totalPayable: Math.abs(totalPayable), receivablePartiesCount, payablePartiesCount };
     }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
 
 
     // --- 3. Profit Logic ---
-    const { totalNetProfit, totalGrossProfit } = useMemo(() => {
-        if (!hydrated) return { totalNetProfit: 0, totalGrossProfit: 0 };
+    const { totalNetProfit, totalGrossProfit, totalKgSold } = useMemo(() => {
+        if (!hydrated) return { totalNetProfit: 0, totalGrossProfit: 0, totalKgSold: 0 };
         const fySales = sales.filter(sale => sale && isDateInFinancialYear(sale.date, currentFinancialYearString));
         const totalNetProfit = fySales.reduce((sum, sale) => sum + (sale.totalCalculatedProfit || 0), 0);
         const totalGrossProfit = fySales.reduce((sum, sale) => sum + (sale.totalGrossProfit || 0), 0);
-        return { totalNetProfit, totalGrossProfit };
+        const totalKgSold = fySales.reduce((sum, sale) => sum + (sale.totalNetWeight || 0), 0);
+        return { totalNetProfit, totalGrossProfit, totalKgSold };
     }, [sales, hydrated, currentFinancialYearString]);
 
-    const renderCard = (title: string, value: number, description: string, icon: React.ElementType, link: string) => {
-      const Icon = icon;
-      return (
-        <Link href={link}>
-            <Card className="hover:bg-muted/50 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium uppercase">{title}</CardTitle>
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">₹{Math.round(value).toLocaleString('en-IN')}</div>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                </CardContent>
-            </Card>
-        </Link>
-      );
-    }
 
     if (isAppHydrating || !hydrated) {
         return (
@@ -242,10 +242,54 @@ export const BalanceSheetClient = () => {
               </h1>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {renderCard("Stock Value", totalStockValue, "Current value of all inventory", Package, "/inventory")}
-              {renderCard("Receivables", totalReceivable, "Total money to be collected", TrendingUp, "/outstanding")}
-              {renderCard("Payables", totalPayable, "Total money to be paid", TrendingDown, "/outstanding")}
-              {renderCard("Net Profit", totalNetProfit, "Total Net Profit/Loss for FY", Rocket, "/profit-analysis")}
+              <Link href="/inventory">
+                  <Card className="hover:bg-muted/50 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium uppercase">Stock Value</CardTitle>
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">₹{Math.round(totalStockValue).toLocaleString('en-IN')}</div>
+                          <p className="text-xs text-muted-foreground">{Math.round(totalStockBags).toLocaleString()} bags in total</p>
+                      </CardContent>
+                  </Card>
+              </Link>
+              <Link href="/outstanding">
+                  <Card className="hover:bg-muted/50 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium uppercase">Receivables</CardTitle>
+                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">₹{Math.round(totalReceivable).toLocaleString('en-IN')}</div>
+                          <p className="text-xs text-muted-foreground">From {receivablePartiesCount} parties</p>
+                      </CardContent>
+                  </Card>
+              </Link>
+              <Link href="/outstanding">
+                  <Card className="hover:bg-muted/50 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium uppercase">Payables</CardTitle>
+                          <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">₹{Math.round(totalPayable).toLocaleString('en-IN')}</div>
+                          <p className="text-xs text-muted-foreground">To {payablePartiesCount} parties</p>
+                      </CardContent>
+                  </Card>
+              </Link>
+              <Link href="/profit-analysis">
+                  <Card className="hover:bg-muted/50 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium uppercase">Net Profit</CardTitle>
+                          <Rocket className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">₹{Math.round(totalNetProfit).toLocaleString('en-IN')}</div>
+                          <p className="text-xs text-muted-foreground">{totalKgSold.toLocaleString()} kg sold this FY</p>
+                      </CardContent>
+                  </Card>
+              </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -282,5 +326,3 @@ export const BalanceSheetClient = () => {
       </div>
     );
 }
-
-    
