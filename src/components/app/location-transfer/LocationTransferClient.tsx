@@ -314,6 +314,7 @@ export function LocationTransferClient() {
             totalBags: 0,
             totalWeight: 0,
             totalValue: 0,
+            weightedAverageLandedCost: 0,
         };
     }
 
@@ -332,7 +333,9 @@ export function LocationTransferClient() {
         totalValue += finalLandedCost * transfer.item.netWeightToTransfer;
     });
 
-    return { totalBags, totalWeight, totalValue };
+    const weightedAverageLandedCost = totalWeight > 0 ? totalValue / totalWeight : 0;
+
+    return { totalBags, totalWeight, totalValue, weightedAverageLandedCost };
   }, [expandedTransfers]);
   
   const addButtonDynamicClass = React.useMemo(() => {
@@ -491,7 +494,9 @@ export function LocationTransferClient() {
                           <TableCell colSpan={4}>GRAND TOTALS</TableCell>
                           <TableCell className="text-right">{Math.round(transferHistoryTotals.totalBags).toLocaleString()}</TableCell>
                           <TableCell className="text-right">{transferHistoryTotals.totalWeight.toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
-                          <TableCell></TableCell>
+                          <TableCell className="text-right font-semibold text-primary">
+                              {transferHistoryTotals.weightedAverageLandedCost > 0 ? `~ ₹${Math.round(transferHistoryTotals.weightedAverageLandedCost).toLocaleString()}` : ''}
+                          </TableCell>
                           <TableCell className="text-right font-bold text-primary">
                               {Math.round(transferHistoryTotals.totalValue).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0})}
                           </TableCell>
