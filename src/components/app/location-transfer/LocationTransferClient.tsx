@@ -106,6 +106,8 @@ export function LocationTransferClient() {
     if (isAppHydrating || !hydrated) return [];
 
     const stockMap = new Map<string, {
+        lotNumber: string;
+        locationId: string;
         currentBags: number;
         currentWeight: number;
         totalCost: number; // Total value of the stock pile (currentWeight * landedCostPerKg)
@@ -132,6 +134,8 @@ export function LocationTransferClient() {
                 const purchaseExpensesPerKg = landedCost - item.rate;
                 
                 stockMap.set(key, {
+                    lotNumber: item.lotNumber,
+                    locationId: tx.locationId,
                     currentBags: item.quantity,
                     currentWeight: item.netWeight,
                     totalCost: item.netWeight * landedCost,
@@ -157,6 +161,8 @@ export function LocationTransferClient() {
 
                     const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
                     const toEntry = stockMap.get(toKey) || {
+                        lotNumber: item.newLotNumber,
+                        locationId: tx.toWarehouseId,
                         currentBags: 0,
                         currentWeight: 0,
                         totalCost: 0,
@@ -191,13 +197,12 @@ export function LocationTransferClient() {
     }
 
     const result: AggregatedStockItemForForm[] = [];
-    stockMap.forEach((value, key) => {
-        const [lotNumber, locationId] = key.split(/-(?!.*-)/);
+    stockMap.forEach((value) => {
         if (value.currentBags > 0.001) {
             const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
             result.push({
-                lotNumber,
-                locationId,
+                lotNumber: value.lotNumber,
+                locationId: value.locationId,
                 currentBags: value.currentBags,
                 averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
                 effectiveRate,
