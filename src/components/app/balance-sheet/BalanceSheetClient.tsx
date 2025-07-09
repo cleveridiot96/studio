@@ -1,14 +1,14 @@
+
 "use client";
 
 import React, { useMemo } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, LocationTransfer } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import Link from 'next/link';
-import { DollarSign, Package, TrendingUp, TrendingDown, Rocket, Landmark } from 'lucide-react';
+import { Landmark, Package, Rocket, TrendingDown, TrendingUp } from 'lucide-react';
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear } from "@/lib/utils";
+import { isDateInFinancialYear, getFinancialYearDateRange, isDateBeforeFinancialYear } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
@@ -35,7 +35,7 @@ export const BalanceSheetClient = () => {
     const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
     React.useEffect(() => { setHydrated(true) }, []);
 
-    // Load all data
+    // Load all data from all time
     const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
     const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
     const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
@@ -43,7 +43,6 @@ export const BalanceSheetClient = () => {
     const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
     const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
     const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
-    const [warehouses] = useLocalStorageState<MasterItem[]>(keys.warehouses, []);
     const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
     const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
     const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
@@ -97,8 +96,7 @@ export const BalanceSheetClient = () => {
                     const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
                     let toItem = inventoryMap.get(toKey);
                     if (!toItem) {
-                        const originalPurchase = purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
-                        toItem = { lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId, currentWeight: 0, cogs: 0 };
+                        toItem = { currentWeight: 0, cogs: 0 };
                     }
                     
                     const perKgExpense = (transfer.perKgExpense || 0);
@@ -152,10 +150,12 @@ export const BalanceSheetClient = () => {
         
         const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
         const balances = new Map<string, number>();
+        const fyDateRange = getFinancialYearDateRange(currentFinancialYearString);
+        if (!fyDateRange) return { totalReceivable: 0, totalPayable: 0 };
+        const fyEndDate = fyDateRange.end;
     
         allMasters.forEach(m => {
-            const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-            balances.set(m.id, openingBalance);
+            balances.set(m.id, m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0));
         });
         
         const updateBalance = (partyId: string | undefined, amount: number) => {
@@ -163,27 +163,28 @@ export const BalanceSheetClient = () => {
             balances.set(partyId, balances.get(partyId)! + amount);
         };
     
-        purchases.forEach(p => {
-            updateBalance(p.agentId || p.supplierId, -(p.totalAmount || 0));
-        });
-    
-        sales.forEach(s => {
-            updateBalance(s.brokerId || s.customerId, s.billedAmount || 0);
-            const brokerageExpense = s.expenses?.find(e => e.account === "Broker Commission" || e.account === "Extra Brokerage");
-            if (s.brokerId && brokerageExpense) {
-                updateBalance(s.brokerId, -brokerageExpense.amount);
+        const transactionsToConsider = [
+            ...purchases, ...sales, ...receipts, ...payments, ...purchaseReturns, ...saleReturns
+        ].filter(tx => new Date(tx.date) <= fyEndDate);
+        
+        transactionsToConsider.forEach(tx => {
+            if ('billedAmount' in tx) { // It's a Sale
+                const accountablePartyId = tx.brokerId || tx.customerId;
+                updateBalance(accountablePartyId, tx.billedAmount || 0);
+            } else if ('totalAmount' in tx) { // It's a Purchase
+                const accountablePartyId = tx.agentId || tx.supplierId;
+                updateBalance(accountablePartyId, -(tx.totalAmount || 0));
+            } else if ('paymentMethod' in tx && 'cashDiscount' in tx) { // It's a Receipt
+                updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+            } else if ('paymentMethod' in tx) { // It's a Payment
+                updateBalance(tx.partyId, tx.amount || 0);
+            } else if ('originalPurchaseId' in tx) { // It's a PurchaseReturn
+                const p = purchases.find(p => p.id === tx.originalPurchaseId);
+                if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
+            } else if ('originalSaleId' in tx) { // It's a SaleReturn
+                const s = sales.find(s => s.id === tx.originalSaleId);
+                if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
             }
-        });
-    
-        receipts.forEach(r => updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0))));
-        payments.forEach(p => updateBalance(p.partyId, p.amount || 0));
-        purchaseReturns.forEach(pr => {
-            const p = purchases.find(p => p.id === pr.originalPurchaseId);
-            if (p) updateBalance(p.agentId || p.supplierId, pr.returnAmount || 0);
-        });
-        saleReturns.forEach(sr => {
-            const s = sales.find(s => s.id === sr.originalSaleId);
-            if (s) updateBalance(s.brokerId || s.customerId, -(sr.returnAmount || 0));
         });
     
         let totalReceivable = 0;
@@ -194,7 +195,7 @@ export const BalanceSheetClient = () => {
         });
     
         return { totalReceivable, totalPayable: Math.abs(totalPayable) };
-    }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
+    }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
 
 
     // --- 3. Profit Logic ---
@@ -281,3 +282,5 @@ export const BalanceSheetClient = () => {
       </div>
     );
 }
+
+    

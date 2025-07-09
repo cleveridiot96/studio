@@ -1,9 +1,9 @@
 
 "use client";
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer } from "lucide-react";
@@ -35,7 +35,7 @@ const keys = {
 };
 
 interface OutstandingTransaction {
-  id: string;
+  id: string; // This will be the invoice ID (purchase or sale id)
   partyId: string;
   partyName: string;
   partyType: string;
@@ -64,7 +64,6 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
 
             if (typeof valA === 'string' && typeof valB === 'string') {
                 try {
-                  // Attempt to parse as dates for date columns
                   if (sortKey === 'date' || sortKey === 'dueDate') {
                     const dateA = parseISO(valA).getTime();
                     const dateB = parseISO(valB).getTime();
@@ -81,12 +80,8 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
     }, [data, sortKey, sortDirection]);
 
     const handleSort = (key: SortKey) => {
-        if (sortKey === key) {
-            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortKey(key);
-            setSortDirection('asc');
-        }
+        setSortKey(key);
+        setSortDirection(prev => (sortKey === key && prev === 'desc') ? 'asc' : 'desc');
     };
     
     const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
@@ -105,7 +100,7 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                         <TableHeader>
                             <TableRow>
                                 <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer">Party <SortIcon columnKey="partyName" /></TableHead>
-                                <TableHead onClick={() => handleSort('vakkal')} className="cursor-pointer">Vakkal No. <SortIcon columnKey="vakkal" /></TableHead>
+                                <TableHead onClick={() => handleSort('vakkal')} className="cursor-pointer">Voucher # <SortIcon columnKey="vakkal" /></TableHead>
                                 <TableHead onClick={() => handleSort('balance')} className="cursor-pointer text-right">Balance <SortIcon columnKey="balance" /></TableHead>
                                 <TableHead onClick={() => handleSort('dueDate')} className="cursor-pointer">Due Date <SortIcon columnKey="dueDate" /></TableHead>
                                 <TableHead onClick={() => handleSort('status')} className="cursor-pointer">Status <SortIcon columnKey="status" /></TableHead>
@@ -152,8 +147,6 @@ export function OutstandingClient() {
         const startYear = parseInt(startYearStr, 10);
         if (!isNaN(startYear)) {
           setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
-        } else {
-          setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
         }
     }
   }, [hydrated, currentFinancialYearString, dateRange]);
@@ -162,8 +155,6 @@ export function OutstandingClient() {
   const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   
   const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
   const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
@@ -173,75 +164,56 @@ export function OutstandingClient() {
   const allMasters = useMemo(() => [...customers, ...suppliers, ...agents, ...brokers], [customers, suppliers, agents, brokers]);
   
   const { receivables, payables, totalReceivable, totalPayable, netOutstanding } = useMemo(() => {
-    if (!hydrated) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
+    if (!hydrated || !dateRange?.from) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
     
-    // Create a pool of all payments made by each party
-    const paymentPools = new Map<string, number>();
-    
-    // Initial opening balances
-    allMasters.forEach(m => {
-        const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-        paymentPools.set(m.id, (paymentPools.get(m.id) || 0) - openingBalance);
-    });
+    const invoices: (Sale | Purchase)[] = [...sales, ...purchases].filter(tx => isWithinInterval(parseISO(tx.date), { start: dateRange.from!, end: dateRange.to || dateRange.from! }));
+    const settlements: (Receipt | Payment)[] = [...receipts, ...payments].filter(tx => isWithinInterval(parseISO(tx.date), { start: dateRange.from!, end: dateRange.to || dateRange.from! }));
 
-    receipts.forEach(r => paymentPools.set(r.partyId, (paymentPools.get(r.partyId) || 0) + r.amount + (r.cashDiscount || 0)));
-    payments.forEach(p => paymentPools.set(p.partyId, (paymentPools.get(p.partyId) || 0) - p.amount));
-    purchaseReturns.forEach(pr => {
-        const p = purchases.find(p => p.id === pr.originalPurchaseId);
-        if (p) {
-            const partyId = p.agentId || p.supplierId;
-            paymentPools.set(partyId, (paymentPools.get(partyId) || 0) + pr.returnAmount);
+    const outstandingTransactions: OutstandingTransaction[] = [];
+
+    invoices.forEach(invoice => {
+        let totalPaid = 0;
+        settlements.forEach(settlement => {
+            if (settlement.againstBills) {
+                settlement.againstBills.forEach(bill => {
+                    if (bill.billId === invoice.id) {
+                        totalPaid += bill.amount;
+                    }
+                });
+            }
+        });
+        
+        const invoiceTotal = 'billedAmount' in invoice ? invoice.billedAmount : invoice.totalAmount;
+        const balance = invoiceTotal - totalPaid;
+
+        if (balance > 0.01) {
+             const partyId = 'customerId' in invoice ? (invoice.brokerId || invoice.customerId) : (invoice.agentId || invoice.supplierId);
+             const party = allMasters.find(m => m.id === partyId);
+             const dueDate = addDays(parseISO(invoice.date), 30);
+             const isOverdue = new Date() > dueDate;
+             let status: OutstandingTransaction['status'] = 'Pending';
+             if (totalPaid > 0) status = 'Partially Paid';
+             if (isOverdue) status = 'Overdue';
+
+             outstandingTransactions.push({
+                 id: invoice.id,
+                 partyId: partyId!,
+                 partyName: party?.name || 'Unknown',
+                 partyType: party?.type || 'Unknown',
+                 type: 'billedAmount' in invoice ? 'Sale' : 'Purchase',
+                 vakkal: 'billNumber' in invoice ? invoice.billNumber || invoice.id.slice(-5) : invoice.items.map(i => i.lotNumber).join(', '),
+                 date: invoice.date,
+                 dueDate: format(dueDate, 'yyyy-MM-dd'),
+                 amount: invoiceTotal,
+                 paid: totalPaid,
+                 balance,
+                 status,
+             });
         }
     });
-    saleReturns.forEach(sr => {
-        const s = sales.find(s => s.id === sr.originalSaleId);
-        if (s) {
-            const partyId = s.brokerId || s.customerId;
-            paymentPools.set(partyId, (paymentPools.get(partyId) || 0) - sr.returnAmount);
-        }
-    });
-
-    const periodFilter = (date: string) => {
-        if (!dateRange?.from) return true;
-        return isWithinInterval(parseISO(date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) })
-    }
-
-    const processTransactions = (transactions: (Sale | Purchase)[], type: 'Sale' | 'Purchase'): OutstandingTransaction[] => {
-        return transactions.filter(tx => periodFilter(tx.date)).flatMap(tx => {
-            const partyId = type === 'Sale' ? ((tx as Sale).brokerId || (tx as Sale).customerId) : ((tx as Purchase).agentId || (tx as Purchase).supplierId);
-            const party = allMasters.find(m => m.id === partyId);
-            
-            return tx.items.map(item => {
-              const itemProportion = tx.totalGoodsValue > 0 ? item.goodsValue / tx.totalGoodsValue : (1 / tx.items.length);
-              const amount = (type === 'Sale' ? (tx as Sale).billedAmount : (tx as Purchase).totalAmount) * itemProportion;
-
-              const paymentPool = paymentPools.get(partyId) || 0;
-              const paid = Math.min(paymentPool, amount);
-              const balance = amount - paid;
-              
-              if (paymentPool > 0) {
-                  paymentPools.set(partyId, paymentPool - paid);
-              }
-              
-              const dueDate = format(addDays(parseISO(tx.date), 30), 'yyyy-MM-dd'); // Assuming 30 days due date
-              const isOverdue = new Date() > parseISO(dueDate) && balance > 0;
-
-              let status: OutstandingTransaction['status'] = 'Pending';
-              if (balance <= 0.01) status = 'Paid';
-              else if (paid > 0) status = 'Partially Paid';
-              
-              if (isOverdue && status !== 'Paid') status = 'Overdue';
-
-              return {
-                  id: `${tx.id}-${item.lotNumber}`, partyId: partyId, partyName: party?.name || 'Unknown Party', partyType: party?.type || 'Unknown',
-                  type, vakkal: item.lotNumber, date: tx.date, dueDate, amount, paid, balance, status,
-              };
-            });
-        }).filter(tx => tx.balance > 0.01);
-    };
-
-    const receivablesList = processTransactions(sales, 'Sale');
-    const payablesList = processTransactions(purchases, 'Purchase');
+    
+    const receivablesList = outstandingTransactions.filter(t => t.type === 'Sale');
+    const payablesList = outstandingTransactions.filter(t => t.type === 'Purchase');
     
     const totalReceivable = receivablesList.reduce((sum, item) => sum + item.balance, 0);
     const totalPayable = payablesList.reduce((sum, item) => sum + item.balance, 0);
@@ -251,7 +223,7 @@ export function OutstandingClient() {
         totalReceivable, totalPayable,
         netOutstanding: totalReceivable - totalPayable
     };
-  }, [hydrated, purchases, sales, receipts, payments, allMasters, purchaseReturns, saleReturns, dateRange]);
+  }, [hydrated, purchases, sales, receipts, payments, allMasters, dateRange]);
   
   const partyOptions = useMemo(() => {
     const partiesWithBalance = new Set([...receivables, ...payables].map(tx => tx.partyId));
@@ -334,3 +306,5 @@ export function OutstandingClient() {
     </div>
   )
 }
+
+    

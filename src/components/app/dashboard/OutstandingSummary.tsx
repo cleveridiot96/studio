@@ -1,12 +1,14 @@
 
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, PurchaseReturn, SaleReturn } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/contexts/SettingsContext";
+import { getFinancialYearDateRange } from '@/lib/utils';
 
 // All the data keys
 const keys = {
@@ -16,7 +18,6 @@ const keys = {
   saleReturns: 'saleReturnsData',
   receipts: 'receiptsData',
   payments: 'paymentsData',
-  locationTransfers: 'locationTransfersData',
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
@@ -25,9 +26,9 @@ const keys = {
   expenses: 'masterExpenses',
 };
 
-
 export const OutstandingSummary = () => {
   const [hydrated, setHydrated] = React.useState(false);
+  const { financialYear: currentFinancialYearString } = useSettings();
   React.useEffect(() => { setHydrated(true) }, []);
 
   const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, []);
@@ -36,7 +37,6 @@ export const OutstandingSummary = () => {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-
   const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
   const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
   const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
@@ -49,10 +49,12 @@ export const OutstandingSummary = () => {
     
     const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
     const balances = new Map<string, number>();
+    const fyDateRange = getFinancialYearDateRange(currentFinancialYearString);
+    if (!fyDateRange) return { totalReceivable: 0, totalPayable: 0 };
+    const fyEndDate = fyDateRange.end;
 
     allMasters.forEach(m => {
-        const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-        balances.set(m.id, openingBalance);
+        balances.set(m.id, m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0));
     });
     
     const updateBalance = (partyId: string | undefined, amount: number) => {
@@ -60,50 +62,27 @@ export const OutstandingSummary = () => {
         balances.set(partyId, balances.get(partyId)! + amount);
     };
 
-    // DEBIT(+) means party owes us. CREDIT(-) means we owe party.
+    const transactionsToConsider = [
+        ...purchases, ...sales, ...receipts, ...payments, ...purchaseReturns, ...saleReturns
+    ].filter(tx => new Date(tx.date) <= fyEndDate);
     
-    // Purchases: If agent exists, liability is with agent. Otherwise, supplier.
-    purchases.forEach(p => {
-        const accountablePartyId = p.agentId || p.supplierId;
-        updateBalance(accountablePartyId, -(p.totalAmount || 0));
-    });
-
-    // Sales: If broker exists, receivable is from broker. Otherwise, customer.
-    sales.forEach(s => {
-        const accountablePartyId = s.brokerId || s.customerId;
-        updateBalance(accountablePartyId, s.billedAmount || 0);
-        // Brokerage is a CREDIT to the broker (we owe them)
-        const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-        if (s.brokerId && totalBrokerage > 0) {
-            updateBalance(s.brokerId, -totalBrokerage);
-        }
-    });
-
-    // Receipts: CREDIT the party who paid.
-    receipts.forEach(r => {
-        updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
-    });
-    
-    // Payments: DEBIT the party who was paid.
-    payments.forEach(p => {
-        updateBalance(p.partyId, p.amount || 0);
-    });
-
-    // Purchase Returns: DEBIT the accountable party for the return amount.
-    purchaseReturns.forEach(pr => {
-        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-        if(originalPurchase) {
-            const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
-            updateBalance(accountablePartyId, pr.returnAmount || 0);
-        }
-    });
-
-    // Sale Returns: CREDIT the accountable party for the return amount.
-    saleReturns.forEach(sr => {
-        const originalSale = sales.find(s => s.id === sr.originalSaleId);
-        if(originalSale) {
-            const accountablePartyId = originalSale.brokerId || originalSale.customerId;
-            updateBalance(accountablePartyId, -(sr.returnAmount || 0));
+    transactionsToConsider.forEach(tx => {
+        if ('billedAmount' in tx) { // It's a Sale
+            const accountablePartyId = tx.brokerId || tx.customerId;
+            updateBalance(accountablePartyId, tx.billedAmount || 0);
+        } else if ('totalAmount' in tx) { // It's a Purchase
+            const accountablePartyId = tx.agentId || tx.supplierId;
+            updateBalance(accountablePartyId, -(tx.totalAmount || 0));
+        } else if ('paymentMethod' in tx && 'cashDiscount' in tx) { // It's a Receipt
+            updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+        } else if ('paymentMethod' in tx) { // It's a Payment
+            updateBalance(tx.partyId, tx.amount || 0);
+        } else if ('originalPurchaseId' in tx) { // It's a PurchaseReturn
+            const p = purchases.find(p => p.id === tx.originalPurchaseId);
+            if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
+        } else if ('originalSaleId' in tx) { // It's a SaleReturn
+            const s = sales.find(s => s.id === tx.originalSaleId);
+            if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
         }
     });
 
@@ -117,16 +96,16 @@ export const OutstandingSummary = () => {
         }
     });
 
-    return { totalReceivable, totalPayable };
+    return { totalReceivable, totalPayable: Math.abs(totalPayable) };
 
-  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
+  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-foreground">Outstanding Balances</CardTitle>
+        <CardTitle className="text-2xl font-semibold text-foreground">Outstanding Balances (FY {currentFinancialYearString})</CardTitle>
         <CardDescription>A summary of total money to be paid and received. Click a card to see details.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -146,7 +125,7 @@ export const OutstandingSummary = () => {
                       <CardTitle className="text-red-700 dark:text-red-300">Total Payables</CardTitle>
                   </CardHeader>
                   <CardContent>
-                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
+                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{totalPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
                   </CardContent>
               </Card>
             </Link>
@@ -159,3 +138,5 @@ export const OutstandingSummary = () => {
     </Card>
   )
 }
+
+    
