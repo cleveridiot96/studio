@@ -184,6 +184,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const toWarehouse = warehouses.find(w => w.id === values.toWarehouseId);
     const transporter = transporters.find(t => t.id === values.transporterId);
 
+    const totalNetWeightForTransfer = values.items.reduce((sum, item) => sum + (item.netWeightToTransfer || 0), 0);
+
     const transferData: LocationTransfer = {
       id: transferToEdit?.id || `lt-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
@@ -200,6 +202,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       miscExpenses: Math.round(values.miscExpenses || 0),
       totalExpenses: Math.round(transferSummary.totalExpenses),
       perKgExpense: transferSummary.perKgExpense,
+      totalNetWeight: totalNetWeightForTransfer,
       items: values.items.map(item => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === values.fromWarehouseId);
         return {

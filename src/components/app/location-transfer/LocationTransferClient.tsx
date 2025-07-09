@@ -375,7 +375,7 @@ export function LocationTransferClient() {
                         <TableBody>
                             {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={5} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
                             {aggregatedStockForForm.map(item => (
-                                <TableRow key={`${item.locationId}-${item.lotNumber}`} className="uppercase">
+                                <TableRow key={`${item.locationId}${KEY_SEPARATOR}${item.lotNumber}`} className="uppercase">
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName || item.locationId}</span></TooltipTrigger><TooltipContent><p>{item.locationName || item.locationId}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell className="text-right font-medium">{Math.round(item.currentBags).toLocaleString()}</TableCell>
@@ -410,9 +410,11 @@ export function LocationTransferClient() {
                   <TableBody>
                     {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={8} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
                     {expandedTransfers.map(transfer => {
-                       const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + (transfer.perKgExpense || 0);
+                       const totalWeight = transfer.totalNetWeight || transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
+                       const perKgExpense = (transfer.totalExpenses && totalWeight > 0) ? transfer.totalExpenses / totalWeight : (transfer.perKgExpense || 0);
+                       const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + perKgExpense;
                        return (
-                      <TableRow key={`${transfer.id}-${transfer.item.originalLotNumber}`} className="uppercase">
+                      <TableRow key={`${transfer.id}${KEY_SEPARATOR}${transfer.item.originalLotNumber}`} className="uppercase">
                         <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>

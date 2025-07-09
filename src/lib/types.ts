@@ -242,8 +242,9 @@ export interface LocationTransfer {
   packingCharges?: number;
   labourCharges?: number;
   miscExpenses?: number;
-  items: LocationTransferItem[]; // Use the updated item type
+  items: LocationTransferItem[];
   notes?: string;
+  totalNetWeight?: number;
   totalExpenses?: number;
   perKgExpense?: number;
 }
