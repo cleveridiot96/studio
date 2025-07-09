@@ -104,18 +104,21 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     name: "items",
   });
 
-  const watchedFormValues = watch();
+  const watchedItems = watch("items");
+  const watchedTransportCharges = watch("transportCharges");
+  const watchedPackingCharges = watch("packingCharges");
+  const watchedLabourCharges = watch("labourCharges");
+  const watchedMiscExpenses = watch("miscExpenses");
 
   const transferSummary = React.useMemo(() => {
-    const { items, transportCharges, packingCharges, labourCharges, miscExpenses } = watchedFormValues;
-    const totalBags = (items || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
-    const totalNetWeight = (items || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
-    const totalGrossWeight = (items || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
-    const totalExpenses = (transportCharges || 0) + (packingCharges || 0) + (labourCharges || 0) + (miscExpenses || 0);
+    const totalBags = (watchedItems || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
+    const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
+    const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
+    const totalExpenses = (watchedTransportCharges || 0) + (watchedPackingCharges || 0) + (watchedLabourCharges || 0) + (watchedMiscExpenses || 0);
     const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
     
     return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense };
-  }, [watchedFormValues.items, watchedFormValues.transportCharges, watchedFormValues.packingCharges, watchedFormValues.labourCharges, watchedFormValues.miscExpenses]);
+  }, [watchedItems, watchedTransportCharges, watchedPackingCharges, watchedLabourCharges, watchedMiscExpenses]);
 
 
   React.useEffect(() => {
@@ -202,7 +205,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       perKgExpense: transferSummary.perKgExpense,
       items: values.items.map(item => ({
         originalLotNumber: item.originalLotNumber,
-        newLotNumber: `${item.originalLotNumber}`, // Keep lot number the same on transfer
+        newLotNumber: `${item.originalLotNumber}`,
         bagsToTransfer: Math.round(item.bagsToTransfer!),
         netWeightToTransfer: item.netWeightToTransfer!,
         grossWeightToTransfer: item.grossWeightToTransfer!,
@@ -472,4 +475,3 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
-

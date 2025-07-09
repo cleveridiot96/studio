@@ -76,9 +76,8 @@ export function LocationTransferClient() {
   const [hydrated, setHydrated] = React.useState(false);
 
   const memoizedEmptyArray = React.useMemo(() => [], []);
-  const memoizedInitialLocationTransfers = React.useMemo(() => initialLocationTransfers, []);
 
-  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedInitialLocationTransfers);
+  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
@@ -106,12 +105,10 @@ export function LocationTransferClient() {
     if (isAppHydrating || !hydrated) return [];
 
     const stockMap = new Map<string, {
-        lotNumber: string;
-        locationId: string;
         currentBags: number;
         currentWeight: number;
-        totalCost: number; // Total value of the stock pile (currentWeight * landedCostPerKg)
-        purchaseRate: number; // The original base rate
+        totalCost: number;
+        purchaseRate: number;
         locationName?: string;
         costBreakdown: CostBreakdown;
     }>();
@@ -134,8 +131,6 @@ export function LocationTransferClient() {
                 const purchaseExpensesPerKg = landedCost - item.rate;
                 
                 stockMap.set(key, {
-                    lotNumber: item.lotNumber,
-                    locationId: tx.locationId,
                     currentBags: item.quantity,
                     currentWeight: item.netWeight,
                     totalCost: item.netWeight * landedCost,
@@ -161,8 +156,6 @@ export function LocationTransferClient() {
 
                     const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
                     const toEntry = stockMap.get(toKey) || {
-                        lotNumber: item.newLotNumber,
-                        locationId: tx.toWarehouseId,
                         currentBags: 0,
                         currentWeight: 0,
                         totalCost: 0,
@@ -185,24 +178,31 @@ export function LocationTransferClient() {
         } else if (tx.txType === 'sale') {
              (tx.items || []).forEach((item: SaleItem) => {
                 const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
-                const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
-                if (entry) {
-                    const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
-                    entry.currentBags -= item.quantity;
-                    entry.currentWeight -= item.netWeight;
-                    entry.totalCost -= costOfGoodsSold;
+                if (saleLotKey) {
+                    const entry = stockMap.get(saleLotKey);
+                    if (entry) {
+                        const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
+                        entry.currentBags -= item.quantity;
+                        entry.currentWeight -= item.netWeight;
+                        entry.totalCost -= costOfGoodsSold;
+                    }
                 }
             });
         }
     }
 
     const result: AggregatedStockItemForForm[] = [];
-    stockMap.forEach((value) => {
+    stockMap.forEach((value, key) => {
+        const lastHyphenIndex = key.lastIndexOf('-');
+        if (lastHyphenIndex === -1) return;
+        const lotNumber = key.substring(0, lastHyphenIndex);
+        const locationId = key.substring(lastHyphenIndex + 1);
+
         if (value.currentBags > 0.001) {
             const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
             result.push({
-                lotNumber: value.lotNumber,
-                locationId: value.locationId,
+                lotNumber,
+                locationId,
                 currentBags: value.currentBags,
                 averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
                 effectiveRate,

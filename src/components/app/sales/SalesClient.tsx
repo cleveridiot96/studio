@@ -115,7 +115,7 @@ export function SalesClient() {
         if (!isDateInFinancialYear(tx.date, financialYear)) continue;
 
         if (tx.txType === 'purchase') {
-            (tx.items || []).forEach((item: any) => {
+            (tx.items || []).forEach((item: PurchaseItem) => {
                 const key = `${item.lotNumber}-${tx.locationId}`;
                 const landedCost = item.landedCostPerKg || tx.effectiveRate;
                 const purchaseExpensesPerKg = landedCost - item.rate;
@@ -168,12 +168,14 @@ export function SalesClient() {
         } else if (tx.txType === 'sale' && tx.id !== saleToEdit?.id) { // Exclude the sale being edited from decrementing stock
              (tx.items || []).forEach((item: SaleItem) => {
                 const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
-                const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
-                if (entry) {
-                    const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
-                    entry.currentBags -= item.quantity;
-                    entry.currentWeight -= item.netWeight;
-                    entry.totalCost -= costOfGoodsSold;
+                if (saleLotKey) {
+                    const entry = stockMap.get(saleLotKey);
+                    if (entry) {
+                        const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
+                        entry.currentBags -= item.quantity;
+                        entry.currentWeight -= item.netWeight;
+                        entry.totalCost -= costOfGoodsSold;
+                    }
                 }
             });
         }
@@ -182,10 +184,14 @@ export function SalesClient() {
     const mumbaiWarehouseId = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
     const result: AggregatedStockItemForForm[] = [];
     stockMap.forEach((value, key) => {
-        const [lotNumber, locationId] = key.split(/-(?!.*-)/);
+        const lastHyphenIndex = key.lastIndexOf('-');
+        if (lastHyphenIndex === -1) return;
+        const lotNumber = key.substring(0, lastHyphenIndex);
+        const locationId = key.substring(lastHyphenIndex + 1);
+
         if (value.currentBags > 0.001) {
             const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
-            result.push({ 
+            result.push({
                 lotNumber,
                 locationId,
                 currentBags: value.currentBags,
