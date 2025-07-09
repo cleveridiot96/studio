@@ -104,21 +104,18 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     name: "items",
   });
 
-  const watchedItems = watch("items");
-  const watchedTransportCharges = watch("transportCharges");
-  const watchedPackingCharges = watch("packingCharges");
-  const watchedLabourCharges = watch("labourCharges");
-  const watchedMiscExpenses = watch("miscExpenses");
+  const watchedFormValues = watch();
 
   const transferSummary = React.useMemo(() => {
-    const totalBags = (watchedItems || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
-    const totalNetWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
-    const totalGrossWeight = (watchedItems || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
-    const totalExpenses = (watchedTransportCharges || 0) + (watchedPackingCharges || 0) + (watchedLabourCharges || 0) + (watchedMiscExpenses || 0);
+    const { items, transportCharges, packingCharges, labourCharges, miscExpenses } = watchedFormValues;
+    const totalBags = (items || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
+    const totalNetWeight = (items || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
+    const totalGrossWeight = (items || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
+    const totalExpenses = (transportCharges || 0) + (packingCharges || 0) + (labourCharges || 0) + (miscExpenses || 0);
     const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
     
     return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense };
-  }, [watchedItems, watchedTransportCharges, watchedPackingCharges, watchedLabourCharges, watchedMiscExpenses]);
+  }, [watchedFormValues]);
 
 
   React.useEffect(() => {
@@ -203,13 +200,17 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       miscExpenses: Math.round(values.miscExpenses || 0),
       totalExpenses: Math.round(transferSummary.totalExpenses),
       perKgExpense: transferSummary.perKgExpense,
-      items: values.items.map(item => ({
-        originalLotNumber: item.originalLotNumber,
-        newLotNumber: item.originalLotNumber,
-        bagsToTransfer: Math.round(item.bagsToTransfer!),
-        netWeightToTransfer: item.netWeightToTransfer!,
-        grossWeightToTransfer: item.grossWeightToTransfer!,
-      })),
+      items: values.items.map(item => {
+        const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === values.fromWarehouseId);
+        return {
+            originalLotNumber: item.originalLotNumber,
+            newLotNumber: item.originalLotNumber,
+            bagsToTransfer: Math.round(item.bagsToTransfer!),
+            netWeightToTransfer: item.netWeightToTransfer!,
+            grossWeightToTransfer: item.grossWeightToTransfer!,
+            preTransferLandedCost: stockInfo?.effectiveRate || 0,
+        };
+      }),
       notes: values.notes,
     };
     onSubmit(transferData);
@@ -407,7 +408,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <div className="p-4 border rounded-md shadow-sm bg-muted/50">
                     <h3 className="text-lg font-medium mb-3 text-primary">Cost Calculation & Final Landed Costs</h3>
-                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Net Wt: {transferSummary.totalNetWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{Math.round(transferSummary.perKgExpense).toLocaleString('en-IN')}/kg Transfer Cost</span></p>
+                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Net Wt: {transferSummary.totalNetWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{transferSummary.perKgExpense.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg Transfer Cost</span></p>
                      <ScrollArea className="h-40">
                          <Table>
                              <TableHeader>
@@ -419,23 +420,22 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                  </TableRow>
                              </TableHeader>
                              <TableBody>
-                                {fields.map((field, index) => {
-                                    const itemValues = watch(`items.${index}`);
-                                    const stockInfo = availableStock.find(s => s.lotNumber === itemValues.originalLotNumber && s.locationId === watch('fromWarehouseId'));
+                                {watchedFormValues.items?.map((item, index) => {
+                                    const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === watch('fromWarehouseId'));
                                     const originalLandedCost = stockInfo?.effectiveRate || 0;
                                     const perKgExpense = transferSummary.perKgExpense || 0;
                                     const finalLandedCost = originalLandedCost > 0 ? originalLandedCost + perKgExpense : 0;
 
                                     return (
                                         <TableRow key={field.id} className="uppercase">
-                                            <TableCell>{itemValues.originalLotNumber || "N/A"}</TableCell>
-                                            <TableCell className="text-right">₹{Math.round(originalLandedCost).toLocaleString('en-IN')}</TableCell>
-                                            <TableCell className="text-right">(+) ₹{Math.round(perKgExpense).toLocaleString('en-IN')}</TableCell>
-                                            <TableCell className="text-right font-bold text-primary">₹{Math.round(finalLandedCost).toLocaleString('en-IN')}</TableCell>
+                                            <TableCell>{item.originalLotNumber || "N/A"}</TableCell>
+                                            <TableCell className="text-right">₹{originalLandedCost.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</TableCell>
+                                            <TableCell className="text-right">(+) ₹{perKgExpense.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</TableCell>
+                                            <TableCell className="text-right font-bold text-primary">₹{finalLandedCost.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</TableCell>
                                         </TableRow>
                                     );
                                 })}
-                                {fields.length === 0 && (
+                                {(!watchedFormValues.items || watchedFormValues.items.length === 0) && (
                                     <TableRow><TableCell colSpan={4} className="text-center">Add items to see cost calculation.</TableCell></TableRow>
                                 )}
                              </TableBody>

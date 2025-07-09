@@ -225,6 +225,7 @@ export interface LocationTransferItem {
   bagsToTransfer: number;
   netWeightToTransfer: number;
   grossWeightToTransfer: number;
+  preTransferLandedCost?: number;
 }
 
 export interface LocationTransfer {

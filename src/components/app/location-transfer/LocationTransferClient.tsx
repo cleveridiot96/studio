@@ -67,6 +67,8 @@ interface ExpandedTransferHistoryItem extends LocationTransfer {
   item: LocationTransferItem;
 }
 
+const KEY_SEPARATOR = '_$_';
+
 export function LocationTransferClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
@@ -121,23 +123,9 @@ export function LocationTransferClient() {
     for (const tx of transactions) {
         if (!isDateInFinancialYear(tx.date, financialYear)) continue;
         
-        const keyPrefix = tx.txType === 'purchase' ? tx.items[0]?.lotNumber :
-                          tx.txType === 'purchaseReturn' ? tx.originalLotNumber :
-                          tx.txType === 'locationTransfer' ? tx.items[0]?.originalLotNumber :
-                          tx.txType === 'sale' ? tx.items[0]?.lotNumber :
-                          tx.txType === 'saleReturn' ? tx.originalLotNumber :
-                          '';
-
-        const locationId = tx.txType === 'purchase' ? tx.locationId :
-                           tx.txType === 'purchaseReturn' ? purchases.find(p=>p.id===tx.originalPurchaseId)?.locationId :
-                           tx.txType === 'locationTransfer' ? tx.fromWarehouseId :
-                           tx.txType === 'sale' ? purchases.find(p=>p.items.some(i => i.lotNumber === tx.items[0]?.lotNumber))?.locationId :
-                           tx.txType === 'saleReturn' ? purchases.find(p=>p.items.some(i => i.lotNumber === tx.originalLotNumber))?.locationId :
-                           '';
-
         if (tx.txType === 'purchase') {
             (tx.items || []).forEach((item: PurchaseItem) => {
-                const key = `${item.lotNumber}-${tx.locationId}`;
+                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
                 const landedCost = item.landedCostPerKg || tx.effectiveRate;
                 const purchaseExpensesPerKg = landedCost - item.rate;
                 
@@ -156,7 +144,7 @@ export function LocationTransferClient() {
             });
         } else if (tx.txType === 'locationTransfer') {
             (tx.items || []).forEach((item: LocationTransferItem) => {
-                const fromKey = `${item.originalLotNumber}-${tx.fromWarehouseId}`;
+                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
                 const fromEntry = stockMap.get(fromKey);
 
                 if (fromEntry) {
@@ -165,7 +153,7 @@ export function LocationTransferClient() {
                     fromEntry.currentWeight -= item.netWeightToTransfer;
                     fromEntry.totalCost -= costOfGoodsToTransfer;
 
-                    const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
+                    const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
                     const toEntry = stockMap.get(toKey) || {
                         currentBags: 0,
                         currentWeight: 0,
@@ -188,10 +176,10 @@ export function LocationTransferClient() {
             });
         } else if (tx.txType === 'sale') {
              (tx.items || []).forEach((item: SaleItem) => {
-                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
+                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
                 if (saleLotKey) {
                     const entry = stockMap.get(saleLotKey);
-                    if (entry) {
+                    if (entry && entry.currentWeight > 0) {
                         const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
                         entry.currentBags -= item.quantity;
                         entry.currentWeight -= item.netWeight;
@@ -204,10 +192,10 @@ export function LocationTransferClient() {
 
     const result: AggregatedStockItemForForm[] = [];
     stockMap.forEach((value, key) => {
-        const lastHyphenIndex = key.lastIndexOf('-');
-        if (lastHyphenIndex === -1) return;
-        const lotNumber = key.substring(0, lastHyphenIndex);
-        const locationId = key.substring(lastHyphenIndex + 1);
+        const separatorIndex = key.indexOf(KEY_SEPARATOR);
+        if (separatorIndex === -1) return;
+        const lotNumber = key.substring(0, separatorIndex);
+        const locationId = key.substring(separatorIndex + KEY_SEPARATOR.length);
 
         if (value.currentBags > 0.001) {
             const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
@@ -418,23 +406,28 @@ export function LocationTransferClient() {
               <CardDescription className="mb-4 text-sm no-print">History of transfers for FY {financialYear}. Each row represents one item in a transfer.</CardDescription>
               <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                 <Table size="sm">
-                  <TableHeader><TableRow><TableHead>DATE</TableHead><TableHead>FROM</TableHead><TableHead>TO</TableHead><TableHead>VAKKAL</TableHead><TableHead className="text-right">BAGS</TableHead><TableHead className="text-right">WEIGHT</TableHead><TableHead className="text-center no-print">ACTIONS</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>DATE</TableHead><TableHead>FROM</TableHead><TableHead>TO</TableHead><TableHead>VAKKAL</TableHead><TableHead className="text-right">BAGS</TableHead><TableHead className="text-right">WEIGHT</TableHead><TableHead className="text-right">FINAL LANDED COST (₹/KG)</TableHead><TableHead className="text-center no-print">ACTIONS</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={7} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
-                    {expandedTransfers.map(transfer => (
+                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={8} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
+                    {expandedTransfers.map(transfer => {
+                       const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + (transfer.perKgExpense || 0);
+                       return (
                       <TableRow key={`${transfer.id}-${transfer.item.originalLotNumber}`} className="uppercase">
                         <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell>
                           <Tooltip><TooltipTrigger asChild>
-                            <span className="truncate max-w-[200px] inline-block">{transfer.item.originalLotNumber} → {transfer.item.newLotNumber}</span>
+                            <span className="truncate max-w-[200px] inline-block">{transfer.item.originalLotNumber}</span>
                           </TooltipTrigger>
-                            <TooltipContent><p>{transfer.item.originalLotNumber} → {transfer.item.newLotNumber}</p></TooltipContent>
+                            <TooltipContent><p>{transfer.item.originalLotNumber}</p></TooltipContent>
                           </Tooltip>
                         </TableCell>
                         <TableCell className="text-right">{Math.round(transfer.item.bagsToTransfer)}</TableCell>
                         <TableCell className="text-right">{transfer.item.netWeightToTransfer}</TableCell>
+                        <TableCell className="text-right font-bold text-primary">
+                          {finalLandedCost > 0 ? `₹${Math.round(finalLandedCost).toLocaleString()}` : 'N/A'}
+                        </TableCell>
                         <TableCell className="text-center no-print">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions for {transfer.id}</span></Button></DropdownMenuTrigger>
@@ -447,7 +440,8 @@ export function LocationTransferClient() {
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                       );
+                    })}
                   </TableBody>
                 </Table>
               </ScrollArea>
