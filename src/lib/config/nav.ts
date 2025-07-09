@@ -17,6 +17,7 @@ import {
   BookCopy,
   DollarSign, // Added for Expenses
   BookMarked,
+  Landmark,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -74,6 +75,12 @@ export const navItems: NavItem[] = [
     iconName: 'BookCopy',
     iconColor: 'bg-[#1beec7]',
     textColor: 'text-black',
+  },
+  {
+    title: 'Financial Summary',
+    href: '/balance-sheet',
+    iconName: 'Landmark',
+    iconColor: 'bg-blue-700',
   },
   {
     title: 'Payments',

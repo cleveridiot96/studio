@@ -29,6 +29,7 @@ import {
   BookCopy,
   DollarSign, // Added for Expenses
   BookMarked,
+  Landmark,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -51,6 +52,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   BookCopy,
   DollarSign,
   BookMarked,
+  Landmark,
 };
 
 interface ClientSidebarMenuProps {

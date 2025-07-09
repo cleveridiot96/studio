@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -46,6 +46,12 @@ function AppHeaderContentInternal() {
       </Link>
       <SearchBar />
       <FinancialYearToggle />
+      <Link href="/balance-sheet">
+        <Button variant="outline">
+            <Landmark className="mr-2 h-4 w-4"/>
+            Financial Summary
+        </Button>
+      </Link>
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Settings">
