@@ -27,6 +27,7 @@ import {
   UploadCloud,
   BookCopy,
   ClipboardList,
+  BookMarked,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -57,6 +58,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   UploadCloud,
   BookCopy,
   ClipboardList,
+  BookMarked,
 };
 
 

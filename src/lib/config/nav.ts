@@ -1,3 +1,4 @@
+
 import {
   LayoutGrid,
   ShoppingCart,
@@ -15,6 +16,7 @@ import {
   Rocket, // Added for consistency with dashboard if it exists
   BookCopy,
   DollarSign, // Added for Expenses
+  BookMarked,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -90,6 +92,12 @@ export const navItems: NavItem[] = [
     href: '/cashbook',
     iconName: 'BookOpen',
     iconColor: 'bg-pink-600', // Matches dashboard tile
+  },
+  {
+    title: 'Daybook',
+    href: '/daybook',
+    iconName: 'BookMarked',
+    iconColor: 'bg-slate-600',
   },
   {
     title: 'Profit Analysis', // Adding Profit Analysis to nav if it exists on dashboard

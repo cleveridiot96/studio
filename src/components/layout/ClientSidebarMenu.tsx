@@ -28,6 +28,7 @@ import {
   Rocket,
   BookCopy,
   DollarSign, // Added for Expenses
+  BookMarked,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -49,6 +50,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   Rocket,
   BookCopy,
   DollarSign,
+  BookMarked,
 };
 
 interface ClientSidebarMenuProps {

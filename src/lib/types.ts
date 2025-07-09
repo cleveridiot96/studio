@@ -315,3 +315,17 @@ export interface MonthlyProfitInfo {
   totalSalesValue: number; // Sum of goodsValue
   totalCostOfGoods: number;
 }
+
+export interface DaybookEntry {
+  id: string; // unique key for react: e.g. "purchase-123"
+  date: string;
+  type: 'Sale' | 'Purchase' | 'Payment' | 'Receipt' | 'Transfer' | 'Expense';
+  voucherNo: string;
+  party: string;
+  debit: number;
+  credit: number;
+  narration: string;
+  href: string;
+  Icon: React.ElementType;
+  colorClass: string;
+}

@@ -87,6 +87,13 @@ export default function DashboardPage() {
     },
     // Analysis & Ledgers
     {
+      title: "Daybook",
+      description: "View all daily transactions",
+      href: "/daybook",
+      iconName: "BookMarked",
+      className: "bg-slate-600 hover:bg-slate-700 text-white",
+    },
+    {
       title: "Outstanding Balances",
       description: "Receivables & Payables",
       href: "/outstanding",
