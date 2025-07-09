@@ -427,7 +427,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                     const finalLandedCost = originalLandedCost > 0 ? originalLandedCost + perKgExpense : 0;
 
                                     return (
-                                        <TableRow key={field.id} className="uppercase">
+                                        <TableRow key={index} className="uppercase">
                                             <TableCell>{item.originalLotNumber || "N/A"}</TableCell>
                                             <TableCell className="text-right">₹{originalLandedCost.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</TableCell>
                                             <TableCell className="text-right">(+) ₹{perKgExpense.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}</TableCell>
