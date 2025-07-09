@@ -44,6 +44,7 @@ const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
+const KEY_SEPARATOR = '_$_';
 
 export interface AggregatedStockItemForForm {
   lotNumber: string;
@@ -104,11 +105,11 @@ export function SalesClient() {
     }>();
 
     const transactions = [
-        ...purchases.map(p => ({ ...p, txType: 'purchase' })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' })),
-        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' })),
-        ...sales.map(s => ({ ...s, txType: 'sale' })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' }))
+        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
+        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
+        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     for (const tx of transactions) {
@@ -116,7 +117,7 @@ export function SalesClient() {
 
         if (tx.txType === 'purchase') {
             (tx.items || []).forEach((item: PurchaseItem) => {
-                const key = `${item.lotNumber}-${tx.locationId}`;
+                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
                 const landedCost = item.landedCostPerKg || tx.effectiveRate;
                 const purchaseExpensesPerKg = landedCost - item.rate;
                 
@@ -135,42 +136,47 @@ export function SalesClient() {
             });
         } else if (tx.txType === 'locationTransfer') {
             (tx.items || []).forEach((item: LocationTransferItem) => {
-                const fromKey = `${item.originalLotNumber}-${tx.fromWarehouseId}`;
+                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
                 const fromEntry = stockMap.get(fromKey);
 
                 if (fromEntry) {
-                    const costOfGoodsToTransfer = (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer;
+                    const costOfGoodsToTransfer = fromEntry.currentWeight > 0 ? (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer : 0;
+                    
                     fromEntry.currentBags -= item.bagsToTransfer;
                     fromEntry.currentWeight -= item.netWeightToTransfer;
                     fromEntry.totalCost -= costOfGoodsToTransfer;
 
-                    const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
-                    const toEntry = stockMap.get(toKey) || {
-                        currentBags: 0,
-                        currentWeight: 0,
-                        totalCost: 0,
-                        purchaseRate: fromEntry.purchaseRate,
-                        locationName: tx.toWarehouseName,
-                        costBreakdown: { ...fromEntry.costBreakdown }
-                    };
+                    const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
+                    let toEntry = stockMap.get(toKey);
 
-                    const proportionalTransferExpense = (tx.perKgExpense || 0) * item.netWeightToTransfer;
-                    const newTotalCostForThisChunk = costOfGoodsToTransfer + proportionalTransferExpense;
+                    if (!toEntry) {
+                        toEntry = {
+                            currentBags: 0,
+                            currentWeight: 0,
+                            totalCost: 0,
+                            purchaseRate: fromEntry.purchaseRate,
+                            locationName: tx.toWarehouseName,
+                            costBreakdown: { ...fromEntry.costBreakdown }
+                        };
+                    }
                     
+                    const perKgExpense = (tx.perKgExpense || 0);
+                    const newTotalCostForThisChunk = costOfGoodsToTransfer + (perKgExpense * item.netWeightToTransfer);
+
                     toEntry.currentBags += item.bagsToTransfer;
                     toEntry.currentWeight += item.netWeightToTransfer;
                     toEntry.totalCost += newTotalCostForThisChunk;
-                    toEntry.costBreakdown.transferExpenses += (tx.perKgExpense || 0);
+                    toEntry.costBreakdown.transferExpenses += perKgExpense;
 
                     stockMap.set(toKey, toEntry);
                 }
             });
-        } else if (tx.txType === 'sale' && tx.id !== saleToEdit?.id) { // Exclude the sale being edited from decrementing stock
+        } else if (tx.txType === 'sale' && tx.id !== saleToEdit?.id) { 
              (tx.items || []).forEach((item: SaleItem) => {
-                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
+                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
                 if (saleLotKey) {
                     const entry = stockMap.get(saleLotKey);
-                    if (entry) {
+                    if (entry && entry.currentWeight > 0) {
                         const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
                         entry.currentBags -= item.quantity;
                         entry.currentWeight -= item.netWeight;
@@ -184,10 +190,10 @@ export function SalesClient() {
     const mumbaiWarehouseId = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
     const result: AggregatedStockItemForForm[] = [];
     stockMap.forEach((value, key) => {
-        const lastHyphenIndex = key.lastIndexOf('-');
-        if (lastHyphenIndex === -1) return;
-        const lotNumber = key.substring(0, lastHyphenIndex);
-        const locationId = key.substring(lastHyphenIndex + 1);
+        const separatorIndex = key.indexOf(KEY_SEPARATOR);
+        if (separatorIndex === -1) return;
+        const lotNumber = key.substring(0, separatorIndex);
+        const locationId = key.substring(separatorIndex + KEY_SEPARATOR.length);
 
         if (value.currentBags > 0.001) {
             const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
