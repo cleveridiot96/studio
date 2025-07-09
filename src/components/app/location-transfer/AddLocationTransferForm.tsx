@@ -126,13 +126,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   
   React.useEffect(() => {
       const { transportRate } = getValues();
-      const grossWeight = transferSummary.totalGrossWeight;
-      if (typeof transportRate === 'number' && grossWeight > 0) {
-          setValue('transportCharges', Math.round(transportRate * grossWeight), { shouldValidate: true });
+      const netWeight = transferSummary.totalNetWeight;
+      if (typeof transportRate === 'number' && netWeight > 0) {
+          setValue('transportCharges', Math.round(transportRate * netWeight), { shouldValidate: true });
       } else if(getValues('transportCharges') !== undefined){
           setValue('transportCharges', undefined, { shouldValidate: true });
       }
-  }, [transferSummary.totalGrossWeight, getValues, setValue, watch('transportRate')]);
+  }, [transferSummary.totalNetWeight, getValues, setValue, watch('transportRate')]);
 
   const getAvailableLotsForSelectedWarehouse = React.useCallback((): { value: string; label: string; availableBags: number, averageWeightPerBag: number }[] => {
     const fromWarehouseId = watch('fromWarehouseId');
