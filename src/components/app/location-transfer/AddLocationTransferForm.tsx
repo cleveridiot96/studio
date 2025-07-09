@@ -115,7 +115,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
     
     return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense };
-  }, [watchedFormValues]);
+  }, [watchedFormValues.items, watchedFormValues.transportCharges, watchedFormValues.packingCharges, watchedFormValues.labourCharges, watchedFormValues.miscExpenses]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -472,4 +473,3 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   );
 };
 
-    

@@ -105,7 +105,16 @@ export function LocationTransferClient() {
   const aggregatedStockForForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !hydrated) return [];
 
-    const transactions: any[] = [
+    const stockMap = new Map<string, {
+        currentBags: number;
+        currentWeight: number;
+        totalCost: number; // Total value of the stock pile (currentWeight * landedCostPerKg)
+        purchaseRate: number; // The original base rate
+        locationName?: string;
+        costBreakdown: CostBreakdown;
+    }>();
+
+    const transactions = [
         ...purchases.map(p => ({ ...p, txType: 'purchase' })),
         ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' })),
         ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' })),
@@ -113,26 +122,19 @@ export function LocationTransferClient() {
         ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    const inventoryState = new Map<string, { // key is lotNumber-locationId
-        bags: number;
-        weight: number;
-        landedCostPerKg: number;
-        costBreakdown: CostBreakdown;
-        purchaseRate: number;
-        locationName?: string;
-    }>();
-
     for (const tx of transactions) {
         if (!isDateInFinancialYear(tx.date, financialYear)) continue;
 
         if (tx.txType === 'purchase') {
-            tx.items.forEach((item: PurchaseItem) => {
+            (tx.items || []).forEach((item: PurchaseItem) => {
                 const key = `${item.lotNumber}-${tx.locationId}`;
-                const purchaseExpensesPerKg = tx.effectiveRate - item.rate;
-                inventoryState.set(key, {
-                    bags: item.quantity,
-                    weight: item.netWeight,
-                    landedCostPerKg: tx.effectiveRate,
+                const landedCost = item.landedCostPerKg || tx.effectiveRate;
+                const purchaseExpensesPerKg = landedCost - item.rate;
+                
+                stockMap.set(key, {
+                    currentBags: item.quantity,
+                    currentWeight: item.netWeight,
+                    totalCost: item.netWeight * landedCost,
                     purchaseRate: item.rate,
                     locationName: tx.locationName,
                     costBreakdown: {
@@ -142,94 +144,63 @@ export function LocationTransferClient() {
                     }
                 });
             });
-        } else if (tx.txType === 'purchaseReturn') {
-            const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
-            if (originalPurchase) {
-                 const originalItem = originalPurchase.items.find(i => i.lotNumber === tx.originalLotNumber);
-                 if (originalItem) {
-                    const key = `${tx.originalLotNumber}-${originalPurchase.locationId}`;
-                    const entry = inventoryState.get(key);
-                    if (entry) {
-                        entry.bags -= tx.quantityReturned;
-                        entry.weight -= tx.netWeightReturned;
-                    }
-                 }
-            }
         } else if (tx.txType === 'locationTransfer') {
-            tx.items.forEach((item: LocationTransferItem) => {
+            (tx.items || []).forEach((item: LocationTransferItem) => {
                 const fromKey = `${item.originalLotNumber}-${tx.fromWarehouseId}`;
-                const fromEntry = inventoryState.get(fromKey);
+                const fromEntry = stockMap.get(fromKey);
 
                 if (fromEntry) {
-                    fromEntry.bags -= item.bagsToTransfer;
-                    fromEntry.weight -= item.netWeightToTransfer;
+                    const costOfGoodsToTransfer = (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer;
+                    fromEntry.currentBags -= item.bagsToTransfer;
+                    fromEntry.currentWeight -= item.netWeightToTransfer;
+                    fromEntry.totalCost -= costOfGoodsToTransfer;
 
                     const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
-                    const toEntry = inventoryState.get(toKey) || {
-                        bags: 0,
-                        weight: 0,
-                        landedCostPerKg: 0,
+                    const toEntry = stockMap.get(toKey) || {
+                        currentBags: 0,
+                        currentWeight: 0,
+                        totalCost: 0,
                         purchaseRate: fromEntry.purchaseRate,
                         locationName: tx.toWarehouseName,
                         costBreakdown: { ...fromEntry.costBreakdown }
                     };
 
-                    const newLandedCost = fromEntry.landedCostPerKg + (tx.perKgExpense || 0);
+                    const proportionalTransferExpense = (tx.perKgExpense || 0) * item.netWeightToTransfer;
+                    const newTotalCostForThisChunk = costOfGoodsToTransfer + proportionalTransferExpense;
                     
-                    const existingWeight = toEntry.weight;
-                    const existingTotalCost = existingWeight * toEntry.landedCostPerKg;
-                    const newWeight = item.netWeightToTransfer;
-                    const newTotalCost = newWeight * newLandedCost;
-                    
-                    const combinedWeight = existingWeight + newWeight;
-                    const combinedTotalCost = existingTotalCost + newTotalCost;
-                    
-                    toEntry.bags += item.bagsToTransfer;
-                    toEntry.weight = combinedWeight;
-                    toEntry.landedCostPerKg = combinedWeight > 0 ? combinedTotalCost / combinedWeight : newLandedCost;
-                    toEntry.costBreakdown.transferExpenses = (toEntry.costBreakdown.transferExpenses || 0) + (tx.perKgExpense || 0);
-                    
-                    inventoryState.set(toKey, toEntry);
+                    toEntry.currentBags += item.bagsToTransfer;
+                    toEntry.currentWeight += item.netWeightToTransfer;
+                    toEntry.totalCost += newTotalCostForThisChunk;
+                    toEntry.costBreakdown.transferExpenses += (tx.perKgExpense || 0);
+
+                    stockMap.set(toKey, toEntry);
                 }
             });
         } else if (tx.txType === 'sale') {
-            tx.items.forEach((item: SaleItem) => {
-                const saleLotKey = Array.from(inventoryState.keys()).find(k => k.startsWith(item.lotNumber));
-                const entry = saleLotKey ? inventoryState.get(saleLotKey) : undefined;
+             (tx.items || []).forEach((item: SaleItem) => {
+                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber));
+                const entry = saleLotKey ? stockMap.get(saleLotKey) : undefined;
                 if (entry) {
-                    entry.bags -= item.quantity;
-                    entry.weight -= item.netWeight;
+                    const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
+                    entry.currentBags -= item.quantity;
+                    entry.currentWeight -= item.netWeight;
+                    entry.totalCost -= costOfGoodsSold;
                 }
             });
-        } else if (tx.txType === 'saleReturn') {
-             const originalSale = sales.find(s => s.id === tx.originalSaleId);
-             if (originalSale) {
-                 const originalItem = originalSale.items.find(i => i.lotNumber === tx.originalLotNumber);
-                 if (originalItem) {
-                    const mumbaiWarehouseId = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
-                    if (mumbaiWarehouseId) {
-                        const key = `${tx.originalLotNumber}-${mumbaiWarehouseId}`; // A simplification, assuming returns go to Mumbai
-                        const entry = inventoryState.get(key);
-                        if(entry) {
-                           entry.bags += tx.quantityReturned;
-                           entry.weight += tx.netWeightReturned;
-                        }
-                    }
-                 }
-             }
         }
     }
 
     const result: AggregatedStockItemForForm[] = [];
-    inventoryState.forEach((value, key) => {
+    stockMap.forEach((value, key) => {
         const [lotNumber, locationId] = key.split(/-(?!.*-)/);
-        if (value.bags > 0.001) {
+        if (value.currentBags > 0.001) {
+            const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
             result.push({
-                lotNumber: lotNumber,
-                locationId: locationId,
-                currentBags: value.bags,
-                averageWeightPerBag: value.bags > 0 ? value.weight / value.bags : 50,
-                effectiveRate: value.landedCostPerKg,
+                lotNumber,
+                locationId,
+                currentBags: value.currentBags,
+                averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
+                effectiveRate,
                 purchaseRate: value.purchaseRate,
                 locationName: value.locationName,
                 costBreakdown: value.costBreakdown
@@ -238,7 +209,7 @@ export function LocationTransferClient() {
     });
 
     return result;
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, hydrated, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
@@ -488,4 +459,3 @@ export function LocationTransferClient() {
   );
 }
 
-    

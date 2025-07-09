@@ -156,7 +156,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     (items || []).forEach(item => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.lotNumber);
         const landedCostPerKg = stockInfo?.effectiveRate || 0;
-        const basePurchaseRate = stockInfo?.costBreakdown?.baseRate || 0;
+        const basePurchaseRate = stockInfo?.purchaseRate || 0;
         
         const netWeight = Number(item.netWeight) || 0;
         const saleRate = Number(item.rate) || 0;
@@ -268,7 +268,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       items: values.items.map(item => {
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
           const landedCostPerKg = stock?.effectiveRate || 0;
-          const basePurchaseRate = stock?.costBreakdown?.baseRate || 0;
+          const basePurchaseRate = stock?.purchaseRate || 0;
           const netWeight = item.netWeight || 0;
           const saleRate = item.rate || 0;
           const goodsValue = netWeight * saleRate;
@@ -296,9 +296,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       billedAmount: Math.round(summary.billedAmount),
       totalQuantity: Math.round(summary.totalQuantity),
       totalNetWeight: summary.totalNetWeight,
+      
       totalCostOfGoodsSold: Math.round(summary.totalLandedCost),
       totalGrossProfit: Math.round(summary.totalGrossProfit),
       totalCalculatedProfit: Math.round(summary.netProfit),
+      
       transporterId: values.transporterId,
       transporterName: selectedTransporter?.name,
       transportCost: Math.round(values.transportCost || 0),
