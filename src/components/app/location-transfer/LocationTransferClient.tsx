@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AddLocationTransferForm } from "./AddLocationTransferForm";
 import { LocationTransferSlipPrint } from "./LocationTransferSlipPrint";
 import { useToast } from "@/hooks/use-toast";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, parseISO } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -308,6 +308,33 @@ export function LocationTransferClient() {
     return flatList.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [locationTransfers, financialYear, isAppHydrating, hydrated]);
   
+  const transferHistoryTotals = React.useMemo(() => {
+    if (!expandedTransfers || expandedTransfers.length === 0) {
+        return {
+            totalBags: 0,
+            totalWeight: 0,
+            totalValue: 0,
+        };
+    }
+
+    let totalBags = 0;
+    let totalWeight = 0;
+    let totalValue = 0;
+
+    expandedTransfers.forEach(transfer => {
+        totalBags += transfer.item.bagsToTransfer;
+        totalWeight += transfer.item.netWeightToTransfer;
+        
+        const transferTotalWeight = transfer.totalNetWeight || transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
+        const perKgExpense = (transfer.totalExpenses && transferTotalWeight > 0) ? transfer.totalExpenses / transferTotalWeight : (transfer.perKgExpense || 0);
+        const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + perKgExpense;
+        
+        totalValue += finalLandedCost * transfer.item.netWeightToTransfer;
+    });
+
+    return { totalBags, totalWeight, totalValue };
+  }, [expandedTransfers]);
+  
   const addButtonDynamicClass = React.useMemo(() => {
     if (activeTab === 'stockOverview') {
         return 'bg-sky-600 hover:bg-sky-700 text-white';
@@ -363,7 +390,7 @@ export function LocationTransferClient() {
           </CardHeader>
           <TabsContent value="stockOverview">
             <CardContent className="pt-6">
-                <CardDescription className="mb-4 text-sm no-print">Current stock levels for FY {financialYear}.</CardDescription>
+                <CardDescription className="mb-4 text-sm no-print">Current stock levels for FY {financialYear}. Hover over landed rate for cost breakdown.</CardDescription>
                 <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                     <Table size="sm"><TableHeader><TableRow>
                         <TableHead>WAREHOUSE</TableHead>
@@ -406,13 +433,24 @@ export function LocationTransferClient() {
               <CardDescription className="mb-4 text-sm no-print">History of transfers for FY {financialYear}. Each row represents one item in a transfer.</CardDescription>
               <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                 <Table size="sm">
-                  <TableHeader><TableRow><TableHead>DATE</TableHead><TableHead>FROM</TableHead><TableHead>TO</TableHead><TableHead>VAKKAL</TableHead><TableHead className="text-right">BAGS</TableHead><TableHead className="text-right">WEIGHT</TableHead><TableHead className="text-right">FINAL LANDED COST (₹/KG)</TableHead><TableHead className="text-center no-print">ACTIONS</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow>
+                    <TableHead>DATE</TableHead>
+                    <TableHead>FROM</TableHead>
+                    <TableHead>TO</TableHead>
+                    <TableHead>VAKKAL</TableHead>
+                    <TableHead className="text-right">BAGS</TableHead>
+                    <TableHead className="text-right">WEIGHT</TableHead>
+                    <TableHead className="text-right">FINAL LANDED COST (₹/KG)</TableHead>
+                    <TableHead className="text-right">TOTAL VALUE (₹)</TableHead>
+                    <TableHead className="text-center no-print">ACTIONS</TableHead>
+                  </TableRow></TableHeader>
                   <TableBody>
-                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={8} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
+                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={9} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
                     {expandedTransfers.map(transfer => {
                        const totalWeight = transfer.totalNetWeight || transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
                        const perKgExpense = (transfer.totalExpenses && totalWeight > 0) ? transfer.totalExpenses / totalWeight : (transfer.perKgExpense || 0);
                        const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + perKgExpense;
+                       const totalValue = finalLandedCost * transfer.item.netWeightToTransfer;
                        return (
                       <TableRow key={`${transfer.id}${KEY_SEPARATOR}${transfer.item.originalLotNumber}`} className="uppercase">
                         <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
@@ -430,6 +468,9 @@ export function LocationTransferClient() {
                         <TableCell className="text-right font-bold text-primary">
                           {finalLandedCost > 0 ? `₹${Math.round(finalLandedCost).toLocaleString()}` : 'N/A'}
                         </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {totalValue > 0 ? `₹${Math.round(totalValue).toLocaleString()}` : 'N/A'}
+                        </TableCell>
                         <TableCell className="text-center no-print">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2"><MoreVertical className="h-4 w-4" /><span className="sr-only">Actions for {transfer.id}</span></Button></DropdownMenuTrigger>
@@ -445,6 +486,18 @@ export function LocationTransferClient() {
                        );
                     })}
                   </TableBody>
+                  <TableFooter>
+                      <TableRow className="font-bold bg-muted">
+                          <TableCell colSpan={4}>GRAND TOTALS</TableCell>
+                          <TableCell className="text-right">{Math.round(transferHistoryTotals.totalBags).toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{transferHistoryTotals.totalWeight.toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                          <TableCell></TableCell>
+                          <TableCell className="text-right font-bold text-primary">
+                              {Math.round(transferHistoryTotals.totalValue).toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 0})}
+                          </TableCell>
+                          <TableCell></TableCell>
+                      </TableRow>
+                  </TableFooter>
                 </Table>
               </ScrollArea>
             </CardContent>
