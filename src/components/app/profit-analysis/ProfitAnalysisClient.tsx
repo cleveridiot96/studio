@@ -133,7 +133,7 @@ export function ProfitAnalysisClient() {
           goodsValue: item.goodsValue,
           costOfGoodsSold: item.costOfGoodsSold,
           grossProfit: item.itemGrossProfit,
-          netProfit: item.itemProfit,
+          netProfit: item.itemNetProfit,
           costBreakdown: item.costBreakdown,
           saleExpenses: {
             transport: sale.transportCost ? (sale.transportCost * (item.goodsValue / sale.totalGoodsValue)) : 0,
@@ -375,8 +375,8 @@ export function ProfitAnalysisClient() {
                                                     <h3 className="font-semibold text-lg text-primary flex items-center"><ArrowDown className="mr-2 h-5 w-5"/>LANDED COST/KG</h3>
                                                     <Table><TableBody>
                                                         <BreakdownRow label="Base Purchase Rate" value={costBreakdown?.baseRate || item.basePurchaseRate} />
-                                                        {costBreakdown?.purchaseExpenses && costBreakdown.purchaseExpenses > 0 && <BreakdownRow label="Purchase Expenses" value={costBreakdown.purchaseExpenses} isSub />}
-                                                        {costBreakdown?.transferExpenses && costBreakdown.transferExpenses > 0 && <BreakdownRow label="Transfer Expenses" value={costBreakdown.transferExpenses} isSub />}
+                                                        {costBreakdown?.purchaseExpenses > 0 ? <BreakdownRow label="Purchase Expenses" value={costBreakdown.purchaseExpenses} isSub /> : null}
+                                                        {costBreakdown?.transferExpenses > 0 ? <BreakdownRow label="Transfer Expenses" value={costBreakdown.transferExpenses} isSub /> : null}
                                                         <TableRow className="bg-primary/10 font-bold text-primary text-base">
                                                             <TableCell className="py-2 pl-4">✅ FINAL LANDED COST</TableCell>
                                                             <TableCell className="py-2 text-right font-mono">₹{item.landedCostPerKg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
@@ -387,12 +387,12 @@ export function ProfitAnalysisClient() {
                                                     <h3 className="font-semibold text-lg text-primary flex items-center"><Zap className="mr-2 h-5 w-5"/>SALE & PROFIT/KG</h3>
                                                     <Table><TableBody>
                                                         <BreakdownRow label="Sale Rate" value={item.saleRatePerKg} color="green" />
-                                                        {saleExpenses.brokerage > 0 && <DeductionRow label="Brokerage" value={saleExpenses.brokerage / item.saleNetWeightKg} isSub />}
-                                                        {saleExpenses.extraBrokerage > 0 && <DeductionRow label="Extra Brokerage" value={saleExpenses.extraBrokerage / item.saleNetWeightKg} isSub />}
-                                                        {saleExpenses.transport > 0 && <DeductionRow label="Transport" value={saleExpenses.transport / item.saleNetWeightKg} isSub />}
-                                                        {saleExpenses.packing > 0 && <DeductionRow label="Packing" value={saleExpenses.packing / item.saleNetWeightKg} isSub />}
-                                                        {saleExpenses.labour > 0 && <DeductionRow label="Labour" value={saleExpenses.labour / item.saleNetWeightKg} isSub />}
-                                                        {saleExpenses.misc > 0 && <DeductionRow label="Misc." value={saleExpenses.misc / item.saleNetWeightKg} isSub />}
+                                                        {saleExpenses.brokerage > 0 ? <DeductionRow label="Brokerage" value={saleExpenses.brokerage / item.saleNetWeightKg} isSub /> : null}
+                                                        {saleExpenses.extraBrokerage > 0 ? <DeductionRow label="Extra Brokerage" value={saleExpenses.extraBrokerage / item.saleNetWeightKg} isSub /> : null}
+                                                        {saleExpenses.transport > 0 ? <DeductionRow label="Transport" value={saleExpenses.transport / item.saleNetWeightKg} isSub /> : null}
+                                                        {saleExpenses.packing > 0 ? <DeductionRow label="Packing" value={saleExpenses.packing / item.saleNetWeightKg} isSub /> : null}
+                                                        {saleExpenses.labour > 0 ? <DeductionRow label="Labour" value={saleExpenses.labour / item.saleNetWeightKg} isSub /> : null}
+                                                        {saleExpenses.misc > 0 ? <DeductionRow label="Misc." value={saleExpenses.misc / item.saleNetWeightKg} isSub /> : null}
                                                         <TableRow className="bg-green-500/10 font-bold text-green-700 text-base">
                                                             <TableCell className="py-2 pl-4">✅ EFFECTIVE SALE RATE</TableCell>
                                                             <TableCell className="py-2 text-right font-mono">₹{effectiveSaleRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
@@ -437,3 +437,5 @@ export function ProfitAnalysisClient() {
     </TooltipProvider>
   );
 }
+
+    
