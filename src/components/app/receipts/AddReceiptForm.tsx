@@ -356,17 +356,16 @@ export const AddReceiptForm: React.FC<AddReceiptFormProps> = ({
                             <PopoverContent className="w-[400px] p-0">
                                 <Command>
                                     <CommandInput placeholder="Search bills..."/>
-                                    <CommandList><CommandEmpty>No pending bills found.</CommandEmpty>
-                                        <ScrollArea className="h-48">
-                                            {pendingBills.filter(pb => !fields.some(f => f.billId === pb.id)).map(bill => (
-                                                <CommandItem key={bill.id} onSelect={() => { addBillToAllocate(bill); setIsBillPopoverOpen(false); }}>
-                                                    <div className="flex justify-between w-full uppercase">
-                                                        <span>{bill.billNumber || bill.id.slice(-5)} ({bill.items.map(i=>i.lotNumber).join(', ')})</span>
-                                                        <span className="font-semibold">₹{bill.due.toLocaleString('en-IN')}</span>
-                                                    </div>
-                                                </CommandItem>
-                                            ))}
-                                        </ScrollArea>
+                                    <CommandList className="max-h-48">
+                                        <CommandEmpty>No pending bills found.</CommandEmpty>
+                                        {pendingBills.filter(pb => !fields.some(f => f.billId === pb.id)).map(bill => (
+                                            <CommandItem key={bill.id} onSelect={() => { addBillToAllocate(bill); setIsBillPopoverOpen(false); }}>
+                                                <div className="flex justify-between w-full uppercase">
+                                                    <span>{bill.billNumber || bill.id.slice(-5)} ({bill.items.map(i=>i.lotNumber).join(', ')})</span>
+                                                    <span className="font-semibold">₹{bill.due.toLocaleString('en-IN')}</span>
+                                                </div>
+                                            </CommandItem>
+                                        ))}
                                     </CommandList>
                                 </Command>
                             </PopoverContent>
