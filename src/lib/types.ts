@@ -245,6 +245,7 @@ export interface LocationTransfer {
   items: LocationTransferItem[];
   notes?: string;
   totalNetWeight?: number;
+  totalGrossWeight?: number;
   totalExpenses?: number;
   perKgExpense?: number;
 }

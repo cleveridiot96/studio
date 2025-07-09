@@ -326,8 +326,8 @@ export function LocationTransferClient() {
         totalBags += transfer.item.bagsToTransfer;
         totalWeight += transfer.item.netWeightToTransfer;
         
-        const transferTotalWeight = transfer.totalNetWeight || transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
-        const perKgExpense = (transfer.totalExpenses && transferTotalWeight > 0) ? transfer.totalExpenses / transferTotalWeight : (transfer.perKgExpense || 0);
+        const totalWeightForCalc = transfer.totalGrossWeight || transfer.items.reduce((sum, i) => sum + i.grossWeightToTransfer, 0);
+        const perKgExpense = (transfer.totalExpenses && totalWeightForCalc > 0) ? transfer.totalExpenses / totalWeightForCalc : (transfer.perKgExpense || 0);
         const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + perKgExpense;
         
         totalValue += finalLandedCost * transfer.item.netWeightToTransfer;
@@ -450,8 +450,8 @@ export function LocationTransferClient() {
                   <TableBody>
                     {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={9} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
                     {expandedTransfers.map(transfer => {
-                       const totalWeight = transfer.totalNetWeight || transfer.items.reduce((sum, i) => sum + i.netWeightToTransfer, 0);
-                       const perKgExpense = (transfer.totalExpenses && totalWeight > 0) ? transfer.totalExpenses / totalWeight : (transfer.perKgExpense || 0);
+                       const totalWeightForCalc = transfer.totalGrossWeight || transfer.items.reduce((sum, i) => sum + i.grossWeightToTransfer, 0);
+                       const perKgExpense = (transfer.totalExpenses && totalWeightForCalc > 0) ? transfer.totalExpenses / totalWeightForCalc : (transfer.perKgExpense || 0);
                        const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + perKgExpense;
                        const totalValue = finalLandedCost * transfer.item.netWeightToTransfer;
                        return (

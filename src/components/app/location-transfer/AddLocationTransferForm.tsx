@@ -112,7 +112,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const totalNetWeight = (items || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
     const totalGrossWeight = (items || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
     const totalExpenses = (transportCharges || 0) + (packingCharges || 0) + (labourCharges || 0) + (miscExpenses || 0);
-    const perKgExpense = totalNetWeight > 0 ? totalExpenses / totalNetWeight : 0;
+    const perKgExpense = totalGrossWeight > 0 ? totalExpenses / totalGrossWeight : 0;
     
     return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense };
   }, [watchedFormValues]);
@@ -203,6 +203,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       totalExpenses: Math.round(transferSummary.totalExpenses),
       perKgExpense: transferSummary.perKgExpense,
       totalNetWeight: totalNetWeightForTransfer,
+      totalGrossWeight: transferSummary.totalGrossWeight,
       items: values.items.map(item => {
         const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === values.fromWarehouseId);
         return {
@@ -421,7 +422,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <div className="p-4 border rounded-md shadow-sm bg-muted/50">
                     <h3 className="text-lg font-medium mb-3 text-primary">Cost Calculation & Final Landed Costs</h3>
-                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Net Wt: {transferSummary.totalNetWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{transferSummary.perKgExpense.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg Transfer Cost</span></p>
+                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Gross Wt: {transferSummary.totalGrossWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{transferSummary.perKgExpense.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg Transfer Cost</span></p>
                      <ScrollArea className="h-40">
                          <Table>
                              <TableHeader>
