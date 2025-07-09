@@ -205,16 +205,17 @@ export function AccountsLedgerClient() {
         }
     });
     
-    // Add Expense Ledger entries linked to this party
+    // Add Expense Ledger entries linked to this party that are PENDING payment.
+    // This creates a liability (credit) for the party.
     ledgerData.forEach(entry => {
-        if (entry.partyId === partyId && entry.type === 'Expense') {
+        if (entry.partyId === partyId && entry.type === 'Expense' && entry.paymentMode === 'Pending') {
             transactions.push({
                 id: entry.id,
                 date: entry.date,
-                type: 'Expense',
+                type: 'Expense Payable',
                 particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`,
                 debit: 0, // An expense payable to a party is a credit on their account
-                credit: entry.debit
+                credit: entry.debit // The amount of the expense debit becomes a credit for the party
             });
         }
     });
@@ -514,6 +515,7 @@ export function AccountsLedgerClient() {
             onSubmit={handleMasterFormSubmit}
             initialData={masterItemToEdit}
             itemTypeFromButton={masterItemToEdit?.type || 'Customer'}
+            fixedIds={allMasters.filter(m => ['fixed-wh-mumbai', 'fixed-wh-chiplun', 'fixed-wh-sawantwadi'].includes(m.id) || FIXED_EXPENSES.some(fe => fe.id === m.id)).map(m => m.id)}
         />
       )}
     </div>
