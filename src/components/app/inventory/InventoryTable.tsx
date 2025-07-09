@@ -24,7 +24,7 @@ interface InventoryTableProps {
   isArchivedView?: boolean;
 }
 
-export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive, onUnarchive, isArchivedView = false }) => {
+const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchive, onUnarchive, isArchivedView = false }) => {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-8">{isArchivedView ? 'NO ARCHIVED INVENTORY.' : 'NO INVENTORY FOR THIS SELECTION.'}</p>;
   }
@@ -110,3 +110,4 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ items, onArchive
   );
 };
     
+export const InventoryTable = React.memo(InventoryTableComponent);

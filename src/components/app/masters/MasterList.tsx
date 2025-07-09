@@ -39,7 +39,7 @@ interface MasterListProps {
   fixedItemIds?: string[];
 }
 
-export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete, fixedItemIds = [] }) => {
+const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete, fixedItemIds = [] }) => {
   if (!data || data.length === 0) {
     const typeLabel = itemType === 'All' ? 'parties/entities' : `${itemType.toLowerCase()}s`;
     return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
@@ -145,3 +145,5 @@ export const MasterList: React.FC<MasterListProps> = ({ data, itemType, isAllIte
     </TooltipProvider>
   );
 };
+
+export const MasterList = React.memo(MasterListComponent);

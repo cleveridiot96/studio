@@ -91,7 +91,7 @@ export default function DashboardPage() {
       description: "View all daily transactions",
       href: "/daybook",
       iconName: "BookMarked",
-      className: "bg-slate-600 hover:bg-slate-700 text-white",
+      className: "bg-[#ffa5ab] hover:bg-[#ffa5ab]/90 text-black",
     },
     {
       title: "Outstanding Balances",

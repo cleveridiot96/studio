@@ -27,7 +27,7 @@ interface MasterDataComboboxProps {
   notFoundMessage?: string;
   addNewLabel?: string;
   onAddNew?: () => void;
-  onEdit?: (value: string) => void; // New prop for editing
+  onEdit?: (value: string) => void;
   disabled?: boolean;
   className?: string;
   triggerId?: string;

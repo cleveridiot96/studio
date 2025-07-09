@@ -87,9 +87,6 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
                       <DropdownMenuItem onClick={() => onEdit(receipt)}>
                         <Pencil className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => window.print()}>
-                        <Printer className="mr-2 h-4 w-4" /> Print Page
-                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => onDelete(receipt.id)}

@@ -73,8 +73,8 @@ export const OutstandingSummary = () => {
         const accountablePartyId = s.brokerId || s.customerId;
         updateBalance(accountablePartyId, s.billedAmount || 0);
         // Brokerage is a CREDIT to the broker (we owe them)
-        if (s.brokerId) {
-            const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+        const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
+        if (s.brokerId && totalBrokerage > 0) {
             updateBalance(s.brokerId, -totalBrokerage);
         }
     });
@@ -109,15 +109,11 @@ export const OutstandingSummary = () => {
 
     let totalReceivable = 0;
     let totalPayable = 0;
-    balances.forEach((balance, partyId) => {
+    balances.forEach((balance) => {
         if (balance > 0) {
             totalReceivable += balance;
         } else if (balance < 0) {
-            const party = allMasters.find(m => m.id === partyId);
-            // Brokers are not included in payables; their balance is a net figure.
-            if (party?.type !== 'Broker') {
-              totalPayable += balance;
-            }
+            totalPayable += balance;
         }
     });
 
