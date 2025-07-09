@@ -51,9 +51,6 @@ const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
 
-const initialLocationTransfers: LocationTransfer[] = [];
-
-// This interface is crucial for the form, providing it with all necessary cost data.
 export interface AggregatedStockItemForForm {
   lotNumber: string;
   locationId: string;
@@ -107,8 +104,8 @@ export function LocationTransferClient() {
     const stockMap = new Map<string, {
         currentBags: number;
         currentWeight: number;
-        totalCost: number;
-        purchaseRate: number;
+        totalCost: number; // Total value of the stock pile (currentWeight * landedCostPerKg)
+        purchaseRate: number; // The original base rate
         locationName?: string;
         costBreakdown: CostBreakdown;
     }>();
@@ -208,7 +205,7 @@ export function LocationTransferClient() {
                 effectiveRate,
                 purchaseRate: value.purchaseRate,
                 locationName: value.locationName,
-                costBreakdown: value.costBreakdown
+                costBreakdown: value.costBreakdown,
             });
         }
     });

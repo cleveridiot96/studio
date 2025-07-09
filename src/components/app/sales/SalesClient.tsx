@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem, PurchaseItem, LocationTransferItem } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -97,8 +97,8 @@ export function SalesClient() {
     const stockMap = new Map<string, {
         currentBags: number;
         currentWeight: number;
-        totalCost: number; // Total value of the stock pile (currentWeight * landedCostPerKg)
-        purchaseRate: number; // The original base rate
+        totalCost: number;
+        purchaseRate: number;
         locationName?: string;
         costBreakdown: CostBreakdown;
     }>();
