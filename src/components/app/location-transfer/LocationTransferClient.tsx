@@ -51,6 +51,11 @@ const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const LEDGER_STORAGE_KEY = 'ledgerData';
+const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
+const AGENTS_STORAGE_KEY = 'masterAgents';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
+const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
+
 
 export interface AggregatedStockItemForForm {
   lotNumber: string;
@@ -87,6 +92,10 @@ export function LocationTransferClient() {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
+  const [suppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
+  const [agents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
+  const [brokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+  const [customers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -101,6 +110,14 @@ export function LocationTransferClient() {
   React.useEffect(() => {
     setHydrated(true);
   }, []);
+
+  const allExpenseParties = React.useMemo(() => {
+      if (!hydrated) return [];
+      return [...suppliers, ...agents, ...transporters, ...brokers, ...customers, ...expenses]
+          .filter(p => p && p.id && p.name)
+          .sort((a,b) => a.name.localeCompare(b.name));
+  }, [hydrated, suppliers, agents, transporters, brokers, customers, expenses]);
+
 
   const aggregatedStockForForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !hydrated) return [];
@@ -128,7 +145,7 @@ export function LocationTransferClient() {
         if (tx.txType === 'purchase') {
             (tx.items || []).forEach((item: PurchaseItem) => {
                 const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
-                const landedCost = item.landedCostPerKg || tx.effectiveRate;
+                const landedCost = item.landedCostPerKg || 0;
                 const purchaseExpensesPerKg = landedCost - item.rate;
                 
                 stockMap.set(key, {
@@ -235,14 +252,15 @@ export function LocationTransferClient() {
         transfer.expenses.forEach(exp => {
             if (exp.amount > 0) {
                 newLedgerEntries.push({
-                    id: `ledger-${Date.now()}-${Math.random()}`,
+                    id: `ledger-${transfer.id}-${exp.account.replace(/\s/g, '')}`,
                     date: transfer.date,
                     type: 'Expense',
                     account: exp.account,
                     debit: exp.amount,
                     credit: 0,
                     paymentMode: exp.paymentMode,
-                    party: exp.party || 'Self',
+                    party: exp.partyName || 'Self',
+                    partyId: exp.partyId,
                     relatedVoucher: transfer.id,
                     linkedTo: {
                         voucherType: 'Transfer',
@@ -254,7 +272,7 @@ export function LocationTransferClient() {
         });
 
         if (newLedgerEntries.length > 0) {
-            setLedgerData(prevLedger => [...prevLedger, ...newLedgerEntries]);
+            setLedgerData(prevLedger => [...prevLedger.filter(l => l.relatedVoucher !== transfer.id), ...newLedgerEntries]);
             toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
@@ -269,6 +287,7 @@ export function LocationTransferClient() {
   const confirmDeleteTransfer = () => {
     if (itemToDelete) {
       setLocationTransfers(prev => prev.filter(t => t.id !== itemToDelete!.id));
+      setLedgerData(prev => prev.filter(l => l.relatedVoucher !== itemToDelete!.id));
       toast({ title: "Transfer Deleted", description: "Record removed.", variant: "destructive" });
       setItemToDelete(null); setShowDeleteConfirm(false);
     }
@@ -566,6 +585,7 @@ export function LocationTransferClient() {
           warehouses={warehouses}
           transporters={transporters}
           expenses={expenses}
+          allExpenseParties={allExpenseParties}
           availableStock={aggregatedStockForForm}
           onMasterDataUpdate={handleMasterDataUpdate}
           transferToEdit={transferToEdit}

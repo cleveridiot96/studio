@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, MasterItemType } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, MasterItemType, LedgerEntry } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -37,9 +37,10 @@ const TRANSACTIONS_KEYS = {
   receipts: 'receiptsData',
   purchaseReturns: 'purchaseReturnsData',
   saleReturns: 'saleReturnsData',
+  ledger: 'ledgerData',
 };
 
-interface LedgerEntry {
+interface DisplayLedgerEntry {
     id: string;
     date: string;
     type: string;
@@ -50,8 +51,8 @@ interface LedgerEntry {
 }
 
 const initialFinancialLedgerData = {
-  debitTransactions: [] as LedgerEntry[],
-  creditTransactions: [] as LedgerEntry[],
+  debitTransactions: [] as DisplayLedgerEntry[],
+  creditTransactions: [] as DisplayLedgerEntry[],
   openingBalance: 0,
   closingBalance: 0,
   totalDebit: 0,
@@ -80,6 +81,8 @@ export function AccountsLedgerClient() {
   const [receipts] = useLocalStorageState<Receipt[]>(TRANSACTIONS_KEYS.receipts, memoizedEmptyArray);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(TRANSACTIONS_KEYS.saleReturns, memoizedEmptyArray);
+  const [ledgerData] = useLocalStorageState<LedgerEntry[]>(TRANSACTIONS_KEYS.ledger, memoizedEmptyArray);
+
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -125,92 +128,57 @@ export function AccountsLedgerClient() {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
   }, [allMasters]);
   
-  const getPartyTransactions = React.useCallback((partyId: string) => {
+  const getPartyTransactions = React.useCallback((partyId: string): DisplayLedgerEntry[] => {
     if (!partyId) return [];
 
-    let transactions: LedgerEntry[] = [];
+    let transactions: DisplayLedgerEntry[] = [];
     
+    // Purchases create a credit for the supplier/agent
     purchases.forEach(p => {
-        const totalTransportCharges = p.transportCharges || 0;
-        const totalGoodsValue = p.totalGoodsValue || 0;
-        const mainPayable = totalGoodsValue + (p.packingCharges || 0) + (p.labourCharges || 0) + (p.miscExpenses || 0);
-        const vakkals = p.items.map(i=>i.lotNumber).join(', ');
-
-        if (p.agentId === partyId) {
-            const brokerageAmount = p.brokerageCharges || 0;
-             transactions.push({
+        if (p.supplierId === partyId || p.agentId === partyId) {
+            transactions.push({
                 id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Vakkal: ${vakkals} (Bill: ${p.id.slice(-5)})`,
-                debit: 0, credit: mainPayable
-            });
-            if(brokerageAmount > 0) {
-                 transactions.push({
-                    id: `pur-brokerage-${p.id}`, date: p.date, type: 'Brokerage',
-                    particulars: `Brokerage on Bill ${p.id.slice(-5)}`,
-                    debit: 0, credit: brokerageAmount
-                });
-            }
-        } else if (p.supplierId === partyId) {
-             transactions.push({
-                id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase',
-                particulars: `Vakkal: ${vakkals} (Agent: ${p.agentName || 'None'})`,
-                debit: 0, credit: mainPayable
-            });
-        }
-        if (p.transporterId === partyId && totalTransportCharges > 0) {
-             transactions.push({
-                id: `pur-transport-${p.id}`, date: p.date, type: 'Transport',
-                particulars: `Transport for Bill ${p.id.slice(-5)}`,
-                debit: 0, credit: totalTransportCharges
+                particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')} (To: ${p.agentName || p.supplierName})`,
+                debit: 0, credit: p.totalAmount
             });
         }
     });
 
+    // Sales create a debit for the customer/broker
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
-        const vakkals = s.items.map(i=>i.lotNumber).join(', ');
-
         if(accountablePartyId === partyId) {
             transactions.push({
                 id: `sale-goods-${s.id}`, date: s.date, type: 'Sale',
-                particulars: `To: ${s.customerName} (Vakkal: ${vakkals})`,
+                particulars: `To: ${s.customerName} (Vakkal: ${s.items.map(i=>i.lotNumber).join(', ')})`,
                 debit: s.billedAmount, credit: 0,
             });
         }
-        if (s.brokerId === partyId) {
-            const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-            if (totalBrokerage > 0) {
-                transactions.push({
-                    id: `sale-brokerage-${s.id}`, date: s.date, type: 'Brokerage',
-                    particulars: `Commission on Bill ${s.billNumber || 'N/A'}`,
-                    debit: 0, credit: totalBrokerage,
-                });
-            }
-        }
     });
 
+    // Payments create a debit for the receiving party
     payments.filter(p => p.partyId === partyId).forEach(p => {
         const particularDetails = p.transactionType === 'On Account'
             ? `On Account Payment (${p.paymentMethod})`
             : `Payment via ${p.paymentMethod} against Bill(s): ${p.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
         transactions.push({
             id: `pay-${p.id}`, date: p.date, type: 'Payment',
-            particulars: particularDetails,
-            debit: p.amount, credit: 0
+            particulars: particularDetails, debit: p.amount, credit: 0
         });
     });
 
+    // Receipts create a credit for the paying party
     receipts.filter(r => r.partyId === partyId).forEach(r => {
         const particularDetails = r.transactionType === 'On Account'
             ? `On Account Receipt (${r.paymentMethod})`
             : `Receipt via ${r.paymentMethod} against Bill(s): ${r.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
         transactions.push({
             id: `receipt-${r.id}`, date: r.date, type: 'Receipt',
-            particulars: particularDetails,
-            debit: 0, credit: r.amount + (r.cashDiscount || 0)
+            particulars: particularDetails, debit: 0, credit: r.amount + (r.cashDiscount || 0)
         });
     });
 
+    // Purchase Returns create a debit for the supplier/agent
     purchaseReturns.forEach(pr => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (!originalPurchase) return;
@@ -218,12 +186,12 @@ export function AccountsLedgerClient() {
         if (accountablePartyId === partyId) {
             transactions.push({
                 id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return',
-                particulars: `Return of Vakkal: ${pr.originalLotNumber}`,
-                debit: pr.returnAmount, credit: 0
+                particulars: `Return of Vakkal: ${pr.originalLotNumber}`, debit: pr.returnAmount, credit: 0
             });
         }
     });
 
+    // Sale Returns create a credit for the customer/broker
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if (!originalSale) return;
@@ -237,8 +205,22 @@ export function AccountsLedgerClient() {
         }
     });
     
+    // Add Expense Ledger entries linked to this party
+    ledgerData.forEach(entry => {
+        if (entry.partyId === partyId && entry.type === 'Expense') {
+            transactions.push({
+                id: entry.id,
+                date: entry.date,
+                type: 'Expense',
+                particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`,
+                debit: 0, // An expense payable to a party is a credit on their account
+                credit: entry.debit
+            });
+        }
+    });
+
     return transactions;
-  }, [purchases, sales, payments, receipts, purchaseReturns, saleReturns]);
+  }, [purchases, sales, payments, receipts, purchaseReturns, saleReturns, ledgerData]);
 
   const financialLedgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialFinancialLedgerData;
@@ -259,8 +241,8 @@ export function AccountsLedgerClient() {
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
         .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime() || a.id.localeCompare(b.id));
 
-    let debitTransactions: LedgerEntry[] = [];
-    let creditTransactions: LedgerEntry[] = [];
+    let debitTransactions: DisplayLedgerEntry[] = [];
+    let creditTransactions: DisplayLedgerEntry[] = [];
     
     if (openingBalance > 0) {
         debitTransactions.push({ id: 'op_bal', date: format(dateRange.from, 'yyyy-MM-dd'), type: 'Opening Balance', particulars: 'Opening Balance', debit: openingBalance, credit: 0 });

@@ -42,6 +42,8 @@ const AGENTS_STORAGE_KEY = 'masterAgents';
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const EXPENSES_STORAGE_KEY = 'masterExpenses';
+const BROKERS_STORAGE_KEY = 'masterBrokers';
+const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 
 export function PurchasesClient() {
@@ -59,6 +61,8 @@ export function PurchasesClient() {
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 
@@ -104,6 +108,14 @@ export function PurchasesClient() {
     }
   }, [isPurchasesClientHydrated, warehouses, setWarehouses, expenses, setExpenses]);
 
+  const allExpenseParties = React.useMemo(() => {
+    if (!isPurchasesClientHydrated) return [];
+    return [...suppliers, ...agents, ...transporters, ...brokers, ...customers, ...expenses]
+        .filter(p => p && p.id && p.name)
+        .sort((a,b) => a.name.localeCompare(b.name));
+  }, [isPurchasesClientHydrated, suppliers, agents, transporters, brokers, customers, expenses]);
+
+
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !isPurchasesClientHydrated) return [];
     return purchases.filter(purchase => purchase && purchase.date && isDateInFinancialYear(purchase.date, financialYear));
@@ -126,14 +138,15 @@ export function PurchasesClient() {
         purchase.expenses.forEach(exp => {
             if (exp.amount > 0) {
                 newLedgerEntries.push({
-                    id: `ledger-${Date.now()}-${Math.random()}`,
+                    id: `ledger-${purchase.id}-${exp.account.replace(/\s/g, '')}`,
                     date: purchase.date,
                     type: 'Expense',
                     account: exp.account,
                     debit: exp.amount,
                     credit: 0,
                     paymentMode: exp.paymentMode,
-                    party: exp.party || 'Self',
+                    party: exp.partyName || 'Self',
+                    partyId: exp.partyId,
                     relatedVoucher: purchase.id,
                     linkedTo: {
                         voucherType: 'Purchase',
@@ -145,7 +158,7 @@ export function PurchasesClient() {
         });
 
         if (newLedgerEntries.length > 0) {
-            setLedgerData(prevLedger => [...prevLedger, ...newLedgerEntries]);
+            setLedgerData(prevLedger => [...prevLedger.filter(l => l.relatedVoucher !== purchase.id), ...newLedgerEntries]);
             toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
@@ -199,10 +212,11 @@ export function PurchasesClient() {
   const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {
       setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
+      setLedgerData(prev => prev.filter(l => l.relatedVoucher !== purchaseToDeleteId));
       toast({ title: "Deleted!", description: "Purchase record removed.", variant: "destructive" });
       setPurchaseToDeleteId(null); setShowDeleteConfirm(false);
     }
-  }, [purchaseToDeleteId, setPurchases, toast]);
+  }, [purchaseToDeleteId, setPurchases, setLedgerData, toast]);
 
   const handleAddOrUpdatePurchaseReturn = React.useCallback((prData: PurchaseReturn) => {
     setPurchaseReturns(prevReturns => {
@@ -348,6 +362,7 @@ export function PurchasesClient() {
           warehouses={warehouses as Warehouse[]}
           transporters={transporters as Transporter[]}
           expenses={expenses}
+          allExpenseParties={allExpenseParties}
           onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />

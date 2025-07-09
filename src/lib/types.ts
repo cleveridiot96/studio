@@ -211,7 +211,8 @@ export interface ExpenseItem {
   account: string; // This will be the name of the expense, e.g., "Transport Charges"
   amount: number;
   paymentMode: 'Cash' | 'Bank' | 'Pending' | 'Auto-adjusted';
-  party?: string; // Optional party name, free text for now
+  partyId?: string;
+  partyName?: string;
 }
 
 export interface LedgerEntry {

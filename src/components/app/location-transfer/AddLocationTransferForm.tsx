@@ -32,6 +32,7 @@ interface AddLocationTransferFormProps {
   warehouses: Warehouse[];
   transporters: Transporter[];
   expenses: MasterItem[];
+  allExpenseParties: MasterItem[];
   availableStock: AggregatedStockItemForForm[];
   onMasterDataUpdate: (type: "Warehouse" | "Transporter" | "Expense", item: MasterItem) => void;
   transferToEdit?: LocationTransfer | null;
@@ -44,6 +45,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   warehouses,
   transporters,
   expenses,
+  allExpenseParties,
   availableStock,
   onMasterDataUpdate,
   transferToEdit,
@@ -145,15 +147,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     setIsMasterFormOpen(true);
   };
   
-  const handleEditMasterItem = (type: "Warehouse" | "Transporter", id: string) => {
-    let itemToEdit: MasterItem | null = null;
-    if (type === 'Warehouse') itemToEdit = warehouses.find(i => i.id === id) || null;
-    else if (type === 'Transporter') itemToEdit = transporters.find(i => i.id === id) || null;
-
-    if (itemToEdit) {
-      setMasterItemToEdit(itemToEdit);
-      setMasterFormItemType(type);
-      setIsMasterFormOpen(true);
+  const handleEditMasterItem = (type: "Warehouse" | "Transporter" | "Expense", id: string) => {
+    const party = allExpenseParties.find(p => p.id === id);
+    if(party) {
+        setMasterItemToEdit(party);
+        setMasterFormItemType(party.type);
+        setIsMasterFormOpen(true);
     }
   };
 
@@ -184,7 +183,10 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       toWarehouseName: toWarehouse?.name || values.toWarehouseId,
       transporterId: values.transporterId,
       transporterName: transporter?.name,
-      expenses: values.expenses,
+      expenses: values.expenses?.map(exp => ({
+        ...exp,
+        partyName: allExpenseParties.find(p => p.id === exp.partyId)?.name || exp.partyName,
+      })),
       totalExpenses: Math.round(transferSummary.totalExpenses),
       perKgExpense: transferSummary.perKgExpense,
       totalNetWeight: totalNetWeightForTransfer,
@@ -387,7 +389,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                    {expenseFields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
                       <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-4"><FormLabel>Account</FormLabel>
+                        <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
                           <Select onValueChange={itemField.onChange} defaultValue={itemField.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
                             <SelectContent><SelectItem value="" disabled>Select Account</SelectItem>{expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
@@ -395,27 +397,35 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-3"><FormLabel>Amount (₹)</FormLabel>
+                        <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
                           <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)} />
+                       <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
+                        <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
+                          <MasterDataCombobox
+                            value={itemField.value}
+                            onChange={itemField.onChange}
+                            options={allExpenseParties.map(p => ({value: p.id, label: `${p.name} (${p.type})`}))}
+                            placeholder="Select Party"
+                            addNewLabel="Add New Party"
+                            onAddNew={() => handleOpenMasterForm("Transporter")}
+                            onEdit={(id) => handleEditMasterItem("Expense", id)}
+                          />
+                          <FormMessage />
+                        </FormItem>)} />
                       <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Pay Mode</FormLabel>
+                        <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
                           <Select onValueChange={itemField.onChange} defaultValue={itemField.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
                             <SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>)} />
-                      <FormField control={control} name={`expenses.${index}.party`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Party (Opt.)</FormLabel>
-                          <FormControl><Input placeholder="Self" {...itemField} value={itemField.value ?? ''} /></FormControl>
-                          <FormMessage />
-                        </FormItem>)} />
                       <div className="md:col-span-1 flex items-center justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: "", amount: undefined, paymentMode: "Cash", party: "" })} className="mt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: "", amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Row
                   </Button>
                 </div>
