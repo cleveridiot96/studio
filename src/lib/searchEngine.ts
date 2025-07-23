@@ -1,3 +1,4 @@
+
 // src/lib/searchEngine.ts
 import Fuse from 'fuse.js';
 import type { SearchableItem } from './buildSearchData'; // Assuming this type will be defined here
@@ -5,17 +6,17 @@ import type { SearchableItem } from './buildSearchData'; // Assuming this type w
 let fuse: Fuse<SearchableItem>;
 
 const fuseOptions: Fuse.IFuseOptions<SearchableItem> = {
-  keys: ['searchableText', 'title', 'type', 'id'], // Adjusted keys for more comprehensive search
-  threshold: 0.35, // Slightly adjusted threshold
-  includeScore: false, // We only need the items
-  // useExtendedSearch: true, // Consider for more complex queries later
-  // ignoreLocation: true, // Search anywhere in the string
-  // minMatchCharLength: 2, // Minimum characters to trigger search
+  keys: ['searchableText', 'title', 'type', 'id'],
+  threshold: 0.35,
+  includeScore: false,
+  useExtendedSearch: true,
+  ignoreLocation: true,
+  minMatchCharLength: 2,
 };
 
 export const initSearchEngine = (data: SearchableItem[]) => {
   fuse = new Fuse(data, fuseOptions);
-  console.log("Search engine initialized with", data.length, "items.");
+  console.log("Search engine initialized/updated with", data.length, "items.");
 };
 
 export const searchData = (query: string): SearchableItem[] => {

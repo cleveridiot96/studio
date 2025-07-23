@@ -14,7 +14,7 @@ import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
@@ -35,6 +35,50 @@ const LOCAL_STORAGE_KEYS = {
   brokers: 'masterBrokers',
 };
 
+const useSearchData = () => {
+  const [searchData, setSearchData] = React.useState<any[]>([]);
+
+  const reindexData = useCallback(() => {
+    try {
+      const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
+      const sales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]') as Sale[];
+      const payments = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.payments) || '[]') as Payment[];
+      const receipts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.receipts) || '[]') as Receipt[];
+      const locationTransfers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.locationTransfers) || '[]') as LocationTransfer[];
+      
+      const masterCustomers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.customers) || '[]') as MasterItem[];
+      const masterSuppliers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.suppliers) || '[]') as MasterItem[];
+      const masterAgents = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.agents) || '[]') as MasterItem[];
+      const masterTransporters = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.transporters) || '[]') as MasterItem[];
+      const masterWarehouses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.warehouses) || '[]') as MasterItem[];
+      const masterBrokers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.brokers) || '[]') as MasterItem[];
+      
+      const allMasters = [
+        ...masterCustomers, ...masterSuppliers, ...masterAgents,
+        ...masterTransporters, ...masterWarehouses, ...masterBrokers
+      ];
+
+      const searchDataset = buildSearchData({
+        sales, purchases, payments, receipts, masters: allMasters, locationTransfers
+      });
+      initSearchEngine(searchDataset);
+      setSearchData(searchDataset); // Trigger re-render if needed
+    } catch (error) {
+      console.error("Error re-indexing search data:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    reindexData();
+    // Listen for custom event to re-index
+    window.addEventListener('reindex-search', reindexData);
+    return () => {
+      window.removeEventListener('reindex-search', reindexData);
+    };
+  }, [reindexData]);
+
+  return searchData;
+};
 
 function AppHeaderContentInternal() {
   return (
@@ -77,37 +121,10 @@ function LoadingBarInternal() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
   const AppIcon = APP_ICON;
+  useSearchData(); // Initialize search data and listen for updates
 
   useEffect(() => {
     setIsAppLayoutMounted(true);
-    if (typeof window !== 'undefined') {
-      try {
-        const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
-        const sales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]') as Sale[];
-        const payments = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.payments) || '[]') as Payment[];
-        const receipts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.receipts) || '[]') as Receipt[];
-        const locationTransfers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.locationTransfers) || '[]') as LocationTransfer[];
-        
-        const masterCustomers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.customers) || '[]') as MasterItem[];
-        const masterSuppliers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.suppliers) || '[]') as MasterItem[];
-        const masterAgents = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.agents) || '[]') as MasterItem[];
-        const masterTransporters = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.transporters) || '[]') as MasterItem[];
-        const masterWarehouses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.warehouses) || '[]') as MasterItem[];
-        const masterBrokers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.brokers) || '[]') as MasterItem[];
-        
-        const allMasters = [
-          ...masterCustomers, ...masterSuppliers, ...masterAgents,
-          ...masterTransporters, ...masterWarehouses, ...masterBrokers
-        ];
-
-        const searchDataset = buildSearchData({
-          sales, purchases, payments, receipts, masters: allMasters, locationTransfers
-        });
-        initSearchEngine(searchDataset);
-      } catch (error) {
-        console.error("Error initializing search engine:", error);
-      }
-    }
   }, []);
 
   if (!isAppLayoutMounted) {

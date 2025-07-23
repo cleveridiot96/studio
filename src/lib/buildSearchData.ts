@@ -98,6 +98,5 @@ export const buildSearchData = ({
     });
   });
   
-  console.log("Built search data with", searchableItems.length, "items for Fuse.js.");
   return searchableItems;
 };
