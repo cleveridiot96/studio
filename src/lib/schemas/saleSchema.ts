@@ -1,7 +1,7 @@
 
 import { z } from 'zod';
 import type { MasterItem, Sale } from '@/lib/types';
-import type { AggregatedStockItemForForm } from '../components/app/sales/SalesClient';
+import type { AggregatedStockItemForForm } from '@/components/app/sales/SalesClient';
 import { expenseItemSchema } from './expenseItemSchema';
 
 const saleItemSchema = (availableStock: AggregatedStockItemForForm[]) => z.object({
@@ -23,6 +23,7 @@ export const saleSchema = (
   billNumber: z.string().optional(),
   customerId: z.string().min(1, "Customer is required.").refine(id => customers.some(c => c.id === id), { message: "Invalid customer." }),
   brokerId: z.string().optional().refine(id => !id || brokers.some(b => b.id === id), { message: "Invalid broker." }),
+  transporterId: z.string().optional().refine(id => !id || transporters.some(t => t.id === t.id), { message: "Invalid transporter." }),
   
   items: z.array(saleItemSchema(availableStock)).min(1, "At least one sale item is required."),
 

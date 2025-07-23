@@ -131,7 +131,7 @@ const DashboardClient = () => {
         if (originalPurchase) {
             const key = `${pr.originalLotNumber}-${originalPurchase.locationId}`;
             const entry = inventoryMap.get(key);
-            if (entry) {
+            if (entry && entry.currentWeight > 0) {
                 const costPerKg = entry.cogs / entry.currentWeight;
                 entry.currentBags -= pr.quantityReturned;
                 entry.currentWeight -= pr.netWeightReturned;
@@ -145,7 +145,7 @@ const DashboardClient = () => {
         transfer.items.forEach(item => {
             const fromKey = `${item.originalLotNumber}-${transfer.fromWarehouseId}`;
             const fromItem = inventoryMap.get(fromKey);
-            if (fromItem) {
+            if (fromItem && fromItem.currentWeight > 0) {
                 const costPerKg = fromItem.cogs / fromItem.currentWeight;
                 const costOfTransferredGoods = item.netWeightToTransfer * costPerKg;
                 fromItem.currentBags -= item.bagsToTransfer;
@@ -153,10 +153,14 @@ const DashboardClient = () => {
                 fromItem.cogs -= costOfTransferredGoods;
                 
                 const toKey = `${item.newLotNumber}-${transfer.toWarehouseId}`;
-                const toItem = inventoryMap.get(toKey) || { lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0, cogs: 0 };
+                let toItem = inventoryMap.get(toKey);
+                if (!toItem) {
+                    toItem = { lotNumber: item.newLotNumber, locationId: transfer.toWarehouseId, currentBags: 0, currentWeight: 0, cogs: 0 };
+                }
                 toItem.currentBags += item.bagsToTransfer;
                 toItem.currentWeight += item.netWeightToTransfer;
-                toItem.cogs += costOfTransferredGoods + (transfer.totalExpenses || 0) * (item.netWeightToTransfer / transfer.items.reduce((s,i) => s + i.netWeightToTransfer, 0));
+                const perKgExpense = (transfer.perKgExpense || 0);
+                toItem.cogs += costOfTransferredGoods + (perKgExpense * item.netWeightToTransfer);
                 inventoryMap.set(toKey, toItem);
             }
         });
@@ -167,7 +171,7 @@ const DashboardClient = () => {
         s.items.forEach(item => {
             const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber));
             const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
-            if (entry) {
+            if (entry && entry.currentWeight > 0) {
                 const costPerKg = entry.cogs / entry.currentWeight;
                 entry.currentBags -= item.quantity;
                 entry.currentWeight -= item.netWeight;
@@ -242,9 +246,8 @@ const DashboardClient = () => {
               <div className="mt-2 space-y-1 text-xs max-h-24 overflow-y-auto">{Object.values(stockSummary.byLocation).map(loc=>(<div key={loc.name} className="flex justify-between uppercase"><span className="text-yellow-700 dark:text-yellow-300 truncate pr-2">{loc.name}:</span><span className='font-medium text-yellow-600 dark:text-yellow-400 whitespace-nowrap'>{Math.round(loc.bags).toLocaleString()} Bags ({loc.netWeight.toLocaleString()} kg)</span></div>))}</div>
             </CardContent></Card></Link>
       </div>
-      <div className="grid grid-cols-1 gap-6">
-        <OutstandingSummary />
-      </div>
+      <Separator className="my-6"/>
+      <OutstandingSummary />
       <Separator className="my-6"/>
       <Link href="/profit-analysis">
           <ProfitAnalysisClient/>

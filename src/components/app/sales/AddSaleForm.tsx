@@ -88,6 +88,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         billNumber: saleToEdit.billNumber || "",
         customerId: saleToEdit.customerId,
         brokerId: saleToEdit.brokerId || undefined,
+        transporterId: saleToEdit.transporterId || undefined,
         items: saleToEdit.items.map(item => ({
             lotNumber: item.lotNumber,
             quantity: item.quantity,
@@ -103,6 +104,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       billNumber: "",
       customerId: undefined,
       brokerId: undefined,
+      transporterId: undefined,
       items: [{ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined }],
       expenses: [],
       notes: "",
@@ -203,6 +205,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     onMasterDataUpdate(newItem.type, newItem);
     if (newItem.type === 'Customer') methods.setValue('customerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
+    if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     setIsMasterFormOpen(false); setMasterItemToEdit(null);
     toast({ title: `${newItem.type} added/updated successfully.` });
   };
@@ -221,6 +224,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       customerName: selectedCustomer?.name,
       brokerId: values.brokerId,
       brokerName: selectedBroker?.name,
+      transporterId: values.transporterId,
+      transporterName: selectedTransporter?.name,
       items: values.items.map(item => {
           const stock = availableStock.find(s => s.lotNumber === item.lotNumber);
           const landedCostPerKg = stock?.effectiveRate || 0;
@@ -279,7 +284,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                 <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                   <div className="p-4 border rounded-md shadow-sm">
                     <h3 className="text-lg font-medium mb-3 text-primary">Sale Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <FormField control={control} name="date" render={({ field }) => (
                         <FormItem className="flex flex-col"><FormLabel>Sale Date</FormLabel>
                           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl>
@@ -301,6 +306,18 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             onAddNew={() => handleOpenMasterForm("Customer")}
                             onEdit={(id) => handleEditMasterItem("Customer", id)}
                           /> <FormMessage />
+                        </FormItem>)} />
+                       <FormField control={control} name="brokerId" render={({ field }) => (
+                        <FormItem><FormLabel>Broker (Optional)</FormLabel>
+                           <MasterDataCombobox 
+                            value={field.value} 
+                            onChange={field.onChange} 
+                            options={brokers.map(b => ({ value: b.id, label: b.name }))} 
+                            placeholder="Select Broker" 
+                            onAddNew={() => handleOpenMasterForm("Broker")}
+                            onEdit={(id) => handleEditMasterItem("Broker", id)}
+                          />
+                          <FormMessage />
                         </FormItem>)} />
                     </div>
                   </div>

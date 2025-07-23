@@ -1,6 +1,7 @@
 
 import { z } from 'zod';
-import type { Warehouse, Transporter, LocationTransfer, MasterItem } from '@/lib/types';
+import type { Warehouse, Transporter, LocationTransfer } from '@/lib/types';
+import { expenseItemSchema } from './expenseItemSchema';
 
 interface AggregatedStockItemForSchema {
   lotNumber: string;
@@ -8,13 +9,6 @@ interface AggregatedStockItemForSchema {
   currentBags: number;
   averageWeightPerBag: number; // Used for default weight calculation if not manually overridden
 }
-
-const expenseItemSchema = z.object({
-  account: z.string().min(1, "Expense account is required."),
-  amount: z.coerce.number().min(0.01, "Amount must be positive."),
-  paymentMode: z.enum(['Cash', 'Bank', 'Pending']),
-  party: z.string().optional(),
-});
 
 export const locationTransferSchema = (
     warehouses: Warehouse[],

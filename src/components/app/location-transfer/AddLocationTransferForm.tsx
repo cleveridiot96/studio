@@ -393,7 +393,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           <Select onValueChange={itemField.onChange} value={itemField.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
                             <SelectContent>
-                               {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                               {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.label}>{opt.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                           <FormMessage />

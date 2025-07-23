@@ -92,6 +92,8 @@ export interface Sale {
   customerName?: string;
   brokerId?: string;
   brokerName?: string;
+  transporterId?: string;
+  transporterName?: string;
 
   items: SaleItem[];
   expenses?: ExpenseItem[]; // Replaces all individual expense fields
@@ -106,9 +108,6 @@ export interface Sale {
   totalCostOfGoodsSold: number; // Sum of items' costOfGoods
   totalGrossProfit: number; 
   totalCalculatedProfit: number; // This is the final Net Profit
-  
-  transporterId?: string;
-  transporterName?: string;
   
   notes?: string;
 
