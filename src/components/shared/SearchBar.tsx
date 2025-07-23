@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { searchData, type SearchableItem } from '@/lib/searchEngine';
-import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from '@/components/ui/command';
+import { Command, CommandInput, CommandList, CommandEmpty } from '@/components/ui/command';
 import { Search as SearchIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -18,10 +20,9 @@ const SearchBar = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (commandRef.current && !commandRef.current.contains(event.target as Node)) {
-        // A small timeout allows the onSelect event on CommandItem to fire before the dropdown closes
-        setTimeout(() => {
+         setTimeout(() => { // Use timeout to allow link click to register
             setOpen(false);
-        }, 100);
+        }, 150);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -40,8 +41,8 @@ const SearchBar = () => {
     }
   }, [query]);
 
-  const handleSelectResult = (itemHref: string) => {
-    router.push(itemHref);
+  const handleSelectResult = (href: string) => {
+    router.push(href);
     setQuery('');
     setOpen(false);
     (document.activeElement as HTMLElement)?.blur();
@@ -73,19 +74,26 @@ const SearchBar = () => {
             <CommandList>
               {results.length > 0 ? (
                 results.map((item) => (
-                  <CommandItem
-                    key={item.id}
-                    value={`${item.title} ${item.type} ${item.id}`} // Give cmdk a unique value string to work with
-                    onSelect={() => handleSelectResult(item.href)}
-                    className="cursor-pointer"
-                  >
-                    <div className="flex flex-col uppercase">
-                      <span className="font-medium">{item.title}</span>
-                      <span className="text-xs text-muted-foreground uppercase">
-                        {item.type} {item.date ? `- ${format(parseISO(item.date), 'dd/MM/yy')}` : ''}
-                      </span>
-                    </div>
-                  </CommandItem>
+                    <Link
+                        key={item.id}
+                        href={item.href}
+                        passHref
+                        legacyBehavior
+                    >
+                        <a
+                            onClick={() => handleSelectResult(item.href)}
+                            className={cn(
+                                "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                            )}
+                        >
+                             <div className="flex flex-col uppercase">
+                                <span className="font-medium">{item.title}</span>
+                                <span className="text-xs text-muted-foreground uppercase">
+                                    {item.type} {item.date ? `- ${format(parseISO(item.date), 'dd/MM/yy')}` : ''}
+                                </span>
+                            </div>
+                        </a>
+                    </Link>
                 ))
               ) : (
                 <CommandEmpty>No results found for "{query}".</CommandEmpty>
