@@ -208,7 +208,6 @@ export function SalesClient() {
         }
     }
 
-    const mumbaiWarehouseId = FIXED_WAREHOUSES.find(w => w.name === 'MUMBAI')?.id;
     const result: AggregatedStockItemForForm[] = [];
     stockMap.forEach((value, key) => {
         const separatorIndex = key.indexOf(KEY_SEPARATOR);
@@ -231,7 +230,7 @@ export function SalesClient() {
         }
     });
     
-    return result.filter(item => item.locationId === mumbaiWarehouseId);
+    return result;
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
 
 
@@ -293,7 +292,7 @@ export function SalesClient() {
       sale.expenses.forEach(exp => {
         if (exp.amount > 0) {
           newLedgerEntries.push({
-            id: `ledger-${Date.now()}-${Math.random()}`,
+            id: `ledger-${sale.id}-${exp.account.replace(/\s/g, '')}`,
             date: sale.date,
             type: 'Expense',
             account: exp.account,
@@ -301,6 +300,7 @@ export function SalesClient() {
             credit: 0,
             paymentMode: exp.paymentMode,
             party: exp.party || 'Self',
+            partyId: exp.partyId,
             relatedVoucher: sale.id,
             linkedTo: { voucherType: 'Sale', voucherId: sale.id },
             remarks: `Expense for sale to ${sale.customerName}`
@@ -308,7 +308,7 @@ export function SalesClient() {
         }
       });
        if (newLedgerEntries.length > 0) {
-            setLedgerData(prevLedger => [...prevLedger, ...newLedgerEntries]);
+            setLedgerData(prevLedger => [...prevLedger.filter(l => l.relatedVoucher !== sale.id), ...newLedgerEntries]);
             toast({ title: "Sale Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
@@ -326,10 +326,11 @@ export function SalesClient() {
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
       setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
+      setLedgerData(prev => prev.filter(l => l.relatedVoucher !== saleToDeleteId));
       toast({ title: "Deleted!", description: "Sale record removed.", variant: "destructive" });
       setSaleToDeleteId(null); setShowDeleteConfirm(false);
     }
-  }, [saleToDeleteId, setSales, toast]);
+  }, [saleToDeleteId, setSales, setLedgerData, toast]);
 
   const handleAddOrUpdateSaleReturn = React.useCallback((srData: SaleReturn) => {
     setSaleReturns(prevReturns => {

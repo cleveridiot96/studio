@@ -413,7 +413,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       </div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: "", amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: undefined, amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Row
                   </Button>
                 </div>

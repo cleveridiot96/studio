@@ -13,9 +13,9 @@ import {
   DatabaseBackup,
   LineChart,
   ArrowRightLeft,
-  Rocket, // Added for consistency with dashboard if it exists
+  Rocket,
   BookCopy,
-  DollarSign, // Added for Expenses
+  DollarSign,
   BookMarked,
   Landmark,
 } from 'lucide-react';
@@ -24,37 +24,36 @@ import type { NavItem } from '@/lib/types';
 export const APP_NAME = "Kisan Khata Sahayak";
 export const APP_ICON = LineChart;
 
-// Icon colors will now represent background colors for the icon's circle
 export const navItems: NavItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
     iconName: 'LayoutGrid',
-    iconColor: 'bg-indigo-500', // A distinct color for Dashboard/Home
+    iconColor: 'bg-indigo-500',
   },
   {
     title: 'Purchases',
     href: '/purchases',
     iconName: 'ShoppingCart',
-    iconColor: 'bg-purple-600', // Matches dashboard tile
+    iconColor: 'bg-purple-600',
   },
   {
     title: 'Sales',
     href: '/sales',
     iconName: 'Receipt',
-    iconColor: 'bg-blue-600', // Matches dashboard tile
+    iconColor: 'bg-blue-600',
   },
   {
     title: 'Location Transfer',
     href: '/location-transfer',
     iconName: 'ArrowRightLeft',
-    iconColor: 'bg-cyan-600', // Matches dashboard tile
+    iconColor: 'bg-cyan-600',
   },
   {
     title: 'Inventory',
     href: '/inventory',
     iconName: 'Boxes',
-    iconColor: 'bg-teal-600', // Matches dashboard tile
+    iconColor: 'bg-teal-600',
   },
    {
     title: 'Outstanding',
@@ -86,42 +85,43 @@ export const navItems: NavItem[] = [
     title: 'Payments',
     href: '/payments',
     iconName: 'ArrowRightCircle',
-    iconColor: 'bg-red-600', // Matches dashboard tile
+    iconColor: 'bg-red-600',
   },
   {
     title: 'Receipts',
     href: '/receipts',
     iconName: 'ArrowLeftCircle',
-    iconColor: 'bg-green-600', // Matches dashboard tile
+    iconColor: 'bg-green-600',
   },
   {
     title: 'Cash Book',
     href: '/cashbook',
     iconName: 'BookOpen',
-    iconColor: 'bg-pink-600', // Matches dashboard tile
+    iconColor: 'bg-pink-600',
   },
   {
     title: 'Daybook',
     href: '/daybook',
     iconName: 'BookMarked',
-    iconColor: 'bg-slate-600',
+    iconColor: 'bg-[#ffa5ab]',
+    textColor: 'text-white',
   },
   {
-    title: 'Profit Analysis', // Adding Profit Analysis to nav if it exists on dashboard
+    title: 'Profit Analysis',
     href: '/profit-analysis',
     iconName: 'Rocket',
-    iconColor: 'bg-green-500', // Matches dashboard tile
+    iconColor: 'bg-green-500',
   },
   {
     title: 'Masters',
     href: '/masters',
     iconName: 'Users2',
-    iconColor: 'bg-sky-600', // Matches dashboard tile
+    iconColor: 'bg-sky-600',
   },
   {
     title: 'Backup/Restore',
     href: '/backup',
     iconName: 'DatabaseBackup',
-    iconColor: 'bg-sky-500', // Matches dashboard "Backup Data" tile
+    iconColor: 'bg-sky-500',
   },
 ];

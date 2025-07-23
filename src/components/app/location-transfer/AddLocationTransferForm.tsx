@@ -427,7 +427,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       <div className="md:col-span-1 flex items-center justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)}><Trash2 className="h-4 w-4" /></Button></div>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: "", amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: undefined, amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Row
                   </Button>
                 </div>

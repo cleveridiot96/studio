@@ -8,7 +8,7 @@ import { DashboardTile } from "@/components/DashboardTile";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KEY } from "@/lib/backupRestoreUtils";
-import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol'; // Import the new component
+import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -28,7 +28,6 @@ export default function DashboardPage() {
   };
 
   const quickActions = [
-    // Core Operations
     {
       title: "Purchases",
       description: "Record and manage purchases",
@@ -86,7 +85,7 @@ export default function DashboardPage() {
       className: "bg-[#ffa5ab] hover:bg-[#ffa5ab]/90 text-white",
     },
     {
-      title: "Outstanding Balances",
+      title: "Outstanding",
       description: "Receivables & Payables",
       href: "/outstanding",
       iconName: "ClipboardList",
@@ -106,7 +105,6 @@ export default function DashboardPage() {
       iconName: "Users2",
       className: "bg-sky-600 hover:bg-sky-700 text-white",
     },
-    // Data Management
     {
       title: "Backup Data",
       description: "Save your application data",
