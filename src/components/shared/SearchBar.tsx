@@ -1,4 +1,3 @@
-
 // src/components/shared/SearchBar.tsx
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
@@ -19,7 +18,10 @@ const SearchBar = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (commandRef.current && !commandRef.current.contains(event.target as Node)) {
-        setOpen(false);
+        // A small timeout allows the onSelect event on CommandItem to fire before the dropdown closes
+        setTimeout(() => {
+            setOpen(false);
+        }, 100);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
