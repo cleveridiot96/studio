@@ -138,7 +138,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   }, [availableStock, watch('fromWarehouseId')]);
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
-  const expenseOptions = expenses.map(e => ({ value: e.id, label: e.name }));
+  const expenseOptions = expenses.map(e => ({ value: e.id, label: e.name })).filter(e => e.value);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {

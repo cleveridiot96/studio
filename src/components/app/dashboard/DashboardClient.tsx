@@ -9,13 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DollarSign, ShoppingBag, Package, CalendarDays, TrendingUp } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isWithinInterval, startOfYear, endOfDay, subMonths } from 'date-fns';
-import { ProfitSummary } from '@/components/dashboard/ProfitSummary';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Separator } from '@/components/ui/separator';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { isDateInFinancialYear } from "@/lib/utils";
 import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
+import { ProfitAnalysisClient } from '../profit-analysis/ProfitAnalysisClient';
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; // New
@@ -245,6 +245,10 @@ const DashboardClient = () => {
       <div className="grid grid-cols-1 gap-6">
         <OutstandingSummary />
       </div>
+      <Separator className="my-6"/>
+      <Link href="/profit-analysis">
+          <ProfitAnalysisClient/>
+      </Link>
     </div>
   );
 };

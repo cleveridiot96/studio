@@ -1,98 +1,117 @@
+
 "use client";
 
 import * as React from "react";
-import { useController, useFormContext } from "react-hook-form";
-import { Command, CommandInput, CommandItem, CommandList, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, Plus, ChevronsUpDown } from "lucide-react";
+import { Check, Plus, ChevronsUpDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 
 interface Option {
   value: string;
   label: string;
-  tooltipContent?: React.ReactNode; // Added for tooltip support
+  tooltipContent?: React.ReactNode;
 }
 
 interface MasterDataComboboxProps {
-  name: string;
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
   options: Option[];
   placeholder?: string;
   searchPlaceholder?: string;
   notFoundMessage?: string;
   addNewLabel?: string;
   onAddNew?: () => void;
+  onEdit?: (value: string) => void;
   disabled?: boolean;
+  className?: string;
+  triggerId?: string;
 }
 
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
-  name,
+  value,
+  onChange,
   options,
   placeholder = "Select an option",
   searchPlaceholder = "Search...",
   notFoundMessage = "No match found.",
   addNewLabel = "Add New",
   onAddNew,
+  onEdit,
   disabled,
+  className,
+  triggerId,
 }) => {
-  const { control } = useFormContext();
-  const { field } = useController({ name, control });
-
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-
-  // Configure Fuse.js for fuzzy searching
   const fuse = React.useMemo(() => new Fuse(options, {
     keys: ['label'],
-    threshold: 0.3, // Adjust threshold for desired fuzziness
+    threshold: 0.3,
   }), [options]);
 
-  // Use didyoumean2 for "Did You Mean" suggestions
   const didYouMeanSuggest = React.useMemo(() => {
     if (!search) return null;
     const suggestions = didYouMean(search, options.map(opt => opt.label), {
-      threshold: 0.6, // Adjust threshold for suggestions
+      threshold: 0.6,
       caseSensitive: false,
     });
-    // Ensure we get a single string suggestion if available
     return Array.isArray(suggestions) ? suggestions[0] : suggestions;
   }, [search, options]);
-
 
   const filteredOptions = React.useMemo(() => {
     if (!search) {
       return options;
     }
-
-    // Perform fuzzy search
     const fuseResults = fuse.search(search).map(result => result.item);
-
-    // If there's a did you mean suggestion (and it's a string) and it's not already in the fuzzy results, add it.
-    // This prioritizes exact/fuzzy matches but provides a suggestion if needed.
     if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
         const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
         if (suggestionOption) {
-            // Add suggestion at the beginning
             return [suggestionOption, ...fuseResults];
         }
     }
     return fuseResults;
   }, [options, search, fuse, didYouMeanSuggest]);
 
-  const selectedLabel = options.find((opt) => opt.value === field.value)?.label;
+  const selectedLabel = options.find((opt) => opt.value === value)?.label;
+
+  const handleSelect = (selectedValue: string | undefined) => {
+    onChange(selectedValue);
+    setOpen(false);
+    setSearch("");
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew) {
+      onAddNew();
+      setOpen(false);
+      setSearch("");
+    }
+  };
+  
+  const handleEdit = (e: React.MouseEvent, value: string) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(value);
+      setOpen(false);
+      setSearch("");
+    }
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={triggerId}
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between text-sm", !field.value && "text-muted-foreground")}
+          className={cn("w-full justify-between text-sm uppercase h-auto", !value && "text-muted-foreground", className)}
           disabled={disabled}
         >
           <span className="truncate">
@@ -102,76 +121,75 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-        <Command className="max-h-[300px]">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[99999]">
+        <Command shouldFilter={false} className="max-h-[300px]">
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
             onValueChange={setSearch}
             autoFocus
-            />
+          />
           <TooltipProvider>
-            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]"> {/* Adjusted for padding */}
+            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
+                <CommandItem
+                    onSelect={() => handleSelect(undefined)}
+                     className={cn(
+                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
+                        !value && "font-semibold bg-accent"
+                    )}
+                >
+                    <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                    <span className="italic">Clear selection</span>
+                </CommandItem>
+                <Separator className="my-1" />
+
               {filteredOptions.length === 0 && search.length > 0 ? (
                 <CommandEmpty>
                   {notFoundMessage}
                   {onAddNew && (
-                    <div
-                      onClick={() => { // Changed from onMouseDown to onClick
-                        onAddNew?.();
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm"
-                      role="button"
-                    >
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </div>
+                    </CommandItem>
                   )}
                 </CommandEmpty>
               ) : (
                 <>
                   {filteredOptions.map((option) => (
-                    <Tooltip key={option.value}>
+                    <Tooltip key={option.value} delayDuration={300}>
                       <TooltipTrigger asChild>
-                        <div
-                          onClick={() => { // Changed from onMouseDown to onClick
-                            field.onChange(option.value);
-                            setOpen(false);
-                            setSearch("");
-                          }}
-                          className={cn(
-                            "cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm w-full",
-                            field.value === option.value && "font-semibold"
-                          )}
-                          role="option"
-                          aria-selected={field.value === option.value}
+                        <CommandItem
+                          value={option.value}
+                          onSelect={() => handleSelect(option.value)}
+                          className="uppercase"
                         >
                           <Check
-                            className={cn("mr-2 h-4 w-4", field.value === option.value ? "opacity-100" : "opacity-0")}
+                              className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
                           />
-                          <span className="flex-grow truncate" >{option.label}</span>
-                        </div>
+                          <span className="flex-grow truncate">{option.label}</span>
+                          {onEdit && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
+                                onClick={(e) => handleEdit(e, option.value)}
+                                aria-label={`Edit ${option.label}`}
+                            >
+                                <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </CommandItem>
                       </TooltipTrigger>
                       {option.tooltipContent && (
-                        <TooltipContent side="right" align="start" className="z-[99999]"> {/* Ensure tooltip is on top */}
+                        <TooltipContent side="right" align="start">
                           {option.tooltipContent}
                         </TooltipContent>
                       )}
                     </Tooltip>
                   ))}
-                  {onAddNew && (filteredOptions.length > 0 || search.length === 0) && (
-                    <div
-                       onClick={() => { // Changed from onMouseDown to onClick
-                        onAddNew?.();
-                        setOpen(false);
-                        setSearch("");
-                      }}
-                      className="cursor-pointer px-4 py-2 hover:bg-accent flex items-center text-sm mt-1 border-t"
-                      role="button"
-                    >
+                  {onAddNew && (
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </div>
+                    </CommandItem>
                   )}
                 </>
               )}

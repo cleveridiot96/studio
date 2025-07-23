@@ -33,17 +33,20 @@ export function isDateInFinancialYear(dateString: string, financialYearString: s
 
   try {
     const itemDate = new Date(dateString);
-    itemDate.setMinutes(itemDate.getMinutes() + itemDate.getTimezoneOffset());
+    // Adjust for timezone offset to prevent off-by-one day errors
+    const userTimezoneOffset = itemDate.getTimezoneOffset() * 60000;
+    const dateInUTC = new Date(itemDate.getTime() + userTimezoneOffset);
+
 
     const fyRange = getFinancialYearDateRange(financialYearString);
     if (!fyRange) return false;
 
-    if (isNaN(itemDate.getTime())) {
+    if (isNaN(dateInUTC.getTime())) {
         console.error("Invalid date string:", dateString);
         return false;
     }
 
-    return itemDate >= fyRange.start && itemDate <= fyRange.end;
+    return dateInUTC >= fyRange.start && dateInUTC <= fyRange.end;
   } catch (error) {
     console.error("Error in isDateInFinancialYear:", error);
     return false;
@@ -61,18 +64,17 @@ export function isDateBeforeFinancialYear(dateString: string, financialYearStrin
 
   try {
     const itemDate = new Date(dateString);
-    itemDate.setMinutes(itemDate.getMinutes() + itemDate.getTimezoneOffset());
+    const userTimezoneOffset = itemDate.getTimezoneOffset() * 60000;
+    const dateInUTC = new Date(itemDate.getTime() + userTimezoneOffset);
 
     const fyRange = getFinancialYearDateRange(financialYearString);
     if (!fyRange) return false;
 
-    if (isNaN(itemDate.getTime())) return false;
+    if (isNaN(dateInUTC.getTime())) return false;
 
-    return itemDate < fyRange.start;
+    return dateInUTC < fyRange.start;
   } catch (error) {
     console.error("Error in isDateBeforeFinancialYear:", error);
     return false;
   }
 }
-
-    
