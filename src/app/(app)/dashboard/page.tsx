@@ -99,6 +99,13 @@ export default function DashboardPage() {
       iconName: "Rocket",
       className: "bg-green-500 hover:bg-green-600 text-white",
     },
+    {
+      title: "Masters",
+      description: "Manage people & companies",
+      href: "/masters",
+      iconName: "Users2",
+      className: "bg-sky-600 hover:bg-sky-700 text-white",
+    },
     // Data Management
     {
       title: "Backup Data",

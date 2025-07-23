@@ -34,7 +34,7 @@ interface AddLocationTransferFormProps {
   expenses: MasterItem[];
   allExpenseParties: MasterItem[];
   availableStock: AggregatedStockItemForForm[];
-  onMasterDataUpdate: (type: "Warehouse" | "Transporter" | "Expense", item: MasterItem) => void;
+  onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   transferToEdit?: LocationTransfer | null;
 }
 
@@ -138,16 +138,16 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   }, [availableStock, watch('fromWarehouseId')]);
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
-  const expenseOptions = expenses.map(e => ({ value: e.name, label: e.name }));
+  const expenseOptions = expenses.map(e => ({ value: e.id, label: e.name }));
 
 
-  const handleOpenMasterForm = (type: "Warehouse" | "Transporter" | "Expense") => {
+  const handleOpenMasterForm = (type: MasterItemType) => {
     setMasterItemToEdit(null);
-    setMasterFormItemType(type as MasterItemType);
+    setMasterFormItemType(type);
     setIsMasterFormOpen(true);
   };
   
-  const handleEditMasterItem = (type: "Warehouse" | "Transporter" | "Expense", id: string) => {
+  const handleEditMasterItem = (type: MasterItemType, id: string) => {
     const party = allExpenseParties.find(p => p.id === id);
     if(party) {
         setMasterItemToEdit(party);
@@ -157,7 +157,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type as "Warehouse" | "Transporter" | "Expense", newItem);
+    onMasterDataUpdate(newItem.type, newItem);
     if (newItem.type === "Transporter") {
         methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     }
@@ -390,9 +390,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
                       <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
-                          <Select onValueChange={itemField.onChange} defaultValue={itemField.value}>
+                          <Select onValueChange={itemField.onChange} value={itemField.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
-                            <SelectContent><SelectItem value="" disabled>Select Account</SelectItem>{expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
+                            <SelectContent>
+                               {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                            </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>)} />
@@ -416,7 +418,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         </FormItem>)} />
                       <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
-                          <Select onValueChange={itemField.onChange} defaultValue={itemField.value}>
+                          <Select onValueChange={itemField.onChange} value={itemField.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
                             <SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
                           </Select>
