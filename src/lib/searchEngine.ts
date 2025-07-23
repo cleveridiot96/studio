@@ -6,8 +6,13 @@ import type { SearchableItem } from './buildSearchData'; // Assuming this type w
 let fuse: Fuse<SearchableItem>;
 
 const fuseOptions: Fuse.IFuseOptions<SearchableItem> = {
-  keys: ['searchableText', 'title', 'type', 'id'],
-  threshold: 0.35,
+  keys: [
+      { name: 'title', weight: 0.4 },
+      { name: 'searchableText', weight: 0.3 },
+      { name: 'type', weight: 0.2 },
+      { name: 'id', weight: 0.1 },
+  ],
+  threshold: 0.4, // Adjusted for better fuzzy matching
   includeScore: false,
   useExtendedSearch: true,
   ignoreLocation: true,
@@ -23,6 +28,10 @@ export const searchData = (query: string): SearchableItem[] => {
   if (!fuse || !query.trim()) {
     return [];
   }
-  const results = fuse.search(query);
+  // Normalize query to handle variations like G.G, G G etc.
+  // This simple normalization helps a lot, more complex logic can be added.
+  const normalizedQuery = query.replace(/[\s.]+/g, '');
+
+  const results = fuse.search(normalizedQuery);
   return results.map((res) => res.item);
 };
