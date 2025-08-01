@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark, Calculator } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -14,16 +14,13 @@ import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { CalculatorDialog } from '@/components/shared/Calculator';
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import { motion } from "framer-motion";
+import { Calculator } from '@/components/shared/Calculator';
 
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
@@ -120,52 +117,12 @@ function LoadingBarInternal() {
   return <div className="w-full h-1 bg-primary animate-pulse" />;
 }
 
-const FloatingCalculatorButton = ({ onOpen }: { onOpen: () => void }) => {
-    return (
-        <motion.div
-            className="fixed bottom-6 right-6 z-50 print:hidden"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
-        >
-            <Button
-                size="icon"
-                className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-                onClick={onOpen}
-                aria-label="Open Calculator"
-            >
-                <Calculator className="h-8 w-8" />
-            </Button>
-        </motion.div>
-    );
-};
-
-
 function AppLayoutInternal({ children }: { children: React.ReactNode }) {
-  const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const AppIcon = APP_ICON;
   useSearchData(); 
 
-  const [calculatorPosition, setCalculatorPosition] = useLocalStorageState({ x: 0, y: 0 }, 'calculatorPosition');
-  
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, delta } = event;
-    if (active.id === 'draggable-calculator') {
-        setCalculatorPosition(prev => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
-    }
-  };
-
-  useEffect(() => {
-      if (typeof window !== 'undefined' && calculatorPosition.x === 0 && calculatorPosition.y === 0) {
-        setCalculatorPosition({
-            x: window.innerWidth / 2 - 160, // Center it initially
-            y: 100
-        });
-      }
-  }, [setCalculatorPosition, calculatorPosition]);
-
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <>
         <div className="flex flex-1 bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
             <SidebarHeader className="p-4 border-b border-sidebar-border">
@@ -206,15 +163,10 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               </ErrorBoundary>
             </SidebarInset>
            
-            <FloatingCalculatorButton onOpen={() => setIsCalculatorOpen(true)} />
-            <CalculatorDialog
-                isOpen={isCalculatorOpen}
-                onOpenChange={setIsCalculatorOpen}
-                position={calculatorPosition}
-            />
+            <Calculator />
           </div>
         </div>
-    </DndContext>
+    </>
   );
 }
 
