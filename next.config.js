@@ -1,6 +1,3 @@
-// This file is deprecated and has been replaced by next.config.js to resolve a server startup issue.
-// The Next.js environment requires a .js or .mjs configuration file.
-// This file can be safely deleted.
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
