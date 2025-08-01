@@ -93,9 +93,10 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
             const TypeIcon = typeIconMap[item.type] || Users;
             const isFixed = fixedItemIds.includes(item.id);
             const nameMatch = item.matches?.find(m => m.key === 'name');
+            const uniqueKey = `${item.type}-${item.id}`; // Create a truly unique key
 
             return (
-              <TableRow key={item.id} className="uppercase">
+              <TableRow key={uniqueKey} className="uppercase">
                 <TableCell className="font-medium whitespace-nowrap p-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
