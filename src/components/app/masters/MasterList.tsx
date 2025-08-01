@@ -73,6 +73,18 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
   const showBalanceColumn = isAllItemsTab || !['Warehouse', 'Expense'].includes(itemType);
   const showTypeColumn = isAllItemsTab;
 
+  const formatCommission = (item: MasterItem) => {
+    if (item.commission === undefined || item.commission === null) return '';
+    if (item.commissionType === 'Percentage') {
+      return `${item.commission.toLocaleString()}%`;
+    }
+    if (item.commissionType === 'Fixed') {
+      return `₹${item.commission.toLocaleString()}`;
+    }
+    return item.commission.toLocaleString(); // Fallback
+  };
+
+
   return (
     <TooltipProvider>
     <ScrollArea className="h-[calc(100vh-25rem)] print:h-auto print:overflow-visible">
@@ -81,7 +93,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
           <TableRow>
             <TableHead className="whitespace-nowrap p-2">Name</TableHead>
             {showTypeColumn && <TableHead className="whitespace-nowrap p-2">Type</TableHead>}
-            {showCommissionColumn && <TableHead className="text-right whitespace-nowrap p-2">Commission (%)</TableHead>}
+            {showCommissionColumn && <TableHead className="text-right whitespace-nowrap p-2">Commission</TableHead>}
             {showBalanceColumn && <TableHead className="text-right whitespace-nowrap p-2">Opening Balance (₹)</TableHead>}
             <TableHead className="text-center w-[100px] sm:w-[120px] whitespace-nowrap p-2">Actions</TableHead>
           </TableRow>
@@ -120,9 +132,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
                 )}
                 {showCommissionColumn && (
                   <TableCell className="text-right whitespace-nowrap p-2">
-                    {itemHasCommission && item.commission !== undefined
-                      ? `${item.commission.toLocaleString()}%`
-                      : ''}
+                    {itemHasCommission ? formatCommission(item) : ''}
                   </TableCell>
                 )}
                 {showBalanceColumn && (
