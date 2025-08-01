@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign } from "lucide-react";
+import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign, Search } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,9 @@ import {
 import { doesNameExist } from '@/lib/masterUtils';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { cn } from "@/lib/utils";
+import Fuse from 'fuse.js';
+import didYouMean from 'didyoumean2';
+import { Input } from '@/components/ui/input';
 
 // Storage keys
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
@@ -50,6 +53,21 @@ const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.Element
   { value: "Expense", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
+const dispatchSearchReindex = () => {
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+};
+
+const fuseOptions = {
+  keys: ['name'],
+  includeScore: true,
+  threshold: 0.4,
+  includeMatches: true,
+};
+
+const validateMasterItem = (item: any): item is MasterItem => {
+  return item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.type === 'string';
+};
+
 export default function MastersPage() {
   const { toast } = useToast();
   
@@ -61,26 +79,22 @@ export default function MastersPage() {
   const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
 
-
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
   const [activeTab, setActiveTab] = useState<MasterPageTabKey>(TABS_CONFIG[0].value);
-
   const [itemToDelete, setItemToDelete] = useState<MasterItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
   const [hydrated, setHydrated] = useState(false);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+
   const prevAllMasterItemsRef = useRef<MasterItem[]>([]);
 
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
+  useEffect(() => { setHydrated(true); }, []);
 
   const allMasterItems = useMemo(() => {
     if (!hydrated) return []; 
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses, ...expenses]
-      .filter(item => item && item.id && item.name && item.type) 
+      .filter(validateMasterItem) 
       .sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, hydrated]);
 
@@ -89,22 +103,21 @@ export default function MastersPage() {
       const prevItemsMap = new Map(prevAllMasterItemsRef.current.map(item => [item.id, item]));
       const currentItemsMap = new Map(allMasterItems.map(item => [item.id, item]));
 
-      if (prevAllMasterItemsRef.current.length > allMasterItems.length) {
-          const deletedItem = prevAllMasterItemsRef.current.find(item => !currentItemsMap.has(item.id));
-          if (deletedItem) {
-              toast({ title: `${deletedItem.type} deleted`, description: `${deletedItem.name} has been removed.`, variant: 'destructive' });
+      if (prevAllMasterItemsRef.current.length !== allMasterItems.length) {
+          if (prevAllMasterItemsRef.current.length > allMasterItems.length) {
+            const deletedItem = prevAllMasterItemsRef.current.find(item => !currentItemsMap.has(item.id));
+            if (deletedItem) {
+                toast({ title: `${deletedItem.type} deleted`, description: `${deletedItem.name} has been removed.`, variant: 'destructive' });
+            }
           }
+          dispatchSearchReindex();
       }
       
       prevAllMasterItemsRef.current = allMasterItems;
     }
   }, [allMasterItems, hydrated, toast]);
 
-  const hydrateFixedItems = <T extends MasterItem>(
-    currentItems: T[],
-    fixedItems: readonly T[],
-    setItems: (items: T[]) => void
-  ) => {
+  const hydrateFixedItems = <T extends MasterItem>(currentItems: T[], fixedItems: readonly T[], setItems: (items: T[]) => void) => {
     const itemsMap = new Map(currentItems.map(item => [item.id, item]));
     let updated = false;
     fixedItems.forEach(fixedItem => {
@@ -127,14 +140,15 @@ export default function MastersPage() {
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
+    const filterValid = (data: MasterItem[]) => data.filter(validateMasterItem);
     switch (type) {
-      case 'Customer': return { data: customers, setData: setCustomers };
-      case 'Supplier': return { data: suppliers, setData: setSuppliers };
-      case 'Agent': return { data: agents, setData: setAgents };
-      case 'Transporter': return { data: transporters, setData: setTransporters };
-      case 'Broker': return { data: brokers, setData: setBrokers };
-      case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'Expense': return { data: expenses, setData: setExpenses };
+      case 'Customer': return { data: filterValid(customers), setData: setCustomers };
+      case 'Supplier': return { data: filterValid(suppliers), setData: setSuppliers };
+      case 'Agent': return { data: filterValid(agents), setData: setAgents };
+      case 'Transporter': return { data: filterValid(transporters), setData: setTransporters };
+      case 'Broker': return { data: filterValid(brokers), setData: setBrokers };
+      case 'Warehouse': return { data: filterValid(warehouses), setData: setWarehouses };
+      case 'Expense': return { data: filterValid(expenses), setData: setExpenses };
       case 'All': return { data: allMasterItems, setData: () => {} }; 
       default: return { data: [], setData: () => {} };
     }
@@ -148,6 +162,7 @@ export default function MastersPage() {
           const updatedItem = { ...item, type: fixedItemConfig.type as MasterItemType };
           setData(prev => prev.map(i => i.id === item.id ? updatedItem : i).sort((a,b) => a.name.localeCompare(b.name)));
           toast({ title: `Fixed ${item.type} Updated`, description: `Name for ${item.name} updated.`});
+          dispatchSearchReindex();
        } else {
           toast({ title: "No Changes", description: `No changes made to fixed item ${item.name}.`});
        }
@@ -184,6 +199,7 @@ export default function MastersPage() {
 
     setIsFormOpen(false);
     setEditingItem(null);
+    dispatchSearchReindex();
   }, [getMasterDataState, allMasterItems, toast, editingItem]); 
 
   const handleEditItem = useCallback((item: MasterItem) => {
@@ -217,6 +233,7 @@ export default function MastersPage() {
       setData(prev => prev.filter(i => i.id !== itemToDelete.id));
       setItemToDelete(null);
       setShowDeleteConfirm(false);
+      dispatchSearchReindex();
     }
   }, [itemToDelete, getMasterDataState, toast]);
 
@@ -245,6 +262,25 @@ export default function MastersPage() {
 
     return `${bgClass} ${textClass} ${hoverBgClass}`.trim();
   }, [activeTab]);
+  
+  const searchDidYouMean = useMemo(() => {
+    if (!searchQuery) return null;
+    const names = getMasterDataState(activeTab).data.map(item => item.name);
+    const suggestion = didYouMean(searchQuery, names, {
+        threshold: 0.6,
+        caseSensitive: false,
+    });
+    return Array.isArray(suggestion) ? suggestion[0] : suggestion;
+  }, [searchQuery, activeTab, getMasterDataState]);
+  
+  const getFilteredDataForTab = (tabValue: MasterPageTabKey) => {
+    const { data } = getMasterDataState(tabValue);
+    if (!searchQuery) {
+        return data.map(item => ({ item, matches: [], score: 1 }));
+    }
+    const fuse = new Fuse(data, fuseOptions);
+    return fuse.search(searchQuery);
+  };
 
 
   if (!hydrated) {
@@ -269,7 +305,7 @@ export default function MastersPage() {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MasterPageTabKey)} className="w-full">
+      <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value as MasterPageTabKey); setSearchQuery(''); }} className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 h-auto rounded-lg overflow-hidden p-1 bg-muted gap-1">
           {TABS_CONFIG.map(tab => (
             <TabsTrigger
@@ -286,26 +322,42 @@ export default function MastersPage() {
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
-            const currentData = tab.value === 'All' ? allMasterItems : getMasterDataState(tab.value as MasterItemType | 'All').data;
+            const filteredData = getFilteredDataForTab(tab.value);
+            const totalCount = getMasterDataState(tab.value).data.length;
             return (
               <TabsContent key={tab.value} value={tab.value} className="mt-6">
                 <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
+                  <CardHeader className="sticky top-0 bg-card z-10 py-4 border-b">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
+                        <div className="w-full sm:w-auto sm:max-w-xs relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Input
+                                placeholder={`Search in ${tab.label}...`}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                    </div>
+                     {searchQuery && searchDidYouMean && (
+                        <p className="text-sm text-muted-foreground mt-2">Did you mean: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
+                    )}
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-4">
                     <MasterList
-                      data={currentData} 
+                      data={filteredData}
                       itemType={tab.value as MasterItemType | 'All'}
                       isAllItemsTab={tab.value === "All"}
                       onEdit={handleEditItem}
                       onDelete={handleDeleteItemAttempt}
                       fixedItemIds={ALL_FIXED_IDS}
+                      searchActive={!!searchQuery}
                     />
                   </CardContent>
                   <CardFooter>
                     <p className="text-xs text-muted-foreground">
-                      Total {tab.value === 'All' ? 'items' : tab.label.toLowerCase()}: {currentData.length}
+                      {searchQuery ? `Showing ${filteredData.length} of ${totalCount} items` : `Total items: ${totalCount}`}
                     </p>
                   </CardFooter>
                 </Card>
@@ -345,4 +397,3 @@ export default function MastersPage() {
   );
 }
 
-  
