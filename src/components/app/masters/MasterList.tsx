@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 "use client";
 
@@ -17,7 +16,7 @@ import type { MasterItem, MasterItemType } from "@/lib/types";
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-
+import type { FuseResult } from 'fuse.js';
 
 const typeIconMap: Record<MasterItemType, React.ElementType> = {
   Customer: Users,
@@ -29,36 +28,54 @@ const typeIconMap: Record<MasterItemType, React.ElementType> = {
   Expense: DollarSign,
 };
 
+const HighlightedText: React.FC<{ text: string; indices: readonly [number, number][] | undefined }> = ({ text, indices }) => {
+    if (!indices || indices.length === 0) {
+      return <>{text}</>;
+    }
+  
+    const parts = [];
+    let lastIndex = 0;
+  
+    indices.forEach(([start, end], i) => {
+      if (start > lastIndex) {
+        parts.push(text.substring(lastIndex, start));
+      }
+      parts.push(<mark key={i} className="bg-yellow-300 text-black rounded-sm px-0.5">{text.substring(start, end + 1)}</mark>);
+      lastIndex = end + 1;
+    });
+  
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+  
+    return <>{parts}</>;
+};
 
 interface MasterListProps {
-  data: MasterItem[];
+  data: FuseResult<MasterItem>[];
   itemType: MasterItemType | 'All';
   isAllItemsTab?: boolean;
   onEdit: (item: MasterItem) => void;
   onDelete: (item: MasterItem) => void;
   fixedItemIds?: string[];
+  searchActive: boolean;
 }
 
-const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete, fixedItemIds = [] }) => {
+const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllItemsTab = false, onEdit, onDelete, fixedItemIds = [], searchActive }) => {
   if (!data || data.length === 0) {
     const typeLabel = itemType === 'All' ? 'parties/entities' : `${itemType.toLowerCase()}s`;
-    return <p className="text-center text-muted-foreground py-8">No {typeLabel} recorded yet.</p>;
+    return <p className="text-center text-muted-foreground py-8">{searchActive ? 'No parties match your search.' : `No ${typeLabel} recorded yet.`}</p>;
   }
 
-  const uniqueMasters = React.useMemo(() => {
-    if (!data) return [];
-    return Array.from(new Map(data.map(item => [item.id, item])).values());
-  }, [data]);
-
+  const itemsToRender = data.map(result => ({ ...result.item, matches: result.matches }));
 
   const showCommissionColumn = isAllItemsTab || itemType === 'Agent' || itemType === 'Broker';
   const showBalanceColumn = isAllItemsTab || !['Warehouse', 'Expense'].includes(itemType);
   const showTypeColumn = isAllItemsTab;
 
-
   return (
     <TooltipProvider>
-    <ScrollArea className="rounded-md border shadow-sm h-[70vh] print:h-auto print:overflow-visible">
+    <ScrollArea className="h-[calc(100vh-25rem)] print:h-auto print:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
@@ -70,19 +87,21 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
           </TableRow>
         </TableHeader>
         <TableBody>
-          {uniqueMasters.map((item) => {
+          {itemsToRender.map((item) => {
             const itemHasCommission = item.type === 'Agent' || item.type === 'Broker';
             const itemHasBalance = !['Warehouse', 'Expense'].includes(item.type);
             const TypeIcon = typeIconMap[item.type] || Users;
             const isFixed = fixedItemIds.includes(item.id);
+            const nameMatch = item.matches?.find(m => m.key === 'name');
+
             return (
               <TableRow key={item.id} className="uppercase">
                 <TableCell className="font-medium whitespace-nowrap p-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="cursor-help">
-                        {isFixed && <Lock className="h-3 w-3 inline-block mr-1.5 text-muted-foreground" />}
-                        {item.name}
+                      <span className="cursor-help flex items-center gap-1.5">
+                        {isFixed && <Lock className="h-3 w-3 inline-block text-muted-foreground" />}
+                        <HighlightedText text={item.name} indices={nameMatch?.indices} />
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -130,16 +149,6 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
           })}
         </TableBody>
       </Table>
-       {uniqueMasters.length === 0 && data.length > 0 && (
-        <div className="flex items-center justify-center h-full text-muted-foreground p-10">
-          No unique items to display after filtering. Check for ID issues.
-        </div>
-      )}
-      {uniqueMasters.length === 0 && data.length === 0 && (
-        <div className="flex items-center justify-center h-full text-muted-foreground p-10">
-          No items to display.
-        </div>
-      )}
       <ScrollBar orientation="horizontal" />
     </ScrollArea>
     </TooltipProvider>
