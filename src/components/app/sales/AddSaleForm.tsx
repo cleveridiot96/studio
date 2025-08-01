@@ -480,44 +480,38 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   <FormField control={control} name="notes" render={({ field }) => (
                       <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                   
-                  <Accordion type="single" collapsible className="w-full">
+                  <Accordion type="single" collapsible className="w-full" defaultValue="summary">
                     <AccordionItem value="summary">
                       <AccordionTrigger>
                         <h3 className="text-lg font-semibold text-primary">Transaction Summary</h3>
                       </AccordionTrigger>
                       <AccordionContent>
                         <div className="p-4 border border-dashed rounded-md bg-muted/50 space-y-2">
-                            <div className="text-sm text-muted-foreground space-y-1">
-                              <div className="flex justify-between"><span>Total Goods Value:</span> <span>₹{Math.round(summary.totalGoodsValue).toLocaleString('en-IN')}</span></div>
-                              
-                              <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  <span>Gross Profit:</span> 
-                                  <Tooltip>
-                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{Math.round(summary.totalGrossProfit).toLocaleString('en-IN')}</span></TooltipTrigger>
-                                      <TooltipContent><p>(Goods Value) - (Base Purchase Cost)</p></TooltipContent>
-                                  </Tooltip>
-                              </div>
-
-                              <div className="flex justify-between text-red-600">
-                                <span>Less: All Expenses:</span>
-                                  <Tooltip>
-                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">(-) ₹{Math.round(summary.totalSaleSideExpenses).toLocaleString('en-IN')}</span></TooltipTrigger>
-                                      <TooltipContent><p>Transport, Packing, Labour, Brokerage etc.</p></TooltipContent>
-                                  </Tooltip>
-                              </div>
-                              <hr className="my-1 border-muted-foreground/50" />
-                              <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                  <span>Net Profit:</span> 
-                                  <Tooltip>
-                                      <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">₹{Math.round(summary.netProfit).toLocaleString('en-IN')}</span></TooltipTrigger>
-                                      <TooltipContent><p>(Goods Value) - (Landed Cost) - (Sale Expenses)</p></TooltipContent>
-                                  </Tooltip>
-                              </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <div className="flex justify-between">
+                              <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Total Goods Value:</span></TooltipTrigger><TooltipContent>Sum of (Net Weight * Sale Rate) for all items.</TooltipContent></Tooltip>
+                              <span>₹{Math.round(summary.totalGoodsValue).toLocaleString('en-IN')}</span>
+                            </div>
+                            
+                            <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Gross Profit:</span></TooltipTrigger><TooltipContent><p>(Goods Value: ₹{summary.totalGoodsValue.toFixed(0)}) - (Base Purchase Cost: ₹{summary.totalBasePurchaseCost.toFixed(0)})</p></TooltipContent></Tooltip>
+                              <span>₹{Math.round(summary.totalGrossProfit).toLocaleString('en-IN')}</span>
                             </div>
 
-                            <div className="border-t pt-2 mt-2">
-                              <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{Math.round(summary.billedAmount).toLocaleString('en-IN')}</p></div>
+                            <div className="flex justify-between text-red-600">
+                               <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Less: All Expenses:</span></TooltipTrigger><TooltipContent><p>(Landed Cost - Base Cost) + (Sale Expenses)</p></TooltipContent></Tooltip>
+                              <span>(-) ₹{Math.round(summary.totalLandedCost - summary.totalBasePurchaseCost + summary.totalSaleSideExpenses).toLocaleString('en-IN')}</span>
                             </div>
+                            <hr className="my-1 border-muted-foreground/50" />
+                            <div className={`flex justify-between font-bold text-base ${summary.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                               <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Net Profit:</span></TooltipTrigger><TooltipContent><p>(Goods Value) - (Total Landed Cost) - (Sale Expenses)</p></TooltipContent></Tooltip>
+                              <span>₹{Math.round(summary.netProfit).toLocaleString('en-IN')}</span>
+                            </div>
+                          </div>
+
+                          <div className="border-t pt-2 mt-2">
+                            <div className="flex justify-between text-primary font-bold text-lg"><p>Final Billed Amount:</p> <p>₹{Math.round(summary.billedAmount).toLocaleString('en-IN')}</p></div>
+                          </div>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
