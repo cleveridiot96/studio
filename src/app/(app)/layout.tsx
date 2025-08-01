@@ -21,7 +21,7 @@ import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { CalculatorDialog } from '@/components/shared/Calculator';
-import { DndContext, useDraggable, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { motion } from "framer-motion";
 
@@ -121,14 +121,6 @@ function LoadingBarInternal() {
 }
 
 const FloatingCalculatorButton = ({ onOpen }: { onOpen: () => void }) => {
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-    
-    if (!isMounted) return null;
-    
     return (
         <motion.div
             className="fixed bottom-6 right-6 z-50 print:hidden"
@@ -155,7 +147,6 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
   useSearchData(); 
 
   const [calculatorPosition, setCalculatorPosition] = useLocalStorageState({ x: 0, y: 0 }, 'calculatorPosition');
-  const [isMounted, setIsMounted] = useState(false);
   
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
@@ -165,14 +156,13 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-      setIsMounted(true);
-      if (typeof window !== 'undefined') {
-        setCalculatorPosition(prev => ({
-            x: prev.x === 0 ? window.innerWidth / 2 - 160 : prev.x, // Center it initially
-            y: prev.y === 0 ? 100 : prev.y
-        }));
+      if (typeof window !== 'undefined' && calculatorPosition.x === 0 && calculatorPosition.y === 0) {
+        setCalculatorPosition({
+            x: window.innerWidth / 2 - 160, // Center it initially
+            y: 100
+        });
       }
-  }, [setCalculatorPosition]);
+  }, [setCalculatorPosition, calculatorPosition]);
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
@@ -216,16 +206,12 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               </ErrorBoundary>
             </SidebarInset>
            
-            {isMounted && (
-                <>
-                    <FloatingCalculatorButton onOpen={() => setIsCalculatorOpen(true)} />
-                    <CalculatorDialog
-                        isOpen={isCalculatorOpen}
-                        onOpenChange={setIsCalculatorOpen}
-                        position={calculatorPosition}
-                    />
-                </>
-            )}
+            <FloatingCalculatorButton onOpen={() => setIsCalculatorOpen(true)} />
+            <CalculatorDialog
+                isOpen={isCalculatorOpen}
+                onOpenChange={setIsCalculatorOpen}
+                position={calculatorPosition}
+            />
           </div>
         </div>
     </DndContext>
