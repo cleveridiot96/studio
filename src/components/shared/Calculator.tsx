@@ -2,19 +2,19 @@
 "use client";
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, CornerDownLeft, Percent, Divide, Trash2, GripVertical } from 'lucide-react';
+import { X, Percent, Divide, Trash2 } from 'lucide-react';
 import { useDraggable } from "@dnd-kit/core";
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { AnimatePresence, motion, useAnimate } from "framer-motion"
 
 const buttonClasses = "text-xl h-14 w-14 rounded-full shadow-md";
 const operatorButtonClasses = "bg-accent text-accent-foreground hover:bg-accent/90";
 const specialButtonClasses = "bg-secondary text-secondary-foreground hover:bg-secondary/80";
 
-const CalculatorComponent = () => {
+const CalculatorComponent = React.forwardRef<HTMLDivElement, { onEnter: () => void }>((props, ref) => {
   const [input, setInput] = React.useState('');
   const [result, setResult] = React.useState('');
   const [history, setHistory] = React.useState('');
@@ -22,7 +22,6 @@ const CalculatorComponent = () => {
 
   const handleButtonClick = (value: string) => {
     if (result && !['+', '-', '*', '/'].includes(value)) {
-      // Start new calculation after a result
       setInput(value);
       setResult('');
       setHistory('');
@@ -34,13 +33,13 @@ const CalculatorComponent = () => {
 
   const handleCalculate = () => {
     try {
-      // Use a safer eval method if possible, but for a simple calculator this is often used.
-      // Be cautious about using eval with untrusted input in real-world apps.
+      if (!input || /[+\-*/.]$/.test(input)) return; // Don't calculate if empty or ends with operator
       const sanitizedInput = input.replace(/%/g, '/100*');
       const evalResult = eval(sanitizedInput);
       setResult(String(evalResult));
       setHistory(input + ' =');
       setInput(String(evalResult));
+      props.onEnter();
     } catch (error) {
       setResult('Error');
     }
@@ -72,20 +71,20 @@ const CalculatorComponent = () => {
   };
 
   return (
-    <Card className="w-full max-w-xs shadow-2xl border-2 border-primary/20 bg-background/80 backdrop-blur-sm overflow-hidden">
-        {/* Header is now part of the draggable handle */}
-        <CardHeader className="pb-2 cursor-grab active:cursor-grabbing">
-            <div className="h-8 text-right text-muted-foreground text-xl pr-2 truncate">{history} {result && result !== input ? result : ''}</div>
-            <Input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="h-16 text-4xl text-right font-mono border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent pr-2 cursor-text"
-            placeholder="0"
-            />
-        </CardHeader>
+    <Card ref={ref} className="w-full max-w-xs shadow-2xl border-2 border-primary/20 bg-background/80 backdrop-blur-sm overflow-hidden">
+      <CardHeader className="pb-2 cursor-grab active:cursor-grabbing">
+        <div className="h-8 text-right text-muted-foreground text-xl pr-2 truncate">{history} {result && result !== input ? result : ''}</div>
+        <Input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="h-16 text-4xl text-right font-mono border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent pr-2 cursor-text"
+          placeholder="0"
+          autoFocus
+        />
+      </CardHeader>
       <CardContent className="grid grid-cols-4 gap-2">
         <Button variant="ghost" className={`${buttonClasses} ${specialButtonClasses}`} onClick={handleClear}>AC</Button>
         <Button variant="ghost" className={`${buttonClasses} ${specialButtonClasses}`} onClick={handleBackspace}><Trash2 /></Button>
@@ -113,50 +112,65 @@ const CalculatorComponent = () => {
       </CardContent>
     </Card>
   );
-};
+});
+CalculatorComponent.displayName = 'CalculatorComponent';
 
-
-interface DraggableCalculatorProps {
-  onClose: () => void;
-}
-
-const DraggableCalculator: React.FC<DraggableCalculatorProps> = ({ onClose }) => {
-    const {attributes, listeners, setNodeRef, transform} = useDraggable({
-        id: 'draggable-calculator',
-    });
-
-    const style = transform ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-    } : {};
-    
-    return (
-        <div ref={setNodeRef} style={style} className="p-4 rounded-lg absolute z-[9999] top-1/4 left-1/4">
-             <div className="relative" {...attributes} {...listeners} >
-                <CalculatorComponent />
-                <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-destructive text-destructive-foreground shadow-lg" onClick={onClose}>
-                    <X className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-    )
-}
 
 interface CalculatorDialogProps {
   isOpen: boolean;
-  onClose: () => void;
+  onOpenChange: (isOpen: boolean) => void;
+  position: { x: number; y: number };
+  fabRef: React.RefObject<HTMLButtonElement>;
 }
 
-export const CalculatorDialog: React.FC<CalculatorDialogProps> = ({ isOpen, onClose }) => {
-    if (!isOpen) return null;
+export const CalculatorDialog: React.FC<CalculatorDialogProps> = ({ isOpen, onOpenChange, position, fabRef }) => {
+    const {attributes, listeners, setNodeRef: setDraggableNodeRef, transform} = useDraggable({
+        id: 'draggable-calculator',
+    });
     
+    const [scope, animate] = useAnimate()
+
+    React.useEffect(() => {
+        if (fabRef.current && scope.current) {
+            const fabRect = fabRef.current.getBoundingClientRect();
+            if (isOpen) {
+                // Animate from FAB to final position
+                const animation = [
+                    [scope.current, { x: fabRect.left, y: fabRect.top, scale: 0.1, opacity: 0 }],
+                    [scope.current, { x: position.x, y: position.y, scale: 1, opacity: 1 }, { duration: 0.3, ease: "easeOut" }],
+                ]
+                animate(animation);
+            } else {
+                // Animate from current position to FAB
+                 const animation = [
+                    [scope.current, { x: position.x, y: position.y, scale: 1, opacity: 1 }],
+                    [scope.current, { x: fabRect.left, y: fabRect.top, scale: 0.1, opacity: 0 }, { duration: 0.2, ease: "easeIn" }],
+                ]
+                animate(animation);
+            }
+        }
+    }, [isOpen, fabRef, scope, animate, position.x, position.y]);
+
+    const style = transform ? {
+        transform: `translate3d(${position.x + transform.x}px, ${position.y + transform.y}px, 0)`,
+    } : {
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+    };
+
     return (
-        // Remove the backdrop and centering classes to make it a true floating widget
-        <div className="fixed inset-0 z-[100] pointer-events-none print:hidden">
-            <div className="relative w-full h-full pointer-events-auto">
-                 <div onClick={(e) => e.stopPropagation()}>
-                    <DraggableCalculator onClose={onClose} />
-                 </div>
-            </div>
-        </div>
+        <>
+            <AnimatePresence>
+                {isOpen && (
+                     <div ref={scope} style={style} className="fixed top-0 left-0 z-[9999] print:hidden">
+                        <div ref={setDraggableNodeRef} {...attributes} {...listeners} className="relative">
+                            <CalculatorComponent onEnter={() => {}} />
+                             <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-destructive text-destructive-foreground shadow-lg" onClick={() => onOpenChange(false)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </>
     );
 };

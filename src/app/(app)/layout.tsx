@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark, Calculator } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -20,8 +20,9 @@ import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { CalculatorDialog } from '@/components/shared/Calculator'; // Import the new calculator
-import { DndContext } from "@dnd-kit/core";
+import { CalculatorDialog } from '@/components/shared/Calculator';
+import { DndContext, useDraggable, type DragEndEvent } from "@dnd-kit/core";
+import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
@@ -126,6 +127,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const AppIcon = APP_ICON;
   useSearchData(); // Initialize search data and listen for updates
 
+  // Draggable State Management
+  const [calculatorPosition, setCalculatorPosition] = useLocalStorageState({ x: window.innerWidth - 420, y: 100 }, 'calculatorPosition');
+  const [fabPosition, setFabPosition] = useLocalStorageState({ x: window.innerWidth - 88, y: window.innerHeight - 88 }, 'calculatorFabPosition');
+  const fabRef = React.useRef<HTMLButtonElement>(null);
+
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+    if (active.id === 'draggable-calculator') {
+        setCalculatorPosition(prev => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
+    }
+    if (active.id === 'draggable-calculator-fab') {
+        setFabPosition(prev => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
+    }
+  };
+
+
   useEffect(() => {
     setIsAppLayoutMounted(true);
   }, []);
@@ -135,7 +153,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <DndContext>
+    <DndContext onDragEnd={handleDragEnd}>
       <SettingsProvider>
         <SidebarProvider defaultOpen={false} collapsible="icon">
           <AppExitHandler />
@@ -156,7 +174,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarFooter>
             </Sidebar>
 
-            <div className="flex flex-col flex-1 min-h-0 relative"> {/* Added relative positioning */}
+            <div className="flex flex-col flex-1 min-h-0 relative">
               <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
                 <div className="flex items-center gap-4">
                   <SidebarTrigger className="md:hidden -ml-2">
@@ -178,17 +196,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </ErrorBoundary>
               </SidebarInset>
-
-              {/* Global Calculator FAB */}
-              <Button
-                  onClick={() => setIsCalculatorOpen(true)}
-                  className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 print:hidden"
-                  size="icon"
-                  aria-label="Open Calculator"
-                >
-                <Calculator className="h-8 w-8" />
-              </Button>
-              <CalculatorDialog isOpen={isCalculatorOpen} onClose={() => setIsCalculatorOpen(false)} />
+             
+              <CalculatorDialog
+                isOpen={isCalculatorOpen}
+                onOpenChange={setIsCalculatorOpen}
+                position={calculatorPosition}
+                fabRef={fabRef}
+              />
             </div>
           </div>
           <Toaster />
