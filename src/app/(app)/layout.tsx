@@ -120,49 +120,27 @@ function LoadingBarInternal() {
   return <div className="w-full h-1 bg-primary animate-pulse" />;
 }
 
-const DraggableFab = ({ onOpen }: { onOpen: () => void }) => {
-    const [position, setPosition] = useLocalStorageState({ x: 0, y: 0 }, 'calculatorFabPosition');
-    const fabRef = React.useRef<HTMLDivElement>(null);
+const FloatingCalculatorButton = ({ onOpen }: { onOpen: () => void }) => {
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
-        if (typeof window !== 'undefined') {
-            setPosition(prev => ({
-                x: prev.x === 0 ? window.innerWidth - 88 : prev.x,
-                y: prev.y === 0 ? window.innerHeight - 88 : prev.y
-            }));
-        }
-    }, [setPosition]);
-    
-    const { attributes, listeners, setNodeRef, transform } = useDraggable({
-        id: 'draggable-calculator-fab',
-    });
+    }, []);
     
     if (!isMounted) return null;
     
-    const style = transform ? {
-        transform: `translate3d(${position.x + transform.x}px, ${position.y + transform.y}px, 0)`,
-    } : {
-        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
-    };
-    
     return (
         <motion.div
-            ref={setNodeRef as any}
-            style={style}
-            {...attributes}
-            {...listeners}
-            className="fixed top-0 left-0 z-50 print:hidden"
+            className="fixed bottom-6 right-6 z-50 print:hidden"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
         >
             <Button
-                ref={fabRef as any}
                 size="icon"
                 className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
                 onClick={onOpen}
+                aria-label="Open Calculator"
             >
                 <Calculator className="h-8 w-8" />
             </Button>
@@ -240,7 +218,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
            
             {isMounted && (
                 <>
-                    <DraggableFab onOpen={() => setIsCalculatorOpen(true)} />
+                    <FloatingCalculatorButton onOpen={() => setIsCalculatorOpen(true)} />
                     <CalculatorDialog
                         isOpen={isCalculatorOpen}
                         onOpenChange={setIsCalculatorOpen}
@@ -276,4 +254,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </SettingsProvider>
     );
 }
-
