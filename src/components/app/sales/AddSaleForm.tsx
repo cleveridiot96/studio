@@ -175,6 +175,44 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
   }, [watchedFormValues, availableStock]);
 
+  const brokerId = watch('brokerId');
+  
+  React.useEffect(() => {
+    const broker = brokers.find(b => b.id === brokerId);
+    const commissionIndex = watchedFormValues.expenses?.findIndex(exp => exp.account === 'Broker Commission');
+    
+    if (broker && broker.commission && summary.totalGoodsValue > 0) {
+        let commissionAmount = 0;
+        if (broker.commissionType === 'Percentage') {
+            commissionAmount = summary.totalGoodsValue * (broker.commission / 100);
+        } else {
+            // Placeholder for other commission types like 'Fixed' if logic is defined
+        }
+
+        const newCommissionExpense: ExpenseItem = {
+            account: 'Broker Commission',
+            amount: parseFloat(commissionAmount.toFixed(2)),
+            paymentMode: 'Pending',
+            partyId: broker.id,
+            partyName: broker.name,
+        };
+
+        if (commissionIndex !== undefined && commissionIndex > -1) {
+            // Update existing commission expense
+            setValue(`expenses.${commissionIndex}`, newCommissionExpense, { shouldValidate: true });
+        } else {
+            // Append new commission expense
+            appendExpense(newCommissionExpense);
+        }
+    } else {
+        // If no broker or no commission, remove the auto-added commission expense
+        if (commissionIndex !== undefined && commissionIndex > -1) {
+            removeExpense(commissionIndex);
+        }
+    }
+  }, [brokerId, brokers, summary.totalGoodsValue, setValue, appendExpense, removeExpense, watchedFormValues.expenses]);
+
+
   React.useEffect(() => {
     if (isOpen) {
       reset(getDefaultValues());
@@ -389,48 +427,54 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 
                   <div className="p-4 border rounded-md shadow-sm">
                       <h3 className="text-lg font-medium mb-3 text-primary">Expenses &amp; Commission</h3>
-                      {expenseFields.map((field, index) => (
-                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
-                          <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
-                              <Select onValueChange={itemField.onChange} value={itemField.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {expenses.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
-                                  <SelectItem value="Broker Commission">Broker Commission</SelectItem>
-                                  <SelectItem value="Extra Brokerage">Extra Brokerage</SelectItem>
-                                  <SelectItem value="Cash Discount">Cash Discount</SelectItem>
-                                </SelectContent>
-                              </Select><FormMessage />
-                            </FormItem>)} />
-                          <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                              <FormMessage />
-                            </FormItem>)} />
-                          <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
-                              <MasterDataCombobox value={itemField.value} onChange={itemField.onChange}
-                                options={brokers.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
-                                placeholder="Select Party" addNewLabel="Add New Broker"
-                                onAddNew={() => handleOpenMasterForm("Broker")} onEdit={(id) => handleEditMasterItem("Broker", id)}
-                              /> <FormMessage />
-                            </FormItem>)} />
-                          <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
-                              <Select onValueChange={itemField.onChange} defaultValue={itemField.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Auto-adjusted">Auto-adjusted</SelectItem>
-                                    <SelectItem value="Cash">Cash</SelectItem>
-                                    <SelectItem value="Bank">Bank</SelectItem>
-                                    <SelectItem value="Pending">Pending</SelectItem>
-                                </SelectContent>
-                              </Select><FormMessage />
-                            </FormItem>)} />
-                          <div className="md:col-span-1 flex items-center justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)}><Trash2 className="h-4 w-4" /></Button></div>
-                        </div>
-                      ))}
+                      {expenseFields.map((field, index) => {
+                          const isCommission = field.account === 'Broker Commission';
+                          return (
+                            <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
+                              <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
+                                <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
+                                  <Select onValueChange={itemField.onChange} value={itemField.value} disabled={isCommission}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="Broker Commission">Broker Commission</SelectItem>
+                                      <SelectItem value="Extra Brokerage">Extra Brokerage</SelectItem>
+                                      <SelectItem value="Cash Discount">Cash Discount</SelectItem>
+                                      {expenses.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select><FormMessage />
+                                </FormItem>)} />
+                              <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
+                                <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
+                                  <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} readOnly={isCommission} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                                  <FormMessage />
+                                </FormItem>)} />
+                              <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
+                                <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
+                                  <MasterDataCombobox value={itemField.value} onChange={itemField.onChange}
+                                    options={brokers.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
+                                    placeholder="Select Party" addNewLabel="Add New Broker"
+                                    onAddNew={() => handleOpenMasterForm("Broker")} onEdit={(id) => handleEditMasterItem("Broker", id)}
+                                    disabled={isCommission}
+                                  /> <FormMessage />
+                                </FormItem>)} />
+                              <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
+                                <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
+                                  <Select onValueChange={itemField.onChange} defaultValue={itemField.value} disabled={isCommission}>
+                                    <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="Auto-adjusted">Auto-adjusted</SelectItem>
+                                        <SelectItem value="Cash">Cash</SelectItem>
+                                        <SelectItem value="Bank">Bank</SelectItem>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                    </SelectContent>
+                                  </Select><FormMessage />
+                                </FormItem>)} />
+                              <div className="md:col-span-1 flex items-center justify-end">
+                                <Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)} disabled={isCommission}><Trash2 className="h-4 w-4" /></Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: undefined, amount: undefined, paymentMode: "Auto-adjusted" })} className="mt-2">
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Row
                       </Button>
