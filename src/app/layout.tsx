@@ -10,20 +10,17 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: "STOCK MARKET TRACKER",
-  description: "Track your stock portfolio and analyze market trends.",
+  title: "Kisan Khata Sahayak",
+  description: "A modern accounting application for agricultural businesses.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning={true}>
-      <body 
-        className={cn("h-full w-full bg-background font-sans antialiased", fontSans.variable)}
-        suppressHydrationWarning={true} 
-      >
-        {/* The main div here will allow content to scroll if it exceeds viewport height */}
-        {/* It effectively becomes the scroll container if SettingsProvider/AppLayout don't manage height explicitly */}
-        {children}
+      <body className={cn("bg-background font-sans antialiased", fontSans.variable)}>
+        <div className="h-full w-full">
+          {children}
+        </div>
       </body>
     </html>
   );

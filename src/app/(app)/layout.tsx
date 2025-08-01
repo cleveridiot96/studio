@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark, Calculator } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -14,7 +14,7 @@ import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
@@ -23,6 +23,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { CalculatorDialog } from '@/components/shared/Calculator';
 import { DndContext, useDraggable, type DragEndEvent } from "@dnd-kit/core";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
+import { motion } from "framer-motion";
 
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
@@ -73,7 +74,6 @@ const useSearchData = () => {
 
   useEffect(() => {
     reindexData();
-    // Listen for custom event to re-index
     window.addEventListener('reindex-search', reindexData);
     return () => {
       window.removeEventListener('reindex-search', reindexData);
@@ -120,94 +120,160 @@ function LoadingBarInternal() {
   return <div className="w-full h-1 bg-primary animate-pulse" />;
 }
 
+const DraggableFab = ({ onOpen }: { onOpen: () => void }) => {
+    const [position, setPosition] = useLocalStorageState({ x: 0, y: 0 }, 'calculatorFabPosition');
+    const fabRef = React.useRef<HTMLDivElement>(null);
+    const [isMounted, setIsMounted] = useState(false);
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
+    useEffect(() => {
+        setIsMounted(true);
+        if (typeof window !== 'undefined') {
+            setPosition(prev => ({
+                x: prev.x === 0 ? window.innerWidth - 88 : prev.x,
+                y: prev.y === 0 ? window.innerHeight - 88 : prev.y
+            }));
+        }
+    }, [setPosition]);
+    
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
+        id: 'draggable-calculator-fab',
+    });
+    
+    if (!isMounted) return null;
+    
+    const style = transform ? {
+        transform: `translate3d(${position.x + transform.x}px, ${position.y + transform.y}px, 0)`,
+    } : {
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+    };
+    
+    return (
+        <motion.div
+            ref={setNodeRef as any}
+            style={style}
+            {...attributes}
+            {...listeners}
+            className="fixed top-0 left-0 z-50 print:hidden"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.5 }}
+        >
+            <Button
+                ref={fabRef as any}
+                size="icon"
+                className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+                onClick={onOpen}
+            >
+                <Calculator className="h-8 w-8" />
+            </Button>
+        </motion.div>
+    );
+};
+
+
+function AppLayoutInternal({ children }: { children: React.ReactNode }) {
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const AppIcon = APP_ICON;
-  useSearchData(); // Initialize search data and listen for updates
+  useSearchData(); 
 
-  // Draggable State Management
-  const [calculatorPosition, setCalculatorPosition] = useLocalStorageState({ x: window.innerWidth - 420, y: 100 }, 'calculatorPosition');
-  const [fabPosition, setFabPosition] = useLocalStorageState({ x: window.innerWidth - 88, y: window.innerHeight - 88 }, 'calculatorFabPosition');
-  const fabRef = React.useRef<HTMLButtonElement>(null);
-
-
+  const [calculatorPosition, setCalculatorPosition] = useLocalStorageState({ x: 0, y: 0 }, 'calculatorPosition');
+  const [isMounted, setIsMounted] = useState(false);
+  
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
     if (active.id === 'draggable-calculator') {
         setCalculatorPosition(prev => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
     }
-    if (active.id === 'draggable-calculator-fab') {
-        setFabPosition(prev => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
-    }
   };
 
-
   useEffect(() => {
-    setIsAppLayoutMounted(true);
-  }, []);
-
-  if (!isAppLayoutMounted) {
-    return null;
-  }
+      setIsMounted(true);
+      if (typeof window !== 'undefined') {
+        setCalculatorPosition(prev => ({
+            x: prev.x === 0 ? window.innerWidth / 2 - 160 : prev.x, // Center it initially
+            y: prev.y === 0 ? 100 : prev.y
+        }));
+      }
+  }, [setCalculatorPosition]);
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-      <SettingsProvider>
-        <SidebarProvider defaultOpen={false} collapsible="icon">
-          <AppExitHandler />
-          <div className="flex flex-1 bg-background">
-            <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
-              <SidebarHeader className="p-4 border-b border-sidebar-border">
-                <Link href="/dashboard" className="flex items-center gap-2 group">
-                  <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
-                  <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
-                    {APP_NAME}
-                  </h1>
-                </Link>
-              </SidebarHeader>
-              <SidebarContent className="py-2">
-                <ClientSidebarMenu navItems={navItems} />
-              </SidebarContent>
-              <SidebarFooter className="p-4 border-t border-sidebar-border">
-              </SidebarFooter>
-            </Sidebar>
+        <div className="flex flex-1 bg-background">
+          <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
+            <SidebarHeader className="p-4 border-b border-sidebar-border">
+              <Link href="/dashboard" className="flex items-center gap-2 group">
+                <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
+                <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
+                  {APP_NAME}
+                </h1>
+              </Link>
+            </SidebarHeader>
+            <SidebarContent className="py-2">
+              <ClientSidebarMenu navItems={navItems} />
+            </SidebarContent>
+            <SidebarFooter className="p-4 border-t border-sidebar-border">
+            </SidebarFooter>
+          </Sidebar>
 
-            <div className="flex flex-col flex-1 min-h-0 relative">
-              <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
-                <div className="flex items-center gap-4">
-                  <SidebarTrigger className="md:hidden -ml-2">
-                    <Menu className="h-7 w-7 text-foreground" />
-                  </SidebarTrigger>
-                  <SidebarTrigger className="hidden md:flex">
-                    <Menu className="h-7 w-7 text-foreground" />
-                  </SidebarTrigger>
+          <div className="flex flex-col flex-1 min-h-0 relative">
+            <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="md:hidden -ml-2">
+                  <Menu className="h-7 w-7 text-foreground" />
+                </SidebarTrigger>
+                <SidebarTrigger className="hidden md:flex">
+                  <Menu className="h-7 w-7 text-foreground" />
+                </SidebarTrigger>
+              </div>
+              <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
+                <AppHeaderContentInternal />
+              </div>
+            </header>
+            <LoadingBarInternal />
+            <SidebarInset className="flex-1 overflow-y-auto p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
+              <ErrorBoundary>
+                <div className="flex flex-col flex-1 w-full min-w-0">
+                    {children}
                 </div>
-                <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
-                  <AppHeaderContentInternal />
-                </div>
-              </header>
-              <LoadingBarInternal />
-              <SidebarInset className="flex-1 overflow-y-auto p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
-                <ErrorBoundary>
-                  <div className="flex flex-col flex-1 w-full min-w-0">
-                      {children}
-                  </div>
-                </ErrorBoundary>
-              </SidebarInset>
-             
-              <CalculatorDialog
-                isOpen={isCalculatorOpen}
-                onOpenChange={setIsCalculatorOpen}
-                position={calculatorPosition}
-                fabRef={fabRef}
-              />
-            </div>
+              </ErrorBoundary>
+            </SidebarInset>
+           
+            {isMounted && (
+                <>
+                    <DraggableFab onOpen={() => setIsCalculatorOpen(true)} />
+                    <CalculatorDialog
+                        isOpen={isCalculatorOpen}
+                        onOpenChange={setIsCalculatorOpen}
+                        position={calculatorPosition}
+                    />
+                </>
+            )}
           </div>
-          <Toaster />
-        </SidebarProvider>
-      </SettingsProvider>
+        </div>
     </DndContext>
   );
 }
+
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+    const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
+    
+    useEffect(() => {
+        setIsAppLayoutMounted(true);
+    }, []);
+
+    if (!isAppLayoutMounted) {
+        return null;
+    }
+
+    return (
+        <SettingsProvider>
+            <SidebarProvider defaultOpen={true} collapsible="icon">
+                <AppExitHandler />
+                <AppLayoutInternal>{children}</AppLayoutInternal>
+                <Toaster />
+            </SidebarProvider>
+        </SettingsProvider>
+    );
+}
+

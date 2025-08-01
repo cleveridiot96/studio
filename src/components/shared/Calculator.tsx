@@ -8,13 +8,13 @@ import { Input } from '@/components/ui/input';
 import { X, Percent, Divide, Trash2 } from 'lucide-react';
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from '@/lib/utils';
-import { AnimatePresence, motion, useAnimate } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion";
 
 const buttonClasses = "text-xl h-14 w-14 rounded-full shadow-md";
 const operatorButtonClasses = "bg-accent text-accent-foreground hover:bg-accent/90";
 const specialButtonClasses = "bg-secondary text-secondary-foreground hover:bg-secondary/80";
 
-const CalculatorComponent = React.forwardRef<HTMLDivElement, { onEnter: () => void }>((props, ref) => {
+const CalculatorComponent = React.forwardRef<HTMLDivElement, { onEnter?: () => void }>(({ onEnter }, ref) => {
   const [input, setInput] = React.useState('');
   const [result, setResult] = React.useState('');
   const [history, setHistory] = React.useState('');
@@ -33,13 +33,13 @@ const CalculatorComponent = React.forwardRef<HTMLDivElement, { onEnter: () => vo
 
   const handleCalculate = () => {
     try {
-      if (!input || /[+\-*/.]$/.test(input)) return; // Don't calculate if empty or ends with operator
+      if (!input || /[+\-*/.]$/.test(input)) return;
       const sanitizedInput = input.replace(/%/g, '/100*');
       const evalResult = eval(sanitizedInput);
       setResult(String(evalResult));
       setHistory(input + ' =');
       setInput(String(evalResult));
-      props.onEnter();
+      onEnter?.();
     } catch (error) {
       setResult('Error');
     }
@@ -120,37 +120,13 @@ interface CalculatorDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   position: { x: number; y: number };
-  fabRef: React.RefObject<HTMLButtonElement>;
 }
 
-export const CalculatorDialog: React.FC<CalculatorDialogProps> = ({ isOpen, onOpenChange, position, fabRef }) => {
-    const {attributes, listeners, setNodeRef: setDraggableNodeRef, transform} = useDraggable({
+export const CalculatorDialog: React.FC<CalculatorDialogProps> = ({ isOpen, onOpenChange, position }) => {
+    const {attributes, listeners, setNodeRef, transform} = useDraggable({
         id: 'draggable-calculator',
     });
     
-    const [scope, animate] = useAnimate()
-
-    React.useEffect(() => {
-        if (fabRef.current && scope.current) {
-            const fabRect = fabRef.current.getBoundingClientRect();
-            if (isOpen) {
-                // Animate from FAB to final position
-                const animation = [
-                    [scope.current, { x: fabRect.left, y: fabRect.top, scale: 0.1, opacity: 0 }],
-                    [scope.current, { x: position.x, y: position.y, scale: 1, opacity: 1 }, { duration: 0.3, ease: "easeOut" }],
-                ]
-                animate(animation);
-            } else {
-                // Animate from current position to FAB
-                 const animation = [
-                    [scope.current, { x: position.x, y: position.y, scale: 1, opacity: 1 }],
-                    [scope.current, { x: fabRect.left, y: fabRect.top, scale: 0.1, opacity: 0 }, { duration: 0.2, ease: "easeIn" }],
-                ]
-                animate(animation);
-            }
-        }
-    }, [isOpen, fabRef, scope, animate, position.x, position.y]);
-
     const style = transform ? {
         transform: `translate3d(${position.x + transform.x}px, ${position.y + transform.y}px, 0)`,
     } : {
@@ -158,19 +134,25 @@ export const CalculatorDialog: React.FC<CalculatorDialogProps> = ({ isOpen, onOp
     };
 
     return (
-        <>
-            <AnimatePresence>
-                {isOpen && (
-                     <div ref={scope} style={style} className="fixed top-0 left-0 z-[9999] print:hidden">
-                        <div ref={setDraggableNodeRef} {...attributes} {...listeners} className="relative">
-                            <CalculatorComponent onEnter={() => {}} />
-                             <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-destructive text-destructive-foreground shadow-lg" onClick={() => onOpenChange(false)}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
+        <AnimatePresence>
+            {isOpen && (
+                 <motion.div
+                    ref={setNodeRef as any}
+                    style={style}
+                    className="fixed top-0 left-0 z-[9999] print:hidden"
+                    initial={{ scale: 0.1, opacity: 0, x: '80vw', y: '80vh' }}
+                    animate={{ scale: 1, opacity: 1, x: position.x, y: position.y }}
+                    exit={{ scale: 0.1, opacity: 0, x: '80vw', y: '80vh', transition: { duration: 0.2, ease: "easeIn" } }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                >
+                    <div {...attributes} {...listeners} className="relative">
+                        <CalculatorComponent />
+                         <Button variant="ghost" size="icon" className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-destructive text-destructive-foreground shadow-lg" onClick={() => onOpenChange(false)}>
+                            <X className="h-4 w-4" />
+                        </Button>
                     </div>
-                )}
-            </AnimatePresence>
-        </>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
