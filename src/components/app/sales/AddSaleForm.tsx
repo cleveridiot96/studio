@@ -186,7 +186,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         if (broker.commissionType === 'Percentage') {
             commissionAmount = summary.totalGoodsValue * (broker.commission / 100);
         } else {
-            // Placeholder for other commission types like 'Fixed' if logic is defined
+            commissionAmount = broker.commission;
         }
 
         const newCommissionExpense: ExpenseItem = {
@@ -198,14 +198,11 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         };
 
         if (commissionIndex !== undefined && commissionIndex > -1) {
-            // Update existing commission expense
             setValue(`expenses.${commissionIndex}`, newCommissionExpense, { shouldValidate: true });
         } else {
-            // Append new commission expense
             appendExpense(newCommissionExpense);
         }
     } else {
-        // If no broker or no commission, remove the auto-added commission expense
         if (commissionIndex !== undefined && commissionIndex > -1) {
             removeExpense(commissionIndex);
         }
@@ -291,7 +288,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
               costBreakdown: stock?.costBreakdown || { baseRate: 0, purchaseExpenses: 0, transferExpenses: 0 },
           };
       }),
-      expenses: values.expenses?.map(exp => ({ ...exp, partyName: exp.party || 'Self' })),
+      expenses: values.expenses?.map(exp => ({ ...exp, partyName: exp.partyName || 'Self' })),
       totalGoodsValue: Math.round(summary.totalGoodsValue),
       billedAmount: Math.round(summary.billedAmount),
       totalQuantity: Math.round(summary.totalQuantity),
