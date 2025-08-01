@@ -4,7 +4,7 @@
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark, Calculator } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -20,6 +20,8 @@ import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { CalculatorDialog } from '@/components/shared/Calculator'; // Import the new calculator
+import { DndContext } from "@dnd-kit/core";
 
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
@@ -120,6 +122,7 @@ function LoadingBarInternal() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
+  const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const AppIcon = APP_ICON;
   useSearchData(); // Initialize search data and listen for updates
 
@@ -132,52 +135,65 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SettingsProvider>
-      <SidebarProvider defaultOpen={false} collapsible="icon">
-        <AppExitHandler />
-        <div className="flex flex-1 bg-background">
-          <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
-            <SidebarHeader className="p-4 border-b border-sidebar-border">
-              <Link href="/dashboard" className="flex items-center gap-2 group">
-                <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
-                <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
-                  {APP_NAME}
-                </h1>
-              </Link>
-            </SidebarHeader>
-            <SidebarContent className="py-2">
-              <ClientSidebarMenu navItems={navItems} />
-            </SidebarContent>
-            <SidebarFooter className="p-4 border-t border-sidebar-border">
-            </SidebarFooter>
-          </Sidebar>
+    <DndContext>
+      <SettingsProvider>
+        <SidebarProvider defaultOpen={false} collapsible="icon">
+          <AppExitHandler />
+          <div className="flex flex-1 bg-background">
+            <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
+              <SidebarHeader className="p-4 border-b border-sidebar-border">
+                <Link href="/dashboard" className="flex items-center gap-2 group">
+                  <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
+                  <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
+                    {APP_NAME}
+                  </h1>
+                </Link>
+              </SidebarHeader>
+              <SidebarContent className="py-2">
+                <ClientSidebarMenu navItems={navItems} />
+              </SidebarContent>
+              <SidebarFooter className="p-4 border-t border-sidebar-border">
+              </SidebarFooter>
+            </Sidebar>
 
-          <div className="flex flex-col flex-1 min-h-0">
-            <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="md:hidden -ml-2">
-                  <Menu className="h-7 w-7 text-foreground" />
-                </SidebarTrigger>
-                <SidebarTrigger className="hidden md:flex">
-                  <Menu className="h-7 w-7 text-foreground" />
-                </SidebarTrigger>
-              </div>
-              <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
-                <AppHeaderContentInternal />
-              </div>
-            </header>
-            <LoadingBarInternal />
-            <SidebarInset className="flex-1 overflow-y-auto p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
-              <ErrorBoundary>
-                <div className="flex flex-col flex-1 w-full min-w-0">
-                    {children}
+            <div className="flex flex-col flex-1 min-h-0 relative"> {/* Added relative positioning */}
+              <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger className="md:hidden -ml-2">
+                    <Menu className="h-7 w-7 text-foreground" />
+                  </SidebarTrigger>
+                  <SidebarTrigger className="hidden md:flex">
+                    <Menu className="h-7 w-7 text-foreground" />
+                  </SidebarTrigger>
                 </div>
-              </ErrorBoundary>
-            </SidebarInset>
+                <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
+                  <AppHeaderContentInternal />
+                </div>
+              </header>
+              <LoadingBarInternal />
+              <SidebarInset className="flex-1 overflow-y-auto p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
+                <ErrorBoundary>
+                  <div className="flex flex-col flex-1 w-full min-w-0">
+                      {children}
+                  </div>
+                </ErrorBoundary>
+              </SidebarInset>
+
+              {/* Global Calculator FAB */}
+              <Button
+                  onClick={() => setIsCalculatorOpen(true)}
+                  className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-2xl z-50 print:hidden"
+                  size="icon"
+                  aria-label="Open Calculator"
+                >
+                <Calculator className="h-8 w-8" />
+              </Button>
+              <CalculatorDialog isOpen={isCalculatorOpen} onClose={() => setIsCalculatorOpen(false)} />
+            </div>
           </div>
-        </div>
-        <Toaster />
-      </SidebarProvider>
-    </SettingsProvider>
+          <Toaster />
+        </SidebarProvider>
+      </SettingsProvider>
+    </DndContext>
   );
 }
