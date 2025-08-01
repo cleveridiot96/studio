@@ -494,12 +494,22 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             </div>
                             
                             <div className={`flex justify-between font-bold ${summary.totalGrossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Gross Profit:</span></TooltipTrigger><TooltipContent><p>(Goods Value: ₹{summary.totalGoodsValue.toFixed(0)}) - (Base Purchase Cost: ₹{summary.totalBasePurchaseCost.toFixed(0)})</p></TooltipContent></Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Gross Profit:</span></TooltipTrigger>
+                                <TooltipContent>
+                                  <p>(Goods Value: ₹{summary.totalGoodsValue.toLocaleString('en-IN', {maximumFractionDigits:0})}) - (Base Purchase Cost: ₹{summary.totalBasePurchaseCost.toLocaleString('en-IN', {maximumFractionDigits:0})})</p>
+                                </TooltipContent>
+                              </Tooltip>
                               <span>₹{Math.round(summary.totalGrossProfit).toLocaleString('en-IN')}</span>
                             </div>
 
                             <div className="flex justify-between text-red-600">
-                               <Tooltip><TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Less: All Expenses:</span></TooltipTrigger><TooltipContent><p>(Landed Cost - Base Cost) + (Sale Expenses)</p></TooltipContent></Tooltip>
+                               <Tooltip>
+                                 <TooltipTrigger asChild><span className="cursor-help underline decoration-dashed">Less: All Expenses:</span></TooltipTrigger>
+                                 <TooltipContent>
+                                   <p>(₹{summary.totalLandedCost.toLocaleString('en-IN', {maximumFractionDigits:0})} Landed Cost - ₹{summary.totalBasePurchaseCost.toLocaleString('en-IN', {maximumFractionDigits:0})} Base Cost) + ₹{summary.totalSaleSideExpenses.toLocaleString('en-IN', {maximumFractionDigits:0})} Sale Expenses</p>
+                                 </TooltipContent>
+                               </Tooltip>
                               <span>(-) ₹{Math.round(summary.totalLandedCost - summary.totalBasePurchaseCost + summary.totalSaleSideExpenses).toLocaleString('en-IN')}</span>
                             </div>
                             <hr className="my-1 border-muted-foreground/50" />
