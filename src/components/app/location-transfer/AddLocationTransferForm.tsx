@@ -195,7 +195,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === values.fromWarehouseId);
         return {
             originalLotNumber: item.originalLotNumber,
-            newLotNumber: item.originalLotNumber,
+            newLotNumber: `${item.originalLotNumber}/${Math.round(item.bagsToTransfer!)}`,
             bagsToTransfer: Math.round(item.bagsToTransfer!),
             netWeightToTransfer: item.netWeightToTransfer!,
             grossWeightToTransfer: item.grossWeightToTransfer!,
