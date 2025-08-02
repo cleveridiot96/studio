@@ -71,7 +71,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
             originalLotNumber: item.originalLotNumber,
             bagsToTransfer: item.bagsToTransfer,
             netWeightToTransfer: item.netWeightToTransfer,
-            grossWeightToTransfer: item.grossWeightToTransfer
+            grossWeightToTransfer: item.grossWeightToTransfer,
+            newLotNumber: item.newLotNumber,
           })),
           expenses: transferToEdit.expenses || [],
         };
@@ -82,7 +83,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         toWarehouseId: undefined,
         transporterId: undefined,
         notes: "",
-        items: [{ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined }],
+        items: [{ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined, newLotNumber: "" }],
         expenses: [],
       };
   }, [transferToEdit]);
@@ -195,7 +196,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === values.fromWarehouseId);
         return {
             originalLotNumber: item.originalLotNumber,
-            newLotNumber: `${item.originalLotNumber}/${Math.round(item.bagsToTransfer!)}`,
+            newLotNumber: item.newLotNumber,
             bagsToTransfer: Math.round(item.bagsToTransfer!),
             netWeightToTransfer: item.netWeightToTransfer!,
             grossWeightToTransfer: item.grossWeightToTransfer!,
@@ -209,33 +210,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     onClose();
   };
 
-  const handleNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    const target = e.target;
-    if (target.value === '0') {
-      const fieldName = target.name as keyof LocationTransferFormValues;
-      if (typeof fieldName === 'string') {
-         setValue(fieldName as any, undefined, { shouldValidate: true });
-      }
-    } else {
-      target.select();
-    }
-  };
-  
-  const handleItemNumericInputFocus = (e: React.FocusEvent<HTMLInputElement>, fieldName: any) => {
-     const target = e.target;
-     if (target.value === '0' || target.value === '') {
-        setValue(fieldName, undefined, { shouldValidate: true });
-     } else {
-        target.select();
-     }
-  };
-
   if (!isOpen) return null;
 
   return (
     <>
       <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
-        <DialogContent className="sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
+        <DialogContent className="sm:max-w-4xl md:max-w-5xl lg:max-w-6xl">
           <DialogHeader>
             <DialogTitle>{transferToEdit ? "Edit Location Transfer" : "New Location Transfer"}</DialogTitle>
             <DialogDescription>Transfer vakkals (lots) between your warehouse locations and record associated expenses.</DialogDescription>
@@ -311,7 +291,15 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <FormItem className="md:col-span-3"><FormLabel>Vakkal/Lot No.</FormLabel>
                           <MasterDataCombobox
                             value={itemField.value}
-                            onChange={itemField.onChange}
+                            onChange={(lotValue) => {
+                                itemField.onChange(lotValue);
+                                const bags = getValues(`items.${index}.bagsToTransfer`);
+                                if (lotValue && bags) {
+                                  setValue(`items.${index}.newLotNumber`, `${lotValue}/${Math.round(bags)}`);
+                                } else {
+                                  setValue(`items.${index}.newLotNumber`, "");
+                                }
+                              }}
                             options={availableLotsOptions}
                             placeholder="Select Lot"
                             disabled={!watch('fromWarehouseId')}
@@ -319,25 +307,19 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           <FormMessage />
                         </FormItem>)}
                       />
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Base Rate (₹/kg)</FormLabel>
-                        <div className="font-medium text-sm h-10 flex items-center px-3 border border-dashed rounded-md bg-muted/50 text-foreground/80">
-                           {(() => {
-                              const lotValue = watch(`items.${index}.originalLotNumber`);
-                              const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watch('fromWarehouseId'));
-                              return stockInfo ? `₹${stockInfo.purchaseRate.toLocaleString()}` : 'N/A';
-                          })()}
-                        </div>
-                      </FormItem>
                       <FormField control={control} name={`items.${index}.bagsToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
                           <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
-                            onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.bagsToTransfer`)}
                             onChange={e => {
                               const bagsVal = parseFloat(e.target.value) || undefined;
                               itemField.onChange(bagsVal);
-                              setValue(`items.${index}.grossWeightToTransfer`, Math.round((bagsVal || 0) * 50), { shouldValidate: true });
                               const lotValue = watch(`items.${index}.originalLotNumber`);
+                              if (lotValue && bagsVal) {
+                                setValue(`items.${index}.newLotNumber`, `${lotValue}/${Math.round(bagsVal)}`);
+                              } else {
+                                setValue(`items.${index}.newLotNumber`, "");
+                              }
+                              setValue(`items.${index}.grossWeightToTransfer`, Math.round((bagsVal || 0) * 50), { shouldValidate: true });
                               const stockInfo = availableStock.find(s => s.lotNumber === lotValue && s.locationId === watch('fromWarehouseId'));
                               const avgWeightPerBag = stockInfo?.averageWeightPerBag || 50;
                               let newNetWeight;
@@ -352,10 +334,19 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''} onFocus={(e) => handleItemNumericInputFocus(e, `items.${index}.netWeightToTransfer`)} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''}  onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
+                      <FormField control={control} name={`items.${index}.newLotNumber`} render={({ field: itemField }) => (
+                         <FormItem className="md:col-span-2">
+                           <FormLabel>New Vakkal/Lot No.</FormLabel>
+                           <FormControl>
+                             <Input {...itemField} readOnly className="bg-muted/70 font-semibold" />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )} />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
                           <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} readOnly className="bg-muted/70" /></FormControl>
@@ -370,7 +361,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                     </div>
                   ))}
                   <div className="flex justify-between items-start mt-2">
-                    <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined })}>
+                    <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined, newLotNumber: "" })}>
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
                     </Button>
                     <div className="p-3 border rounded-md bg-muted/50 text-right text-sm">

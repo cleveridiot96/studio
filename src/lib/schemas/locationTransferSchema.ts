@@ -29,6 +29,7 @@ export const locationTransferSchema = (
         bagsToTransfer: z.coerce.number({required_error: "Bags are required."}).min(0.01, "Bags must be > 0."),
         netWeightToTransfer: z.coerce.number({required_error: "Net Wt. is required."}).min(0.01, "Net weight must be > 0."),
         grossWeightToTransfer: z.coerce.number({required_error: "Gross Wt. is required."}).min(0.01, "Gross weight must be > 0."),
+        newLotNumber: z.string().min(1, "New Lot Number could not be generated."),
     })
   ).min(1, "At least one item must be added to the transfer."),
   expenses: z.array(expenseItemSchema).optional(),
