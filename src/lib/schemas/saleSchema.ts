@@ -30,6 +30,11 @@ export const saleSchema = (
   expenses: z.array(expenseItemSchema).optional(),
   
   notes: z.string().optional(),
+  
+  // New fields for billing that don't affect profit
+  cbAmount: z.coerce.number().optional(),
+  balanceAmount: z.coerce.number().optional(),
+
 }).superRefine((data, ctx) => {
   // Validate total quantity for each lot doesn't exceed available stock
   const lotQuantities = new Map<string, number>();

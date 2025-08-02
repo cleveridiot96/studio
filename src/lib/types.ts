@@ -102,6 +102,8 @@ export interface Sale {
   // Aggregated values
   totalGoodsValue: number;
   billedAmount: number; // This is the final amount on the chitthi
+  cbAmount?: number; // Cut Bill amount, for internal tracking
+  balanceAmount?: number; // For internal tracking, if needed
   totalQuantity: number;
   totalNetWeight: number;
   
@@ -114,7 +116,6 @@ export interface Sale {
 
   // For outstanding balance calculation
   paidAmount?: number;
-  balanceAmount?: number;
 }
 
 

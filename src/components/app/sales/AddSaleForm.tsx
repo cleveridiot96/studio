@@ -98,6 +98,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
         })),
         expenses: saleToEdit.expenses || [],
         notes: saleToEdit.notes || "",
+        cbAmount: saleToEdit.cbAmount || undefined,
+        balanceAmount: saleToEdit.balanceAmount || undefined,
       };
     }
     return {
@@ -109,6 +111,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       items: [{ lotNumber: "", quantity: undefined, netWeight: undefined, rate: undefined }],
       expenses: [],
       notes: "",
+      cbAmount: undefined,
+      balanceAmount: undefined,
     };
   }, [saleToEdit]);
 
@@ -129,7 +133,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const watchedFormValues = watch();
 
   const summary = React.useMemo(() => {
-    const { items, expenses: formExpenses } = watchedFormValues;
+    const { items, expenses: formExpenses, cbAmount } = watchedFormValues;
       
     let totalGoodsValue = 0;
     let totalNetWeight = 0;
@@ -158,7 +162,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     const totalSaleSideExpenses = (formExpenses || []).reduce((sum, exp) => sum + (exp.amount || 0), 0);
     const cashDiscount = (formExpenses || []).find(e => e.account === 'Cash Discount')?.amount || 0;
     
-    const billedAmount = totalGoodsValue - cashDiscount;
+    const billedAmount = totalGoodsValue - (cbAmount || 0); // Billed amount is after CB
     const grossProfit = totalGoodsValue - totalBasePurchaseCost;
     const netProfit = totalGoodsValue - totalLandedCost - totalSaleSideExpenses;
 
@@ -309,6 +313,8 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
       expenses: values.expenses?.map(exp => ({ ...exp, partyName: exp.partyName || 'Self' })),
       totalGoodsValue: Math.round(summary.totalGoodsValue),
       billedAmount: Math.round(summary.billedAmount),
+      cbAmount: values.cbAmount,
+      balanceAmount: values.balanceAmount,
       totalQuantity: Math.round(summary.totalQuantity),
       totalNetWeight: summary.totalNetWeight,
       totalCostOfGoodsSold: Math.round(summary.totalLandedCost),
@@ -446,7 +452,6 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                     <SelectContent>
                                       <SelectItem value="Broker Commission">Broker Commission</SelectItem>
                                       <SelectItem value="Extra Brokerage">Extra Brokerage</SelectItem>
-                                      <SelectItem value="Cash Discount">Cash Discount</SelectItem>
                                       {expenses.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
                                     </SelectContent>
                                   </Select><FormMessage />
@@ -488,6 +493,25 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                       </Button>
                   </div>
                   
+                  <div className="p-4 border rounded-md shadow-sm grid grid-cols-2 gap-4">
+                     <FormField control={control} name="cbAmount" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>CB Amount (Optional)</FormLabel>
+                            <FormControl><Input type="number" placeholder="Cut Bill Amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                            <FormDescription>Amount that bypasses official billing. Does not affect profit.</FormDescription>
+                            <FormMessage />
+                        </FormItem>)} 
+                     />
+                      <FormField control={control} name="balanceAmount" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Balance Amount (Optional)</FormLabel>
+                            <FormControl><Input type="number" placeholder="Manual Balance" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                             <FormDescription>Any other manually adjusted balance amount.</FormDescription>
+                            <FormMessage />
+                        </FormItem>)}
+                     />
+                  </div>
+
                   <FormField control={control} name="notes" render={({ field }) => (
                       <FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Add any notes..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                   
