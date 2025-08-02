@@ -106,6 +106,30 @@ const useCalculatorState = () => {
 const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClose: () => void }) => {
     const calcState = useCalculatorState();
     const calcRef = React.useRef<HTMLDivElement>(null);
+    const [size, setSize] = useLocalStorageState({ width: 320, height: 500 }, 'calculatorSize');
+    const isResizing = React.useRef(false);
+
+    const handleResizeMouseDown = (e: React.MouseEvent) => {
+        e.preventDefault();
+        isResizing.current = true;
+        document.addEventListener('mousemove', handleResizeMouseMove);
+        document.addEventListener('mouseup', handleResizeMouseUp);
+    };
+
+    const handleResizeMouseMove = (e: MouseEvent) => {
+        if (isResizing.current) {
+            setSize(prevSize => ({
+                width: Math.max(300, prevSize.width + e.movementX),
+                height: Math.max(400, prevSize.height + e.movementY),
+            }));
+        }
+    };
+    
+    const handleResizeMouseUp = () => {
+        isResizing.current = false;
+        document.removeEventListener('mousemove', handleResizeMouseMove);
+        document.removeEventListener('mouseup', handleResizeMouseUp);
+    };
     
     React.useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -120,6 +144,8 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('mousemove', handleResizeMouseMove);
+            document.removeEventListener('mouseup', handleResizeMouseUp);
         };
     }, [isVisible, onClose]);
     
@@ -132,9 +158,10 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 50, scale: 0.9 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="fixed bottom-[90px] right-6 z-[100] w-[320px]"
+                    className="fixed bottom-[90px] right-6 z-[100]"
+                    style={{ width: `${size.width}px`, height: `${size.height}px` }}
                 >
-                    <Card className="w-full h-full shadow-2xl border-2 border-primary/20 bg-background/80 backdrop-blur-sm overflow-hidden flex flex-col">
+                    <Card className="w-full h-full shadow-2xl border-2 border-primary/20 bg-background/80 backdrop-blur-sm overflow-hidden flex flex-col relative">
                         <CardHeader className="pb-2 pt-2 flex-shrink-0">
                              <div className="flex justify-between items-center h-8">
                                 <Popover>
@@ -171,30 +198,37 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
                             />
                         </CardHeader>
                         <CardContent className="grid grid-cols-4 gap-2 flex-grow p-4">
-                            <Button variant="ghost" className={`${specialButtonClasses} h-14 w-full text-lg`} onClick={calcState.handleClear}>AC</Button>
-                            <Button variant="ghost" className={`${specialButtonClasses} h-14 w-full text-lg`} onClick={calcState.handleBackspace}><Trash2 /></Button>
-                            <Button variant="ghost" className={`${specialButtonClasses} h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('%')}><Percent /></Button>
-                            <Button variant="ghost" className={`${operatorButtonClasses} h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('/')}><Divide /></Button>
+                            <Button variant="ghost" className={`${specialButtonClasses} h-full w-full text-lg`} onClick={calcState.handleClear}>AC</Button>
+                            <Button variant="ghost" className={`${specialButtonClasses} h-full w-full text-lg`} onClick={calcState.handleBackspace}><Trash2 /></Button>
+                            <Button variant="ghost" className={`${specialButtonClasses} h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('%')}><Percent /></Button>
+                            <Button variant="ghost" className={`${operatorButtonClasses} h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('/')}><Divide /></Button>
                             
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('7')}>7</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('8')}>8</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('9')}>9</Button>
-                            <Button variant="ghost" className={`${operatorButtonClasses} h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('*')}>&times;</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('7')}>7</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('8')}>8</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('9')}>9</Button>
+                            <Button variant="ghost" className={`${operatorButtonClasses} h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('*')}>&times;</Button>
                             
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('4')}>4</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('5')}>5</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('6')}>6</Button>
-                            <Button variant="ghost" className={`${operatorButtonClasses} h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('-')}>-</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('4')}>4</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('5')}>5</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('6')}>6</Button>
+                            <Button variant="ghost" className={`${operatorButtonClasses} h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('-')}>-</Button>
                             
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('1')}>1</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('2')}>2</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('3')}>3</Button>
-                            <Button variant="ghost" className={`${operatorButtonClasses} h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('+')}>+</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('1')}>1</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('2')}>2</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('3')}>3</Button>
+                            <Button variant="ghost" className={`${operatorButtonClasses} h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('+')}>+</Button>
                             
-                            <Button variant="ghost" className={`h-14 w-full text-lg col-span-2`} onClick={() => calcState.handleButtonClick('0')}>0</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg`} onClick={() => calcState.handleButtonClick('.')}>.</Button>
-                            <Button variant="ghost" className={`h-14 w-full text-lg bg-primary text-primary-foreground hover:bg-primary/90`} onClick={calcState.handleCalculate}>=</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg col-span-2`} onClick={() => calcState.handleButtonClick('0')}>0</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('.')}>.</Button>
+                            <Button variant="ghost" className={`h-full w-full text-lg bg-primary text-primary-foreground hover:bg-primary/90`} onClick={calcState.handleCalculate}>=</Button>
                         </CardContent>
+                         <div
+                            onMouseDown={handleResizeMouseDown}
+                            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10"
+                            title="Resize Calculator"
+                        >
+                           <div className="w-2 h-2 border-r-2 border-b-2 border-muted-foreground/50 absolute bottom-1 right-1" />
+                        </div>
                     </Card>
                 </motion.div>
             )}
