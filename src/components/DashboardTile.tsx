@@ -28,11 +28,13 @@ import {
   BookCopy,
   ClipboardList,
   BookMarked,
+  Badge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<LucideProps>> = {
@@ -66,13 +68,14 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
 interface DashboardTileProps {
   title: string;
   iconName: string;
-  href?: string; // Make href optional
+  href?: string;
   description?: string;
   className?: string;
-  onClick?: () => void; // Add onClick prop
+  onClick?: () => void;
+  shortcut?: string;
 }
 
-const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, onClick }) => {
+const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, onClick, shortcut }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
 
   const cardContent = (
@@ -93,24 +96,34 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
     </motion.div>
   );
 
-  if (onClick) {
-    return (
-      <button onClick={onClick} className="block group h-full w-full text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
-        {cardContent}
-      </button>
-    );
-  }
+  const tile = (
+    <>
+      {onClick ? (
+        <button onClick={onClick} className="block group h-full w-full text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
+          {cardContent}
+        </button>
+      ) : href ? (
+        <Link href={href} className="block group h-full">
+          {cardContent}
+        </Link>
+      ) : (
+        <div className="block group h-full">{cardContent}</div>
+      )}
+    </>
+  );
 
-  if (href) {
-    return (
-      <Link href={href} className="block group h-full">
-        {cardContent}
-      </Link>
-    );
-  }
-
-  // Fallback if neither onClick nor href is provided (though one should always be)
-  return <div className="block group h-full">{cardContent}</div>;
-}
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{tile}</TooltipTrigger>
+        {shortcut && (
+          <TooltipContent>
+            <p>Shortcut: <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">{shortcut}</kbd></p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 export const DashboardTile = React.memo(DashboardTileComponent);

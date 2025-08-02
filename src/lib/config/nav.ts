@@ -36,24 +36,28 @@ export const navItems: NavItem[] = [
     href: '/purchases',
     iconName: 'ShoppingCart',
     iconColor: 'bg-purple-600',
+    shortcut: 'Alt + P',
   },
   {
     title: 'Sales',
     href: '/sales',
     iconName: 'Receipt',
     iconColor: 'bg-blue-600',
+    shortcut: 'Alt + S',
   },
   {
     title: 'Location Transfer',
     href: '/location-transfer',
     iconName: 'ArrowRightLeft',
     iconColor: 'bg-cyan-600',
+    shortcut: 'Alt + L',
   },
   {
     title: 'Inventory',
     href: '/inventory',
     iconName: 'Boxes',
     iconColor: 'bg-teal-600',
+    shortcut: 'Alt + I',
   },
    {
     title: 'Outstanding',
@@ -61,12 +65,14 @@ export const navItems: NavItem[] = [
     iconName: 'ClipboardList',
     iconColor: 'bg-yellow-500',
     textColor: 'text-black',
+    shortcut: 'Alt + O',
   },
   {
     title: 'Stock Ledger',
     href: '/ledger',
     iconName: 'BookUser',
     iconColor: 'bg-red-800',
+    shortcut: 'Alt + K',
   },
   {
     title: 'Accounts Ledger',
@@ -74,6 +80,7 @@ export const navItems: NavItem[] = [
     iconName: 'BookCopy',
     iconColor: 'bg-[#1beec7]',
     textColor: 'text-black',
+    shortcut: 'Alt + A',
   },
   {
     title: 'Financial Summary',
@@ -86,18 +93,21 @@ export const navItems: NavItem[] = [
     href: '/payments',
     iconName: 'ArrowRightCircle',
     iconColor: 'bg-red-600',
+    shortcut: 'Alt + Shift + P',
   },
   {
     title: 'Receipts',
     href: '/receipts',
     iconName: 'ArrowLeftCircle',
     iconColor: 'bg-green-600',
+    shortcut: 'Alt + R',
   },
   {
     title: 'Cash Book',
     href: '/cashbook',
     iconName: 'BookOpen',
     iconColor: 'bg-pink-600',
+    shortcut: 'Alt + C',
   },
   {
     title: 'Daybook',
@@ -105,24 +115,28 @@ export const navItems: NavItem[] = [
     iconName: 'BookMarked',
     iconColor: 'bg-[#ffa5ab]',
     textColor: 'text-white',
+    shortcut: 'Alt + D',
   },
   {
     title: 'Profit Analysis',
     href: '/profit-analysis',
     iconName: 'Rocket',
     iconColor: 'bg-green-500',
+    shortcut: 'Alt + Shift + A',
   },
   {
     title: 'Masters',
     href: '/masters',
     iconName: 'Users2',
     iconColor: 'bg-sky-600',
+    shortcut: 'Alt + M',
   },
   {
     title: 'Backup/Restore',
     href: '/backup',
     iconName: 'DatabaseBackup',
     iconColor: 'bg-sky-500',
+    shortcut: 'Alt + B',
   },
 ];
 

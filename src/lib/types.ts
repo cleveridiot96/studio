@@ -11,6 +11,7 @@ export interface NavItem {
   disabled?: boolean;
   external?: boolean;
   items?: NavItem[];
+  shortcut?: string;
 }
 
 // Generic type for master data items
