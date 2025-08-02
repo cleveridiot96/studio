@@ -25,7 +25,6 @@ const useCalculatorState = () => {
     const [input, setInput] = React.useState('');
     const [result, setResult] = React.useState('');
     const [history, setHistory] = useLocalStorageState<HistoryEntry[]>('calculatorHistory', []);
-    const [isHistoryVisible, setIsHistoryVisible] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
     const handleButtonClick = (value: string) => {
@@ -51,7 +50,6 @@ const useCalculatorState = () => {
             setHistory(prev => [newEntry, ...prev.slice(0, 19)]);
           }
           setInput(resultString);
-          setIsHistoryVisible(false); // Hide history after a calculation
         } catch (error) {
           setResult('Error');
         }
@@ -84,11 +82,10 @@ const useCalculatorState = () => {
     const handleHistoryClick = (entry: HistoryEntry) => {
         setInput(entry.result);
         setResult('');
-        setIsHistoryVisible(false);
     };
 
     return {
-        input, setInput, result, setResult, history, isHistoryVisible, setIsHistoryVisible,
+        input, setInput, result, setResult, history,
         handleButtonClick, handleCalculate, handleClear, handleBackspace, handleKeyDown, handleHistoryClick, inputRef
     }
 };
@@ -96,9 +93,8 @@ const useCalculatorState = () => {
 const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClose: () => void }) => {
     const calcState = useCalculatorState();
     const dragControls = useDragControls();
-    const [position, setPosition] = useLocalStorageState('calculatorPos', { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 250 });
+    const [position, setPosition] = useLocalStorageState('calculatorPos', { x: window.innerWidth - 340, y: window.innerHeight - 560 });
     const [size, setSize] = useLocalStorageState('calculatorSize', { width: 320, height: 500 });
-    const resizeRef = React.useRef<HTMLDivElement>(null);
     const calcRef = React.useRef<HTMLDivElement>(null);
 
     const startResize = React.useCallback((e: React.MouseEvent) => {
@@ -148,57 +144,54 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
                     dragListener={false}
                     dragControls={dragControls}
                     dragMomentum={false}
-                    onDragEnd={(_event, info) => setPosition({ x: info.point.x, y: info.point.y })}
                     style={{ x: position.x, y: position.y, width: size.width, height: size.height }}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.5, opacity: 0 }}
+                    initial={{ scale: 0.5, opacity: 0, y: 50, x: 50, originX: 'bottom right', originY: 'bottom right' }}
+                    animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
+                    exit={{ scale: 0.5, opacity: 0, y: 50, x: 50 }}
                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     className="fixed z-[100] cursor-grab active:cursor-grabbing"
                 >
                     <Card className="w-full h-full shadow-2xl border-2 border-primary/20 bg-background/80 backdrop-blur-sm overflow-hidden flex flex-col">
-                        <div onPointerDown={(e) => dragControls.start(e)} className="flex-shrink-0 cursor-grab active:cursor-grabbing">
-                            <CardHeader className="pb-2 relative">
-                                <button onClick={() => calcState.setIsHistoryVisible(v => !v)} className="absolute top-2 left-2 text-muted-foreground hover:text-foreground transition-colors p-1" title="Calculation History">
-                                    <HistoryIcon className="h-5 w-5" />
-                                </button>
-                                <div className="h-8 text-right text-muted-foreground text-xl pr-2 truncate">
-                                    {calcState.result && calcState.result !== calcState.input ? calcState.input : ''}
-                                </div>
-                                <Input
-                                    ref={calcState.inputRef}
-                                    type="text"
-                                    value={calcState.result || calcState.input}
-                                    onChange={(e) => calcState.setInput(e.target.value)}
-                                    onKeyDown={calcState.handleKeyDown}
-                                    className="h-16 text-4xl text-right font-mono border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent pr-2 cursor-text"
-                                    placeholder="0"
-                                    autoFocus
-                                    onFocus={(e) => e.target.select()}
-                                />
-                                <AnimatePresence>
-                                    {calcState.isHistoryVisible && (
-                                        <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            className="absolute top-full left-0 w-full bg-background border-x border-b rounded-b-lg shadow-lg z-10"
-                                        >
-                                            <ScrollArea className="h-48 p-2">
-                                                {calcState.history.length === 0 && <p className="text-sm text-center text-muted-foreground p-4">No history yet.</p>}
-                                                {calcState.history.map((entry, index) => (
-                                                    <div key={index} onClick={() => calcState.handleHistoryClick(entry)} className="p-2 rounded-md hover:bg-muted cursor-pointer text-right">
-                                                        <p className="text-xs text-muted-foreground">{entry.expression} =</p>
-                                                        <p className="font-semibold text-lg">{entry.result}</p>
-                                                    </div>
-                                                ))}
-                                            </ScrollArea>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </CardHeader>
+                        <div onPointerDown={(e) => dragControls.start(e)} className="flex-shrink-0 cursor-grab active:cursor-grabbing p-2">
+                           <button onClick={onClose} className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors p-1" title="Close Calculator">
+                                <X className="h-5 w-5" />
+                           </button>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                     <button className="absolute top-2 left-2 text-muted-foreground hover:text-foreground transition-colors p-1" title="Calculation History">
+                                        <HistoryIcon className="h-5 w-5" />
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent>
+                                     <ScrollArea className="h-48 p-2">
+                                        {calcState.history.length === 0 && <p className="text-sm text-center text-muted-foreground p-4">No history yet.</p>}
+                                        {calcState.history.map((entry, index) => (
+                                            <div key={index} onClick={() => { calcState.handleHistoryClick(entry)}} className="p-2 rounded-md hover:bg-muted cursor-pointer text-right">
+                                                <p className="text-xs text-muted-foreground">{entry.expression} =</p>
+                                                <p className="font-semibold text-lg">{entry.result}</p>
+                                            </div>
+                                        ))}
+                                    </ScrollArea>
+                                </PopoverContent>
+                            </Popover>
                         </div>
-                        <CardContent className="grid grid-cols-4 gap-2 flex-grow">
+                        <CardHeader className="pb-2 pt-0 flex-shrink-0">
+                            <div className="h-8 text-right text-muted-foreground text-xl pr-2 truncate">
+                                {calcState.result && calcState.result !== calcState.input ? calcState.input : ''}
+                            </div>
+                            <Input
+                                ref={calcState.inputRef}
+                                type="text"
+                                value={calcState.result || calcState.input}
+                                onChange={(e) => calcState.setInput(e.target.value)}
+                                onKeyDown={calcState.handleKeyDown}
+                                className="h-16 text-4xl text-right font-mono border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent pr-2 cursor-text"
+                                placeholder="0"
+                                autoFocus
+                                onFocus={(e) => e.target.select()}
+                            />
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-4 gap-2 flex-grow p-4">
                             <Button variant="ghost" className={`${specialButtonClasses} w-full h-full text-lg`} onClick={calcState.handleClear}>AC</Button>
                             <Button variant="ghost" className={`${specialButtonClasses} w-full h-full text-lg`} onClick={calcState.handleBackspace}><Trash2 /></Button>
                             <Button variant="ghost" className={`${specialButtonClasses} w-full h-full text-lg`} onClick={() => calcState.handleButtonClick('%')}><Percent /></Button>
@@ -224,9 +217,8 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
                             <Button variant="ghost" className={`w-full h-full text-lg bg-primary text-primary-foreground hover:bg-primary/90`} onClick={calcState.handleCalculate}>=</Button>
                         </CardContent>
                          <div
-                            ref={resizeRef}
                             onMouseDown={startResize}
-                            className="absolute bottom-0 right-0 cursor-nwse-resize p-2 text-muted-foreground/50 hover:text-muted-foreground"
+                            className="absolute bottom-0 right-0 cursor-nwse-resize p-2 text-muted-foreground/50 hover:text-muted-foreground z-10"
                          >
                             <GripVertical className="h-4 w-4 -rotate-45" />
                         </div>
@@ -236,6 +228,26 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
         </AnimatePresence>
     );
 };
+
+const FloatingCalculatorButton = ({ onClick }: { onClick: () => void }) => (
+    <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+    >
+        <div className="fixed bottom-6 right-6">
+            <Button
+                size="icon"
+                className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+                aria-label="Open Calculator"
+                onClick={onClick}
+            >
+                <CalculatorIcon className="h-8 w-8" />
+            </Button>
+        </div>
+    </motion.div>
+);
 
 export const Calculator = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -250,25 +262,7 @@ export const Calculator = () => {
   return (
     <div className="fixed bottom-6 right-6 z-50 print:hidden">
         <AnimatePresence>
-            {!isOpen && (
-                <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                >
-                    <div className="fixed bottom-6 right-6">
-                        <Button
-                            size="icon"
-                            className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-                            aria-label="Open Calculator"
-                            onClick={() => setIsOpen(true)}
-                        >
-                            <CalculatorIcon className="h-8 w-8" />
-                        </Button>
-                    </div>
-                </motion.div>
-            )}
+            {!isOpen && <FloatingCalculatorButton onClick={() => setIsOpen(true)} />}
         </AnimatePresence>
         <FloatingCalculator isVisible={isOpen} onClose={() => setIsOpen(false)} />
     </div>
