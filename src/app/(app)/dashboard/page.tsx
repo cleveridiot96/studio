@@ -135,7 +135,7 @@ export default function DashboardPage() {
       iconName: "ArrowLeftCircle",
       className: "bg-green-600 hover:bg-green-700 text-white",
     },
-  ].sort((a, b) => a.title.localeCompare(b.title));
+  ];
   
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     // Ignore if input/textarea is focused
