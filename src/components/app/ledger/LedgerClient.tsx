@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subYears } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subYears, isBefore } from "date-fns";
 import { BookUser, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -48,6 +48,7 @@ interface LedgerTransaction {
 const initialLedgerData = {
   debitTransactions: [] as LedgerTransaction[],
   creditTransactions: [] as LedgerTransaction[],
+  openingStock: { bags: 0, kg: 0 },
   totals: {
     debitBags: 0,
     debitKg: 0,
@@ -125,9 +126,42 @@ export function LedgerClient() {
   const ledgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialLedgerData;
 
+    let openingStock = { bags: 0, kg: 0 };
+    
+    // Calculate Opening Balance from all transactions before the start date
+    const allTransactions = [
+        ...purchases.map(p => ({ ...p, type: 'Purchase' as const })),
+        ...sales.map(s => ({ ...s, type: 'Sale' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, type: 'Purchase Return' as const })),
+        ...saleReturns.map(sr => ({ ...sr, type: 'Sale Return' as const }))
+    ];
+
+    allTransactions.forEach(tx => {
+        if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
+            if (tx.type === 'Purchase' && (tx.supplierId === selectedPartyId || tx.agentId === selectedPartyId)) {
+                openingStock.bags += tx.totalQuantity;
+                openingStock.kg += tx.totalNetWeight;
+            } else if (tx.type === 'Sale' && tx.brokerId === selectedPartyId) {
+                openingStock.bags -= tx.totalQuantity;
+                openingStock.kg -= tx.totalNetWeight;
+            } else if (tx.type === 'Purchase Return') {
+                const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
+                if (originalPurchase && (originalPurchase.supplierId === selectedPartyId || originalPurchase.agentId === selectedPartyId)) {
+                    openingStock.bags -= tx.quantityReturned;
+                    openingStock.kg -= tx.netWeightReturned;
+                }
+            } else if (tx.type === 'Sale Return') {
+                const originalSale = sales.find(s => s.id === tx.originalSaleId);
+                if (originalSale && originalSale.brokerId === selectedPartyId) {
+                    openingStock.bags += tx.quantityReturned;
+                    openingStock.kg += tx.netWeightReturned;
+                }
+            }
+        }
+    });
+
     let debitTransactions: LedgerTransaction[] = [];
     let creditTransactions: LedgerTransaction[] = [];
-
     const toDate = dateRange.to || dateRange.from;
     const dateFilter = (date: string) => isWithinInterval(parseISO(date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) });
     
@@ -186,10 +220,11 @@ export function LedgerClient() {
     return { 
       debitTransactions, 
       creditTransactions, 
+      openingStock,
       totals,
       closingStock: {
-        bags: totals.debitBags - totals.creditBags,
-        kg: totals.debitKg - totals.creditKg
+        bags: openingStock.bags + totals.debitBags - totals.creditBags,
+        kg: openingStock.kg + totals.debitKg - totals.creditKg
       }
     };
   }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, hydrated]);
@@ -307,8 +342,9 @@ export function LedgerClient() {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
+                                <TableRow><TableCell colSpan={3}>Opening Balance</TableCell><TableCell className="text-right font-semibold">{ledgerData.openingStock.bags.toLocaleString()}</TableCell><TableCell className="text-right font-semibold">{ledgerData.openingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow>
                                 {ledgerData.debitTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={5} className="h-24 text-center">No inward stock recorded.</TableCell></TableRow>
+                                  <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No inward stock in this period.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.debitTransactions.map(tx => (
                                     <TableRow key={tx.id} className="uppercase">
@@ -324,8 +360,8 @@ export function LedgerClient() {
                               <TableFooter>
                                 <TableRow className="font-bold bg-orange-50">
                                   <TableCell colSpan={3}>Total</TableCell>
-                                  <TableCell className="text-right">{ledgerData.totals.debitBags.toLocaleString()}</TableCell>
-                                  <TableCell className="text-right">{ledgerData.totals.debitKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                  <TableCell className="text-right">{(ledgerData.totals.debitBags + ledgerData.openingStock.bags).toLocaleString()}</TableCell>
+                                  <TableCell className="text-right">{(ledgerData.totals.debitKg + ledgerData.openingStock.kg).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
                               </TableFooter>
                             </Table>
@@ -354,7 +390,7 @@ export function LedgerClient() {
                               </TableHeader>
                               <TableBody>
                                 {ledgerData.creditTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={5} className="h-24 text-center">No outward stock recorded.</TableCell></TableRow>
+                                  <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No outward stock recorded.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.creditTransactions.map(tx => (
                                     <TableRow key={tx.id} className="uppercase">
@@ -388,7 +424,7 @@ export function LedgerClient() {
                   <span className={`uppercase ${ledgerData.closingStock.kg >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {ledgerData.closingStock.bags.toLocaleString()} Bags / {ledgerData.closingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})} kg
                   </span>
-                  <p className="text-xs text-muted-foreground font-normal uppercase">(Debit - Credit for the selected period)</p>
+                  <p className="text-xs text-muted-foreground font-normal uppercase">(Opening + Debit - Credit for the selected period)</p>
               </div>
           </CardFooter>
         </Card>

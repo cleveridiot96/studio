@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer, ShoppingCart, Receipt as ReceiptIcon, ArrowRightCircle, ArrowLeftCircle, ArrowRightLeft, FileText, BookMarked } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, startOfDay, endOfDay, subDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Badge } from "@/components/ui/badge";
@@ -129,7 +129,7 @@ export function DaybookClient() {
 
     if (dateRange?.from) {
         const toDate = dateRange.to || dateRange.from;
-        filtered = filtered.filter(entry => isWithinInterval(parseISO(entry.date), { start: dateRange.from!, end: toDate }));
+        filtered = filtered.filter(entry => isWithinInterval(parseISO(entry.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }));
     }
 
     if (selectedType !== 'All') {
@@ -170,6 +170,28 @@ export function DaybookClient() {
     return <span className="ml-1 text-xs">{sortDirection === 'desc' ? '▼' : '▲'}</span>;
   };
 
+  const setDateQuickFilter = (preset: 'today' | 'yesterday' | 'dayBeforeYesterday') => {
+    const today = new Date();
+    let from, to;
+
+    switch (preset) {
+      case 'today':
+        from = startOfDay(today);
+        to = endOfDay(today);
+        break;
+      case 'yesterday':
+        from = startOfDay(subDays(today, 1));
+        to = endOfDay(subDays(today, 1));
+        break;
+      case 'dayBeforeYesterday':
+        from = startOfDay(subDays(today, 2));
+        to = endOfDay(subDays(today, 2));
+        break;
+    }
+    setDateRange({ from, to });
+  };
+
+
   if (!hydrated || isAppHydrating) {
       return <div>Loading Daybook...</div>;
   }
@@ -190,7 +212,7 @@ export function DaybookClient() {
           </div>
         </CardHeader>
         <CardContent>
-            <div className="flex flex-col md:flex-row gap-2 mb-4 p-2 border rounded-md no-print">
+            <div className="flex flex-col md:flex-row gap-2 mb-4 p-2 border rounded-md no-print items-center flex-wrap">
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
                 <Select value={selectedType} onValueChange={setSelectedType}>
                     <SelectTrigger className="w-full md:w-[180px]">
@@ -206,6 +228,13 @@ export function DaybookClient() {
                         <SelectItem value="Expense">Expense</SelectItem>
                     </SelectContent>
                 </Select>
+                 <div className="flex gap-1 ml-auto">
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>Today</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>Yesterday</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('dayBeforeYesterday')}>
+                        {format(subDays(new Date(), 2), 'EEEE')}
+                    </Button>
+                </div>
             </div>
 
             <ScrollArea className="h-[65vh]">

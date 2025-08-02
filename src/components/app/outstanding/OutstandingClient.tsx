@@ -18,7 +18,6 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
-import { isDateBeforeFinancialYear, isDateInFinancialYear } from "@/lib/utils";
 
 const keys = {
   purchases: 'purchasesData',
@@ -47,7 +46,6 @@ interface OutstandingTransaction {
   amount: number;
   paid: number;
   balance: number;
-  status: 'Paid' | 'Partially Paid' | 'Pending' | 'Overdue';
 }
 
 type SortKey = keyof OutstandingTransaction;
@@ -104,7 +102,6 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                                 <TableHead onClick={() => handleSort('vakkal')} className="cursor-pointer">Voucher # <SortIcon columnKey="vakkal" /></TableHead>
                                 <TableHead onClick={() => handleSort('balance')} className="cursor-pointer text-right">Balance <SortIcon columnKey="balance" /></TableHead>
                                 <TableHead onClick={() => handleSort('dueDate')} className="cursor-pointer">Due Date <SortIcon columnKey="dueDate" /></TableHead>
-                                <TableHead onClick={() => handleSort('status')} className="cursor-pointer">Status <SortIcon columnKey="status" /></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -114,15 +111,6 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                                     <TableCell>{item.vakkal}</TableCell>
                                     <TableCell className="font-bold text-right">₹{item.balance.toLocaleString('en-IN')}</TableCell>
                                     <TableCell>{format(parseISO(item.dueDate), 'dd/MM/yy')}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className={cn("uppercase", {
-                                            'bg-green-100 text-green-800 border-green-300': item.status === 'Paid',
-                                            'bg-yellow-100 text-yellow-800 border-yellow-300': item.status === 'Partially Paid' || item.status === 'Pending',
-                                            'bg-red-100 text-red-800 border-red-300': item.status === 'Overdue',
-                                        })}>
-                                            {item.status}
-                                        </Badge>
-                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -191,10 +179,6 @@ export function OutstandingClient() {
              const partyId = 'customerId' in invoice ? (invoice.brokerId || invoice.customerId) : (invoice.agentId || invoice.supplierId);
              const party = allMasters.find(m => m.id === partyId);
              const dueDate = addDays(parseISO(invoice.date), 30);
-             const isOverdue = new Date() > dueDate;
-             let status: OutstandingTransaction['status'] = 'Pending';
-             if (totalPaid > 0) status = 'Partially Paid';
-             if (isOverdue) status = 'Overdue';
 
              outstandingTransactions.push({
                  id: invoice.id,
@@ -208,7 +192,6 @@ export function OutstandingClient() {
                  amount: invoiceTotal,
                  paid: totalPaid,
                  balance,
-                 status,
              });
         }
     });

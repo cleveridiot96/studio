@@ -1,11 +1,16 @@
+
 "use client";
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/contexts/SettingsContext";
+import { isDateBeforeFinancialYear, isDateInFinancialYear } from "@/lib/utils";
+import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+
 
 // All the data keys
 const keys = {
@@ -15,7 +20,6 @@ const keys = {
   saleReturns: 'saleReturnsData',
   receipts: 'receiptsData',
   payments: 'paymentsData',
-  locationTransfers: 'locationTransfersData',
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
@@ -24,18 +28,17 @@ const keys = {
   expenses: 'masterExpenses',
 };
 
-
 export const OutstandingSummary = () => {
   const [hydrated, setHydrated] = React.useState(false);
+  const { financialYear: currentFinancialYearString } = useSettings();
   React.useEffect(() => { setHydrated(true) }, []);
 
-  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, []);
+  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
-  const [sales] = useLocalStorageState<Sale[]>(keys.sales, []);
+  const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-
   const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
   const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
   const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
@@ -49,76 +52,58 @@ export const OutstandingSummary = () => {
     const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
     const balances = new Map<string, number>();
 
+    // Step 1: Initialize with opening balances and adjust for transactions before the current FY
     allMasters.forEach(m => {
-        const openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
+        let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
         balances.set(m.id, openingBalance);
     });
     
+    // Step 2: Process all transactions chronologically to get the final balance
+    const allTransactions = [
+        ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
+        ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
+        ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
+        ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
+    ].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
     const updateBalance = (partyId: string | undefined, amount: number) => {
         if (!partyId || !balances.has(partyId)) return;
         balances.set(partyId, balances.get(partyId)! + amount);
     };
-
-    // DEBIT(+) means party owes us. CREDIT(-) means we owe party.
     
-    // Purchases: If agent exists, liability is with agent. Otherwise, supplier.
-    purchases.forEach(p => {
-        const accountablePartyId = p.agentId || p.supplierId;
-        updateBalance(accountablePartyId, -(p.totalAmount || 0));
-    });
-
-    // Sales: If broker exists, receivable is from broker. Otherwise, customer.
-    sales.forEach(s => {
-        const accountablePartyId = s.brokerId || s.customerId;
-        updateBalance(accountablePartyId, s.billedAmount || 0);
-        // Brokerage is a CREDIT to the broker (we owe them)
-        const totalBrokerage = (s.calculatedBrokerageCommission || 0) + (s.calculatedExtraBrokerage || 0);
-        if (s.brokerId && totalBrokerage > 0) {
-            updateBalance(s.brokerId, -totalBrokerage);
-        }
-    });
-
-    // Receipts: CREDIT the party who paid.
-    receipts.forEach(r => {
-        updateBalance(r.partyId, -(r.amount + (r.cashDiscount || 0)));
-    });
-    
-    // Payments: DEBIT the party who was paid.
-    payments.forEach(p => {
-        updateBalance(p.partyId, p.amount || 0);
-    });
-
-    // Purchase Returns: DEBIT the accountable party for the return amount.
-    purchaseReturns.forEach(pr => {
-        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-        if(originalPurchase) {
-            const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
-            updateBalance(accountablePartyId, pr.returnAmount || 0);
-        }
-    });
-
-    // Sale Returns: CREDIT the accountable party for the return amount.
-    saleReturns.forEach(sr => {
-        const originalSale = sales.find(s => s.id === sr.originalSaleId);
-        if(originalSale) {
-            const accountablePartyId = originalSale.brokerId || originalSale.customerId;
-            updateBalance(accountablePartyId, -(sr.returnAmount || 0));
+    allTransactions.forEach(tx => {
+        if (tx.txType === 'Sale') {
+            updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
+        } else if (tx.txType === 'Purchase') {
+            updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
+        } else if (tx.txType === 'Receipt') {
+            updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+        } else if (tx.txType === 'Payment') {
+            updateBalance(tx.partyId, tx.amount || 0);
+        } else if (tx.txType === 'PurchaseReturn') {
+            const p = purchases.find(p => p.id === tx.originalPurchaseId);
+            if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
+        } else if (tx.txType === 'SaleReturn') {
+            const s = sales.find(s => s.id === tx.originalSaleId);
+            if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
         }
     });
 
     let totalReceivable = 0;
     let totalPayable = 0;
     balances.forEach((balance) => {
-        if (balance > 0) {
+        if (balance > 0.01) {
             totalReceivable += balance;
-        } else if (balance < 0) {
-            totalPayable += balance;
+        } else if (balance < -0.01) {
+            totalPayable += Math.abs(balance);
         }
     });
 
     return { totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
+  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
