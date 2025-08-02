@@ -93,36 +93,6 @@ const useCalculatorState = () => {
     }
 };
 
-const FloatingCalculatorButton = ({ onClick }: { onClick: () => void }) => {
-    const [position, setPosition] = useLocalStorageState('calculatorButtonPos', { x: window.innerWidth - 80, y: window.innerHeight - 80 });
-
-    return (
-        <motion.div
-            drag
-            dragMomentum={false}
-            dragConstraints={{
-                left: 16,
-                right: window.innerWidth - 80,
-                top: 16,
-                bottom: window.innerHeight - 80,
-            }}
-            onDragEnd={(_event, info) => setPosition({ x: info.point.x, y: info.point.y })}
-            style={{ x: position.x, y: position.y }}
-            className="fixed w-16 h-16 pointer-events-auto cursor-grab active:cursor-grabbing"
-        >
-            <Button
-                size="icon"
-                className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-                aria-label="Open Calculator"
-                onClick={onClick}
-            >
-                <CalculatorIcon className="h-8 w-8" />
-            </Button>
-        </motion.div>
-    );
-};
-
-
 const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClose: () => void }) => {
     const calcState = useCalculatorState();
     const dragControls = useDragControls();
@@ -269,6 +239,13 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
 
 export const Calculator = () => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 print:hidden">
