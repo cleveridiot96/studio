@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter, Purchase, Sale, LedgerEntry } from "@/lib/types";
+import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter, Purchase, Sale, LedgerEntry, Broker } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -72,11 +72,10 @@ export function PaymentsClient() {
       ...suppliers.filter(s => s.type === 'Supplier'),
       ...agents.filter(a => a.type === 'Agent'),
       ...transporters.filter(t => t.type === 'Transporter'),
-      ...brokers.filter(b => b.type === 'Broker'),
       ...expenses.filter(e => e.type === 'Expense')
     ].filter(party => party && party.id && party.name && party.type) // Basic validation
      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters, brokers, expenses, hydrated]);
+  }, [suppliers, agents, transporters, expenses, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];

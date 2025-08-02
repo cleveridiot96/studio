@@ -68,7 +68,8 @@ export function ReceiptsClient() {
     return [
         ...customers,
         ...brokers
-    ].filter(party => ['Customer', 'Broker'].includes(party.type));
+    ].filter(party => ['Customer', 'Broker'].includes(party.type))
+     .sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, brokers, hydrated]);
 
   const filteredReceipts = React.useMemo(() => {
