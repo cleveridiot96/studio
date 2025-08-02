@@ -131,27 +131,41 @@ export const locationTransferMigrator = (storedValue: any): LocationTransfer[] =
     if (Array.isArray(storedValue)) {
         return storedValue.map(lt => {
             if (!lt) return null;
-            if (lt.expenses) return lt; // Already migrated
 
-            const newExpenses: ExpenseItem[] = [];
-            if (lt.transportCharges && lt.transportCharges > 0) {
-                newExpenses.push({
-                    account: 'Transport Charges',
-                    amount: lt.transportCharges,
-                    paymentMode: 'Pending',
-                    party: lt.transporterName || 'Unknown Transporter'
-                });
+            let wasUpdated = false;
+
+            // Migration 1: Add newLotNumber if it doesn't exist
+            if (lt.items && lt.items.length > 0 && lt.items.some(item => !item.newLotNumber)) {
+                lt.items = lt.items.map(item => ({
+                    ...item,
+                    newLotNumber: item.newLotNumber || `${item.originalLotNumber}/${Math.round(item.bagsToTransfer)}`
+                }));
+                wasUpdated = true;
             }
             
-            const newLt = { ...lt, expenses: newExpenses };
-            
-            delete newLt.transportCharges;
-            delete newLt.packingCharges;
-            delete newLt.labourCharges;
-            delete newLt.miscExpenses;
-            delete newLt.transportRate;
+            // Migration 2: Convert old expense fields to expenses array
+            if (!lt.expenses) {
+                const newExpenses: ExpenseItem[] = [];
+                if (lt.transportCharges && lt.transportCharges > 0) {
+                    newExpenses.push({
+                        account: 'Transport Charges',
+                        amount: lt.transportCharges,
+                        paymentMode: 'Pending',
+                        party: lt.transporterName || 'Unknown Transporter'
+                    });
+                }
+                
+                lt.expenses = newExpenses;
+                
+                delete lt.transportCharges;
+                delete lt.packingCharges;
+                delete lt.labourCharges;
+                delete lt.miscExpenses;
+                delete lt.transportRate;
+                wasUpdated = true;
+            }
 
-            return newLt;
+            return lt;
 
         }).filter(Boolean) as LocationTransfer[];
     }

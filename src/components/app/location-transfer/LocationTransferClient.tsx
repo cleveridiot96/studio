@@ -42,7 +42,7 @@ import { salesMigrator, purchaseMigrator, locationTransferMigrator } from '@/lib
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
 const initialLocationTransfersData: LocationTransfer[] = [
-    { "id": "lt-fy2526-1", "date": "2025-06-20", "fromWarehouseId": "wh-pune", "fromWarehouseName": "Pune North Godown", "toWarehouseId": "wh-mum", "toWarehouseName": "Mumbai Central Warehouse", "transporterId": "trans-reliable", "transporterName": "Reliable Transports", "items": [ { "originalLotNumber": "FY2526-LOT-B/50", "newLotNumber": "FY2526-LOT-B/50", "bagsToTransfer": 10, "netWeightToTransfer": 500, "grossWeightToTransfer": 500, "preTransferLandedCost": 25.48 } ], "expenses": [ { "account": "Transport Charges", "amount": 300, "paymentMode": "Pending", "partyId": "trans-reliable", "partyName": "Reliable Transports" } ], "totalExpenses": 300, "perKgExpense": 0.6, "totalNetWeight": 500, "totalGrossWeight": 500 },
+    { "id": "lt-fy2526-1", "date": "2025-06-20", "fromWarehouseId": "wh-pune", "fromWarehouseName": "Pune North Godown", "toWarehouseId": "wh-mum", "toWarehouseName": "Mumbai Central Warehouse", "transporterId": "trans-reliable", "transporterName": "Reliable Transports", "items": [ { "originalLotNumber": "FY2526-LOT-B/50", "newLotNumber": "FY2526-LOT-B/50/10", "bagsToTransfer": 10, "netWeightToTransfer": 500, "grossWeightToTransfer": 500, "preTransferLandedCost": 25.48 } ], "expenses": [ { "account": "Transport Charges", "amount": 300, "paymentMode": "Pending", "partyId": "trans-reliable", "partyName": "Reliable Transports" } ], "totalExpenses": 300, "perKgExpense": 0.6, "totalNetWeight": 500, "totalGrossWeight": 500 },
 ];
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -520,9 +520,9 @@ export function LocationTransferClient() {
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell>
                           <Tooltip><TooltipTrigger asChild>
-                            <span className="truncate max-w-[200px] inline-block">{transfer.item.originalLotNumber}</span>
+                            <span className="truncate max-w-[200px] inline-block">{transfer.item.newLotNumber}</span>
                           </TooltipTrigger>
-                            <TooltipContent><p>{transfer.item.originalLotNumber}</p></TooltipContent>
+                            <TooltipContent><p>Original: {transfer.item.originalLotNumber}</p></TooltipContent>
                           </Tooltip>
                         </TableCell>
                         <TableCell className="text-right">{Math.round(transfer.item.bagsToTransfer)}</TableCell>

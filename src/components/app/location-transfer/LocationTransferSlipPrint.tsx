@@ -14,7 +14,7 @@ export const LocationTransferSlipPrint: React.FC<LocationTransferSlipPrintProps>
   
   const totalBags = transfer.items.reduce((sum, item) => sum + item.bagsToTransfer, 0);
   const totalNetWeight = transfer.items.reduce((sum, item) => sum + item.netWeightToTransfer, 0);
-  const totalGrossWeight = transfer.items.reduce((sum, item) => sum + item.grossWeightToTransfer, 0);
+  const totalGrossWeight = transfer.totalGrossWeight || transfer.items.reduce((sum, item) => sum + item.grossWeightToTransfer, 0);
   const totalExpenses = (transfer.expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
