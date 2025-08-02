@@ -1,7 +1,8 @@
 
 "use client";
 
-import React, { useRef, type ChangeEvent } from 'react';
+import React, { useRef, type ChangeEvent, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardClient from "@/components/app/dashboard/DashboardClient";
 import { Separator } from "@/components/ui/separator";
 import { DashboardTile } from "@/components/DashboardTile";
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [lastBackupTimestamp, setLastBackupTimestamp] = useLocalStorageState<number | null>(LAST_BACKUP_TIMESTAMP_KEY, null);
   const restoreFileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const handleExportClick = () => {
     exportDataToPortableFile({ toast, setLastBackupTimestamp, lastBackupTimestampFromState: lastBackupTimestamp });
@@ -29,97 +31,157 @@ export default function DashboardPage() {
 
   const quickActions = [
     {
-      title: "Purchases",
+      title: "Purchases (P)",
       description: "Record and manage purchases",
       href: "/purchases",
       iconName: "ShoppingCart",
       className: "bg-purple-600 hover:bg-purple-700 text-white",
     },
     {
-      title: "Sales",
+      title: "Sales (S)",
       description: "Create and manage sales",
       href: "/sales",
       iconName: "Receipt",
       className: "bg-blue-600 hover:bg-blue-700 text-white",
     },
     {
-      title: "Location Transfer",
+      title: "Location Transfer (L)",
       description: "Transfer stock between locations",
       href: "/location-transfer",
       iconName: "ArrowRightLeft",
       className: "bg-cyan-600 hover:bg-cyan-700 text-white",
     },
     {
-      title: "Inventory",
+      title: "Inventory (I)",
       description: "View and manage stock",
       href: "/inventory",
       iconName: "Package",
       className: "bg-teal-600 hover:bg-teal-700 text-white",
     },
     {
-      title: "Stock Ledger",
+      title: "Stock Ledger (Shift+S)",
       description: "View party stock ledgers",
       href: "/ledger",
       iconName: "BookUser",
       className: "bg-red-800 hover:bg-red-900 text-white",
     },
     {
-      title: "Accounts Ledger",
+      title: "Accounts Ledger (A)",
       description: "View party financial statements",
       href: "/accounts-ledger",
       iconName: "BookCopy",
       className: "bg-[#1beec7] hover:bg-[#1beec7]/90 text-black",
     },
      {
-      title: "Cash Book",
+      title: "Cash Book (C)",
       description: "Track cash transactions",
       href: "/cashbook",
       iconName: "BookOpen",
       className: "bg-pink-600 hover:bg-pink-700 text-white",
     },
      {
-      title: "Daybook",
+      title: "Daybook (D)",
       description: "View all daily transactions",
       href: "/daybook",
       iconName: "BookMarked",
       className: "bg-[#ffa5ab] hover:bg-[#ffa5ab]/90 text-white",
     },
     {
-      title: "Outstanding",
+      title: "Outstanding (O)",
       description: "Receivables & Payables",
       href: "/outstanding",
       iconName: "ClipboardList",
       className: "bg-yellow-500 hover:bg-yellow-600 text-black",
     },
     {
-      title: "Profit Analysis",
+      title: "Profit Analysis (Alt+P)",
       description: "View profit/loss reports",
       href: "/profit-analysis",
       iconName: "Rocket",
       className: "bg-green-500 hover:bg-green-600 text-white",
     },
     {
-      title: "Masters",
+      title: "Masters (M)",
       description: "Manage people & companies",
       href: "/masters",
       iconName: "Users2",
       className: "bg-sky-600 hover:bg-sky-700 text-white",
     },
     {
-      title: "Backup Data",
+      title: "Backup Data (B)",
       description: "Save your application data",
       iconName: "FileJson",
       className: "bg-sky-500 hover:bg-sky-600 text-white",
       action: handleExportClick,
     },
     {
-      title: "Restore Data",
+      title: "Restore Data (V)",
       description: "Load data from a backup file",
       iconName: "UploadCloud",
       className: "bg-emerald-500 hover:bg-emerald-600 text-white",
       action: handleRestoreTriggerClick,
     },
-  ];
+     {
+      title: "Payments (Shift+P)",
+      description: "Record outgoing payments",
+      href: "/payments",
+      iconName: "ArrowRightCircle",
+      className: "bg-red-600 hover:bg-red-700 text-white",
+    },
+    {
+      title: "Receipts (R)",
+      description: "Record incoming payments",
+      href: "/receipts",
+      iconName: "ArrowLeftCircle",
+      className: "bg-green-600 hover:bg-green-700 text-white",
+    },
+  ].sort((a, b) => a.title.localeCompare(b.title));
+  
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Ignore if input/textarea is focused
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    
+    const key = event.key.toLowerCase();
+    
+    if (event.shiftKey) {
+        if (key === 'p') router.push('/payments');
+        if (key === 's') router.push('/ledger');
+        return;
+    }
+    
+    if (event.altKey) {
+        if (key === 'p') router.push('/profit-analysis');
+        return;
+    }
+    
+    if (event.ctrlKey || event.metaKey) return;
+
+    switch (key) {
+      case 'p': router.push('/purchases'); break;
+      case 's': router.push('/sales'); break;
+      case 'l': router.push('/location-transfer'); break;
+      case 'r': router.push('/receipts'); break;
+      case 'i': router.push('/inventory'); break;
+      case 'a': router.push('/accounts-ledger'); break;
+      case 'c': router.push('/cashbook'); break;
+      case 'd': router.push('/daybook'); break;
+      case 'o': router.push('/outstanding'); break;
+      case 'm': router.push('/masters'); break;
+      case 'b': handleExportClick(); break;
+      case 'v': handleRestoreTriggerClick(); break;
+      default: break;
+    }
+  }, [router]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -127,7 +189,7 @@ export default function DashboardPage() {
       <div className="text-left">
         <h1 className="text-3xl font-bold text-foreground uppercase">Dashboard Central Hub</h1>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {quickActions.map((action) => (
           <DashboardTile key={action.title} {...action} onClick={action.action} />
         ))}
@@ -145,3 +207,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+    
