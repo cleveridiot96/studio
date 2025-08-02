@@ -15,6 +15,7 @@ import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
 import React, { useEffect, useCallback, useState, useRef } from "react";
+import { useRouter } from 'next/navigation';
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
@@ -120,6 +121,50 @@ function LoadingBarInternal() {
 function AppLayoutInternal({ children }: { children: React.ReactNode }) {
   const AppIcon = APP_ICON;
   useSearchData(); 
+  const router = useRouter();
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+    }
+    
+    if (!event.altKey) return; // All shortcuts must use Alt key
+
+    const key = event.key.toLowerCase();
+    
+    if (event.shiftKey) {
+        if (key === 'p') { event.preventDefault(); router.push('/payments'); }
+        if (key === 'a') { event.preventDefault(); router.push('/profit-analysis'); }
+        return;
+    }
+    
+    // No modifier keys other than Alt
+    if (event.ctrlKey || event.metaKey) return;
+
+    switch (key) {
+      case 'p': event.preventDefault(); router.push('/purchases'); break;
+      case 's': event.preventDefault(); router.push('/sales'); break;
+      case 'l': event.preventDefault(); router.push('/location-transfer'); break;
+      case 'r': event.preventDefault(); router.push('/receipts'); break;
+      case 'i': event.preventDefault(); router.push('/inventory'); break;
+      case 'k': event.preventDefault(); router.push('/ledger'); break;
+      case 'a': event.preventDefault(); router.push('/accounts-ledger'); break;
+      case 'c': event.preventDefault(); router.push('/cashbook'); break;
+      case 'd': event.preventDefault(); router.push('/daybook'); break;
+      case 'o': event.preventDefault(); router.push('/outstanding'); break;
+      case 'm': event.preventDefault(); router.push('/masters'); break;
+      // b and v are handled on dashboard page to trigger actions
+      default: break;
+    }
+  }, [router]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
 
   return (
     <>

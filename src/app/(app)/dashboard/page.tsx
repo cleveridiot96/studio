@@ -31,105 +31,105 @@ export default function DashboardPage() {
 
   const quickActions = [
     {
-      title: "Purchases (P)",
+      title: "Purchases (Alt+P)",
       description: "Record and manage purchases",
       href: "/purchases",
       iconName: "ShoppingCart",
       className: "bg-purple-600 hover:bg-purple-700 text-white",
     },
     {
-      title: "Sales (S)",
+      title: "Sales (Alt+S)",
       description: "Create and manage sales",
       href: "/sales",
       iconName: "Receipt",
       className: "bg-blue-600 hover:bg-blue-700 text-white",
     },
     {
-      title: "Location Transfer (L)",
+      title: "Location Transfer (Alt+L)",
       description: "Transfer stock between locations",
       href: "/location-transfer",
       iconName: "ArrowRightLeft",
       className: "bg-cyan-600 hover:bg-cyan-700 text-white",
     },
     {
-      title: "Inventory (I)",
+      title: "Inventory (Alt+I)",
       description: "View and manage stock",
       href: "/inventory",
       iconName: "Package",
       className: "bg-teal-600 hover:bg-teal-700 text-white",
     },
     {
-      title: "Stock Ledger (Shift+S)",
+      title: "Stock Ledger (Alt+K)",
       description: "View party stock ledgers",
       href: "/ledger",
       iconName: "BookUser",
       className: "bg-red-800 hover:bg-red-900 text-white",
     },
     {
-      title: "Accounts Ledger (A)",
+      title: "Accounts Ledger (Alt+A)",
       description: "View party financial statements",
       href: "/accounts-ledger",
       iconName: "BookCopy",
       className: "bg-[#1beec7] hover:bg-[#1beec7]/90 text-black",
     },
      {
-      title: "Cash Book (C)",
+      title: "Cash Book (Alt+C)",
       description: "Track cash transactions",
       href: "/cashbook",
       iconName: "BookOpen",
       className: "bg-pink-600 hover:bg-pink-700 text-white",
     },
      {
-      title: "Daybook (D)",
+      title: "Daybook (Alt+D)",
       description: "View all daily transactions",
       href: "/daybook",
       iconName: "BookMarked",
       className: "bg-[#ffa5ab] hover:bg-[#ffa5ab]/90 text-white",
     },
     {
-      title: "Outstanding (O)",
+      title: "Outstanding (Alt+O)",
       description: "Receivables & Payables",
       href: "/outstanding",
       iconName: "ClipboardList",
       className: "bg-yellow-500 hover:bg-yellow-600 text-black",
     },
     {
-      title: "Profit Analysis (Alt+P)",
+      title: "Profit Analysis (Alt+Shift+A)",
       description: "View profit/loss reports",
       href: "/profit-analysis",
       iconName: "Rocket",
       className: "bg-green-500 hover:bg-green-600 text-white",
     },
     {
-      title: "Masters (M)",
+      title: "Masters (Alt+M)",
       description: "Manage people & companies",
       href: "/masters",
       iconName: "Users2",
       className: "bg-sky-600 hover:bg-sky-700 text-white",
     },
     {
-      title: "Backup Data (B)",
+      title: "Backup Data (Alt+B)",
       description: "Save your application data",
       iconName: "FileJson",
       className: "bg-sky-500 hover:bg-sky-600 text-white",
       action: handleExportClick,
     },
     {
-      title: "Restore Data (V)",
+      title: "Restore Data (Alt+V)",
       description: "Load data from a backup file",
       iconName: "UploadCloud",
       className: "bg-emerald-500 hover:bg-emerald-600 text-white",
       action: handleRestoreTriggerClick,
     },
      {
-      title: "Payments (Shift+P)",
+      title: "Payments (Alt+Shift+P)",
       description: "Record outgoing payments",
       href: "/payments",
       iconName: "ArrowRightCircle",
       className: "bg-red-600 hover:bg-red-700 text-white",
     },
     {
-      title: "Receipts (R)",
+      title: "Receipts (Alt+R)",
       description: "Record incoming payments",
       href: "/receipts",
       iconName: "ArrowLeftCircle",
@@ -143,37 +143,18 @@ export default function DashboardPage() {
       return;
     }
     
+    if (!event.altKey) return; // Only listen for Alt key combinations on this page for actions
+
     const key = event.key.toLowerCase();
     
-    if (event.shiftKey) {
-        if (key === 'p') router.push('/payments');
-        if (key === 's') router.push('/ledger');
-        return;
-    }
-    
-    if (event.altKey) {
-        if (key === 'p') router.push('/profit-analysis');
-        return;
-    }
-    
-    if (event.ctrlKey || event.metaKey) return;
+    if (event.ctrlKey || event.metaKey || event.shiftKey) return; // Ignore other modifiers for these actions
 
     switch (key) {
-      case 'p': router.push('/purchases'); break;
-      case 's': router.push('/sales'); break;
-      case 'l': router.push('/location-transfer'); break;
-      case 'r': router.push('/receipts'); break;
-      case 'i': router.push('/inventory'); break;
-      case 'a': router.push('/accounts-ledger'); break;
-      case 'c': router.push('/cashbook'); break;
-      case 'd': router.push('/daybook'); break;
-      case 'o': router.push('/outstanding'); break;
-      case 'm': router.push('/masters'); break;
       case 'b': handleExportClick(); break;
       case 'v': handleRestoreTriggerClick(); break;
       default: break;
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
