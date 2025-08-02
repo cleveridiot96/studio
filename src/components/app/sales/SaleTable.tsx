@@ -117,7 +117,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                   <TableCell className="p-2 text-right font-semibold uppercase">
                     {Math.round(sale.totalGoodsValue || 0).toLocaleString()}
                   </TableCell>
-                  <TableCell className="p-2 text-right text-destructive uppercase">{Math.round(sale.cbAmount || 0) > 0 ? Math.round(sale.cbAmount || 0).toLocaleString() : '-'}</TableCell>
+                  <TableCell className="p-2 text-right text-primary uppercase">{Math.round(sale.cbAmount || 0) > 0 ? Math.round(sale.cbAmount || 0).toLocaleString() : '-'}</TableCell>
                   <TableCell className="p-2 text-right font-bold text-blue-600 uppercase">{Math.round(sale.balanceAmount || 0).toLocaleString()}</TableCell>
                   <TableCell className={`p-2 text-right font-semibold uppercase ${Math.round(sale.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>
                     {Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
