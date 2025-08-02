@@ -377,47 +377,66 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <div className="p-4 border rounded-md shadow-sm">
                   <h3 className="text-lg font-medium mb-3 text-primary">Additional Transfer Expenses</h3>
-                   {expenseFields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
-                      <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
-                          <Select onValueChange={itemField.onChange} value={itemField.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                               {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.label}>{opt.label}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>)} />
-                      <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>)} />
-                       <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
-                          <MasterDataCombobox
-                            value={itemField.value}
-                            onChange={itemField.onChange}
-                            options={allExpenseParties.map(p => ({value: p.id, label: `${p.name} (${p.type})`}))}
-                            placeholder="Select Party"
-                            addNewLabel="Add New Party"
-                            onAddNew={() => handleOpenMasterForm("Transporter")}
-                            onEdit={(id) => handleEditMasterItem("Expense", id)}
-                          />
-                          <FormMessage />
-                        </FormItem>)} />
-                      <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
-                          <Select onValueChange={itemField.onChange} value={itemField.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
-                            <SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>)} />
-                      <div className="md:col-span-1 flex items-center justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)}><Trash2 className="h-4 w-4" /></Button></div>
-                    </div>
-                  ))}
+                   {expenseFields.map((field, index) => {
+                      const selectedAccount = watch(`expenses.${index}.account`);
+                      const partyOptions = React.useMemo(() => {
+                          if (selectedAccount === 'Transport Charges') {
+                              return transporters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
+                          }
+                          return allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
+                      }, [selectedAccount, transporters, allExpenseParties]);
+
+                      return (
+                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
+                          <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
+                            <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
+                              <Select onValueChange={(value) => {
+                                  itemField.onChange(value);
+                                  // if changing to something other than transport charges, clear party if it's a transporter
+                                  if (value !== 'Transport Charges') {
+                                      const currentPartyId = getValues(`expenses.${index}.partyId`);
+                                      if (currentPartyId && transporters.some(t => t.id === currentPartyId)) {
+                                          setValue(`expenses.${index}.partyId`, undefined);
+                                      }
+                                  }
+                              }} value={itemField.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                  {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.label}>{opt.label}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>)} />
+                          <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
+                            <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
+                              <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                              <FormMessage />
+                            </FormItem>)} />
+                          <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
+                            <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
+                              <MasterDataCombobox
+                                value={itemField.value}
+                                onChange={itemField.onChange}
+                                options={partyOptions}
+                                placeholder="Select Party"
+                                addNewLabel="Add New Party"
+                                onAddNew={() => handleOpenMasterForm("Transporter")}
+                                onEdit={(id) => handleEditMasterItem("Expense", id)}
+                              />
+                              <FormMessage />
+                            </FormItem>)} />
+                          <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
+                            <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
+                              <Select onValueChange={itemField.onChange} value={itemField.value}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
+                                <SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>)} />
+                          <div className="md:col-span-1 flex items-center justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)}><Trash2 className="h-4 w-4" /></Button></div>
+                        </div>
+                      );
+                   })}
                   <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: undefined, amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Row
                   </Button>
