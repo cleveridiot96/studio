@@ -44,6 +44,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { FIXED_WAREHOUSES } from "@/lib/constants";
 
 
 interface AddSaleFormProps {
@@ -244,6 +245,23 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     setIsMasterFormOpen(false); setMasterItemToEdit(null);
     toast({ title: `${newItem.type} added/updated successfully.` });
   };
+  
+  const stockOptionsForSale = React.useMemo(() => {
+    const mumbaiWarehouseId = FIXED_WAREHOUSES.find(wh => wh.name.toUpperCase() === 'MUMBAI')?.id;
+    return availableStock
+      .filter(s => s.locationId === mumbaiWarehouseId)
+      .map(s => ({
+        value: s.lotNumber,
+        label: `${s.lotNumber} (Avl: ${Math.round(s.currentBags)} bags) @ ₹${Math.round(s.purchaseRate)}`,
+        tooltipContent: (
+          <div>
+              <p>Landed Cost: <span className="font-semibold">₹{Math.round(s.effectiveRate)}/kg</span></p>
+              <p>Location: <span className="font-semibold">{s.locationName || 'Unknown'}</span></p>
+          </div>
+        )
+      }));
+  }, [availableStock]);
+
 
   const processSubmit = (values: SaleFormValues) => {
     setIsSubmitting(true);
@@ -358,7 +376,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                   </div>
 
                   <div className="p-4 border rounded-md shadow-sm">
-                    <h3 className="text-lg font-medium text-primary">Quantity & Rate</h3>
+                    <h3 className="text-lg font-medium text-primary">Quantity & Rate (From Mumbai Warehouse Only)</h3>
                     {fields.map((field, index) => (
                       <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                         <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
@@ -371,17 +389,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                                 setValue(`items.${index}.quantity`, undefined, { shouldValidate: true });
                                 setValue(`items.${index}.netWeight`, undefined, { shouldValidate: true });
                               }}
-                              options={availableStock.map(s => ({
-                                  value: s.lotNumber,
-                                  label: `${s.lotNumber} (Avl: ${Math.round(s.currentBags)} bags) @ ₹${Math.round(s.purchaseRate)}`,
-                                  tooltipContent: (
-                                      <div>
-                                          <p>Landed Cost: <span className="font-semibold">₹{Math.round(s.effectiveRate)}/kg</span></p>
-                                          <p>Location: <span className="font-semibold">{s.locationName || 'Unknown'}</span></p>
-                                      </div>
-                                  )
-                              }))}
-                              placeholder="Select Lot" />
+                              options={stockOptionsForSale}
+                              placeholder="Select Lot from Mumbai"
+                              notFoundMessage="No stock in Mumbai."
+                            />
                             <FormMessage />
                           </FormItem>)} />
                         <FormField control={control} name={`items.${index}.quantity`} render={({ field: itemField }) => (

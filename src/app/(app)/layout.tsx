@@ -132,13 +132,17 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
 
     const key = event.key.toLowerCase();
     
+    // Alt + Shift shortcuts
     if (event.shiftKey) {
-        if (key === 'p') { event.preventDefault(); router.push('/payments'); }
-        if (key === 'a') { event.preventDefault(); router.push('/profit-analysis'); }
+        switch(key) {
+            case 'p': event.preventDefault(); router.push('/payments'); break;
+            case 'a': event.preventDefault(); router.push('/profit-analysis'); break;
+            default: break;
+        }
         return;
     }
     
-    // No modifier keys other than Alt
+    // Ignore other modifiers for main shortcuts
     if (event.ctrlKey || event.metaKey) return;
 
     switch (key) {
@@ -153,7 +157,14 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
       case 'd': event.preventDefault(); router.push('/daybook'); break;
       case 'o': event.preventDefault(); router.push('/outstanding'); break;
       case 'm': event.preventDefault(); router.push('/masters'); break;
-      // b and v are handled on dashboard page to trigger actions
+      case 'b': 
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent('trigger-backup'));
+        break;
+      case 'v': 
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent('trigger-restore'));
+        break;
       default: break;
     }
   }, [router]);

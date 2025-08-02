@@ -17,17 +17,29 @@ export default function DashboardPage() {
   const restoreFileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const handleExportClick = () => {
+  const handleExportClick = useCallback(() => {
     exportDataToPortableFile({ toast, setLastBackupTimestamp, lastBackupTimestampFromState: lastBackupTimestamp });
-  };
+  }, [toast, setLastBackupTimestamp, lastBackupTimestamp]);
 
-  const handleRestoreTriggerClick = () => {
+
+  const handleRestoreTriggerClick = useCallback(() => {
     restoreFileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleRestoreFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleRestoreFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     restoreDataFromFile(event, { toast, setLastBackupTimestamp });
-  };
+  }, [toast, setLastBackupTimestamp]);
+  
+  // Custom event listeners for global shortcuts
+  useEffect(() => {
+    window.addEventListener('trigger-backup', handleExportClick);
+    window.addEventListener('trigger-restore', handleRestoreTriggerClick);
+    return () => {
+      window.removeEventListener('trigger-backup', handleExportClick);
+      window.removeEventListener('trigger-restore', handleRestoreTriggerClick);
+    };
+  }, [handleExportClick, handleRestoreTriggerClick]);
+
 
   const quickActions = [
     {
@@ -151,33 +163,6 @@ export default function DashboardPage() {
       shortcut: "Alt + R",
     },
   ];
-  
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    // Ignore if input/textarea is focused
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-      return;
-    }
-    
-    if (!event.altKey) return; // Only listen for Alt key combinations on this page for actions
-
-    const key = event.key.toLowerCase();
-    
-    if (event.ctrlKey || event.metaKey || event.shiftKey) return; // Ignore other modifiers for these actions
-
-    switch (key) {
-      case 'b': handleExportClick(); break;
-      case 'v': handleRestoreTriggerClick(); break;
-      default: break;
-    }
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleKeyDown]);
-
 
   return (
     <div className="flex flex-col gap-8">
@@ -203,6 +188,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-
-    
