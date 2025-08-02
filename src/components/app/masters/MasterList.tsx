@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import type { FuseResult } from 'fuse.js';
+import { cn } from '@/lib/utils';
 
 const typeIconMap: Record<MasterItemType, React.ElementType> = {
   Customer: Users,
@@ -87,7 +88,10 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
 
   return (
     <TooltipProvider>
-    <ScrollArea className="h-[calc(100vh-22rem)] print:h-auto print:overflow-visible">
+    <ScrollArea className={cn(
+        data.length > 30 ? "h-[calc(100vh-24rem)]" : "h-auto max-h-[calc(100vh-24rem)]",
+        "print:h-auto print:overflow-visible"
+    )}>
       <Table>
         <TableHeader>
           <TableRow>
