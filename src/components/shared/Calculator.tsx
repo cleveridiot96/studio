@@ -5,7 +5,7 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Percent, Divide, History as HistoryIcon, Calculator as CalculatorIcon, Trash2 } from 'lucide-react';
+import { X, Percent, Divide, History as HistoryIcon, Calculator as CalculatorIcon, Trash2, GripVertical } from 'lucide-react';
 import { AnimatePresence, motion } from "framer-motion";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '../ui/scroll-area';
@@ -38,20 +38,16 @@ const useCalculatorState = () => {
     const handleCalculate = () => {
         try {
           if (!input || /[+\-*/.]$/.test(input)) return;
-          // A slightly safer eval by replacing multiple operators and sanitizing.
           const sanitizedInput = input
             .replace(/%/g, '/100*')
-            .replace(/([+\-*/]){2,}/g, '$1'); // Replace multiple operators with the last one
+            .replace(/([+\-*/]){2,}/g, '$1');
             
-          // Basic validation to prevent function calls.
           if (/[^0-9+\-*/.() ]/.test(sanitizedInput)) {
               setResult('Error');
               return;
           }
 
-          // Using Function constructor for a slightly safer eval
           const evalResult = new Function(`return ${sanitizedInput}`)();
-          
           const resultString = String(parseFloat(evalResult.toFixed(10)));
           
           setResult(resultString);
@@ -106,64 +102,117 @@ const useCalculatorState = () => {
 const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClose: () => void }) => {
     const calcState = useCalculatorState();
     const calcRef = React.useRef<HTMLDivElement>(null);
-    const [size, setSize] = useLocalStorageState({ width: 320, height: 500 }, 'calculatorSize');
-    const isResizing = React.useRef(false);
 
-    const handleResizeMouseDown = (e: React.MouseEvent) => {
+    const [isMounted, setIsMounted] = React.useState(false);
+    React.useEffect(() => { setIsMounted(true); }, []);
+    
+    const [position, setPosition] = useLocalStorageState({ x: isMounted ? window.innerWidth - 370 : 0, y: isMounted ? window.innerHeight - 620 : 0 }, 'calculatorPosition');
+    const [size, setSize] = useLocalStorageState({ width: 340, height: 520 }, 'calculatorSize');
+    
+    const isDragging = React.useRef(false);
+    const isResizing = React.useRef<string | null>(null);
+    const initialPos = React.useRef({ x: 0, y: 0 });
+
+    const handleDragMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
-        isResizing.current = true;
+        isDragging.current = true;
+        initialPos.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+        document.addEventListener('mousemove', handleDragMouseMove);
+        document.addEventListener('mouseup', handleDragMouseUp);
+    };
+
+    const handleDragMouseMove = (e: MouseEvent) => {
+        if (isDragging.current) {
+            setPosition({ x: e.clientX - initialPos.current.x, y: e.clientY - initialPos.current.y });
+        }
+    };
+
+    const handleDragMouseUp = () => {
+        isDragging.current = false;
+        document.removeEventListener('mousemove', handleDragMouseMove);
+        document.removeEventListener('mouseup', handleDragMouseUp);
+    };
+    
+    const handleResizeMouseDown = (e: React.MouseEvent, direction: string) => {
+        e.stopPropagation();
+        e.preventDefault();
+        isResizing.current = direction;
+        initialPos.current = { x: e.clientX, y: e.clientY, ...size, ...position };
         document.addEventListener('mousemove', handleResizeMouseMove);
         document.addEventListener('mouseup', handleResizeMouseUp);
     };
-
+    
     const handleResizeMouseMove = (e: MouseEvent) => {
-        if (isResizing.current) {
-            setSize(prevSize => ({
-                width: Math.max(300, prevSize.width + e.movementX),
-                height: Math.max(400, prevSize.height + e.movementY),
-            }));
+        if (!isResizing.current) return;
+        const { clientX, clientY } = e;
+        const dx = clientX - initialPos.current.x;
+        const dy = clientY - initialPos.current.y;
+        
+        let newWidth = size.width;
+        let newHeight = size.height;
+        let newX = position.x;
+        let newY = position.y;
+
+        if (isResizing.current.includes('right')) newWidth = Math.max(300, initialPos.current.width + dx);
+        if (isResizing.current.includes('bottom')) newHeight = Math.max(400, initialPos.current.height + dy);
+        if (isResizing.current.includes('left')) {
+            newWidth = Math.max(300, initialPos.current.width - dx);
+            if (newWidth > 300) newX = initialPos.current.x + dx;
         }
+        if (isResizing.current.includes('top')) {
+            newHeight = Math.max(400, initialPos.current.height - dy);
+            if(newHeight > 400) newY = initialPos.current.y + dy;
+        }
+
+        setSize({ width: newWidth, height: newHeight });
+        setPosition({ x: newX, y: newY });
     };
     
     const handleResizeMouseUp = () => {
-        isResizing.current = false;
+        isResizing.current = null;
         document.removeEventListener('mousemove', handleResizeMouseMove);
         document.removeEventListener('mouseup', handleResizeMouseUp);
     };
-    
-    React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (calcRef.current && !calcRef.current.contains(event.target as Node)) {
-                onClose();
-            }
-        };
 
-        if (isVisible) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('mousemove', handleResizeMouseMove);
-            document.removeEventListener('mouseup', handleResizeMouseUp);
-        };
-    }, [isVisible, onClose]);
+    const resizeHandles = [
+        { direction: 'top', cursor: 'ns-resize', className: 'h-2 top-0 left-2 right-2' },
+        { direction: 'bottom', cursor: 'ns-resize', className: 'h-2 bottom-0 left-2 right-2' },
+        { direction: 'left', cursor: 'ew-resize', className: 'w-2 top-2 bottom-2 left-0' },
+        { direction: 'right', cursor: 'ew-resize', className: 'w-2 top-2 bottom-2 right-0' },
+        { direction: 'top-left', cursor: 'nwse-resize', className: 'h-4 w-4 top-0 left-0' },
+        { direction: 'top-right', cursor: 'nesw-resize', className: 'h-4 w-4 top-0 right-0' },
+        { direction: 'bottom-left', cursor: 'nesw-resize', className: 'h-4 w-4 bottom-0 left-0' },
+        { direction: 'bottom-right', cursor: 'nwse-resize', className: 'h-4 w-4 bottom-0 right-0' },
+    ];
     
     return (
         <AnimatePresence>
-            {isVisible && (
+            {isVisible && isMounted && (
                 <motion.div
                     ref={calcRef}
-                    initial={{ opacity: 0, y: 50, scale: 0.9, originY: 'bottom', originX: 'right' }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    className="fixed bottom-[90px] right-6 z-[100]"
-                    style={{ width: `${size.width}px`, height: `${size.height}px` }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    className="fixed z-[100]"
+                    style={{
+                        width: `${size.width}px`,
+                        height: `${size.height}px`,
+                        left: `${position.x}px`,
+                        top: `${position.y}px`,
+                    }}
                 >
                     <Card className="w-full h-full shadow-2xl border-2 border-primary/20 bg-background/80 backdrop-blur-sm overflow-hidden flex flex-col relative">
-                        <CardHeader className="pb-2 pt-2 flex-shrink-0">
-                             <div className="flex justify-between items-center h-8">
+                       {resizeHandles.map(({direction, cursor, className}) => (
+                           <div key={direction} onMouseDown={e => handleResizeMouseDown(e, direction)} className={`absolute ${className}`} style={{cursor}}/>
+                       ))}
+                        
+                        <div onMouseDown={handleDragMouseDown} className="flex justify-center items-center py-1 text-muted-foreground cursor-move flex-shrink-0" title="Drag Calculator">
+                           <GripVertical className="h-5 w-5" />
+                        </div>
+
+                        <CardHeader className="pb-2 pt-0 flex-shrink-0">
+                            <div className="flex justify-between items-center h-8">
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" title="Calculation History"><HistoryIcon className="h-5 w-5" /></Button>
@@ -222,13 +271,6 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
                             <Button variant="ghost" className={`h-full w-full text-lg`} onClick={() => calcState.handleButtonClick('.')}>.</Button>
                             <Button variant="ghost" className={`h-full w-full text-lg bg-primary text-primary-foreground hover:bg-primary/90`} onClick={calcState.handleCalculate}>=</Button>
                         </CardContent>
-                         <div
-                            onMouseDown={handleResizeMouseDown}
-                            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-10"
-                            title="Resize Calculator"
-                        >
-                           <div className="w-2 h-2 border-r-2 border-b-2 border-muted-foreground/50 absolute bottom-1 right-1" />
-                        </div>
                     </Card>
                 </motion.div>
             )}
@@ -246,7 +288,6 @@ const FloatingActionButton = ({ isCalcOpen, onClick }: { isCalcOpen: boolean, on
         <Button
             size="icon"
             className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-transform duration-200"
-            style={{ transform: isCalcOpen ? 'rotate(45deg)' : 'rotate(0deg)' }}
             aria-label={isCalcOpen ? "Close Calculator" : "Open Calculator"}
             onClick={onClick}
         >
@@ -268,13 +309,6 @@ const FloatingActionButton = ({ isCalcOpen, onClick }: { isCalcOpen: boolean, on
 
 export const Calculator = () => {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) return null;
 
   return (
     <>
