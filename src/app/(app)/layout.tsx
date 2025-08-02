@@ -184,7 +184,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <SettingsProvider>
-            <SidebarProvider defaultOpen={true} collapsible="icon">
+            <SidebarProvider defaultOpen={false} collapsible="icon">
                 <AppExitHandler />
                 <AppLayoutInternal>{children}</AppLayoutInternal>
                 <Toaster />

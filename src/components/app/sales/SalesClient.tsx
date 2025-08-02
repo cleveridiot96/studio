@@ -33,6 +33,11 @@ import html2canvas from 'html2canvas';
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
+const initialSalesData: Sale[] = [
+    { "id": "sale-fy2526-1", "date": "2025-05-18", "billNumber": "B001", "customerId": "cust-lalit", "customerName": "Lalit Traders", "brokerId": "broker-arun", "brokerName": "Arun Kumar", "items": [ { "lotNumber": "BU/5", "quantity": 2, "netWeight": 100, "rate": 350, "goodsValue": 35000, "purchaseRate": 300, "costOfGoodsSold": 31300, "itemGrossProfit": 5000, "itemNetProfit": 3700, "costBreakdown": { "baseRate": 300, "purchaseExpenses": 13, "transferExpenses": 0 } } ], "expenses": [ { "account": "Broker Commission", "amount": 350, "paymentMode": "Pending", "partyId": "broker-arun", "partyName": "Arun Kumar" } ], "totalGoodsValue": 35000, "billedAmount": 35000, "totalQuantity": 2, "totalNetWeight": 100, "totalCostOfGoodsSold": 31300, "totalGrossProfit": 5000, "totalCalculatedProfit": 3350, "notes": "2 bags sold" },
+];
+const initialSaleReturnsData: SaleReturn[] = [];
+
 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
@@ -80,18 +85,20 @@ export function SalesClient() {
   const [itemsPerPage] = React.useState(10);
   const [activeTab, setActiveTab] = React.useState('sales');
 
-  const memoizedEmptyArray = React.useMemo(() => [], []);
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
-  const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyArray);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyArray);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
-  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
-  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedEmptyArray);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
+  const memoizedInitialSales = React.useMemo(() => initialSalesData, []);
+  const memoizedInitialSaleReturns = React.useMemo(() => initialSaleReturnsData, []);
+
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales, salesMigrator);
+  const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedInitialSaleReturns);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
+  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
+  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 

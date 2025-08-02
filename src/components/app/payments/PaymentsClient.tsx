@@ -23,6 +23,11 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
+const initialPaymentsData: Payment[] = [
+    { "id": "payment-fy2526-1", "date": "2025-05-17", "partyId": "trans-sudha", "partyName": "Sudha Transports", "partyType": "Transporter", "amount": 3250, "paymentMethod": "Cash", "transactionType": "On Account", "notes": "Paid for transport of BU/5" },
+    { "id": "payment-fy2425-1", "date": "2024-08-10", "partyId": "supp-uma", "partyName": "Uma Organics", "partyType": "Supplier", "amount": 100000, "paymentMethod": "Bank", "transactionType": "On Account", "notes": "Advance for lot X/90" },
+];
+
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const AGENTS_STORAGE_KEY = 'masterAgents';
@@ -32,8 +37,6 @@ const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 
-
-const initialPaymentsData: Payment[] = [];
 
 export function PaymentsClient() {
   const { toast } = useToast();

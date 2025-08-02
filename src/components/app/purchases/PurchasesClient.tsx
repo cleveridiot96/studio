@@ -33,6 +33,16 @@ import { cn } from "@/lib/utils";
 import { purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
+const initialPurchasesData: Purchase[] = [
+  { "id": "purchase-fy2526-1", "date": "2025-05-16", "supplierId": "supp-anand", "supplierName": "Anand Agro Products", "agentId": "agent-ajay", "agentName": "Ajay Kumar", "items": [{"lotNumber": "BU/5", "quantity": 5, "netWeight": 250, "rate": 300, "goodsValue": 75000, "landedCostPerKg": 323}], "expenses": [{"account": "Transport Charges", "amount": 3250, "paymentMode": "Pending", "party": "Sudha Transports"}], "transporterId": "trans-sudha", "transporterName": "Sudha Transports", "locationId": "wh-chiplun", "locationName": "Chiplun Storage", "totalGoodsValue": 75000, "totalQuantity": 5, "totalNetWeight": 250, "totalAmount": 78250, "effectiveRate": 313 },
+  { "id": "purchase-fy2526-2", "date": "2025-06-15", "supplierId": "supp-meena", "supplierName": "Meena Farms", "items": [{"lotNumber": "FY2526-LOT-B/50", "quantity": 50, "netWeight": 2500, "rate": 25, "goodsValue": 62500, "landedCostPerKg": 25.48}], "expenses": [{"account": "Transport Charges", "amount": 1000, "paymentMode": "Pending", "party":"Reliable Transports"}, {"account": "Labour Charges", "amount": 200, "paymentMode": "Cash", "party":"Self"}], "locationId": "wh-pune", "locationName": "Pune North Godown", "totalGoodsValue": 62500, "totalQuantity": 50, "totalNetWeight": 2500, "totalAmount": 63700, "effectiveRate": 25.48 },
+  { "id": "purchase-fy2425-1", "date": "2024-08-01", "supplierId": "supp-uma", "supplierName": "Uma Organics", "items": [{"lotNumber": "FY2425-LOT-X/90", "quantity": 90, "netWeight": 4500, "rate": 28, "goodsValue": 126000, "landedCostPerKg": 28.6}], "expenses": [{"account":"Transport Charges", "amount":2250, "paymentMode":"Pending", "party":"Reliable Transports"}, {"account":"Misc Expenses", "amount":450, "paymentMode":"Cash", "party":"Self"}], "transporterId": "trans-reliable", "transporterName": "Reliable Transports", "locationId": "wh-mum", "locationName": "Mumbai Central Warehouse", "totalGoodsValue": 126000, "totalQuantity": 90, "totalNetWeight": 4500, "totalAmount": 128700, "effectiveRate": 28.6 },
+];
+
+const initialPurchaseReturnsData: PurchaseReturn[] = [
+    { "id": "pr-fy2526-1", "date": "2025-05-20", "originalPurchaseId": "purchase-fy2526-1", "originalLotNumber": "BU/5", "originalSupplierId": "supp-anand", "originalSupplierName": "Anand Agro Products", "originalPurchaseRate": 300, "quantityReturned": 1, "netWeightReturned": 50, "returnAmount": 15000, "returnReason": "Damaged bags", "notes": "Partial return due to damage." },
+];
+
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -50,17 +60,18 @@ export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
 
-  const memoizedEmptyArray = React.useMemo(() => [], []);
+  const memoizedInitialPurchases = React.useMemo(() => initialPurchasesData, []);
+  const memoizedInitialPurchaseReturns = React.useMemo(() => initialPurchaseReturnsData, []);
 
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
-  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyArray);
-  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyArray);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyArray);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyArray);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases, purchaseMigrator);
+  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedInitialPurchaseReturns);
+  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
+  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, []);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
   const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);

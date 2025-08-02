@@ -25,14 +25,18 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { salesMigrator } from '@/lib/dataMigrators';
 
 
+const initialReceiptsData: Receipt[] = [
+    { "id": "receipt-fy2526-1", "date": "2025-05-25", "partyId": "cust-lalit", "partyName": "Lalit Traders", "partyType": "Customer", "amount": 20000, "paymentMethod": "Bank", "transactionType": "On Account", "notes": "Advance payment" },
+    { "id": "receipt-fy2526-2", "date": "2025-06-20", "partyId": "broker-arun", "partyName": "Arun Kumar", "partyType": "Broker", "amount": 15000, "paymentMethod": "Cash", "transactionType": "Against Bill", "againstBills": [{ "billId": "sale-fy2526-1", "amount": 15000 }], "cashDiscount": 350 },
+];
+
+
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const BROKERS_STORAGE_KEY = 'masterBrokers';
 const SALES_STORAGE_KEY = 'salesData';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 
-
-const initialReceiptsData: Receipt[] = [];
 
 export function ReceiptsClient() {
   const { toast } = useToast();

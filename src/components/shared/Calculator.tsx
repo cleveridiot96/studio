@@ -94,44 +94,30 @@ const useCalculatorState = () => {
 };
 
 const FloatingCalculatorButton = ({ onClick }: { onClick: () => void }) => {
-    const [position, setPosition] = useLocalStorageState('calculatorButtonPos', { x: 0, y: 0 });
-    const constraintsRef = React.useRef(null);
-    const [isMounted, setIsMounted] = React.useState(false);
-
-    React.useEffect(() => {
-        setIsMounted(true);
-        setPosition({
-            x: window.innerWidth - 80,
-            y: window.innerHeight - 80,
-        });
-    }, []);
-
-    if (!isMounted) return null;
+    const [position, setPosition] = useLocalStorageState('calculatorButtonPos', { x: window.innerWidth - 80, y: window.innerHeight - 80 });
 
     return (
-        <motion.div ref={constraintsRef} className="fixed inset-0 w-full h-full pointer-events-none">
-            <motion.div
-                drag
-                dragMomentum={false}
-                dragConstraints={{
-                    left: 16,
-                    right: window.innerWidth - 80,
-                    top: 16,
-                    bottom: window.innerHeight - 80,
-                }}
-                onDragEnd={(_event, info) => setPosition({ x: info.point.x, y: info.point.y })}
-                style={{ x: position.x, y: position.y }}
-                className="w-16 h-16 pointer-events-auto cursor-grab active:cursor-grabbing"
+        <motion.div
+            drag
+            dragMomentum={false}
+            dragConstraints={{
+                left: 16,
+                right: window.innerWidth - 80,
+                top: 16,
+                bottom: window.innerHeight - 80,
+            }}
+            onDragEnd={(_event, info) => setPosition({ x: info.point.x, y: info.point.y })}
+            style={{ x: position.x, y: position.y }}
+            className="fixed w-16 h-16 pointer-events-auto cursor-grab active:cursor-grabbing"
+        >
+            <Button
+                size="icon"
+                className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+                aria-label="Open Calculator"
+                onClick={onClick}
             >
-                <Button
-                    size="icon"
-                    className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
-                    aria-label="Open Calculator"
-                    onClick={onClick}
-                >
-                    <CalculatorIcon className="h-8 w-8" />
-                </Button>
-            </motion.div>
+                <CalculatorIcon className="h-8 w-8" />
+            </Button>
         </motion.div>
     );
 };
@@ -294,7 +280,16 @@ export const Calculator = () => {
                     exit={{ scale: 0, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 20 }}
                 >
-                    <FloatingCalculatorButton onClick={() => setIsOpen(true)} />
+                    <div className="fixed bottom-6 right-6">
+                        <Button
+                            size="icon"
+                            className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90"
+                            aria-label="Open Calculator"
+                            onClick={() => setIsOpen(true)}
+                        >
+                            <CalculatorIcon className="h-8 w-8" />
+                        </Button>
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>
