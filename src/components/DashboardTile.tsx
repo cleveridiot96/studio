@@ -32,6 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
 import React from 'react';
+import { motion } from 'framer-motion';
 
 // Icon mapping
 const iconMap: Record<string, ComponentType<LucideProps>> = {
@@ -75,15 +76,21 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
   const Icon = iconMap[iconName] || FallbackIcon;
 
   const cardContent = (
-    <Card className={cn(
-      "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-      "rounded-xl p-4 flex flex-col items-center text-center justify-center h-full min-h-[150px]",
-      className
-    )}>
-      <Icon className="h-8 w-8 mb-2" />
-      <CardTitle className="text-lg font-semibold mb-1">{title}</CardTitle>
-      {description && <p className="text-sm opacity-90">{description}</p>}
-    </Card>
+    <motion.div
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+      className="h-full w-full"
+    >
+        <Card className={cn(
+          "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
+          "rounded-xl p-4 flex flex-col items-center text-center justify-center h-full min-h-[150px]",
+          className
+        )}>
+          <Icon className="h-8 w-8 mb-2" />
+          <CardTitle className="text-lg font-semibold mb-1">{title}</CardTitle>
+          {description && <p className="text-sm opacity-90">{description}</p>}
+        </Card>
+    </motion.div>
   );
 
   if (onClick) {
