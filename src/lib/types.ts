@@ -1,5 +1,7 @@
 
 import type { LucideIcon } from 'lucide-react';
+import type { ColumnDef } from '@tanstack/react-table';
+
 
 export interface NavItem {
   title: string;

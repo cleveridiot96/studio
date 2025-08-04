@@ -6,7 +6,7 @@ import type { DaybookEntry, MasterItem, Purchase, Sale, Payment, Receipt, Locati
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Printer, ShoppingCart, Receipt as ReceiptIcon, ArrowRightCircle, ArrowLeftCircle, ArrowRightLeft, FileText, BookMarked } from "lucide-react";
+import { Printer, ShoppingCart, Receipt as ReceiptIcon, ArrowRightCircle, ArrowLeftCircle, ArrowRightLeft, FileText, BookMarked } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, startOfDay, endOfDay, subDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -16,9 +16,11 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import Link from 'next/link';
+import { DataTableColumnHeader } from '@/components/shared/DataTableColumnHeader';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable } from '@/components/shared/DataTable';
+import { purchaseMigrator, salesMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
+
 
 const keys = {
   purchases: 'purchasesData',
@@ -53,18 +55,15 @@ export function DaybookClient() {
   const { financialYear, isAppHydrating } = useSettings();
 
   // Data states
-  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, []);
-  const [sales] = useLocalStorageState<Sale[]>(keys.sales, []);
+  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
+  const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
   const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
+  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, [], locationTransferMigrator);
   const [ledgerData] = useLocalStorageState<LedgerEntry[]>(keys.ledger, []);
 
   // Filter and sort states
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [selectedType, setSelectedType] = useState<string>('All');
-  const [sortKey, setSortKey] = useState<keyof DaybookEntry>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     setHydrated(true);
@@ -131,45 +130,11 @@ export function DaybookClient() {
         const toDate = dateRange.to || dateRange.from;
         filtered = filtered.filter(entry => isWithinInterval(parseISO(entry.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }));
     }
-
-    if (selectedType !== 'All') {
-        filtered = filtered.filter(entry => entry.type === selectedType);
-    }
     
-    // Sort
-    return filtered.sort((a, b) => {
-        const valA = a[sortKey];
-        const valB = b[sortKey];
-        const direction = sortDirection === 'asc' ? 1 : -1;
+    return filtered;
 
-        if (sortKey === 'date') {
-            return (parseISO(valA as string).getTime() - parseISO(valB as string).getTime()) * direction;
-        }
-        if (typeof valA === 'string' && typeof valB === 'string') {
-            return valA.localeCompare(valB) * direction;
-        }
-        if (typeof valA === 'number' && typeof valB === 'number') {
-            return (valA - valB) * direction;
-        }
-        return 0;
-    });
-
-  }, [allDaybookEntries, dateRange, selectedType, sortKey, sortDirection]);
+  }, [allDaybookEntries, dateRange]);
   
-  const handleSort = (key: keyof DaybookEntry) => {
-      if (sortKey === key) {
-        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-      } else {
-        setSortKey(key);
-        setSortDirection('desc');
-      }
-  };
-  
-  const SortIcon = ({ columnKey }: { columnKey: keyof DaybookEntry }) => {
-    if (sortKey !== columnKey) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-30 inline-block" />;
-    return <span className="ml-1 text-xs">{sortDirection === 'desc' ? '▼' : '▲'}</span>;
-  };
-
   const setDateQuickFilter = (preset: 'today' | 'yesterday' | 'dayBeforeYesterday') => {
     const today = new Date();
     let from, to;
@@ -190,7 +155,56 @@ export function DaybookClient() {
     }
     setDateRange({ from, to });
   };
-
+  
+  const columns: ColumnDef<DaybookEntry>[] = [
+    {
+        accessorKey: 'date',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+        cell: ({ row }) => format(parseISO(row.original.date), 'dd/MM/yy'),
+    },
+    {
+        accessorKey: 'type',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+        cell: ({ row }) => (
+            <Badge variant="outline" className={cn("uppercase border-current", row.original.colorClass)}>
+                <row.original.Icon className={cn("mr-1.5 h-3.5 w-3.5", row.original.colorClass)}/>
+                {row.original.type}
+            </Badge>
+        ),
+        filterFn: (row, id, value) => value.includes(row.getValue(id)),
+    },
+    {
+        accessorKey: 'voucherNo',
+        header: "Voucher No.",
+    },
+    {
+        accessorKey: 'party',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Party" />,
+    },
+    {
+        accessorKey: 'debit',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Debit (₹)" className="text-right" />,
+        cell: ({ row }) => (
+            <div className="text-right font-mono">
+                {row.original.debit > 0 ? row.original.debit.toLocaleString('en-IN') : '-'}
+            </div>
+        )
+    },
+    {
+        accessorKey: 'credit',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Credit (₹)" className="text-right" />,
+        cell: ({ row }) => (
+            <div className="text-right font-mono">
+                {row.original.credit > 0 ? row.original.credit.toLocaleString('en-IN') : '-'}
+            </div>
+        )
+    },
+    {
+        accessorKey: 'narration',
+        header: "Narration",
+        cell: ({ row }) => <div className="whitespace-normal break-words">{row.original.narration}</div>
+    }
+  ];
 
   if (!hydrated || isAppHydrating) {
       return <div>Loading Daybook...</div>;
@@ -214,20 +228,6 @@ export function DaybookClient() {
         <CardContent>
             <div className="flex flex-col md:flex-row gap-2 mb-4 p-2 border rounded-md no-print items-center flex-wrap">
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
-                <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger className="w-full md:w-[180px]">
-                        <SelectValue placeholder="Filter by Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="All">All Types</SelectItem>
-                        <SelectItem value="Purchase">Purchase</SelectItem>
-                        <SelectItem value="Sale">Sale</SelectItem>
-                        <SelectItem value="Payment">Payment</SelectItem>
-                        <SelectItem value="Receipt">Receipt</SelectItem>
-                        <SelectItem value="Transfer">Transfer</SelectItem>
-                        <SelectItem value="Expense">Expense</SelectItem>
-                    </SelectContent>
-                </Select>
                  <div className="flex gap-1 ml-auto">
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>Today</Button>
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>Yesterday</Button>
@@ -237,42 +237,14 @@ export function DaybookClient() {
                 </div>
             </div>
 
-            <ScrollArea className="h-[65vh]">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead onClick={() => handleSort('date')} className="cursor-pointer">Date <SortIcon columnKey="date"/></TableHead>
-                            <TableHead onClick={() => handleSort('type')} className="cursor-pointer">Type <SortIcon columnKey="type"/></TableHead>
-                            <TableHead>Voucher No.</TableHead>
-                            <TableHead onClick={() => handleSort('party')} className="cursor-pointer">Party <SortIcon columnKey="party"/></TableHead>
-                            <TableHead className="text-right cursor-pointer" onClick={() => handleSort('debit')}>Debit (₹) <SortIcon columnKey="debit"/></TableHead>
-                            <TableHead className="text-right cursor-pointer" onClick={() => handleSort('credit')}>Credit (₹) <SortIcon columnKey="credit"/></TableHead>
-                            <TableHead>Narration</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredEntries.map(entry => (
-                            <TableRow key={entry.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(entry.href)}>
-                                <TableCell>{format(parseISO(entry.date), 'dd/MM/yy')}</TableCell>
-                                <TableCell>
-                                    <Badge variant="outline" className={cn("uppercase border-current", entry.colorClass)}>
-                                        <entry.Icon className={cn("mr-1.5 h-3.5 w-3.5", entry.colorClass)}/>
-                                        {entry.type}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell>{entry.voucherNo}</TableCell>
-                                <TableCell>{entry.party}</TableCell>
-                                <TableCell className="text-right font-mono">{entry.debit > 0 ? entry.debit.toLocaleString('en-IN') : '-'}</TableCell>
-                                <TableCell className="text-right font-mono">{entry.credit > 0 ? entry.credit.toLocaleString('en-IN') : '-'}</TableCell>
-                                <TableCell className="whitespace-normal break-words">{entry.narration}</TableCell>
-                            </TableRow>
-                        ))}
-                         {filteredEntries.length === 0 && (
-                            <TableRow><TableCell colSpan={7} className="text-center h-24">No transactions found for the selected filters.</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </ScrollArea>
+            <DataTable
+                columns={columns}
+                data={filteredEntries}
+                onRowClick={(row) => router.push(row.original.href)}
+                initialState={{
+                    sorting: [{ id: 'date', desc: true }]
+                }}
+            />
         </CardContent>
       </Card>
     </div>
