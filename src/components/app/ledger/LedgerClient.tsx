@@ -96,9 +96,9 @@ export function LedgerClient() {
 
   const allMasters = React.useMemo(() => {
     if (!hydrated) return [];
-    const relevantMasters = [...customers, ...suppliers, ...agents, ...brokers]
-      .filter(m => m.type === 'Supplier' || m.type === 'Broker' || m.type === 'Agent' || m.type === 'Customer');
-    return relevantMasters.sort((a, b) => a.name.localeCompare(b.name));
+    return [...customers, ...suppliers, ...agents, ...brokers]
+      .filter(m => m && m.id && m.name && m.type) // Basic validation
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [hydrated, customers, suppliers, agents, brokers]);
 
   React.useEffect(() => {
@@ -141,7 +141,7 @@ export function LedgerClient() {
             if (tx.type === 'Purchase' && (tx.supplierId === selectedPartyId || tx.agentId === selectedPartyId)) {
                 openingStock.bags += tx.totalQuantity;
                 openingStock.kg += tx.totalNetWeight;
-            } else if (tx.type === 'Sale' && tx.brokerId === selectedPartyId) {
+            } else if (tx.type === 'Sale' && (tx.brokerId === selectedPartyId || tx.customerId === selectedPartyId)) {
                 openingStock.bags -= tx.totalQuantity;
                 openingStock.kg -= tx.totalNetWeight;
             } else if (tx.type === 'Purchase Return') {
