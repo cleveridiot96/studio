@@ -12,7 +12,7 @@ import { LocationTransferSlipPrint } from "./LocationTransferSlipPrint";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays, startOfDay, endOfDay } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -40,6 +40,8 @@ import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
+import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
+import type { DateRange } from "react-day-picker";
 
 const initialLocationTransfersData: LocationTransfer[] = [
     { "id": "lt-fy2526-1", "date": "2025-06-20", "fromWarehouseId": "wh-pune", "fromWarehouseName": "Pune North Godown", "toWarehouseId": "wh-mum", "toWarehouseName": "Mumbai Central Warehouse", "transporterId": "trans-reliable", "transporterName": "Reliable Transports", "items": [ { "originalLotNumber": "FY2526-LOT-B/50", "newLotNumber": "FY2526-LOT-B/50/10", "bagsToTransfer": 10, "netWeightToTransfer": 500, "grossWeightToTransfer": 500, "preTransferLandedCost": 25.48 } ], "expenses": [ { "account": "Transport Charges", "amount": 300, "paymentMode": "Pending", "partyId": "trans-reliable", "partyName": "Reliable Transports" } ], "totalExpenses": 300, "perKgExpense": 0.6, "totalNetWeight": 500, "totalGrossWeight": 500 },
@@ -107,10 +109,15 @@ export function LocationTransferClient() {
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = React.useState('stockOverview');
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   React.useEffect(() => {
     setHydrated(true);
-  }, []);
+    if (!dateRange) {
+        const today = new Date();
+        setDateRange({ from: startOfDay(subDays(today, 30)), to: endOfDay(today) });
+    }
+  }, [dateRange]);
 
   const allExpenseParties = React.useMemo(() => {
       if (!hydrated) return [];
@@ -247,7 +254,6 @@ export function LocationTransferClient() {
       return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
     });
     
-    // Add ledger entries for expenses
     if (transfer.expenses && transfer.expenses.length > 0) {
         const newLedgerEntries: LedgerEntry[] = [];
         transfer.expenses.forEach(exp => {
@@ -349,64 +355,55 @@ export function LocationTransferClient() {
   }, [transferForPdf, toast]);
 
   const expandedTransfers = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
-    const filtered = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    if (isAppHydrating || !hydrated || !dateRange?.from) return [];
+    
+    const filtered = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear) && new Date(lt.date) >= dateRange.from! && new Date(lt.date) <= (dateRange.to || new Date()));
     
     const flatList: ExpandedTransferHistoryItem[] = [];
     filtered.forEach(transfer => {
       if (transfer.items && transfer.items.length > 0) {
         transfer.items.forEach(item => {
-          flatList.push({
-            ...transfer,
-            item: item,
-          });
+          flatList.push({ ...transfer, item: item });
         });
       }
     });
 
     return flatList.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [locationTransfers, financialYear, isAppHydrating, hydrated]);
+  }, [locationTransfers, financialYear, isAppHydrating, hydrated, dateRange]);
   
   const transferHistoryTotals = React.useMemo(() => {
     if (!expandedTransfers || expandedTransfers.length === 0) {
-        return {
-            totalBags: 0,
-            totalWeight: 0,
-            totalValue: 0,
-            weightedAverageLandedCost: 0,
-        };
+        return { totalBags: 0, totalWeight: 0, totalValue: 0, weightedAverageLandedCost: 0 };
     }
-
-    let totalBags = 0;
-    let totalWeight = 0;
-    let totalValue = 0;
-
+    let totalBags = 0, totalWeight = 0, totalValue = 0;
     expandedTransfers.forEach(transfer => {
         totalBags += transfer.item.bagsToTransfer;
         totalWeight += transfer.item.netWeightToTransfer;
-        
         const totalWeightForCalc = transfer.totalGrossWeight || transfer.items.reduce((sum, i) => sum + i.grossWeightToTransfer, 0);
         const perKgExpense = (transfer.totalExpenses && totalWeightForCalc > 0) ? transfer.totalExpenses / totalWeightForCalc : (transfer.perKgExpense || 0);
         const finalLandedCost = (transfer.item.preTransferLandedCost || 0) + perKgExpense;
-        
         totalValue += finalLandedCost * transfer.item.netWeightToTransfer;
     });
-
     const weightedAverageLandedCost = totalWeight > 0 ? totalValue / totalWeight : 0;
-
     return { totalBags, totalWeight, totalValue, weightedAverageLandedCost };
   }, [expandedTransfers]);
   
   const addButtonDynamicClass = React.useMemo(() => {
-    if (activeTab === 'stockOverview') {
-        return 'bg-sky-600 hover:bg-sky-700 text-white';
-    }
-    if (activeTab === 'transferHistory') {
-        return 'bg-teal-600 hover:bg-teal-700 text-white';
-    }
-    return 'bg-primary hover:bg-primary/90'; // Fallback
+    if (activeTab === 'stockOverview') return 'bg-sky-600 hover:bg-sky-700 text-white';
+    if (activeTab === 'transferHistory') return 'bg-teal-600 hover:bg-teal-700 text-white';
+    return 'bg-primary hover:bg-primary/90';
   }, [activeTab]);
 
+  const setDateQuickFilter = (preset: 'today' | 'yesterday' | 'dayBeforeYesterday') => {
+    const today = new Date();
+    let from, to;
+    switch (preset) {
+      case 'today': from = startOfDay(today); to = endOfDay(today); break;
+      case 'yesterday': from = startOfDay(subDays(today, 1)); to = endOfDay(subDays(today, 1)); break;
+      case 'dayBeforeYesterday': from = startOfDay(subDays(today, 2)); to = endOfDay(subDays(today, 2)); break;
+    }
+    setDateRange({ from, to });
+  };
 
   if (isAppHydrating || !hydrated) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
@@ -420,11 +417,7 @@ export function LocationTransferClient() {
             <ArrowRightLeft className="mr-3 h-8 w-8 text-primary" /> Location Transfers (FY {financialYear})
         </h1>
         <div className="flex items-center gap-2">
-            <Button
-              onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }}
-              size="lg"
-              className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}
-            >
+            <Button onClick={() => { setTransferToEdit(null); setIsAddFormOpen(true); }} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
                 <PlusCircle className="mr-2 h-5 w-5" /> New Transfer
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}> <Printer className="h-5 w-5" /> <span className="sr-only">Print</span></Button>
@@ -436,16 +429,10 @@ export function LocationTransferClient() {
         <Tabs defaultValue="stockOverview" className="w-full" onValueChange={(value) => setActiveTab(value)}>
           <CardHeader className="p-0">
             <TabsList className="grid w-full grid-cols-2 rounded-t-lg rounded-b-none no-print p-1 bg-muted gap-1">
-              <TabsTrigger
-                value="stockOverview"
-                className="py-3 text-base text-white bg-sky-600 hover:bg-sky-700 data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-md"
-              >
+              <TabsTrigger value="stockOverview" className="py-3 text-base text-white bg-sky-600 hover:bg-sky-700 data-[state=active]:bg-sky-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-md">
                 <Boxes className="mr-2 h-5 w-5"/>Stock Overview
               </TabsTrigger>
-              <TabsTrigger
-                value="transferHistory"
-                className="py-3 text-base text-white bg-teal-600 hover:bg-teal-700 data-[state=active]:bg-teal-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-md"
-              >
+              <TabsTrigger value="transferHistory" className="py-3 text-base text-white bg-teal-600 hover:bg-teal-700 data-[state=active]:bg-teal-700 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-md">
                 <ListChecks className="mr-2 h-5 w-5"/>Transfer History
               </TabsTrigger>
             </TabsList>
@@ -492,7 +479,16 @@ export function LocationTransferClient() {
           </TabsContent>
           <TabsContent value="transferHistory">
             <CardContent className="pt-6">
-              <CardDescription className="mb-4 text-sm no-print">History of transfers for FY {financialYear}. Each row represents one item in a transfer.</CardDescription>
+              <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-2 no-print">
+                <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="max-w-sm w-full"/>
+                 <div className="flex gap-1 ml-auto">
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>Today</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>Yesterday</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('dayBeforeYesterday')}>
+                        {format(subDays(new Date(), 2), 'EEEE')}
+                    </Button>
+                </div>
+              </div>
               <ScrollArea className="h-[400px] border rounded-md print:h-auto print:overflow-visible">
                 <Table size="sm">
                   <TableHeader><TableRow>
@@ -507,7 +503,7 @@ export function LocationTransferClient() {
                     <TableHead className="text-center no-print">ACTIONS</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={9} className="text-center h-24">No transfers for FY {financialYear}.</TableCell></TableRow>}
+                    {expandedTransfers.length === 0 && <TableRow><TableCell colSpan={9} className="text-center h-24">No transfers in the selected period.</TableCell></TableRow>}
                     {expandedTransfers.map(transfer => {
                        const totalWeightForCalc = transfer.totalGrossWeight || transfer.items.reduce((sum, i) => sum + i.grossWeightToTransfer, 0);
                        const perKgExpense = (transfer.totalExpenses && totalWeightForCalc > 0) ? transfer.totalExpenses / totalWeightForCalc : (transfer.perKgExpense || 0);

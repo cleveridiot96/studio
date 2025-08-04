@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator, ArrowDown, Zap, Plus, Minus, Info } from "lucide-react";
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, endOfDay } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, endOfDay, subDays } from "date-fns";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
@@ -182,20 +182,25 @@ export function ProfitAnalysisClient() {
     };
   }, [filteredTransactionsForPeriod, sales, currentFinancialYearString, dateRange]);
 
-  const setDateFilter = (type: "thisMonth" | "lastMonth" | "currentFY") => {
+  const setDateFilter = (type: "today" | "yesterday" | "dayBeforeYesterday" | "currentFY") => {
     const today = new Date();
-    if (type === "thisMonth") setDateRange({ from: startOfMonth(today), to: endOfDay(endOfMonth(today)) });
-    else if (type === "lastMonth") {
-      const lastMonthStart = startOfMonth(subMonths(today, 1));
-      setDateRange({ from: lastMonthStart, to: endOfDay(endOfMonth(lastMonthStart)) });
-    } else if (type === "currentFY") {
-      const [startYearStr] = currentFinancialYearString.split('-');
-      if (!isNaN(parseInt(startYearStr, 10))) {
-        const startYear = parseInt(startYearStr, 10);
-        setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
-      }
+    let from, to;
+    switch (type) {
+      case "today": from = startOfDay(today); to = endOfDay(today); break;
+      case "yesterday": from = startOfDay(subDays(today, 1)); to = endOfDay(subDays(today, 1)); break;
+      case "dayBeforeYesterday": from = startOfDay(subDays(today, 2)); to = endOfDay(subDays(today, 2)); break;
+      case "currentFY":
+        const [startYearStr] = currentFinancialYearString.split('-');
+        if (!isNaN(parseInt(startYearStr, 10))) {
+          const startYear = parseInt(startYearStr, 10);
+          from = new Date(startYear, 3, 1);
+          to = endOfDay(new Date(startYear + 1, 2, 31));
+        }
+        break;
     }
+    setDateRange({ from, to });
   };
+
 
   const handleMonthClick = (monthKey: string) => {
     const monthDate = parseISO(`${monthKey}-01`);
@@ -233,9 +238,9 @@ export function ProfitAnalysisClient() {
               <CardTitle className="text-2xl text-primary flex items-center uppercase"><Rocket className="mr-3 h-7 w-7"/>PROFIT ANALYSIS DASHBOARD</CardTitle>
               <div className="flex flex-wrap gap-2">
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange}/>
-                <Button variant="outline" size="sm" onClick={() => setDateFilter("thisMonth")}><CalendarDays className="mr-2 h-4 w-4"/>THIS MONTH</Button>
-                <Button variant="outline" size="sm" onClick={() => setDateFilter("lastMonth")}><CalendarDays className="mr-2 h-4 w-4"/>LAST MONTH</Button>
-                <Button variant="outline" size="sm" onClick={() => setDateFilter("currentFY")}><CalendarDays className="mr-2 h-4 w-4"/>CURRENT FY</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("today")}>Today</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("yesterday")}>Yesterday</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("dayBeforeYesterday")}>{format(subDays(new Date(), 2), 'EEEE')}</Button>
               </div>
             </div>
           </CardHeader>

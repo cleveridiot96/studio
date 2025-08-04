@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths } from "date-fns";
+import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subDays } from "date-fns";
 import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
@@ -60,7 +60,7 @@ export function CashbookClient() {
   const [tempOpeningBalance, setTempOpeningBalance] = React.useState('0');
 
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>({
-    from: startOfDay(subMonths(new Date(), 1)),
+    from: startOfMonth(new Date()),
     to: endOfDay(new Date()),
   });
   const [hydrated, setHydrated] = React.useState(false);
@@ -90,7 +90,6 @@ export function CashbookClient() {
         setTempOpeningBalance(String(baseOpeningBalance)); // Revert to old value on error
     }
   };
-
 
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];
@@ -136,7 +135,6 @@ export function CashbookClient() {
 
     let runningBalance = calculatedOpeningBalance;
     const entries: CashLedgerTransaction[] = periodTransactions.map(tx => {
-        // Correct Accounting: Receipt is a DEBIT (inflow) to Cash, Payment is a CREDIT (outflow) from Cash.
         const debit = tx.type === 'Receipt' ? tx.amount : 0;
         const credit = tx.type === 'Payment' ? tx.amount : 0;
         runningBalance = runningBalance + debit - credit;
@@ -183,6 +181,27 @@ export function CashbookClient() {
       default: toast({title: "Info", description: `Master type ${type} not directly handled here.`}); break;
     }
   }, [setSuppliers, setAgents, setTransporters, setCustomers, setBrokers, setExpenses, toast]);
+
+  const setDateQuickFilter = (preset: 'today' | 'yesterday' | 'dayBeforeYesterday') => {
+    const today = new Date();
+    let from, to;
+
+    switch (preset) {
+      case 'today':
+        from = startOfDay(today);
+        to = endOfDay(today);
+        break;
+      case 'yesterday':
+        from = startOfDay(subDays(today, 1));
+        to = endOfDay(subDays(today, 1));
+        break;
+      case 'dayBeforeYesterday':
+        from = startOfDay(subDays(today, 2));
+        to = endOfDay(subDays(today, 2));
+        break;
+    }
+    setDateRange({ from, to });
+  };
 
 
   if (!hydrated) {
@@ -231,12 +250,19 @@ export function CashbookClient() {
         </div>
         </CardHeader>
         <CardContent>
-           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 no-print">
+           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4 no-print flex-wrap">
             <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="max-w-sm w-full" />
-             <Button variant="outline" size="icon" onClick={() => window.print()}>
-                <Printer className="h-5 w-5" />
-                <span className="sr-only">Print</span>
-            </Button>
+            <div className="flex gap-1 items-center justify-end flex-grow">
+              <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>Today</Button>
+              <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>Yesterday</Button>
+              <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('dayBeforeYesterday')}>
+                  {format(subDays(new Date(), 2), 'EEEE')}
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => window.print()}>
+                  <Printer className="h-5 w-5" />
+                  <span className="sr-only">Print</span>
+              </Button>
+            </div>
           </div>
 
           <div className="mb-4 p-3 border rounded-md bg-muted/50">
