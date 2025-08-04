@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TrendingUp, DollarSign, BarChart3, CalendarDays, Rocket, Trophy, Calculator, ArrowDown, Zap, Plus, Minus, Info } from "lucide-react";
-import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, endOfDay, subDays } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, subMonths, isWithinInterval, startOfDay, endOfDay, subDays } from "date-fns";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
@@ -117,13 +117,16 @@ export function ProfitAnalysisClient() {
           customerName: sale.customerName,
           lotNumber: item.lotNumber,
           saleNetWeightKg: item.netWeight,
+          // Rates
           basePurchaseRate: item.purchaseRate,
           landedCostPerKg: item.netWeight > 0 ? item.costOfGoodsSold / item.netWeight : 0,
           saleRatePerKg: item.rate,
+          // Values
           goodsValue: item.goodsValue,
           costOfGoodsSold: item.costOfGoodsSold,
           grossProfit: item.itemGrossProfit,
           netProfit: item.itemNetProfit,
+          // Breakdown
           costBreakdown: item.costBreakdown,
           saleExpenses: saleExpensesBreakdown
         });
