@@ -152,7 +152,7 @@ export function LedgerClient() {
                 }
             } else if (tx.type === 'Sale Return') {
                 const originalSale = sales.find(s => s.id === tx.originalSaleId);
-                if (originalSale && originalSale.brokerId === selectedPartyId) {
+                if (originalSale && (originalSale.brokerId === selectedPartyId || originalSale.customerId === selectedPartyId)) {
                     openingStock.bags += tx.quantityReturned;
                     openingStock.kg += tx.netWeightReturned;
                 }
@@ -178,7 +178,7 @@ export function LedgerClient() {
 
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
-        if (originalSale?.brokerId === selectedPartyId && dateFilter(sr.date)) {
+        if (originalSale && (originalSale.brokerId === selectedPartyId || originalSale.customerId === selectedPartyId) && dateFilter(sr.date)) {
             debitTransactions.push({
                 id: `sr-${sr.id}`, date: sr.date, vakkal: sr.originalLotNumber, party: sr.originalCustomerName || 'N/A',
                 bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.items.find(i => i.lotNumber === sr.originalLotNumber)?.rate || 0, amount: sr.returnAmount, type: 'Sale Return',
@@ -187,7 +187,7 @@ export function LedgerClient() {
     });
 
     sales.forEach(s => {
-        if (s.brokerId === selectedPartyId && dateFilter(s.date)) {
+        if ((s.brokerId === selectedPartyId || s.customerId === selectedPartyId) && dateFilter(s.date)) {
              s.items.forEach(item => {
                 creditTransactions.push({
                     id: `sal-${s.id}-${item.lotNumber}`, date: s.date, vakkal: item.lotNumber, party: s.customerName || 'N/A',

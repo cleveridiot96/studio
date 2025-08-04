@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { format, parseISO, addDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval, isBefore } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Badge } from "@/components/ui/badge";
@@ -155,25 +155,26 @@ export function OutstandingClient() {
   const { receivables, payables, totalReceivable, totalPayable, netOutstanding } = useMemo(() => {
     if (!hydrated || !dateRange?.from) return { receivables: [], payables: [], totalReceivable: 0, totalPayable: 0, netOutstanding: 0 };
     
-    const invoices: (Sale | Purchase)[] = [...sales, ...purchases].filter(tx => isWithinInterval(parseISO(tx.date), { start: dateRange.from!, end: dateRange.to || dateRange.from! }));
-    const settlements: (Receipt | Payment)[] = [...receipts, ...payments].filter(tx => isWithinInterval(parseISO(tx.date), { start: dateRange.from!, end: dateRange.to || dateRange.from! }));
-
+    const allInvoices = [...sales, ...purchases];
+    const allSettlements = [...receipts, ...payments];
     const outstandingTransactions: OutstandingTransaction[] = [];
 
-    invoices.forEach(invoice => {
-        let totalPaid = 0;
-        settlements.forEach(settlement => {
+    allInvoices.forEach(invoice => {
+        if (!isWithinInterval(parseISO(invoice.date), { start: dateRange.from!, end: dateRange.to || dateRange.from! })) return;
+
+        let totalPaidForInvoice = 0;
+        allSettlements.forEach(settlement => {
             if (settlement.againstBills) {
                 settlement.againstBills.forEach(bill => {
                     if (bill.billId === invoice.id) {
-                        totalPaid += bill.amount;
+                        totalPaidForInvoice += bill.amount;
                     }
                 });
             }
         });
         
         const invoiceTotal = 'billedAmount' in invoice ? invoice.billedAmount : invoice.totalAmount;
-        const balance = invoiceTotal - totalPaid;
+        const balance = invoiceTotal - totalPaidForInvoice;
 
         if (balance > 0.01) {
              const partyId = 'customerId' in invoice ? (invoice.brokerId || invoice.customerId) : (invoice.agentId || invoice.supplierId);
@@ -190,7 +191,7 @@ export function OutstandingClient() {
                  date: invoice.date,
                  dueDate: format(dueDate, 'yyyy-MM-dd'),
                  amount: invoiceTotal,
-                 paid: totalPaid,
+                 paid: totalPaidForInvoice,
                  balance,
              });
         }
