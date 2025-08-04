@@ -40,7 +40,7 @@ export const StockActivityFeed: React.FC<StockActivityFeedProps> = ({
         allActivities.push({
             id: `pur-${p.id}`,
             date: p.date,
-            text: `Received ${p.quantity} bags (${p.lotNumber}) from ${p.supplierName}.`,
+            text: `Received ${p.totalQuantity} bags (${p.items.map(i => i.lotNumber).join(', ')}) from ${p.supplierName}.`,
             type: 'purchase',
             Icon: ArrowDownCircle,
             colorClass: 'text-blue-600'
@@ -51,7 +51,7 @@ export const StockActivityFeed: React.FC<StockActivityFeedProps> = ({
         allActivities.push({
             id: `sal-${s.id}`,
             date: s.date,
-            text: `Sold ${s.quantity} bags from ${s.lotNumber} to ${s.customerName}.`,
+            text: `Sold ${s.totalQuantity} bags from ${s.items.map(i => i.lotNumber).join(', ')} to ${s.customerName}.`,
             type: 'sale',
             Icon: ArrowUpCircle,
             colorClass: 'text-green-600'

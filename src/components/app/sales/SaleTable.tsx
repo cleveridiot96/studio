@@ -92,12 +92,12 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
                 >
                   <TableCell className="p-2 uppercase">{format(parseISO(sale.date), "dd/MM/yy")}</TableCell>
                   <TableCell className="p-2 uppercase">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[100px] inline-block">{sale.billNumber || 'N/A'}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span>{sale.billNumber || 'N/A'}</span></TooltipTrigger>
                       <TooltipContent><p className="uppercase">{sale.billNumber || 'N/A'}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2 uppercase">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{sale.customerName || sale.customerId}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span>{sale.customerName || sale.customerId}</span></TooltipTrigger>
                       <TooltipContent><p className="uppercase">{sale.customerName || sale.customerId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>

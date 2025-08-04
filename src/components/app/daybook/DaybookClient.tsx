@@ -264,7 +264,7 @@ export function DaybookClient() {
                                 <TableCell>{entry.party}</TableCell>
                                 <TableCell className="text-right font-mono">{entry.debit > 0 ? entry.debit.toLocaleString('en-IN') : '-'}</TableCell>
                                 <TableCell className="text-right font-mono">{entry.credit > 0 ? entry.credit.toLocaleString('en-IN') : '-'}</TableCell>
-                                <TableCell className="truncate max-w-xs">{entry.narration}</TableCell>
+                                <TableCell className="whitespace-normal break-words">{entry.narration}</TableCell>
                             </TableRow>
                         ))}
                          {filteredEntries.length === 0 && (

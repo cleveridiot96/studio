@@ -58,11 +58,11 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
                 <TableCell>{payment.partyName || payment.partyId}</TableCell>
                 <TableCell><Badge variant="secondary" className="uppercase">{payment.partyType}</Badge></TableCell>
                 <TableCell>{payment.paymentMethod}</TableCell>
-                <TableCell className="truncate max-w-xs">
+                <TableCell>
                   {payment.notes ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>{payment.notes}</span>
+                        <span className="whitespace-normal break-words">{payment.notes}</span>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{payment.notes}</p>

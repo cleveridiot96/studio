@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 "use client";
 
@@ -114,10 +115,10 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
 
             return (
               <TableRow key={uniqueKey} className="uppercase">
-                <TableCell className="font-medium whitespace-nowrap p-2">
+                <TableCell className="font-medium p-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="cursor-help flex items-center gap-1.5">
+                      <span className="cursor-help flex items-center gap-1.5 whitespace-normal break-words">
                         {isFixed && <Lock className="h-3 w-3 inline-block text-muted-foreground" />}
                         <HighlightedText text={item.name} indices={nameMatch?.indices} />
                       </span>

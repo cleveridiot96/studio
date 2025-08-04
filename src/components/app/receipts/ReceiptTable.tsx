@@ -61,11 +61,11 @@ const ReceiptTableComponent: React.FC<ReceiptTableProps> = ({ data, onEdit, onDe
                 <TableCell className="text-right font-semibold">{receipt.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                 <TableCell className="text-right">{receipt.cashDiscount?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '0.00'}</TableCell>
                 <TableCell>{receipt.paymentMethod}</TableCell>
-                <TableCell className="truncate max-w-xs">
+                <TableCell>
                   {receipt.notes ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>{receipt.notes}</span>
+                        <span className="whitespace-normal break-words">{receipt.notes}</span>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{receipt.notes}</p>

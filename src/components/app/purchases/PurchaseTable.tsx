@@ -94,17 +94,17 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
                     </div>
                   </TableCell>
                   <TableCell className="p-2 uppercase">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.locationName || purchase.locationId}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span>{purchase.locationName || purchase.locationId}</span></TooltipTrigger>
                       <TooltipContent><p className="uppercase">{purchase.locationName || purchase.locationId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2 uppercase">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{purchase.supplierName || purchase.supplierId}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span>{purchase.supplierName || purchase.supplierId}</span></TooltipTrigger>
                       <TooltipContent><p className="uppercase">{purchase.supplierName || purchase.supplierId}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>
                   <TableCell className="p-2 uppercase">
-                    <Tooltip><TooltipTrigger asChild><span className="truncate max-w-[120px] inline-block">{purchase.agentName || ''}</span></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><span>{purchase.agentName || ''}</span></TooltipTrigger>
                       <TooltipContent><p className="uppercase">{purchase.agentName || ''}</p></TooltipContent>
                     </Tooltip>
                   </TableCell>

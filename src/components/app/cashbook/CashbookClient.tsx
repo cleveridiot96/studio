@@ -9,7 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subDays } from "date-fns";
+import { addDays, format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subDays, startOfMonth } from "date-fns";
 import { BookOpen, TrendingUp, TrendingDown, CalendarDays, Printer, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
@@ -289,7 +289,7 @@ export function CashbookClient() {
                   cashLedgerData.entries.map((tx) => (
                     <TableRow key={tx.id} className={cn(tx.type === 'Receipt' ? 'bg-green-50/50' : 'bg-red-50/50')}>
                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
-                      <TableCell className="truncate max-w-sm uppercase">{tx.particulars}</TableCell>
+                      <TableCell className="uppercase">{tx.particulars}</TableCell>
                       <TableCell className="text-right font-mono text-green-700">
                         {tx.debit > 0 ? tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '-'}
                       </TableCell>

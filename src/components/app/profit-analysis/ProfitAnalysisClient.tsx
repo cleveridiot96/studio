@@ -284,7 +284,7 @@ export function ProfitAnalysisClient() {
                                         {filteredTransactionsForPeriod.map((tx, index) => (
                                             <TableRow key={`${tx.saleId}-${tx.lotNumber}-${index}`} className="uppercase">
                                                 <TableCell className="px-2 py-1 text-xs">{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
-                                                <TableCell className="truncate max-w-[120px] px-2 py-1 text-xs">{tx.customerName}</TableCell>
+                                                <TableCell className="px-2 py-1 text-xs">{tx.customerName}</TableCell>
                                                 <TableCell className="px-2 py-1 text-xs">{tx.lotNumber}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{tx.saleNetWeightKg.toLocaleString()}</TableCell>
                                                 <TableCell className="text-right px-2 py-1 text-xs">{Math.round(tx.saleRatePerKg).toLocaleString()}</TableCell>
