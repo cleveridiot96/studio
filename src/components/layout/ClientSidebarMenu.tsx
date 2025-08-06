@@ -65,7 +65,7 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
 
   return (
     <TooltipProvider>
-      <SidebarMenu className="p-2 space-y-1">
+      <SidebarMenu className="p-2 space-y-0.5">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)) || (item.href === "/dashboard" && pathname === "/");
           const IconComponent = iconMap[item.iconName] || FallbackIcon;

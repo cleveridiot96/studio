@@ -324,19 +324,19 @@ export function PurchasesClient() {
   if (isAppHydrating || !isPurchasesClientHydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
 
   return (
-    <div className="space-y-6 print-area">
+    <div className="space-y-4 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground uppercase">Purchases & Returns (FY {financialYear})</h1>
       </div>
 
       <Tabs defaultValue="purchases" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print bg-transparent p-0 gap-2">
-          <TabsTrigger value="purchases" className="py-2.5 text-base text-white bg-blue-600 hover:bg-blue-700 data-[state=active]:bg-blue-800 data-[state=active]:text-white rounded-md transition-all">
+        <TabsList className="grid w-full grid-cols-2 mb-4 no-print">
+          <TabsTrigger value="purchases" className="py-2.5 text-base rounded-md">
             <ListCollapse className="mr-2 h-5 w-5" />Purchases
           </TabsTrigger>
-          <TabsTrigger value="purchaseReturns" className="py-2.5 text-base text-white bg-orange-600 hover:bg-orange-700 data-[state=active]:bg-orange-800 data-[state=active]:text-white rounded-md transition-all">
+          <TabsTrigger value="purchaseReturns" className="py-2.5 text-base rounded-md">
             <RotateCcw className="mr-2 h-5 w-5" />Purchase Returns
           </TabsTrigger>
         </TabsList>

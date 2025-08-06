@@ -306,7 +306,7 @@ export function SalesClient() {
             debit: exp.amount,
             credit: 0,
             paymentMode: exp.paymentMode,
-            party: exp.party || 'Self',
+            party: exp.partyName || 'Self',
             partyId: exp.partyId,
             relatedVoucher: sale.id,
             linkedTo: { voucherType: 'Sale', voucherId: sale.id },
@@ -436,19 +436,19 @@ export function SalesClient() {
   if (isAppHydrating || !isSalesClientHydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading sales data...</p></div>;
 
   return (
-    <div className="space-y-6 print-area">
+    <div className="space-y-4 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 no-print">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2 no-print">
         <h1 className="text-3xl font-bold text-foreground uppercase">Sales & Returns (FY {financialYear})</h1>
       </div>
       
       <Tabs defaultValue="sales" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full md:w-auto grid-cols-2 mb-4 no-print bg-transparent p-0 gap-2">
-          <TabsTrigger value="sales" className="py-2.5 text-base text-white bg-green-600 hover:bg-green-700 data-[state=active]:bg-green-800 data-[state=active]:text-white rounded-md transition-all">
+        <TabsList className="grid w-full grid-cols-2 mb-4 no-print">
+          <TabsTrigger value="sales" className="py-2.5 text-base rounded-md">
             <ListCollapse className="mr-2 h-5 w-5" />Sales
           </TabsTrigger>
-          <TabsTrigger value="saleReturns" className="py-2.5 text-base text-white bg-red-600 hover:bg-red-700 data-[state=active]:bg-red-800 data-[state=active]:text-white rounded-md transition-all">
+          <TabsTrigger value="saleReturns" className="py-2.5 text-base rounded-md">
             <RotateCcw className="mr-2 h-5 w-5" />Sale Returns
           </TabsTrigger>
         </TabsList>
@@ -460,7 +460,7 @@ export function SalesClient() {
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
-          <SaleTable data={paginatedSales} currentPage={currentPage} itemsPerPage={itemsPerPage} totalPages={totalPages} goToPage={goToPage} nextPage={nextPage} prevPage={prevPage} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} onDownloadPdf={triggerDownloadSalePdf} />
+          <SaleTable data={paginatedSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} onDownloadPdf={triggerDownloadSalePdf} />
         </TabsContent>
 
         <TabsContent value="saleReturns">

@@ -197,7 +197,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
           </Sidebar>
 
           <div className="flex flex-col flex-1 min-h-0 relative">
-            <header className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
+            <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="md:hidden -ml-2">
                   <Menu className="h-7 w-7 text-foreground" />

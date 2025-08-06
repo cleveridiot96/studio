@@ -70,6 +70,7 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
     {
         id: 'lots',
         header: 'Vakkal / Lot(s)',
+        accessorFn: row => row.items.map(i => i.lotNumber).join(', '),
         cell: ({ row }) => row.original.items.map(i => i.lotNumber).join(', '),
     },
     {
