@@ -38,7 +38,9 @@ interface DataTableProps<TData, TValue> {
     sorting?: SortingState
     columnFilters?: ColumnFiltersState
     columnVisibility?: VisibilityState
-  }
+  },
+  renderRowSubComponent?: (props: { row: any }) => React.ReactNode;
+  getRowId?: (originalRow: TData, index: number, parent?: any) => string;
 }
 
 export function DataTable<TData, TValue>({
@@ -46,6 +48,8 @@ export function DataTable<TData, TValue>({
   data,
   onRowClick,
   initialState,
+  renderRowSubComponent,
+  getRowId,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -75,6 +79,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getRowId,
   })
 
   return (
@@ -103,21 +108,23 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  onClick={() => onRowClick && onRowClick(row.original)}
-                  className={cn(onRowClick && "cursor-pointer")}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <React.Fragment key={row.id}>
+                  <TableRow
+                    data-state={row.getIsSelected() && "selected"}
+                    onClick={() => onRowClick && onRowClick(row.original)}
+                    className={cn(onRowClick && "cursor-pointer")}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {renderRowSubComponent && renderRowSubComponent({ row })}
+                </React.Fragment>
               ))
             ) : (
               <TableRow>

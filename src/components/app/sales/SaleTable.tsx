@@ -21,8 +21,6 @@ import {
 import { MoreVertical, Pencil, Trash2, Download, ChevronDown } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format, parseISO } from 'date-fns';
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DataTableColumnHeader } from "@/components/shared/DataTableColumnHeader";
 import type { ColumnDef } from "@tanstack/react-table";

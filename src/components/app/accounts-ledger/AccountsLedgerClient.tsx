@@ -49,6 +49,7 @@ interface DisplayLedgerEntry {
     debit: number;
     credit: number;
     transactionDetails?: React.ReactNode;
+    href?: string;
 }
 
 const initialFinancialLedgerData = {
@@ -138,7 +139,7 @@ export function AccountsLedgerClient() {
         if (p.supplierId === partyId || p.agentId === partyId) {
             transactions.push({
                 date: p.date, debit: 0, credit: p.totalAmount,
-                displayEntry: { id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase', particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: p.totalAmount }
+                displayEntry: { id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase', particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: p.totalAmount, href: `/purchases#${p.id}` }
             });
         }
     });
@@ -148,7 +149,7 @@ export function AccountsLedgerClient() {
         if(accountablePartyId === partyId) {
             transactions.push({
                 date: s.date, debit: s.billedAmount, credit: 0,
-                displayEntry: { id: `sale-goods-${s.id}`, date: s.date, type: 'Sale', particulars: `To: ${s.customerName} (Bill: ${s.billNumber || 'N/A'})`, debit: s.billedAmount, credit: 0 }
+                displayEntry: { id: `sale-goods-${s.id}`, date: s.date, type: 'Sale', particulars: `To: ${s.customerName} (Bill: ${s.billNumber || 'N/A'})`, debit: s.billedAmount, credit: 0, href: `/sales#${s.id}` }
             });
         }
     });
@@ -159,7 +160,7 @@ export function AccountsLedgerClient() {
             : `Payment via ${p.paymentMethod} against Bill(s): ${p.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
         transactions.push({
             date: p.date, debit: p.amount, credit: 0,
-            displayEntry: { id: `pay-${p.id}`, date: p.date, type: 'Payment', particulars: particularDetails, debit: p.amount, credit: 0 }
+            displayEntry: { id: `pay-${p.id}`, date: p.date, type: 'Payment', particulars: particularDetails, debit: p.amount, credit: 0, href: `/payments#${p.id}` }
         });
     });
 
@@ -169,7 +170,7 @@ export function AccountsLedgerClient() {
             : `Receipt via ${r.paymentMethod} against Bill(s): ${r.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
         transactions.push({
             date: r.date, debit: 0, credit: r.amount + (r.cashDiscount || 0),
-            displayEntry: { id: `receipt-${r.id}`, date: r.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: r.amount + (r.cashDiscount || 0) }
+            displayEntry: { id: `receipt-${r.id}`, date: r.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: r.amount + (r.cashDiscount || 0), href: `/receipts#${r.id}` }
         });
     });
 
@@ -180,7 +181,7 @@ export function AccountsLedgerClient() {
         if (accountablePartyId === partyId) {
             transactions.push({
                 date: pr.date, debit: pr.returnAmount, credit: 0,
-                displayEntry: { id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return', particulars: `Return of Vakkal: ${pr.originalLotNumber}`, debit: pr.returnAmount, credit: 0 }
+                displayEntry: { id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return', particulars: `Return of Vakkal: ${pr.originalLotNumber}`, debit: pr.returnAmount, credit: 0, href: `/purchases#${pr.id}` }
             });
         }
     });
@@ -192,7 +193,7 @@ export function AccountsLedgerClient() {
         if (accountablePartyId === partyId) {
              transactions.push({
                 date: sr.date, debit: 0, credit: sr.returnAmount,
-                displayEntry: { id: `sret-${sr.id}`, date: sr.date, type: 'Sale Return', particulars: `Return from ${sr.originalCustomerName} of Vakkal: ${sr.originalLotNumber}`, debit: 0, credit: sr.returnAmount }
+                displayEntry: { id: `sret-${sr.id}`, date: sr.date, type: 'Sale Return', particulars: `Return from ${sr.originalCustomerName} of Vakkal: ${sr.originalLotNumber}`, debit: 0, credit: sr.returnAmount, href: `/sales#${sr.id}` }
             });
         }
     });
@@ -201,7 +202,7 @@ export function AccountsLedgerClient() {
         if (entry.partyId === partyId && entry.type === 'Expense') {
             transactions.push({
                 date: entry.date, debit: entry.debit, credit: entry.credit,
-                displayEntry: { id: entry.id, date: entry.date, type: 'Expense', particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`, debit: entry.debit, credit: entry.credit }
+                displayEntry: { id: entry.id, date: entry.date, type: 'Expense', particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`, debit: entry.debit, credit: entry.credit, href: entry.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : entry.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }
             });
         }
     });
@@ -372,7 +373,7 @@ export function AccountsLedgerClient() {
                                   <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>
                                 ) : (
                                   financialLedgerData.debitTransactions.map(tx => (
-                                    <TableRow key={tx.id}>
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className={tx.href ? 'cursor-pointer hover:bg-orange-100' : ''}>
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>
                                         <div className="flex items-center gap-2 uppercase">
@@ -429,7 +430,7 @@ export function AccountsLedgerClient() {
                                   <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>
                                 ) : (
                                   financialLedgerData.creditTransactions.map(tx => (
-                                    <TableRow key={tx.id}>
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className={tx.href ? 'cursor-pointer hover:bg-green-100' : ''}>
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>
                                         <div className="flex items-center gap-2 uppercase">
