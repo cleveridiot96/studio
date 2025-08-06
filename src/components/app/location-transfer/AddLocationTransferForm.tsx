@@ -136,7 +136,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         averageWeightPerBag: item.averageWeightPerBag,
       }))
       .sort((a,b) => a.label.localeCompare(b.label));
-  }, [availableStock, watch('fromWarehouseId')]);
+  }, [availableStock, watch]);
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
   const expenseOptions = expenses.map(e => ({ value: e.id, label: e.name })).filter(e => e.value);
@@ -379,12 +379,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   <h3 className="text-lg font-medium mb-3 text-primary">Additional Transfer Expenses</h3>
                    {expenseFields.map((field, index) => {
                       const selectedAccount = watch(`expenses.${index}.account`);
-                      const partyOptions = React.useMemo(() => {
-                          if (selectedAccount === 'Transport Charges') {
-                              return transporters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
-                          }
-                          return allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
-                      }, [selectedAccount, transporters, allExpenseParties]);
+                      let partyOptions;
+                      if (selectedAccount === 'Transport Charges') {
+                          partyOptions = transporters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
+                      } else {
+                          partyOptions = allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
+                      }
 
                       return (
                         <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
