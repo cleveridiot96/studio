@@ -168,7 +168,7 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-4">
       <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" />
       <div className="text-left">
-        <h1 className="text-3xl font-bold text-foreground uppercase">Dashboard Central Hub</h1>
+        <h1 className="text-3xl font-bold text-foreground">DASHBOARD CENTRAL HUB</h1>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {quickActions.map((action) => (
