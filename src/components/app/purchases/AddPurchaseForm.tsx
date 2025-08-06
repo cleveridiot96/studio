@@ -29,7 +29,7 @@ import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { purchaseSchema, type PurchaseFormValues } from "@/lib/schemas/purchaseSchema";
-import type { MasterItem, Purchase, MasterItemType, PurchaseItem, Agent } from "@/lib/types";
+import type { MasterItem, Purchase, MasterItemType, PurchaseItem, Agent, ExpenseItem } from "@/lib/types";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
@@ -151,6 +151,40 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
         itemsWithLandedCost,
     };
   }, [watchedFormValues]);
+
+  const agentId = watch('agentId');
+  React.useEffect(() => {
+    const agent = agents.find(a => a.id === agentId);
+    const commissionIndex = watchedFormValues.expenses?.findIndex(exp => exp.account === 'Broker Commission');
+    
+    if (agent && agent.commission && summary.totalGoodsValue > 0) {
+        let commissionAmount = 0;
+        if (agent.commissionType === 'Percentage') {
+            commissionAmount = summary.totalGoodsValue * (agent.commission / 100);
+        } else {
+            commissionAmount = agent.commission;
+        }
+
+        const newCommissionExpense: ExpenseItem = {
+            account: 'Broker Commission',
+            amount: parseFloat(commissionAmount.toFixed(2)),
+            paymentMode: 'Pending',
+            partyId: agent.id,
+            partyName: agent.name,
+        };
+
+        if (commissionIndex !== undefined && commissionIndex > -1) {
+            setValue(`expenses.${commissionIndex}`, newCommissionExpense, { shouldValidate: true });
+        } else {
+            appendExpense(newCommissionExpense);
+        }
+    } else {
+        if (commissionIndex !== undefined && commissionIndex > -1) {
+            removeExpense(commissionIndex);
+        }
+    }
+  }, [agentId, agents, summary.totalGoodsValue, setValue, appendExpense, removeExpense, watchedFormValues.expenses]);
+
 
   React.useEffect(() => {
     if (isOpen) {
@@ -381,16 +415,17 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
                       <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
-                          <Select onValueChange={itemField.onChange} value={itemField.value}>
+                          <Select onValueChange={itemField.onChange} value={itemField.value} disabled={itemField.value === 'Broker Commission'}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
                             <SelectContent>
+                               <SelectItem value="Broker Commission">Broker Commission</SelectItem>
                               {expenses.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
                             </SelectContent>
                           </Select><FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                          <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} readOnly={field.account === 'Broker Commission'} /></FormControl>
                           <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
@@ -399,17 +434,18 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                             options={allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                             placeholder="Select Party" addNewLabel="Add New Party"
                             onAddNew={() => handleOpenMasterForm("Transporter")} onEdit={(id) => handleEditMasterItem("Expense", id)}
+                            disabled={field.account === 'Broker Commission'}
                           /> <FormMessage />
                         </FormItem>)} />
                       <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
-                          <Select onValueChange={itemField.onChange} defaultValue={itemField.value}>
+                          <Select onValueChange={itemField.onChange} defaultValue={itemField.value} disabled={field.account === 'Broker Commission'}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
                             <SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
                           </Select><FormMessage />
                         </FormItem>)} />
                       <div className="md:col-span-1 flex items-center justify-end">
-                        <Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button type="button" variant="destructive" size="icon" onClick={() => removeExpense(index)} disabled={field.account === 'Broker Commission'}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   ))}

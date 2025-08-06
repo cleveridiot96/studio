@@ -379,6 +379,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   <h3 className="text-lg font-medium mb-3 text-primary">Additional Transfer Expenses</h3>
                    {expenseFields.map((field, index) => {
                       const selectedAccount = watch(`expenses.${index}.account`);
+                      
                       let partyOptions;
                       if (selectedAccount === 'Transport Charges') {
                           partyOptions = transporters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
@@ -392,7 +393,6 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
                               <Select onValueChange={(value) => {
                                   itemField.onChange(value);
-                                  // if changing to something other than transport charges, clear party if it's a transporter
                                   if (value !== 'Transport Charges') {
                                       const currentPartyId = getValues(`expenses.${index}.partyId`);
                                       if (currentPartyId && transporters.some(t => t.id === currentPartyId)) {
