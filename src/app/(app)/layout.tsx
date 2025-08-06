@@ -86,7 +86,7 @@ function AppHeaderContentInternal() {
     <>
       <Link href="/dashboard">
         <Button variant="ghost" size="icon" aria-label="Home">
-          <Home className="h-6 w-6 text-foreground" />
+          <Home className="h-5 w-5 text-foreground" />
         </Button>
       </Link>
       <SearchBar />
@@ -100,7 +100,7 @@ function AppHeaderContentInternal() {
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Settings">
-            <SettingsIcon className="h-6 w-6 text-foreground" />
+            <SettingsIcon className="h-5 w-5 text-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-4 space-y-4" align="end">
@@ -181,10 +181,10 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
     <>
         <div className="flex flex-1 bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
-            <SidebarHeader className="p-4 border-b border-sidebar-border">
+            <SidebarHeader className="p-2 border-b border-sidebar-border">
               <Link href="/dashboard" className="flex items-center gap-2 group">
-                <AppIcon className="w-9 h-9 text-sidebar-primary group-hover:animate-pulse" />
-                <h1 className="text-2xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
+                <AppIcon className="w-8 h-8 text-sidebar-primary group-hover:animate-pulse" />
+                <h1 className="text-xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
                   {APP_NAME}
                 </h1>
               </Link>
@@ -192,18 +192,18 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
             <SidebarContent className="py-2">
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
-            <SidebarFooter className="p-4 border-t border-sidebar-border">
+            <SidebarFooter className="p-2 border-t border-sidebar-border">
             </SidebarFooter>
           </Sidebar>
 
           <div className="flex flex-col flex-1 min-h-0 relative">
-            <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-md print:hidden">
-              <div className="flex items-center gap-4">
+            <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
+              <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden -ml-2">
-                  <Menu className="h-7 w-7 text-foreground" />
+                  <Menu className="h-6 w-6 text-foreground" />
                 </SidebarTrigger>
                 <SidebarTrigger className="hidden md:flex">
-                  <Menu className="h-7 w-7 text-foreground" />
+                  <Menu className="h-6 w-6 text-foreground" />
                 </SidebarTrigger>
               </div>
               <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
@@ -211,7 +211,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               </div>
             </header>
             <LoadingBarInternal />
-            <SidebarInset className="flex-1 overflow-y-auto p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
+            <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-4 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
               <ErrorBoundary>
                 <div className="flex flex-col flex-1 w-full min-w-0">
                     {children}

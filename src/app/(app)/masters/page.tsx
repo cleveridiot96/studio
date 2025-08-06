@@ -292,13 +292,13 @@ export default function MastersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Masters</h1>
+          <h1 className="text-2xl font-bold text-foreground">Masters</h1>
         </div>
         <Button onClick={openFormForNewItem} size="lg" className={cn(
-            "text-base py-3 px-6 shadow-md",
+            "text-base py-2 px-5 shadow-md",
             addButtonDynamicClass
         )}>
             <PlusCircle className="mr-2 h-5 w-5" /> {addButtonLabel}
@@ -312,12 +312,12 @@ export default function MastersPage() {
               key={tab.value}
               value={tab.value}
               className={cn(
-                "py-3 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
+                "py-2 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
                 tab.colorClass,
                 tab.value === 'Broker' && 'data-[state=active]:!text-black'
               )}
             >
-              <tab.icon className="w-5 h-5 mr-2" /> {tab.label}
+              <tab.icon className="w-4 h-4 mr-1.5" /> {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -325,26 +325,26 @@ export default function MastersPage() {
             const filteredData = getFilteredDataForTab(tab.value);
             const totalCount = getMasterDataState(tab.value).data.length;
             return (
-              <TabsContent key={tab.value} value={tab.value} className="mt-6">
+              <TabsContent key={tab.value} value={tab.value} className="mt-4">
                 <Card className="shadow-lg">
-                  <CardHeader className="sticky top-0 bg-card z-10 py-4 border-b">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                        <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
+                  <CardHeader className="sticky top-0 bg-card z-10 py-3 border-b">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                        <CardTitle className="text-xl text-primary">Manage {tab.label}</CardTitle>
                         <div className="w-full sm:w-auto sm:max-w-xs relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                                 placeholder={`Search in ${tab.label}...`}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
+                                className="pl-9 h-9"
                             />
                         </div>
                     </div>
                      {searchQuery && searchDidYouMean && (
-                        <p className="text-sm text-muted-foreground mt-2">Did you mean: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
+                        <p className="text-sm text-muted-foreground mt-1">Did you mean: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
                     )}
                   </CardHeader>
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-2">
                     <MasterList
                       data={filteredData}
                       itemType={tab.value as MasterItemType | 'All'}
@@ -355,7 +355,7 @@ export default function MastersPage() {
                       searchActive={!!searchQuery}
                     />
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="py-2">
                     <p className="text-xs text-muted-foreground">
                       {searchQuery ? `Showing ${filteredData.length} of ${totalCount} items` : `Total items: ${totalCount}`}
                     </p>
@@ -396,4 +396,5 @@ export default function MastersPage() {
     </div>
   );
 }
+
 
