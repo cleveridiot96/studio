@@ -21,8 +21,6 @@ import {
 import { MoreVertical, Pencil, Trash2, Download, ChevronDown } from "lucide-react";
 import type { Purchase } from "@/lib/types";
 import { format, parseISO } from 'date-fns';
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DataTableColumnHeader } from "@/components/shared/DataTableColumnHeader";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -43,15 +41,15 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
     setExpandedRows(prev => ({...prev, [id]: !prev[id]}));
   };
 
-  const columns: ColumnDef<Purchase>[] = [
+  const columns: ColumnDef<Purchase>[] = React.useMemo(() => [
     {
       id: 'expander',
       header: () => null,
       cell: ({ row }) => {
         const hasMultipleItems = row.original.items.length > 1;
         return hasMultipleItems ? (
-          <Button variant="ghost" size="icon" onClick={() => toggleRow(row.id)} className="h-6 w-6">
-            <ChevronDown className={cn("h-4 w-4 transition-transform", expandedRows[row.id] && "rotate-180")} />
+          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); toggleRow(row.original.id); }} className="h-6 w-6">
+            <ChevronDown className={cn("h-4 w-4 transition-transform", expandedRows[row.original.id] && "rotate-180")} />
           </Button>
         ) : <div className="w-6 h-6"/>;
       },
@@ -62,8 +60,9 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
       cell: ({ row }) => format(parseISO(row.original.date), "dd/MM/yy"),
     },
     {
-        accessorKey: 'items',
+        id: 'items',
         header: 'Vakkal / Lot No.',
+        accessorFn: row => row.items.map(i => i.lotNumber).join(', '),
         cell: ({ row }) => row.original.items.map(i => i.lotNumber).join(', '),
     },
     {
@@ -111,7 +110,47 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
         </DropdownMenu>
       ),
     },
-  ];
+  ], [expandedRows, onEdit, onDelete, onDownloadPdf]);
+
+  const renderRowSubComponent = React.useCallback(
+    ({ row }: { row: any }) => {
+      const purchase = row.original as Purchase;
+      if (!expandedRows[purchase.id] || purchase.items.length <= 1) return null;
+      return (
+        <tr className="bg-purple-50 dark:bg-purple-900/40">
+          <td colSpan={columns.length} className="p-0">
+             <div className="p-2">
+                <Table size="sm">
+                  <TableHeader>
+                    <TableRow className="text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50">
+                      <TableHead>VAKKAL</TableHead>
+                      <TableHead className="text-right">BAGS</TableHead>
+                      <TableHead className="text-right">NET WT</TableHead>
+                      <TableHead className="text-right">RATE</TableHead>
+                      <TableHead className="text-right">GOODS VALUE</TableHead>
+                      <TableHead className="text-right">LANDED COST/KG</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchase.items.map((item, index) => (
+                      <TableRow key={index} className="text-xs hover:bg-purple-100/50 dark:hover:bg-purple-800/50">
+                        <TableCell className="font-medium">{item.lotNumber}</TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">{item.netWeight.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{item.rate.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{item.goodsValue.toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">{item.landedCostPerKg.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+             </div>
+          </td>
+        </tr>
+      );
+    },
+    [expandedRows, columns.length]
+  );
 
   if (data.length === 0) {
     return <p className="text-center text-muted-foreground py-8 uppercase">NO PURCHASES RECORDED YET.</p>;
@@ -121,6 +160,8 @@ const PurchaseTableComponent: React.FC<PurchaseTableProps> = ({ data, onEdit, on
       <DataTable
         columns={columns}
         data={data}
+        renderRowSubComponent={renderRowSubComponent}
+        getRowId={(row) => row.id}
       />
   );
 }

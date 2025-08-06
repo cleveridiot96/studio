@@ -28,6 +28,7 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { DataTableViewOptions } from "./DataTableViewOptions"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -77,7 +78,8 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <>
+    <div className="space-y-4">
+      <DataTableViewOptions table={table} />
       <ScrollArea className="h-[65vh] rounded-md border">
         <Table>
           <TableHeader>
@@ -155,6 +157,6 @@ export function DataTable<TData, TValue>({
           </Button>
         </div>
       </div>
-    </>
+    </div>
   )
 }

@@ -43,6 +43,7 @@ interface LedgerTransaction {
   rate: number;
   amount: number;
   type: 'Purchase' | 'Sale' | 'Purchase Return' | 'Sale Return';
+  href?: string;
 }
 
 const initialLedgerData = {
@@ -170,7 +171,7 @@ export function LedgerClient() {
             p.items.forEach(item => {
                 debitTransactions.push({
                     id: `pur-${p.id}-${item.lotNumber}`, date: p.date, vakkal: item.lotNumber, party: p.supplierName || 'N/A',
-                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: item.goodsValue, type: 'Purchase',
+                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: item.goodsValue, type: 'Purchase', href: `/purchases#${p.id}`
                 });
             });
         }
@@ -181,7 +182,7 @@ export function LedgerClient() {
         if (originalSale && (originalSale.brokerId === selectedPartyId || originalSale.customerId === selectedPartyId) && dateFilter(sr.date)) {
             debitTransactions.push({
                 id: `sr-${sr.id}`, date: sr.date, vakkal: sr.originalLotNumber, party: sr.originalCustomerName || 'N/A',
-                bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.items.find(i => i.lotNumber === sr.originalLotNumber)?.rate || 0, amount: sr.returnAmount, type: 'Sale Return',
+                bags: sr.quantityReturned, kg: sr.netWeightReturned, rate: originalSale.items.find(i => i.lotNumber === sr.originalLotNumber)?.rate || 0, amount: sr.returnAmount, type: 'Sale Return', href: `/sales#${originalSale.id}`
             });
         }
     });
@@ -191,7 +192,7 @@ export function LedgerClient() {
              s.items.forEach(item => {
                 creditTransactions.push({
                     id: `sal-${s.id}-${item.lotNumber}`, date: s.date, vakkal: item.lotNumber, party: s.customerName || 'N/A',
-                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: item.goodsValue, type: 'Sale',
+                    bags: item.quantity, kg: item.netWeight, rate: item.rate, amount: item.goodsValue, type: 'Sale', href: `/sales#${s.id}`
                 });
             });
         }
@@ -202,7 +203,7 @@ export function LedgerClient() {
         if (originalPurchase && (originalPurchase.supplierId === selectedPartyId || originalPurchase.agentId === selectedPartyId) && dateFilter(pr.date)) {
             creditTransactions.push({
                 id: `pr-${pr.id}`, date: pr.date, vakkal: pr.originalLotNumber, party: pr.originalSupplierName || 'N/A',
-                bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber)?.rate || 0, amount: pr.returnAmount, type: 'Purchase Return',
+                bags: pr.quantityReturned, kg: pr.netWeightReturned, rate: originalPurchase.items.find(i => i.lotNumber === pr.originalLotNumber)?.rate || 0, amount: pr.returnAmount, type: 'Purchase Return', href: `/purchases#${originalPurchase.id}`
             });
         }
     });
@@ -347,7 +348,7 @@ export function LedgerClient() {
                                   <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No inward stock in this period.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.debitTransactions.map(tx => (
-                                    <TableRow key={tx.id} className="uppercase">
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className="uppercase cursor-pointer hover:bg-orange-100">
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
                                       <TableCell>{tx.party}</TableCell>
@@ -393,7 +394,7 @@ export function LedgerClient() {
                                   <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">No outward stock recorded.</TableCell></TableRow>
                                 ) : (
                                   ledgerData.creditTransactions.map(tx => (
-                                    <TableRow key={tx.id} className="uppercase">
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className="uppercase cursor-pointer hover:bg-green-100">
                                       <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
                                       <TableCell>{tx.vakkal}</TableCell>
                                       <TableCell>{tx.party}</TableCell>
