@@ -1,7 +1,7 @@
 
 "use client"
 
-import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDown, EyeOff } from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon, ChevronsUpDown, EyeOff, FilterIcon } from "lucide-react"
 import type { Column } from "@tanstack/react-table"
 
 import { cn } from "@/lib/utils"
@@ -14,6 +14,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { DataTableFilter } from "./DataTableFilter"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import React from "react"
 
 interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -26,6 +28,8 @@ export function DataTableColumnHeader<TData, TValue>({
   title,
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
+    const [isFilterOpen, setIsFilterOpen] = React.useState(false);
+
   if (!column.getCanSort() && !column.getCanFilter()) {
     return <div className={cn(className)}>{title}</div>
   }
@@ -52,29 +56,35 @@ export function DataTableColumnHeader<TData, TValue>({
         <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
                 <ArrowUpIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                Asc
+                Sort A-Z
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
                 <ArrowDownIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                Desc
+                Sort Z-A
             </DropdownMenuItem>
             {column.getCanHide() && (
                 <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => column.toggleVisibility(false)}>
                         <EyeOff className="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
-                        Hide
+                        Hide column
                     </DropdownMenuItem>
-                </>
-            )}
-            {column.getCanFilter() && (
-                <>
-                    <DropdownMenuSeparator />
-                    <DataTableFilter column={column} title={title} />
                 </>
             )}
         </DropdownMenuContent>
       </DropdownMenu>
+       {column.getCanFilter() && (
+            <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 -ml-1">
+                        <FilterIcon className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-0" align="start">
+                     <DataTableFilter column={column} title={title} onFilterApplied={() => setIsFilterOpen(false)} />
+                </PopoverContent>
+            </Popover>
+       )}
     </div>
   )
 }
