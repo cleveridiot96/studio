@@ -79,44 +79,51 @@ export function DaybookClient() {
     purchases.forEach(p => entries.push({
       id: `pur-${p.id}`, date: p.date, type: 'Purchase', voucherNo: p.id.slice(-6).toUpperCase(),
       party: p.supplierName || 'Unknown', debit: p.totalAmount, credit: 0,
-      narration: `Purchase of ${p.items.map(i=>i.lotNumber).join(', ')}`, href: `/purchases`,
+      narration: `Purchase of ${p.items.map(i=>i.lotNumber).join(', ')}`, href: `/purchases#${p.id}`,
       Icon: typeToIconMap['Purchase'], colorClass: typeToColorMap['Purchase'],
     }));
 
     sales.forEach(s => entries.push({
       id: `sal-${s.id}`, date: s.date, type: 'Sale', voucherNo: s.billNumber || s.id.slice(-6).toUpperCase(),
       party: s.customerName || 'Unknown', debit: 0, credit: s.billedAmount,
-      narration: `Sale of ${s.items.map(i=>i.lotNumber).join(', ')}`, href: `/sales`,
+      narration: `Sale of ${s.items.map(i=>i.lotNumber).join(', ')}`, href: `/sales#${s.id}`,
       Icon: typeToIconMap['Sale'], colorClass: typeToColorMap['Sale'],
     }));
 
     payments.forEach(p => entries.push({
       id: `pay-${p.id}`, date: p.date, type: 'Payment', voucherNo: p.id.slice(-6).toUpperCase(),
       party: p.partyName || 'Unknown', debit: 0, credit: p.amount,
-      narration: `Payment via ${p.paymentMethod}`, href: `/payments`,
+      narration: `Payment via ${p.paymentMethod}`, href: `/payments#${p.id}`,
       Icon: typeToIconMap['Payment'], colorClass: typeToColorMap['Payment'],
     }));
 
     receipts.forEach(r => entries.push({
       id: `rec-${r.id}`, date: r.date, type: 'Receipt', voucherNo: r.id.slice(-6).toUpperCase(),
       party: r.partyName || 'Unknown', debit: r.amount, credit: 0,
-      narration: `Receipt via ${r.paymentMethod}`, href: `/receipts`,
+      narration: `Receipt via ${r.paymentMethod}`, href: `/receipts#${r.id}`,
       Icon: typeToIconMap['Receipt'], colorClass: typeToColorMap['Receipt'],
     }));
 
     locationTransfers.forEach(t => entries.push({
       id: `trn-${t.id}`, date: t.date, type: 'Transfer', voucherNo: t.id.slice(-6).toUpperCase(),
       party: 'Internal Transfer', debit: 0, credit: 0,
-      narration: `From ${t.fromWarehouseName} to ${t.toWarehouseName}`, href: `/location-transfer`,
+      narration: `From ${t.fromWarehouseName} to ${t.toWarehouseName}`, href: `/location-transfer#${t.id}`,
       Icon: typeToIconMap['Transfer'], colorClass: typeToColorMap['Transfer'],
     }));
     
-    ledgerData.filter(l => l.type === 'Expense').forEach(l => entries.push({
-        id: `exp-${l.id}`, date: l.date, type: 'Expense', voucherNo: l.relatedVoucher?.slice(-6).toUpperCase() || 'N/A',
-        party: l.party || 'Self', debit: l.debit, credit: l.credit,
-        narration: `Expense: ${l.account}`, href: l.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : l.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales',
-        Icon: typeToIconMap['Expense'], colorClass: typeToColorMap['Expense'],
-    }));
+    ledgerData.filter(l => l.type === 'Expense').forEach(l => {
+        let href = '/payments'; // Default fallback
+        if(l.linkedTo?.voucherType === 'Purchase') href = `/purchases#${l.linkedTo.voucherId}`;
+        else if (l.linkedTo?.voucherType === 'Sale') href = `/sales#${l.linkedTo.voucherId}`;
+        else if (l.linkedTo?.voucherType === 'Transfer') href = `/location-transfer#${l.linkedTo.voucherId}`;
+        
+        entries.push({
+            id: `exp-${l.id}`, date: l.date, type: 'Expense', voucherNo: l.relatedVoucher?.slice(-6).toUpperCase() || 'N/A',
+            party: l.party || 'Self', debit: l.debit, credit: l.credit,
+            narration: `Expense: ${l.account}`, href: href,
+            Icon: typeToIconMap['Expense'], colorClass: typeToColorMap['Expense'],
+        });
+    });
 
     return entries.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [hydrated, purchases, sales, payments, receipts, locationTransfers, ledgerData]);
@@ -181,7 +188,7 @@ export function DaybookClient() {
     },
     {
         accessorKey: 'debit',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Debit (₹)" className="text-right" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Debit (₹)" className="justify-end" />,
         cell: ({ row }) => (
             <div className="text-right font-mono">
                 {row.original.debit > 0 ? row.original.debit.toLocaleString('en-IN') : '-'}
@@ -190,7 +197,7 @@ export function DaybookClient() {
     },
     {
         accessorKey: 'credit',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Credit (₹)" className="text-right" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Credit (₹)" className="justify-end" />,
         cell: ({ row }) => (
             <div className="text-right font-mono">
                 {row.original.credit > 0 ? row.original.credit.toLocaleString('en-IN') : '-'}
