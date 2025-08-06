@@ -1,13 +1,11 @@
 
 "use client";
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { DaybookEntry, MasterItem, Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry } from "@/lib/types";
+import type { DaybookEntry, Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Printer, ShoppingCart, Receipt as ReceiptIcon, ArrowRightCircle, ArrowLeftCircle, ArrowRightLeft, FileText, BookMarked } from "lucide-react";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, startOfDay, endOfDay, subDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
@@ -17,7 +15,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { DataTableColumnHeader } from '@/components/shared/DataTableColumnHeader';
-import { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/shared/DataTable';
 import { purchaseMigrator, salesMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
 
