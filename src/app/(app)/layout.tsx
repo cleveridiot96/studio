@@ -211,7 +211,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               </div>
             </header>
             <LoadingBarInternal />
-            <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-4 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
+            <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
               <ErrorBoundary>
                 <div className="flex flex-col flex-1 w-full min-w-0">
                     {children}

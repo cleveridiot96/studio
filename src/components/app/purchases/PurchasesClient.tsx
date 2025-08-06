@@ -324,15 +324,15 @@ export function PurchasesClient() {
   if (isAppHydrating || !isPurchasesClientHydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
 
   return (
-    <div className="space-y-4 print-area">
-      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
+    <div className="space-y-2 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-2" />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <h1 className="text-3xl font-bold text-foreground uppercase">Purchases & Returns (FY {financialYear})</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 no-print">
+        <h1 className="text-2xl font-bold text-foreground uppercase">Purchases & Returns (FY {financialYear})</h1>
       </div>
 
       <Tabs defaultValue="purchases" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 mb-4 no-print">
+        <TabsList className="grid w-full grid-cols-2 mb-2 no-print">
           <TabsTrigger value="purchases" className="py-2.5 text-base rounded-md">
             <ListCollapse className="mr-2 h-5 w-5" />Purchases
           </TabsTrigger>
@@ -342,9 +342,9 @@ export function PurchasesClient() {
         </TabsList>
 
         <TabsContent value="purchases">
-          <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddPurchaseForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
-              <PlusCircle className="mr-2 h-5 w-5" /> Add Purchase
+          <div className="flex justify-end gap-2 mb-2 no-print">
+            <Button onClick={openAddPurchaseForm} size="lg" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
@@ -352,9 +352,9 @@ export function PurchasesClient() {
         </TabsContent>
 
         <TabsContent value="purchaseReturns">
-          <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddPurchaseReturnForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
-              <PlusCircle className="mr-2 h-5 w-5" /> Add Purchase Return
+          <div className="flex justify-end gap-2 mb-2 no-print">
+            <Button onClick={openAddPurchaseReturnForm} size="lg" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase Return
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
