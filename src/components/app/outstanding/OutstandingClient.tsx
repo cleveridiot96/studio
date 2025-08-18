@@ -98,10 +98,10 @@ const OutstandingTable = ({ data, title, themeColor }: { data: OutstandingTransa
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer">Party <SortIcon columnKey="partyName" /></TableHead>
-                                <TableHead onClick={() => handleSort('vakkal')} className="cursor-pointer">Voucher # <SortIcon columnKey="vakkal" /></TableHead>
-                                <TableHead onClick={() => handleSort('balance')} className="cursor-pointer text-right">Balance <SortIcon columnKey="balance" /></TableHead>
-                                <TableHead onClick={() => handleSort('dueDate')} className="cursor-pointer">Due Date <SortIcon columnKey="dueDate" /></TableHead>
+                                <TableHead onClick={() => handleSort('partyName')} className="cursor-pointer">PARTY <SortIcon columnKey="partyName" /></TableHead>
+                                <TableHead onClick={() => handleSort('vakkal')} className="cursor-pointer">VOUCHER # <SortIcon columnKey="vakkal" /></TableHead>
+                                <TableHead onClick={() => handleSort('balance')} className="cursor-pointer text-right">BALANCE <SortIcon columnKey="balance" /></TableHead>
+                                <TableHead onClick={() => handleSort('dueDate')} className="cursor-pointer">DUE DATE <SortIcon columnKey="dueDate" /></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -184,8 +184,8 @@ export function OutstandingClient() {
              outstandingTransactions.push({
                  id: invoice.id,
                  partyId: partyId!,
-                 partyName: party?.name || 'Unknown',
-                 partyType: party?.type || 'Unknown',
+                 partyName: party?.name || 'UNKNOWN',
+                 partyType: party?.type || 'UNKNOWN',
                  type: 'billedAmount' in invoice ? 'Sale' : 'Purchase',
                  vakkal: 'billNumber' in invoice ? invoice.billNumber || invoice.id.slice(-5) : invoice.items.map(i => i.lotNumber).join(', '),
                  date: invoice.date,
@@ -249,18 +249,18 @@ export function OutstandingClient() {
         <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
         
         <div className="no-print">
-            <h1 className="text-3xl font-bold text-foreground mb-4">Outstanding Dashboard</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-4">OUTSTANDING DASHBOARD</h1>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card>
-                <CardHeader><CardTitle className="text-base text-green-700">Total Receivables</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base text-green-700">TOTAL RECEIVABLES</CardTitle></CardHeader>
                 <CardContent className="text-2xl text-green-600 font-bold">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle className="text-base text-orange-600">Total Payables</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base text-orange-600">TOTAL PAYABLES</CardTitle></CardHeader>
                 <CardContent className="text-2xl text-orange-600 font-bold">₹{totalPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
               </Card>
               <Card>
-                <CardHeader><CardTitle className="text-base text-primary">Net Outstanding</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-base text-primary">NET OUTSTANDING</CardTitle></CardHeader>
                 <CardContent className="text-2xl font-bold">₹{netOutstanding.toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
               </Card>
             </div>
@@ -270,7 +270,7 @@ export function OutstandingClient() {
                     value={selectedPartyId}
                     onChange={(value) => setSelectedPartyId(value)}
                     options={partyOptions}
-                    placeholder="Filter by Party..."
+                    placeholder="FILTER BY PARTY..."
                     className="w-full md:w-1/3"
                 />
                 <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
@@ -285,8 +285,8 @@ export function OutstandingClient() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-grow">
-            <OutstandingTable data={filteredData.receivables} title="Receivables (Sales)" themeColor="green" />
-            <OutstandingTable data={filteredData.payables} title="Payables (Purchases)" themeColor="orange" />
+            <OutstandingTable data={filteredData.receivables} title="RECEIVABLES (SALES)" themeColor="green" />
+            <OutstandingTable data={filteredData.payables} title="PAYABLES (PURCHASES)" themeColor="orange" />
         </div>
     </div>
   )

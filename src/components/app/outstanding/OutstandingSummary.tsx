@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateBeforeFinancialYear, isDateInFinancialYear } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+import { parseISO } from 'date-fns';
 
 
 // All the data keys
@@ -52,7 +53,7 @@ export const OutstandingSummary = () => {
     const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
     const balances = new Map<string, number>();
 
-    // Step 1: Initialize with opening balances and adjust for transactions before the current FY
+    // Step 1: Initialize with opening balances from master files
     allMasters.forEach(m => {
         let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
         balances.set(m.id, openingBalance);
@@ -105,19 +106,19 @@ export const OutstandingSummary = () => {
 
   }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
   
-  if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
+  if(!hydrated) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-foreground">Outstanding Balances</CardTitle>
-        <CardDescription>A summary of total money to be paid and received. Click a card to see details.</CardDescription>
+        <CardTitle className="text-2xl font-semibold text-foreground">OUTSTANDING BALANCES</CardTitle>
+        <CardDescription>A SUMMARY OF TOTAL MONEY TO BE PAID AND RECEIVED. CLICK A CARD TO SEE DETAILS.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link href="/outstanding" className="block group">
               <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50 h-full transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-1">
                   <CardHeader>
-                      <CardTitle className="text-green-700 dark:text-green-300">Total Receivables</CardTitle>
+                      <CardTitle className="text-green-700 dark:text-green-300">TOTAL RECEIVABLES</CardTitle>
                   </CardHeader>
                   <CardContent>
                       <p className="text-3xl font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
@@ -127,7 +128,7 @@ export const OutstandingSummary = () => {
              <Link href="/outstanding" className="block group">
                <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50 h-full transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-1">
                   <CardHeader>
-                      <CardTitle className="text-red-700 dark:text-red-300">Total Payables</CardTitle>
+                      <CardTitle className="text-red-700 dark:text-red-300">TOTAL PAYABLES</CardTitle>
                   </CardHeader>
                   <CardContent>
                       <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
@@ -137,7 +138,7 @@ export const OutstandingSummary = () => {
       </CardContent>
       <CardFooter>
         <Button asChild className="w-full">
-            <Link href="/outstanding">View Full Outstanding Report</Link>
+            <Link href="/outstanding">VIEW FULL OUTSTANDING REPORT</Link>
         </Button>
       </CardFooter>
     </Card>

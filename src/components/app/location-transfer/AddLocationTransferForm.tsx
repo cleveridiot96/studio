@@ -107,11 +107,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const watchedFormValues = watch();
 
   const transferSummary = React.useMemo(() => {
-    const { items, expenses } = watchedFormValues;
+    const { items, expenses: formExpenses } = watchedFormValues;
     const totalBags = (items || []).reduce((acc, item) => acc + (Number(item.bagsToTransfer) || 0), 0);
     const totalNetWeight = (items || []).reduce((acc, item) => acc + (Number(item.netWeightToTransfer) || 0), 0);
     const totalGrossWeight = (items || []).reduce((acc, item) => acc + (Number(item.grossWeightToTransfer) || 0), 0);
-    const totalExpenses = (expenses || []).reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0);
+    const totalExpenses = (formExpenses || []).reduce((acc, exp) => acc + (Number(exp.amount) || 0), 0);
     const perKgExpense = totalGrossWeight > 0 ? totalExpenses / totalGrossWeight : 0;
     
     return { totalBags, totalNetWeight, totalGrossWeight, totalExpenses, perKgExpense };
@@ -131,7 +131,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
       .filter(item => item.locationId === fromWarehouseId && item.currentBags > 0)
       .map(item => ({
         value: item.lotNumber,
-        label: `${item.lotNumber} (Avl: ${Math.round(item.currentBags)} bags)`,
+        label: `${item.lotNumber} (AVL: ${Math.round(item.currentBags)} BAGS)`,
         availableBags: item.currentBags,
         averageWeightPerBag: item.averageWeightPerBag,
       }))
@@ -218,22 +218,22 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
         <DialogContent className="sm:max-w-4xl md:max-w-5xl lg:max-w-6xl">
           <DialogHeader>
             <DialogTitle>{transferToEdit ? "Edit Location Transfer" : "New Location Transfer"}</DialogTitle>
-            <DialogDescription>Transfer vakkals (lots) between your warehouse locations and record associated expenses.</DialogDescription>
+            <DialogDescription>TRANSFER VAKKALS (LOTS) BETWEEN YOUR WAREHOUSE LOCATIONS AND RECORD ASSOCIATED EXPENSES.</DialogDescription>
           </DialogHeader>
           <FormProvider {...methods}>
             <Form {...methods}>
-              <form onSubmit={handleSubmit(processSubmit)} className="space-y-6 max-h-[80vh] overflow-y-auto p-1 pr-3">
+              <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Transfer Details</h3>
+                  <h3 className="text-lg font-medium mb-3 text-primary">TRANSFER DETAILS</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField control={control} name="date" render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Transfer Date</FormLabel>
+                        <FormLabel>TRANSFER DATE</FormLabel>
                         <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(field.value, "dd/MM/yy") : <span>Pick a date</span>}
+                                {field.value ? format(field.value, "dd/MM/yy") : <span>PICK A DATE</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
@@ -255,12 +255,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       </FormItem>)}
                     />
                     <FormField control={control} name="fromWarehouseId" render={({ field }) => (
-                      <FormItem><FormLabel>From Warehouse</FormLabel>
+                      <FormItem><FormLabel>FROM WAREHOUSE</FormLabel>
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
                           options={warehouses.map(w => ({ value: w.id, label: w.name }))}
-                          placeholder="Select Source"
+                          placeholder="SELECT SOURCE"
                           onAddNew={() => handleOpenMasterForm("Warehouse")}
                           onEdit={(id) => handleEditMasterItem("Warehouse", id)}
                         />
@@ -268,12 +268,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       </FormItem>)}
                     />
                     <FormField control={control} name="toWarehouseId" render={({ field }) => (
-                      <FormItem><FormLabel>To Warehouse</FormLabel>
+                      <FormItem><FormLabel>TO WAREHOUSE</FormLabel>
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
                           options={warehouses.map(w => ({ value: w.id, label: w.name }))}
-                          placeholder="Select Destination"
+                          placeholder="SELECT DESTINATION"
                           onAddNew={() => handleOpenMasterForm("Warehouse")}
                           onEdit={(id) => handleEditMasterItem("Warehouse", id)}
                         />
@@ -284,11 +284,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                 </div>
                 
                 <div className="p-4 border rounded-md shadow-sm space-y-4">
-                  <h3 className="text-lg font-medium text-primary">Items to Transfer</h3>
+                  <h3 className="text-lg font-medium text-primary">ITEMS TO TRANSFER</h3>
                   {fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                       <FormField control={control} name={`items.${index}.originalLotNumber`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-3"><FormLabel>Vakkal/Lot No.</FormLabel>
+                        <FormItem className="md:col-span-3"><FormLabel>VAKKAL/LOT NO.</FormLabel>
                           <MasterDataCombobox
                             value={itemField.value}
                             onChange={(lotValue) => {
@@ -301,15 +301,15 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                 }
                               }}
                             options={availableLotsOptions}
-                            placeholder="Select Lot"
+                            placeholder="SELECT LOT"
                             disabled={!watch('fromWarehouseId')}
                           />
                           <FormMessage />
                         </FormItem>)}
                       />
                       <FormField control={control} name={`items.${index}.bagsToTransfer`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel>
-                          <FormControl><Input type="number" placeholder="Bags" {...itemField} value={itemField.value ?? ''}
+                        <FormItem className="md:col-span-2"><FormLabel>BAGS</FormLabel>
+                          <FormControl><Input type="number" placeholder="BAGS" {...itemField} value={itemField.value ?? ''}
                             onChange={e => {
                               const bagsVal = parseFloat(e.target.value) || undefined;
                               itemField.onChange(bagsVal);
@@ -333,14 +333,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         </FormItem>)}
                       />
                        <FormField control={control} name={`items.${index}.netWeightToTransfer`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Net Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" step="0.01" placeholder="Net Wt." {...itemField} value={itemField.value ?? ''}  onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                        <FormItem className="md:col-span-2"><FormLabel>NET WT. (KG)</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="NET WT." {...itemField} value={itemField.value ?? ''}  onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
                       <FormField control={control} name={`items.${index}.newLotNumber`} render={({ field: itemField }) => (
                          <FormItem className="md:col-span-2">
-                           <FormLabel>New Vakkal/Lot No.</FormLabel>
+                           <FormLabel>NEW VAKKAL/LOT NO.</FormLabel>
                            <FormControl>
                              <Input {...itemField} readOnly className="bg-muted/70 font-semibold" />
                            </FormControl>
@@ -348,8 +348,8 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                          </FormItem>
                        )} />
                        <FormField control={control} name={`items.${index}.grossWeightToTransfer`} render={({ field: itemField }) => (
-                        <FormItem className="md:col-span-2"><FormLabel>Gross Wt. (kg)</FormLabel>
-                          <FormControl><Input type="number" placeholder="Gross Wt." {...itemField} value={itemField.value ?? ''} readOnly className="bg-muted/70" /></FormControl>
+                        <FormItem className="md:col-span-2"><FormLabel>GROSS WT. (KG)</FormLabel>
+                          <FormControl><Input type="number" placeholder="GROSS WT." {...itemField} value={itemField.value ?? ''} readOnly className="bg-muted/70" /></FormControl>
                           <FormMessage />
                         </FormItem>)}
                       />
@@ -362,7 +362,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   ))}
                   <div className="flex justify-between items-start mt-2">
                     <Button type="button" variant="outline" onClick={() => append({ originalLotNumber: "", bagsToTransfer: undefined, netWeightToTransfer: undefined, grossWeightToTransfer: undefined, newLotNumber: "" })}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Vakkal
+                      <PlusCircle className="mr-2 h-4 w-4" /> ADD VAKKAL
                     </Button>
                     <div className="p-3 border rounded-md bg-muted/50 text-right text-sm">
                         <p className="font-semibold">TOTAL BAGS: <span className="font-bold text-primary">{Math.round(transferSummary.totalBags).toLocaleString()}</span></p>
@@ -376,7 +376,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                 </div>
 
                 <div className="p-4 border rounded-md shadow-sm">
-                  <h3 className="text-lg font-medium mb-3 text-primary">Additional Transfer Expenses</h3>
+                  <h3 className="text-lg font-medium mb-3 text-primary">ADDITIONAL TRANSFER EXPENSES</h3>
                    {expenseFields.map((field, index) => {
                       const selectedAccount = watch(`expenses.${index}.account`);
                       
@@ -390,7 +390,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       return (
                         <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 border-b last:border-b-0">
                           <FormField control={control} name={`expenses.${index}.account`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Account</FormLabel>
+                            <FormItem className="md:col-span-3"><FormLabel>ACCOUNT</FormLabel>
                               <Select onValueChange={(value) => {
                                   itemField.onChange(value);
                                   if (value !== 'Transport Charges') {
@@ -400,7 +400,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                       }
                                   }
                               }} value={itemField.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Account" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder="SELECT ACCOUNT" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                   {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.label}>{opt.label}</SelectItem>)}
                                 </SelectContent>
@@ -408,27 +408,27 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               <FormMessage />
                             </FormItem>)} />
                           <FormField control={control} name={`expenses.${index}.amount`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-2"><FormLabel>Amount (₹)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="Amount" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                            <FormItem className="md:col-span-2"><FormLabel>AMOUNT (₹)</FormLabel>
+                              <FormControl><Input type="number" step="0.01" placeholder="AMOUNT" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
                               <FormMessage />
                             </FormItem>)} />
                           <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
+                            <FormItem className="md:col-span-3"><FormLabel>PARTY (OPT.)</FormLabel>
                               <MasterDataCombobox
                                 value={itemField.value}
                                 onChange={itemField.onChange}
                                 options={partyOptions}
-                                placeholder="Select Party"
-                                addNewLabel="Add New Party"
+                                placeholder="SELECT PARTY"
+                                addNewLabel="ADD NEW PARTY"
                                 onAddNew={() => handleOpenMasterForm("Transporter")}
                                 onEdit={(id) => handleEditMasterItem("Expense", id)}
                               />
                               <FormMessage />
                             </FormItem>)} />
                           <FormField control={control} name={`expenses.${index}.paymentMode`} render={({ field: itemField }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Pay Mode</FormLabel>
+                            <FormItem className="md:col-span-3"><FormLabel>PAY MODE</FormLabel>
                               <Select onValueChange={itemField.onChange} value={itemField.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger><SelectValue placeholder="MODE" /></SelectTrigger></FormControl>
                                 <SelectContent><SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
                               </Select>
                               <FormMessage />
@@ -438,21 +438,21 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       );
                    })}
                   <Button type="button" variant="outline" size="sm" onClick={() => appendExpense({ account: undefined, amount: undefined, paymentMode: "Cash", partyId: undefined, partyName: 'Self' })} className="mt-2">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Expense Row
+                    <PlusCircle className="mr-2 h-4 w-4" /> ADD EXPENSE ROW
                   </Button>
                 </div>
                 
                 <div className="p-4 border rounded-md shadow-sm bg-muted/50">
-                    <h3 className="text-lg font-medium mb-3 text-primary">Cost Calculation & Final Landed Costs</h3>
-                     <p className="text-sm text-muted-foreground mb-3">Total Expenses: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ Total Gross Wt: {transferSummary.totalGrossWeight.toLocaleString('en-IN')} kg = <span className="font-bold">₹{transferSummary.perKgExpense.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/kg Transfer Cost</span></p>
+                    <h3 className="text-lg font-medium mb-3 text-primary">COST CALCULATION & FINAL LANDED COSTS</h3>
+                     <p className="text-sm text-muted-foreground mb-3">TOTAL EXPENSES: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ TOTAL GROSS WT: {transferSummary.totalGrossWeight.toLocaleString('en-IN')} KG = <span className="font-bold">₹{transferSummary.perKgExpense.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/KG TRANSFER COST</span></p>
                      <ScrollArea className="h-40">
                          <Table>
                              <TableHeader>
                                  <TableRow>
-                                     <TableHead>Vakkal</TableHead>
-                                     <TableHead className="text-right">Original Landed Cost</TableHead>
-                                     <TableHead className="text-right">Transfer Cost</TableHead>
-                                     <TableHead className="text-right font-bold text-primary">Final Landed Cost</TableHead>
+                                     <TableHead>VAKKAL</TableHead>
+                                     <TableHead className="text-right">ORIGINAL LANDED COST</TableHead>
+                                     <TableHead className="text-right">TRANSFER COST</TableHead>
+                                     <TableHead className="text-right font-bold text-primary">FINAL LANDED COST</TableHead>
                                  </TableRow>
                              </TableHeader>
                              <TableBody>
@@ -472,7 +472,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                     );
                                 })}
                                 {(!watchedFormValues.items || watchedFormValues.items.length === 0 || !watchedFormValues.items[0].originalLotNumber) && (
-                                    <TableRow><TableCell colSpan={4} className="text-center">Add items to see cost calculation.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} className="text-center">ADD ITEMS TO SEE COST CALCULATION.</TableCell></TableRow>
                                 )}
                              </TableBody>
                          </Table>
@@ -481,16 +481,16 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
                 <FormField control={control} name="notes" render={({ field }) => (
                   <FormItem className="p-4 border rounded-md shadow-sm">
-                    <FormLabel>Notes (Optional)</FormLabel>
-                    <FormControl><Textarea placeholder="Add any notes for this transfer..." {...field} /></FormControl>
+                    <FormLabel>NOTES (OPTIONAL)</FormLabel>
+                    <FormControl><Textarea placeholder="ADD ANY NOTES FOR THIS TRANSFER..." {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>)}
                 />
 
-                <DialogFooter className="pt-6">
-                  <DialogClose asChild><Button type="button" variant="outline" onClick={onClose}>Cancel</Button></DialogClose>
+                <DialogFooter className="pt-4">
+                  <DialogClose asChild><Button type="button" variant="outline" onClick={onClose}>CANCEL</Button></DialogClose>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (transferToEdit ? "Saving..." : "Creating Transfer...") : (transferToEdit ? "Save Changes" : "Create Transfer")}
+                    {isSubmitting ? (transferToEdit ? "SAVING..." : "CREATING TRANSFER...") : (transferToEdit ? "SAVE CHANGES" : "CREATE TRANSFER")}
                   </Button>
                 </DialogFooter>
               </form>

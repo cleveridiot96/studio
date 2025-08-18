@@ -78,36 +78,36 @@ export function DaybookClient() {
 
     purchases.forEach(p => entries.push({
       id: `pur-${p.id}`, date: p.date, type: 'Purchase', voucherNo: p.id.slice(-6).toUpperCase(),
-      party: p.supplierName || 'Unknown', debit: p.totalAmount, credit: 0,
-      narration: `Purchase of ${p.items.map(i=>i.lotNumber).join(', ')}`, href: `/purchases#${p.id}`,
+      party: p.supplierName || 'UNKNOWN', debit: p.totalAmount, credit: 0,
+      narration: `PURCHASE OF ${p.items.map(i=>i.lotNumber).join(', ')}`, href: `/purchases#${p.id}`,
       Icon: typeToIconMap['Purchase'], colorClass: typeToColorMap['Purchase'],
     }));
 
     sales.forEach(s => entries.push({
       id: `sal-${s.id}`, date: s.date, type: 'Sale', voucherNo: s.billNumber || s.id.slice(-6).toUpperCase(),
-      party: s.customerName || 'Unknown', debit: 0, credit: s.billedAmount,
-      narration: `Sale of ${s.items.map(i=>i.lotNumber).join(', ')}`, href: `/sales#${s.id}`,
+      party: s.customerName || 'UNKNOWN', debit: 0, credit: s.billedAmount,
+      narration: `SALE OF ${s.items.map(i=>i.lotNumber).join(', ')}`, href: `/sales#${s.id}`,
       Icon: typeToIconMap['Sale'], colorClass: typeToColorMap['Sale'],
     }));
 
     payments.forEach(p => entries.push({
       id: `pay-${p.id}`, date: p.date, type: 'Payment', voucherNo: p.id.slice(-6).toUpperCase(),
-      party: p.partyName || 'Unknown', debit: 0, credit: p.amount,
-      narration: `Payment via ${p.paymentMethod}`, href: `/payments#${p.id}`,
+      party: p.partyName || 'UNKNOWN', debit: 0, credit: p.amount,
+      narration: `PAYMENT VIA ${p.paymentMethod}`, href: `/payments#${p.id}`,
       Icon: typeToIconMap['Payment'], colorClass: typeToColorMap['Payment'],
     }));
 
     receipts.forEach(r => entries.push({
       id: `rec-${r.id}`, date: r.date, type: 'Receipt', voucherNo: r.id.slice(-6).toUpperCase(),
-      party: r.partyName || 'Unknown', debit: r.amount, credit: 0,
-      narration: `Receipt via ${r.paymentMethod}`, href: `/receipts#${r.id}`,
+      party: r.partyName || 'UNKNOWN', debit: r.amount, credit: 0,
+      narration: `RECEIPT VIA ${r.paymentMethod}`, href: `/receipts#${r.id}`,
       Icon: typeToIconMap['Receipt'], colorClass: typeToColorMap['Receipt'],
     }));
 
     locationTransfers.forEach(t => entries.push({
       id: `trn-${t.id}`, date: t.date, type: 'Transfer', voucherNo: t.id.slice(-6).toUpperCase(),
-      party: 'Internal Transfer', debit: 0, credit: 0,
-      narration: `From ${t.fromWarehouseName} to ${t.toWarehouseName}`, href: `/location-transfer#${t.id}`,
+      party: 'INTERNAL TRANSFER', debit: 0, credit: 0,
+      narration: `FROM ${t.fromWarehouseName} TO ${t.toWarehouseName}`, href: `/location-transfer#${t.id}`,
       Icon: typeToIconMap['Transfer'], colorClass: typeToColorMap['Transfer'],
     }));
     
@@ -119,8 +119,8 @@ export function DaybookClient() {
         
         entries.push({
             id: `exp-${l.id}`, date: l.date, type: 'Expense', voucherNo: l.relatedVoucher?.slice(-6).toUpperCase() || 'N/A',
-            party: l.party || 'Self', debit: l.debit, credit: l.credit,
-            narration: `Expense: ${l.account}`, href: href,
+            party: l.party || 'SELF', debit: l.debit, credit: l.credit,
+            narration: `EXPENSE: ${l.account}`, href: href,
             Icon: typeToIconMap['Expense'], colorClass: typeToColorMap['Expense'],
         });
     });
@@ -133,7 +133,7 @@ export function DaybookClient() {
 
     if (dateRange?.from) {
         const toDate = dateRange.to || dateRange.from;
-        filtered = filtered.filter(entry => isWithinInterval(parseISO(entry.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }));
+        filtered = filtered.filter(entry => entry.date && isWithinInterval(parseISO(entry.date), { start: startOfDay(dateRange.from!), end: endOfDay(toDate) }));
     }
     
     return filtered;
@@ -164,12 +164,12 @@ export function DaybookClient() {
   const columns: ColumnDef<DaybookEntry>[] = [
     {
         accessorKey: 'date',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="DATE" />,
         cell: ({ row }) => format(parseISO(row.original.date), 'dd/MM/yy'),
     },
     {
         accessorKey: 'type',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Type" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="TYPE" />,
         cell: ({ row }) => (
             <Badge variant="outline" className={cn("uppercase border-current", row.original.colorClass)}>
                 <row.original.Icon className={cn("mr-1.5 h-3.5 w-3.5", row.original.colorClass)}/>
@@ -180,15 +180,15 @@ export function DaybookClient() {
     },
     {
         accessorKey: 'voucherNo',
-        header: "Voucher No.",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="VOUCHER NO." />,
     },
     {
         accessorKey: 'party',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Party" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="PARTY" />,
     },
     {
         accessorKey: 'debit',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Debit (₹)" className="justify-end" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="DEBIT (₹)" className="justify-end" />,
         cell: ({ row }) => (
             <div className="text-right font-mono">
                 {row.original.debit > 0 ? row.original.debit.toLocaleString('en-IN') : '-'}
@@ -197,7 +197,7 @@ export function DaybookClient() {
     },
     {
         accessorKey: 'credit',
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Credit (₹)" className="justify-end" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="CREDIT (₹)" className="justify-end" />,
         cell: ({ row }) => (
             <div className="text-right font-mono">
                 {row.original.credit > 0 ? row.original.credit.toLocaleString('en-IN') : '-'}
@@ -206,7 +206,7 @@ export function DaybookClient() {
     },
     {
         accessorKey: 'narration',
-        header: "Narration",
+        header: "NARRATION",
         cell: ({ row }) => <div className="whitespace-normal break-words">{row.original.narration}</div>
     }
   ];
@@ -223,9 +223,9 @@ export function DaybookClient() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <CardTitle className="text-2xl flex items-center gap-3">
-                    <BookMarked className="h-7 w-7 text-primary"/> Daybook / Journal
+                    <BookMarked className="h-7 w-7 text-primary"/> DAYBOOK / JOURNAL
                 </CardTitle>
-                <CardDescription>A chronological view of all business transactions.</CardDescription>
+                <CardDescription>A CHRONOLOGICAL VIEW OF ALL BUSINESS TRANSACTIONS.</CardDescription>
             </div>
             <Button variant="outline" size="icon" onClick={() => window.print()} className="no-print"><Printer className="h-5 w-5"/></Button>
           </div>
@@ -234,10 +234,10 @@ export function DaybookClient() {
             <div className="flex flex-col md:flex-row gap-2 mb-4 p-2 border rounded-md no-print items-center flex-wrap">
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
                  <div className="flex gap-1 ml-auto">
-                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>Today</Button>
-                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>Yesterday</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>TODAY</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>YESTERDAY</Button>
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('dayBeforeYesterday')}>
-                        {format(subDays(new Date(), 2), 'EEEE')}
+                        {format(subDays(new Date(), 2), 'EEEE').toUpperCase()}
                     </Button>
                 </div>
             </div>
@@ -245,7 +245,7 @@ export function DaybookClient() {
             <DataTable
                 columns={columns}
                 data={filteredEntries}
-                onRowClick={(row) => router.push(row.original.href)}
+                onRowClick={(row) => row.original.href && router.push(row.original.href)}
                 initialState={{
                     sorting: [{ id: 'date', desc: true }]
                 }}

@@ -37,10 +37,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   value,
   onChange,
   options,
-  placeholder = "Select an option",
-  searchPlaceholder = "Search...",
-  notFoundMessage = "No match found.",
-  addNewLabel = "Add New",
+  placeholder = "SELECT AN OPTION",
+  searchPlaceholder = "SEARCH...",
+  notFoundMessage = "NO MATCH FOUND.",
+  addNewLabel = "ADD NEW",
   onAddNew,
   onEdit,
   disabled,
@@ -111,7 +111,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between text-sm uppercase", !value && "text-muted-foreground", className)}
+          className={cn("w-full justify-between text-sm uppercase h-9", !value && "text-muted-foreground", className)}
           disabled={disabled}
         >
           <span className="truncate">
@@ -141,7 +141,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     aria-selected={!value}
                 >
                     <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
-                    <span className="italic">Clear selection</span>
+                    <span className="italic">CLEAR SELECTION</span>
                 </div>
                 <Separator className="my-1" />
 
@@ -182,7 +182,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                                 size="icon"
                                 className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
                                 onClick={(e) => handleEdit(e, option.value)}
-                                aria-label={`Edit ${option.label}`}
+                                aria-label={`EDIT ${option.label}`}
                             >
                                 <Pencil className="h-3 w-3" />
                             </Button>
