@@ -113,9 +113,11 @@ export function DaybookClient() {
     
     ledgerData.filter(l => l.type === 'Expense').forEach(l => {
         let href = '/payments'; // Default fallback
-        if(l.linkedTo?.voucherType === 'Purchase') href = `/purchases#${l.linkedTo.voucherId}`;
-        else if (l.linkedTo?.voucherType === 'Sale') href = `/sales#${l.linkedTo.voucherId}`;
-        else if (l.linkedTo?.voucherType === 'Transfer') href = `/location-transfer#${l.linkedTo.voucherId}`;
+        if(l.linkedTo?.voucherId) {
+            if(l.linkedTo?.voucherType === 'Purchase') href = `/purchases#${l.linkedTo.voucherId}`;
+            else if (l.linkedTo?.voucherType === 'Sale') href = `/sales#${l.linkedTo.voucherId}`;
+            else if (l.linkedTo?.voucherType === 'Transfer') href = `/location-transfer#${l.linkedTo.voucherId}`;
+        }
         
         entries.push({
             id: `exp-${l.id}`, date: l.date, type: 'Expense', voucherNo: l.relatedVoucher?.slice(-6).toUpperCase() || 'N/A',
@@ -216,11 +218,11 @@ export function DaybookClient() {
   }
 
   return (
-    <div className="space-y-4 print-area">
+    <div className="space-y-2 print-area">
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
             <div>
                 <CardTitle className="text-2xl flex items-center gap-3">
                     <BookMarked className="h-7 w-7 text-primary"/> DAYBOOK / JOURNAL
@@ -231,7 +233,7 @@ export function DaybookClient() {
           </div>
         </CardHeader>
         <CardContent>
-            <div className="flex flex-col md:flex-row gap-2 mb-4 p-2 border rounded-md no-print items-center flex-wrap">
+            <div className="flex flex-col md:flex-row gap-2 mb-2 p-2 border rounded-md no-print items-center flex-wrap">
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange} />
                  <div className="flex gap-1 ml-auto">
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>TODAY</Button>
@@ -255,5 +257,3 @@ export function DaybookClient() {
     </div>
   )
 }
-
-    

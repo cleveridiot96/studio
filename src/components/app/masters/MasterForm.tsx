@@ -4,7 +4,6 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -26,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { MasterItem, MasterItemType } from '@/lib/types';
+import { masterItemSchema, type MasterItemFormValues } from '@/lib/schemas/masterItemSchema';
 import { Percent } from 'lucide-react';
 
 const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolean; hasBalance: boolean; }[] = [
@@ -38,36 +38,6 @@ const TABS_CONFIG: { value: MasterItemType; label: string; hasCommission: boolea
   { value: "Expense", label: "Expense", hasCommission: false, hasBalance: false },
 ];
 
-const masterItemSchema = z.object({
-  name: z.string().trim().min(1, "Name is required."),
-  type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse", "Expense"]),
-  commission: z.coerce.number().optional(),
-  commissionType: z.enum(['Percentage', 'Fixed']).optional(),
-  openingBalance: z.coerce.number().optional(),
-  openingBalanceType: z.enum(['Dr', 'Cr']).optional(),
-}).refine(data => {
-  const config = TABS_CONFIG.find(t => t.value === data.type);
-  if (config?.hasCommission && (data.commission !== undefined && data.commission >= 0)) {
-    // If commission has a value, its type must also be selected
-    if (!data.commissionType) return false;
-  }
-  return true;
-}, {
-  message: "Commission type is required when a value is entered.",
-  path: ["commissionType"],
-}).refine(data => {
-  // If opening balance has a value, its type must also be selected
-  if (data.openingBalance !== undefined && data.openingBalance > 0 && !data.openingBalanceType) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Please select the balance type (To Receive or To Pay).",
-  path: ["openingBalanceType"],
-});
-
-
-type MasterItemFormValues = z.infer<typeof masterItemSchema>;
 
 interface MasterFormProps {
   isOpen: boolean;

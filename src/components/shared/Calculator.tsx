@@ -37,7 +37,8 @@ const useCalculatorState = () => {
     
     const handleCalculate = () => {
         try {
-          if (!input || /[+\-*/.]$/.test(input)) return;
+          if (!input.trim() || /[+\-*/.]$/.test(input.trim())) return;
+
           const sanitizedInput = input
             .replace(/%/g, '/100*')
             .replace(/([+\-*/]){2,}/g, '$1');
@@ -106,8 +107,8 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
     const [isMounted, setIsMounted] = React.useState(false);
     React.useEffect(() => { setIsMounted(true); }, []);
     
-    const [position, setPosition] = useLocalStorageState({ x: isMounted ? window.innerWidth - 370 : 0, y: isMounted ? window.innerHeight - 620 : 0 }, 'calculatorPosition');
-    const [size, setSize] = useLocalStorageState({ width: 340, height: 520 }, 'calculatorSize');
+    const [position, setPosition] = useLocalStorageState('calculatorPosition', { x: typeof window !== 'undefined' ? window.innerWidth - 370 : 0, y: typeof window !== 'undefined' ? window.innerHeight - 620 : 0 });
+    const [size, setSize] = useLocalStorageState('calculatorSize', { width: 340, height: 520 });
     
     const isDragging = React.useRef(false);
     const isResizing = React.useRef<string | null>(null);
@@ -334,5 +335,3 @@ export const Calculator = () => {
     </>
   );
 };
-
-    

@@ -410,5 +410,3 @@ export function PurchasesClient() {
     </div>
   );
 }
-
-    

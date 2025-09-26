@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateBeforeFinancialYear, isDateInFinancialYear } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { parseISO } from 'date-fns';
 
@@ -144,5 +143,3 @@ export const OutstandingSummary = () => {
     </Card>
   )
 }
-
-    

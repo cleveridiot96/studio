@@ -73,6 +73,10 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
 
+  // IMPORTANT: useMemo is NOT used here to ensure the schema is re-evaluated on every render
+  // This is necessary because the validation logic depends on props that can change (e.g., availableStock)
+  const formSchema = purchaseSchema(suppliers, agents, warehouses, transporters, expenses);
+
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -103,7 +107,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   }, [purchaseToEdit]);
 
   const methods = useForm<PurchaseFormValues>({
-    resolver: zodResolver(purchaseSchema(suppliers, agents, warehouses, transporters, expenses)),
+    resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(),
     mode: 'onChange', 
   });

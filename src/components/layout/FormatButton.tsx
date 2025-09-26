@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
+  AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
 import { Eraser } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -114,7 +115,9 @@ export function FormatButton() {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          {/* AlertDialogDescription removed as per user request */}
+          <AlertDialogDescription>
+            THIS WILL CREATE A COMPLETE BACKUP OF YOUR CURRENT DATA AND THEN PERMANENTLY DELETE IT FROM YOUR BROWSER. This action cannot be undone.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
