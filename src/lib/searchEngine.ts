@@ -1,3 +1,4 @@
+
 // src/lib/searchEngine.ts
 import Fuse from 'fuse.js';
 import type { FuseResult } from 'fuse.js';
@@ -22,7 +23,7 @@ const fuseOptions: Fuse.IFuseOptions<SearchableItem> = {
 
 export const initSearchEngine = (data: SearchableItem[]) => {
   fuse = new Fuse(data, fuseOptions);
-  console.log("Search engine initialized/updated with", data.length, "items.");
+  console.log("SEARCH ENGINE INITIALIZED/UPDATED WITH", data.length, "ITEMS.");
 };
 
 export const searchData = (query: string): FuseResult<SearchableItem>[] => {
@@ -31,7 +32,7 @@ export const searchData = (query: string): FuseResult<SearchableItem>[] => {
   }
   // Normalize query to handle variations like G.G, G G etc.
   // This simple normalization helps a lot, more complex logic can be added.
-  const normalizedQuery = query.replace(/[\s.]+/g, '');
+  const normalizedQuery = query.replace(/[\s.]+/g, '').toUpperCase();
 
   const results = fuse.search(normalizedQuery);
   return results; // Return the full FuseResult object

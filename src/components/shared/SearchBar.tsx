@@ -1,3 +1,4 @@
+
 // src/components/shared/SearchBar.tsx
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
@@ -106,8 +107,8 @@ const SearchBar = () => {
             onValueChange={setQuery}
             onFocus={() => setOpen(true)}
             onKeyDown={handleInputKeyDown}
-            placeholder="Search anything..."
-            className="w-full pl-10 pr-4 h-10 border-none focus:ring-0 bg-transparent"
+            placeholder="SEARCH ANYTHING..."
+            className="w-full pl-10 pr-4 h-9 border-none focus:ring-0 bg-transparent"
           />
         </div>
         

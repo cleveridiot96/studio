@@ -86,12 +86,12 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
     >
         <Card className={cn(
           "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-          "rounded-xl p-4 flex flex-col items-center text-center justify-center h-full min-h-[150px]",
+          "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px]",
           className
         )}>
-          <Icon className="h-8 w-8 mb-2" />
-          <CardTitle className="text-lg font-semibold mb-1">{title}</CardTitle>
-          {description && <p className="text-sm opacity-90">{description}</p>}
+          <Icon className="h-7 w-7 mb-2" />
+          <CardTitle className="text-base font-semibold mb-1 uppercase">{title}</CardTitle>
+          {description && <p className="text-xs opacity-80 uppercase">{description}</p>}
         </Card>
     </motion.div>
   );

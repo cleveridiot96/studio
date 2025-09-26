@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Command, CommandInput, CommandList, CommandEmpty } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown, Pencil } from "lucide-react";
@@ -147,19 +147,29 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
               {filteredOptions.length === 0 && search.length > 0 ? (
                 <CommandEmpty>
-                  {notFoundMessage}
-                  {onAddNew && (
-                    <div
-                      onClick={handleAddNew}
-                      className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                      role="button"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </div>
-                  )}
+                    {notFoundMessage}
+                    {didYouMeanSuggest && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                            Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+                        </div>
+                    )}
+                    {onAddNew && (
+                        <div
+                        onClick={handleAddNew}
+                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground mt-2 border-t"
+                        role="button"
+                        >
+                        <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                        </div>
+                    )}
                 </CommandEmpty>
               ) : (
                 <>
+                  {didYouMeanSuggest && search && !filteredOptions.some(opt => opt.label.toLowerCase() === didYouMeanSuggest.toLowerCase()) && (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        No exact match. Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+                      </div>
+                  )}
                   {filteredOptions.map((option) => (
                     <Tooltip key={option.value} delayDuration={300}>
                       <TooltipTrigger asChild>

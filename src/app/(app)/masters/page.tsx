@@ -43,14 +43,14 @@ const ALL_FIXED_IDS = [...FIXED_WAREHOUSE_IDS, ...FIXED_EXPENSE_IDS];
 type MasterPageTabKey = MasterItemType | 'All';
 
 const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; colorClass: string; }[] = [
-  { value: "All", label: "All Parties", icon: List, colorClass: 'text-white bg-red-800 hover:bg-red-900 data-[state=active]:bg-red-900 data-[state=active]:text-white' },
-  { value: "Customer", label: "Customers", icon: Users, colorClass: 'bg-blue-500 hover:bg-blue-600 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white' },
-  { value: "Broker", label: "Brokers", icon: Handshake, colorClass: 'bg-yellow-400 hover:bg-yellow-500 text-gray-800 data-[state=active]:bg-yellow-500 data-[state=active]:text-black' },
-  { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
-  { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
-  { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-[#531253] hover:bg-[#531253]/90 text-white data-[state=active]:bg-[#531253] data-[state=active]:text-white' },
-  { value: "Expense", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
+  { value: "All", label: "ALL PARTIES", icon: List, colorClass: 'text-white bg-red-800 hover:bg-red-900 data-[state=active]:bg-red-900 data-[state=active]:text-white' },
+  { value: "Customer", label: "CUSTOMERS", icon: Users, colorClass: 'bg-blue-500 hover:bg-blue-600 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white' },
+  { value: "Broker", label: "BROKERS", icon: Handshake, colorClass: 'bg-yellow-400 hover:bg-yellow-500 text-gray-800 data-[state=active]:bg-yellow-500 data-[state=active]:text-black' },
+  { value: "Supplier", label: "SUPPLIERS", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
+  { value: "Agent", label: "AGENTS", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
+  { value: "Warehouse", label: "WAREHOUSES", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
+  { value: "Transporter", label: "TRANSPORT", icon: Truck, colorClass: 'bg-[#531253] hover:bg-[#531253]/90 text-white data-[state=active]:bg-[#531253] data-[state=active]:text-white' },
+  { value: "Expense", label: "EXPENSES", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
 const dispatchSearchReindex = () => {
@@ -243,10 +243,10 @@ export default function MastersPage() {
   }, []);
 
   const addButtonLabel = useMemo(() => {
-    if (activeTab === 'All') return "Add New Party/Entity";
+    if (activeTab === 'All') return "ADD NEW PARTY/ENTITY";
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
-    const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
-    return `Add New ${singularLabel || 'Item'}`;
+    const singularLabel = currentTabConfig?.label.endsWith('S') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
+    return `ADD NEW ${singularLabel || 'ITEM'}`;
   }, [activeTab]);
 
   const addButtonDynamicClass = useMemo(() => {
@@ -292,10 +292,10 @@ export default function MastersPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Masters</h1>
+          <h1 className="text-2xl font-bold text-foreground">MASTERS</h1>
         </div>
         <Button onClick={openFormForNewItem} size="lg" className={cn(
             "text-base py-2 px-5 shadow-md",
@@ -329,11 +329,11 @@ export default function MastersPage() {
                 <Card className="shadow-lg">
                   <CardHeader className="sticky top-0 bg-card z-10 py-3 border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-                        <CardTitle className="text-xl text-primary">Manage {tab.label}</CardTitle>
+                        <CardTitle className="text-xl text-primary">MANAGE {tab.label}</CardTitle>
                         <div className="w-full sm:w-auto sm:max-w-xs relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder={`Search in ${tab.label}...`}
+                                placeholder={`SEARCH IN ${tab.label}...`}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 h-9"
@@ -341,7 +341,7 @@ export default function MastersPage() {
                         </div>
                     </div>
                      {searchQuery && searchDidYouMean && (
-                        <p className="text-sm text-muted-foreground mt-1">Did you mean: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
+                        <p className="text-sm text-muted-foreground mt-1">DID YOU MEAN: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
                     )}
                   </CardHeader>
                   <CardContent className="pt-2">
@@ -357,7 +357,7 @@ export default function MastersPage() {
                   </CardContent>
                   <CardFooter className="py-2">
                     <p className="text-xs text-muted-foreground">
-                      {searchQuery ? `Showing ${filteredData.length} of ${totalCount} items` : `Total items: ${totalCount}`}
+                      {searchQuery ? `SHOWING ${filteredData.length} OF ${totalCount} ITEMS` : `TOTAL ITEMS: ${totalCount}`}
                     </p>
                   </CardFooter>
                 </Card>
@@ -386,9 +386,9 @@ export default function MastersPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>CANCEL</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteItem} className="bg-destructive hover:bg-destructive/90">
-              Delete
+              DELETE
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -396,5 +396,6 @@ export default function MastersPage() {
     </div>
   );
 }
+
 
 

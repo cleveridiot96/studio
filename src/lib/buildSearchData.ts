@@ -34,9 +34,9 @@ export const buildSearchData = ({
     const itemLots = s.items.map(i => i.lotNumber).join(' ');
     searchableItems.push({
       id: s.id,
-      type: 'sale',
-      title: `Sale: ${s.billNumber || s.id} to ${s.customerName || s.customerId}`,
-      searchableText: `sale sales bill ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${itemLots} ${s.billedAmount} ${s.date} ${s.notes || ''} ${s.items.map(i => i.rate).join(' ')}`,
+      type: 'SALE',
+      title: `SALE: ${s.billNumber || s.id} TO ${s.customerName || s.customerId}`,
+      searchableText: `SALE SALES BILL ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${itemLots} ${s.billedAmount} ${s.date} ${s.notes || ''} ${s.items.map(i => i.rate).join(' ')}`,
       href: `/sales#${s.id}`, 
       date: s.date,
     });
@@ -46,9 +46,9 @@ export const buildSearchData = ({
     const itemLots = p.items.map(i => i.lotNumber).join(' ');
     searchableItems.push({
       id: p.id,
-      type: 'purchase',
-      title: `Purchase: ${itemLots} from ${p.supplierName || p.supplierId}`,
-      searchableText: `purchase purchases lot vakkal ${p.supplierName || p.supplierId} ${itemLots} ${p.totalAmount} ${p.date} ${p.agentName || ''} ${p.transporterName || ''} ${p.locationName || ''} ${p.items.map(i => i.rate).join(' ')}`,
+      type: 'PURCHASE',
+      title: `PURCHASE: ${itemLots} FROM ${p.supplierName || p.supplierId}`,
+      searchableText: `PURCHASE PURCHASES LOT VAKKAL ${p.supplierName || p.supplierId} ${itemLots} ${p.totalAmount} ${p.date} ${p.agentName || ''} ${p.transporterName || ''} ${p.locationName || ''} ${p.items.map(i => i.rate).join(' ')}`,
       href: `/purchases#${p.id}`,
       date: p.date,
     });
@@ -57,9 +57,9 @@ export const buildSearchData = ({
   payments.forEach((pm) => {
     searchableItems.push({
       id: pm.id,
-      type: 'payment',
-      title: `Payment: To ${pm.partyName || pm.partyId} (₹${pm.amount})`,
-      searchableText: `payment payments ${pm.partyName || pm.partyId} ${pm.partyType} ${pm.amount} ${pm.paymentMethod} ${pm.date} ${pm.notes || ''}`,
+      type: 'PAYMENT',
+      title: `PAYMENT: TO ${pm.partyName || pm.partyId} (₹${pm.amount})`,
+      searchableText: `PAYMENT PAYMENTS ${pm.partyName || pm.partyId} ${pm.partyType} ${pm.amount} ${pm.paymentMethod} ${pm.date} ${pm.notes || ''}`,
       href: `/payments#${pm.id}`,
       date: pm.date,
     });
@@ -68,9 +68,9 @@ export const buildSearchData = ({
   receipts.forEach((r) => {
     searchableItems.push({
       id: r.id,
-      type: 'receipt',
-      title: `Receipt: From ${r.partyName || r.partyId} (₹${r.amount})`,
-      searchableText: `receipt receipts ${r.partyName || r.partyId} ${r.partyType} ${r.amount} ${r.paymentMethod} ${r.date} ${r.notes || ''} ${r.cashDiscount || ''}`,
+      type: 'RECEIPT',
+      title: `RECEIPT: FROM ${r.partyName || r.partyId} (₹${r.amount})`,
+      searchableText: `RECEIPT RECEIPTS ${r.partyName || r.partyId} ${r.partyType} ${r.amount} ${r.paymentMethod} ${r.date} ${r.notes || ''} ${r.cashDiscount || ''}`,
       href: `/receipts#${r.id}`,
       date: r.date,
     });
@@ -79,9 +79,9 @@ export const buildSearchData = ({
   masters.forEach((m) => {
     searchableItems.push({
       id: m.id,
-      type: m.type.toLowerCase(), // e.g., 'customer', 'supplier'
+      type: m.type.toUpperCase(), // e.g., 'CUSTOMER', 'SUPPLIER'
       title: `${m.type}: ${m.name}`,
-      searchableText: `master party ${m.type} ${m.name} ${m.id} ${m.commission || ''} ${m.openingBalance || ''}`,
+      searchableText: `MASTER PARTY ${m.type} ${m.name} ${m.id} ${m.commission || ''} ${m.openingBalance || ''}`,
       href: `/ledger?partyId=${m.id}`, // Updated href to point to ledger
     });
   });
@@ -90,9 +90,9 @@ export const buildSearchData = ({
     const itemsDesc = lt.items.map(item => `${item.originalLotNumber} ${item.newLotNumber} ${item.bagsToTransfer} bags`).join(', ');
     searchableItems.push({
       id: lt.id,
-      type: 'location transfer',
-      title: `Transfer on ${format(parseISO(lt.date), 'dd-MM-yy')}: ${lt.fromWarehouseName} to ${lt.toWarehouseName}`,
-      searchableText: `location transfer from to ${lt.fromWarehouseName || lt.fromWarehouseId} ${lt.toWarehouseName || lt.toWarehouseId} ${itemsDesc} ${lt.transporterName || ''} ${lt.date} ${lt.notes || ''} ${lt.expenses?.map(e => e.account + ' ' + e.amount).join(' ')}`,
+      type: 'LOCATION TRANSFER',
+      title: `TRANSFER ON ${format(parseISO(lt.date), 'dd-MM-yy')}: ${lt.fromWarehouseName} TO ${lt.toWarehouseName}`,
+      searchableText: `LOCATION TRANSFER FROM TO ${lt.fromWarehouseName || lt.fromWarehouseId} ${lt.toWarehouseName || lt.toWarehouseId} ${itemsDesc} ${lt.transporterName || ''} ${lt.date} ${lt.notes || ''} ${lt.expenses?.map(e => e.account + ' ' + e.amount).join(' ')}`,
       href: `/location-transfer#${lt.id}`,
       date: lt.date,
     });

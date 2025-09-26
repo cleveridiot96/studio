@@ -94,7 +94,7 @@ function AppHeaderContentInternal() {
       <Link href="/balance-sheet">
         <Button variant="outline">
             <Landmark className="mr-2 h-4 w-4"/>
-            Financial Summary
+            FINANCIAL SUMMARY
         </Button>
       </Link>
       <Popover>
@@ -197,7 +197,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
           </Sidebar>
 
           <div className="flex flex-col flex-1 min-h-0 relative">
-            <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
+            <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden -ml-2">
                   <Menu className="h-6 w-6 text-foreground" />
