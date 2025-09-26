@@ -34,13 +34,13 @@ import { purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
 const initialPurchasesData: Purchase[] = [
-  { "id": "purchase-fy2526-1", "date": "2025-05-16", "supplierId": "supp-anand", "supplierName": "Anand Agro Products", "agentId": "agent-ajay", "agentName": "Ajay Kumar", "items": [{"lotNumber": "BU/5", "quantity": 5, "netWeight": 250, "rate": 300, "goodsValue": 75000, "landedCostPerKg": 323}], "expenses": [{"account": "Transport Charges", "amount": 3250, "paymentMode": "Pending", "party": "Sudha Transports"}], "transporterId": "trans-sudha", "transporterName": "Sudha Transports", "locationId": "wh-chiplun", "locationName": "Chiplun Storage", "totalGoodsValue": 75000, "totalQuantity": 5, "totalNetWeight": 250, "totalAmount": 78250, "effectiveRate": 313 },
-  { "id": "purchase-fy2526-2", "date": "2025-06-15", "supplierId": "supp-meena", "supplierName": "Meena Farms", "items": [{"lotNumber": "FY2526-LOT-B/50", "quantity": 50, "netWeight": 2500, "rate": 25, "goodsValue": 62500, "landedCostPerKg": 25.48}], "expenses": [{"account": "Transport Charges", "amount": 1000, "paymentMode": "Pending", "party":"Reliable Transports"}, {"account": "Labour Charges", "amount": 200, "paymentMode": "Cash", "party":"Self"}], "locationId": "wh-pune", "locationName": "Pune North Godown", "totalGoodsValue": 62500, "totalQuantity": 50, "totalNetWeight": 2500, "totalAmount": 63700, "effectiveRate": 25.48 },
-  { "id": "purchase-fy2425-1", "date": "2024-08-01", "supplierId": "supp-uma", "supplierName": "Uma Organics", "items": [{"lotNumber": "FY2425-LOT-X/90", "quantity": 90, "netWeight": 4500, "rate": 28, "goodsValue": 126000, "landedCostPerKg": 28.6}], "expenses": [{"account":"Transport Charges", "amount":2250, "paymentMode":"Pending", "party":"Reliable Transports"}, {"account":"Misc Expenses", "amount":450, "paymentMode":"Cash", "party":"Self"}], "transporterId": "trans-reliable", "transporterName": "Reliable Transports", "locationId": "wh-mum", "locationName": "Mumbai Central Warehouse", "totalGoodsValue": 126000, "totalQuantity": 90, "totalNetWeight": 4500, "totalAmount": 128700, "effectiveRate": 28.6 },
+  { "id": "purchase-fy2526-1", "date": "2025-05-16", "supplierId": "supp-anand", "supplierName": "ANAND AGRO PRODUCTS", "agentId": "agent-ajay", "agentName": "AJAY KUMAR", "items": [{"lotNumber": "BU/5", "quantity": 5, "netWeight": 250, "rate": 300, "goodsValue": 75000, "landedCostPerKg": 323}], "expenses": [{"account": "Transport Charges", "amount": 3250, "paymentMode": "Pending", "party": "SUDHA TRANSPORTS"}], "transporterId": "trans-sudha", "transporterName": "SUDHA TRANSPORTS", "locationId": "wh-chiplun", "locationName": "CHIPLUN STORAGE", "totalGoodsValue": 75000, "totalQuantity": 5, "totalNetWeight": 250, "totalAmount": 78250, "effectiveRate": 313 },
+  { "id": "purchase-fy2526-2", "date": "2025-06-15", "supplierId": "supp-meena", "supplierName": "MEENA FARMS", "items": [{"lotNumber": "FY2526-LOT-B/50", "quantity": 50, "netWeight": 2500, "rate": 25, "goodsValue": 62500, "landedCostPerKg": 25.48}], "expenses": [{"account": "Transport Charges", "amount": 1000, "paymentMode": "Pending", "party":"RELIABLE TRANSPORTS"}, {"account": "Labour Charges", "amount": 200, "paymentMode": "Cash", "party":"Self"}], "locationId": "wh-pune", "locationName": "PUNE NORTH GODOWN", "totalGoodsValue": 62500, "totalQuantity": 50, "totalNetWeight": 2500, "totalAmount": 63700, "effectiveRate": 25.48 },
+  { "id": "purchase-fy2425-1", "date": "2024-08-01", "supplierId": "supp-uma", "supplierName": "UMA ORGANICS", "items": [{"lotNumber": "FY2425-LOT-X/90", "quantity": 90, "netWeight": 4500, "rate": 28, "goodsValue": 126000, "landedCostPerKg": 28.6}], "expenses": [{"account":"Transport Charges", "amount":2250, "paymentMode":"Pending", "party":"RELIABLE TRANSPORTS"}, {"account":"Misc Expenses", "amount":450, "paymentMode":"Cash", "party":"Self"}], "transporterId": "trans-reliable", "transporterName": "RELIABLE TRANSPORTS", "locationId": "wh-mum", "locationName": "MUMBAI CENTRAL WAREHOUSE", "totalGoodsValue": 126000, "totalQuantity": 90, "totalNetWeight": 4500, "totalAmount": 128700, "effectiveRate": 28.6 },
 ];
 
 const initialPurchaseReturnsData: PurchaseReturn[] = [
-    { "id": "pr-fy2526-1", "date": "2025-05-20", "originalPurchaseId": "purchase-fy2526-1", "originalLotNumber": "BU/5", "originalSupplierId": "supp-anand", "originalSupplierName": "Anand Agro Products", "originalPurchaseRate": 300, "quantityReturned": 1, "netWeightReturned": 50, "returnAmount": 15000, "returnReason": "Damaged bags", "notes": "Partial return due to damage." },
+    { "id": "pr-fy2526-1", "date": "2025-05-20", "originalPurchaseId": "purchase-fy2526-1", "originalLotNumber": "BU/5", "originalSupplierId": "supp-anand", "originalSupplierName": "ANAND AGRO PRODUCTS", "originalPurchaseRate": 300, "quantityReturned": 1, "netWeightReturned": 50, "returnAmount": 15000, "returnReason": "DAMAGED BAGS", "notes": "PARTIAL RETURN DUE TO DAMAGE." },
 ];
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
@@ -332,7 +332,7 @@ export function PurchasesClient() {
       </div>
 
       <Tabs defaultValue="purchases" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 mb-2 no-print">
+        <TabsList className="grid w-full grid-cols-2 h-10 mb-2 no-print">
           <TabsTrigger value="purchases" className="py-2.5 text-base rounded-md">
             <ListCollapse className="mr-2 h-5 w-5" />Purchases
           </TabsTrigger>
@@ -343,7 +343,7 @@ export function PurchasesClient() {
 
         <TabsContent value="purchases">
           <div className="flex justify-end gap-2 mb-2 no-print">
-            <Button onClick={openAddPurchaseForm} size="lg" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+            <Button onClick={openAddPurchaseForm} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -353,7 +353,7 @@ export function PurchasesClient() {
 
         <TabsContent value="purchaseReturns">
           <div className="flex justify-end gap-2 mb-2 no-print">
-            <Button onClick={openAddPurchaseReturnForm} size="lg" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+            <Button onClick={openAddPurchaseReturnForm} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase Return
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -410,3 +410,5 @@ export function PurchasesClient() {
     </div>
   );
 }
+
+    

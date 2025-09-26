@@ -161,7 +161,7 @@ export function DaybookClient() {
     setDateRange({ from, to });
   };
   
-  const columns: ColumnDef<DaybookEntry>[] = [
+  const columns: ColumnDef<DaybookEntry>[] = useMemo(() => [
     {
         accessorKey: 'date',
         header: ({ column }) => <DataTableColumnHeader column={column} title="DATE" />,
@@ -209,7 +209,7 @@ export function DaybookClient() {
         header: "NARRATION",
         cell: ({ row }) => <div className="whitespace-normal break-words">{row.original.narration}</div>
     }
-  ];
+  ], []);
 
   if (!hydrated || isAppHydrating) {
       return <div>Loading Daybook...</div>;
@@ -245,7 +245,7 @@ export function DaybookClient() {
             <DataTable
                 columns={columns}
                 data={filteredEntries}
-                onRowClick={(row) => row.original.href && router.push(row.original.href)}
+                onRowClick={(row) => router.push(row.href)}
                 initialState={{
                     sorting: [{ id: 'date', desc: true }]
                 }}
@@ -255,3 +255,5 @@ export function DaybookClient() {
     </div>
   )
 }
+
+    

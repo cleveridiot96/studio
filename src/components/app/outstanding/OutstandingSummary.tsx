@@ -104,14 +104,14 @@ export const OutstandingSummary = () => {
 
     return { totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
+  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-foreground">OUTSTANDING BALANCES</CardTitle>
+        <CardTitle className="text-xl font-semibold text-foreground">OUTSTANDING BALANCES</CardTitle>
         <CardDescription>A SUMMARY OF TOTAL MONEY TO BE PAID AND RECEIVED. CLICK A CARD TO SEE DETAILS.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,3 +144,5 @@ export const OutstandingSummary = () => {
     </Card>
   )
 }
+
+    

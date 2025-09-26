@@ -11,16 +11,22 @@ export const LOCAL_STORAGE_KEYS = {
   receipts: 'receiptsData',
   payments: 'paymentsData',
   locationTransfers: 'locationTransfersData',
-  purchaseReturns: 'purchaseReturnsData', // Added
-  saleReturns: 'saleReturnsData',       // Added
+  purchaseReturns: 'purchaseReturnsData',
+  saleReturns: 'saleReturnsData',
   customers: 'masterCustomers',
   suppliers: 'masterSuppliers',
   agents: 'masterAgents',
   transporters: 'masterTransporters',
   warehouses: 'masterWarehouses',
   brokers: 'masterBrokers',
+  expenses: 'masterExpenses', // Added Expenses
+  ledger: 'ledgerData', // Added Ledger
+  archivedLots: 'archivedInventoryLotKeys', // Added Archived Lots
   settingsFontSize: 'appFontSize',
   settingsFinancialYear: 'appFinancialYear',
+  calculatorHistory: 'calculatorHistory', // Added Calculator History
+  calculatorPosition: 'calculatorPosition', // Added Calculator Position
+  calculatorSize: 'calculatorSize', // Added Calculator Size
 };
 export const LAST_BACKUP_TIMESTAMP_KEY = 'lastBackupTimestamp';
 
@@ -31,10 +37,10 @@ interface ToastFn {
 interface BackupRestoreParams {
   toast: ToastFn;
   setLastBackupTimestamp: (timestamp: number | null | ((prev: number | null) => number | null)) => void;
-  lastBackupTimestampFromState: number | null; // To include in backup
+  lastBackupTimestampFromState?: number | null; // Made optional for restore-only case
 }
 
-export const exportDataToPortableFile = ({ toast, setLastBackupTimestamp, lastBackupTimestampFromState }: BackupRestoreParams) => {
+export const exportDataToPortableFile = ({ toast, setLastBackupTimestamp, lastBackupTimestampFromState }: Omit<BackupRestoreParams, 'lastBackupTimestampFromState'> & { lastBackupTimestampFromState: number | null }) => {
   if (typeof window === 'undefined') return;
   try {
     const backupData: Record<string, any> = {};
@@ -106,10 +112,10 @@ export const restoreDataFromFile = (
       const restoredData = JSON.parse(jsonString);
 
       let restoreSuccess = false;
+      const allValidKeys = [...Object.values(LOCAL_STORAGE_KEYS), LAST_BACKUP_TIMESTAMP_KEY];
+
       for (const keyInBackup in restoredData) {
-        const appKeyMatch = Object.values(LOCAL_STORAGE_KEYS).find(k => k === keyInBackup);
-        
-        if (appKeyMatch || keyInBackup === LAST_BACKUP_TIMESTAMP_KEY) {
+        if (allValidKeys.includes(keyInBackup as any)) {
            const targetKey = keyInBackup;
            if (typeof restoredData[targetKey] === 'string') {
               localStorage.setItem(targetKey, restoredData[targetKey]);
@@ -150,3 +156,5 @@ export const restoreDataFromFile = (
   };
   reader.readAsText(file);
 };
+
+    
