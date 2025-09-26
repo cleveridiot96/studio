@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -25,6 +26,7 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem" // This is the width of the icon-only sidebar
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+const SIDEBAR_AUTO_COLLAPSE_DELAY = 10000; // 10 seconds
 
 type SidebarContext = {
   state: "expanded" | "collapsed"
@@ -69,6 +71,7 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const autoCollapseTimer = React.useRef<NodeJS.Timeout | null>(null);
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
@@ -85,7 +88,7 @@ const SidebarProvider = React.forwardRef<
           document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
         }
       },
-      [setOpenProp, open, _setOpen]
+      [setOpenProp, open]
     )
 
     const toggleSidebar = React.useCallback(() => {
@@ -93,6 +96,26 @@ const SidebarProvider = React.forwardRef<
         ? setOpenMobile((current) => !current)
         : setOpen((current) => !current)
     }, [isMobile, setOpen, setOpenMobile])
+    
+    // Auto-collapse logic
+    React.useEffect(() => {
+        if (autoCollapseTimer.current) {
+            clearTimeout(autoCollapseTimer.current);
+        }
+
+        if (open && !isMobile) {
+            autoCollapseTimer.current = setTimeout(() => {
+                setOpen(false);
+            }, SIDEBAR_AUTO_COLLAPSE_DELAY);
+        }
+
+        return () => {
+            if (autoCollapseTimer.current) {
+                clearTimeout(autoCollapseTimer.current);
+            }
+        };
+    }, [open, isMobile, setOpen]);
+
 
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {

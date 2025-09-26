@@ -97,30 +97,31 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
   );
 
   const tile = (
-    <>
-      {onClick ? (
-        <button onClick={onClick} className="block group h-full w-full text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
-          {cardContent}
-        </button>
-      ) : href ? (
-        <Link href={href} className="block group h-full">
-          {cardContent}
-        </Link>
-      ) : (
-        <div className="block group h-full">{cardContent}</div>
-      )}
-    </>
+      <>
+        {onClick ? (
+          <button onClick={onClick} className="block group h-full w-full text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded-xl">
+            {cardContent}
+          </button>
+        ) : href ? (
+          <Link href={href} className="block group h-full">
+            {cardContent}
+          </Link>
+        ) : (
+          <div className="block group h-full">{cardContent}</div>
+        )}
+      </>
   );
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={750}>
       <Tooltip>
         <TooltipTrigger asChild>{tile}</TooltipTrigger>
-        {shortcut && (
-          <TooltipContent>
-            <p>Shortcut: <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">{shortcut}</kbd></p>
-          </TooltipContent>
-        )}
+        <TooltipContent>
+            <p className="font-semibold">{title}</p>
+            {shortcut && (
+                <p className="text-muted-foreground">Shortcut: <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">{shortcut}</kbd></p>
+            )}
+        </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
