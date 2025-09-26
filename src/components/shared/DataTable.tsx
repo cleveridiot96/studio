@@ -83,7 +83,7 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <DataTableViewOptions table={table} />
       <ScrollArea className="h-[65vh] rounded-md border">
         <Table>
@@ -132,7 +132,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  NO RESULTS.
                 </TableCell>
               </TableRow>
             )}
@@ -140,10 +140,10 @@ export function DataTable<TData, TValue>({
         </Table>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-      <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex items-center justify-end space-x-2 py-2">
         <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} of{" "}
-          {table.getCoreRowModel().rows.length} row(s).
+          {table.getFilteredRowModel().rows.length} OF{" "}
+          {table.getCoreRowModel().rows.length} ROW(S).
         </div>
         <div className="space-x-2">
           <Button
@@ -152,7 +152,7 @@ export function DataTable<TData, TValue>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            PREVIOUS
           </Button>
           <Button
             variant="outline"
@@ -160,7 +160,7 @@ export function DataTable<TData, TValue>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            NEXT
           </Button>
         </div>
       </div>
