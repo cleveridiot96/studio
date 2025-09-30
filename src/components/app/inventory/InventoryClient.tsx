@@ -38,6 +38,7 @@ const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
 const KEY_SEPARATOR = '_$_';
+const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
 export interface AggregatedInventoryItem {
   key: string; // Unique key: lotNumber_$_locationId
@@ -370,5 +371,3 @@ export function InventoryClient() {
     </div>
   );
 }
-
-    
