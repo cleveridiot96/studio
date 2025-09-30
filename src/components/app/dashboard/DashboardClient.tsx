@@ -13,7 +13,6 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { Separator } from '@/components/ui/separator';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { isDateInFinancialYear } from "@/lib/utils";
-import { FIXED_WAREHOUSES } from '@/lib/constants';
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { ProfitAnalysisClient } from '../profit-analysis/ProfitAnalysisClient';
 
@@ -24,9 +23,6 @@ const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; // New
 const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 
-
-// Initial data sets - changed to empty arrays for clean slate on format
-const initialDashboardWarehouses: MasterWarehouse[] = [];
 
 interface SummaryData { totalAmount: number; totalBags: number; totalNetWeight: number; }
 interface StockSummary { totalBags: number; totalNetWeight: number; byLocation: Record<string, { name: string; bags: number; netWeight: number; totalValue: number }>; }
@@ -41,13 +37,12 @@ const DashboardClient = () => {
   const [hydrated, setHydrated] = React.useState(false);
   const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
   const memoizedEmptyArray = React.useMemo(() => [], []);
-  const memoizedInitialWarehouses = React.useMemo(() => initialDashboardWarehouses, []);
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyArray, purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedEmptyArray, salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedEmptyArray); // New
-  const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedInitialWarehouses);
+  const [warehouses] = useLocalStorageState<MasterWarehouse[]>(WAREHOUSES_STORAGE_KEY, memoizedEmptyArray);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, memoizedEmptyArray);
   const [selectedPeriod, setSelectedPeriod] = React.useState<string>(() => "currentFY");
 
@@ -249,9 +244,7 @@ const DashboardClient = () => {
       <Separator className="my-6"/>
       <OutstandingSummary />
       <Separator className="my-6"/>
-      <Link href="/profit-analysis">
-          <ProfitAnalysisClient/>
-      </Link>
+      <ProfitAnalysisClient/>
     </div>
   );
 };
