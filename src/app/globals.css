@@ -41,15 +41,15 @@
     --chart-4: 0 65% 38%;
     --chart-5: 158 59% 45%;
 
-    /* Sidebar specific colors, updated for #ff831c (orange) background */
-    --sidebar-background: 26 100% 55%;        /* Orange #ff831c */
-    --sidebar-foreground: 225 47% 14%;        /* Deep Navy Blue for text on orange */
-    --sidebar-primary: 158 59% 27%;           /* Deep Green for active item background */
-    --sidebar-primary-foreground: 56 88% 97%; /* Light Cream for active item text (on green) */
-    --sidebar-accent: 26 100% 65%;             /* Lighter orange for hover on inactive items */
-    --sidebar-accent-foreground: 225 47% 10%; /* Almost black/very dark navy for text on lighter orange hover */
-    --sidebar-border: 26 100% 48%;            /* Darker orange for borders */
-    --sidebar-ring: 158 59% 27%;              /* Deep Green for focus rings */
+    /* Sidebar specific colors, can be same as main or distinct */
+    --sidebar-background: 225 47% 10%; /* Deep Navy Blue */
+    --sidebar-foreground: 56 88% 90%; /* Light Cream / Off-white */
+    --sidebar-primary: 45 100% 50%; /* Saffron / Turmeric yellow for active/hover states */
+    --sidebar-primary-foreground: 225 47% 10%; /* Deep Navy for text on saffron */
+    --sidebar-accent: 225 47% 15%; /* Slightly lighter navy for hover backgrounds */
+    --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
+    --sidebar-border: 225 47% 20%;
+    --sidebar-ring: 45 100% 50%;
   }
 
   .dark {
@@ -82,16 +82,14 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    /* Dark mode sidebar, can be different from light mode's orange */
-    /* Keeping it distinct and dark for now */
-    --sidebar-background: 215 20% 15%; /* Darker Slate Blue-Gray for dark mode */
+    --sidebar-background: 0 0% 8%; /* Darker than main dark bg */
     --sidebar-foreground: 56 88% 85%;
-    --sidebar-primary: 26 100% 60%; /* Brighter Orange for active items in dark mode */
-    --sidebar-primary-foreground: 215 20% 10%; /* Dark text on orange */
-    --sidebar-accent: 215 20% 20%;
-    --sidebar-accent-foreground: 26 100% 65%; /* Lighter orange for hover text */
-    --sidebar-border: 215 20% 25%;
-    --sidebar-ring: 26 100% 60%; /* Orange ring for dark mode */
+    --sidebar-primary: 45 100% 55%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 45 100% 60%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 45 100% 55%;
   }
 }
 
@@ -128,6 +126,26 @@
 
   .btn-lg { @apply px-5 py-2 text-base; }
   .input-lg { @apply px-3 py-2 text-base; }
+}
+
+@layer components {
+  .liquid-gradient-background {
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+  }
+
+  @keyframes gradientBG {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
 }
 
 @media print {

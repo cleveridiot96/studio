@@ -86,7 +86,7 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
     >
         <Card className={cn(
           "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-          "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px]",
+          "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px] liquid-gradient-background text-white",
           className
         )}>
           <Icon className="h-7 w-7 mb-2" />

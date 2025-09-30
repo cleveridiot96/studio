@@ -217,7 +217,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden liquid-gradient-background"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -273,7 +273,7 @@ const Sidebar = React.forwardRef<
           <div
             data-sidebar="sidebar"
             className={cn(
-                "flex h-full w-full flex-col bg-sidebar",
+                "flex h-full w-full flex-col bg-sidebar liquid-gradient-background",
                 variant === "floating" && "rounded-lg border border-sidebar-border shadow"
             )}
           >

@@ -135,6 +135,7 @@ export function AccountsLedgerClient() {
 
     let transactions: { date: string, debit: number, credit: number, displayEntry: DisplayLedgerEntry }[] = [];
     
+    // Purchases increase what you owe (Credit)
     purchases.forEach(p => {
         if (p.supplierId === partyId || p.agentId === partyId) {
             transactions.push({
@@ -144,6 +145,7 @@ export function AccountsLedgerClient() {
         }
     });
 
+    // Sales increase what you are owed (Debit)
     sales.forEach(s => {
         const accountablePartyId = s.brokerId || s.customerId;
         if(accountablePartyId === partyId) {
@@ -154,6 +156,7 @@ export function AccountsLedgerClient() {
         }
     });
 
+    // Payments decrease what you owe (Debit)
     payments.filter(p => p.partyId === partyId).forEach(p => {
         const particularDetails = p.transactionType === 'On Account'
             ? `On Account Payment (${p.paymentMethod})`
@@ -164,6 +167,7 @@ export function AccountsLedgerClient() {
         });
     });
 
+    // Receipts decrease what you are owed (Credit)
     receipts.filter(r => r.partyId === partyId).forEach(r => {
         const particularDetails = r.transactionType === 'On Account'
             ? `On Account Receipt (${r.paymentMethod})`
@@ -173,7 +177,8 @@ export function AccountsLedgerClient() {
             displayEntry: { id: `receipt-${r.id}`, date: r.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: r.amount + (r.cashDiscount || 0), href: `/receipts#${r.id}` }
         });
     });
-
+    
+    // Purchase returns decrease what you owe (Debit)
     purchaseReturns.forEach(pr => {
         const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
         if (!originalPurchase) return;
@@ -186,6 +191,7 @@ export function AccountsLedgerClient() {
         }
     });
 
+    // Sale returns decrease what you are owed (Credit)
     saleReturns.forEach(sr => {
         const originalSale = sales.find(s => s.id === sr.originalSaleId);
         if (!originalSale) return;
@@ -198,11 +204,12 @@ export function AccountsLedgerClient() {
         }
     });
     
+    // Ledger entries are direct debit/credit
     ledgerData.forEach(entry => {
-        if (entry.partyId === partyId && entry.type === 'Expense') {
-            transactions.push({
+        if (entry.partyId === partyId) {
+             transactions.push({
                 date: entry.date, debit: entry.debit, credit: entry.credit,
-                displayEntry: { id: entry.id, date: entry.date, type: 'Expense', particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`, debit: entry.debit, credit: entry.credit, href: entry.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : entry.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }
+                displayEntry: { id: entry.id, date: entry.date, type: entry.type, particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`, debit: entry.debit, credit: entry.credit, href: entry.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : entry.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }
             });
         }
     });
