@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -152,10 +151,14 @@ export function AccountsLedgerClient() {
     // Calculate opening balance by summing up all transactions before the start date
     allTransactions.forEach(tx => {
         if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
-            if (tx.txType === 'Sale' && tx.customerId === party.id) {
-                openingBalance += tx.billedAmount;
-            } else if (tx.txType === 'Purchase' && tx.supplierId === party.id) {
-                openingBalance -= tx.totalAmount;
+            if (tx.txType === 'Sale') {
+                if (tx.customerId === party.id) openingBalance += tx.billedAmount;
+                const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                if (tx.brokerId === party.id) openingBalance -= brokerCommission;
+            } else if (tx.txType === 'Purchase') {
+                if (tx.supplierId === party.id) openingBalance -= tx.totalGoodsValue;
+                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                if (tx.agentId === party.id) openingBalance -= agentCommission;
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 openingBalance += tx.amount;
             } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
@@ -173,10 +176,20 @@ export function AccountsLedgerClient() {
     const periodTransactions = allTransactions
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
         .map(tx => {
-            if (tx.txType === 'Sale' && tx.customerId === party.id) {
-                return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
-            } else if (tx.txType === 'Purchase' && tx.supplierId === party.id) {
-                return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalAmount, href: `/purchases#${tx.id}` };
+            if (tx.txType === 'Sale') {
+                const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                if (tx.customerId === party.id) {
+                  return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
+                } else if (tx.brokerId === party.id && brokerCommission > 0) {
+                  return { id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMMISSION FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` };
+                }
+            } else if (tx.txType === 'Purchase') {
+                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                if(tx.supplierId === party.id) {
+                  return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalGoodsValue, href: `/purchases#${tx.id}` };
+                } else if(tx.agentId === party.id && agentCommission > 0) {
+                  return { id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` };
+                }
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT PAYMENT (${tx.paymentMethod})` : `PAYMENT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
                 return { id: `pay-${tx.id}`, date: tx.date, type: 'Payment', particulars: particularDetails, debit: tx.amount, credit: 0, href: `/payments#${tx.id}` };
@@ -270,7 +283,7 @@ export function AccountsLedgerClient() {
 
   return (
     <TooltipProvider>
-    <div className="space-y-6 print-area flex flex-col flex-1">
+    <div className="space-y-4 print-area flex flex-col flex-1">
       <Card className="shadow-md no-print">
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

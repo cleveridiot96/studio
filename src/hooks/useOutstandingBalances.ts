@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useEffect } from 'react';
@@ -75,28 +74,24 @@ export const useOutstandingBalances = () => {
         };
 
         allTransactionsSorted.forEach(tx => {
-            if (tx.txType === 'Sale') {
-                const accountablePartyId = tx.brokerId || tx.customerId;
-                updateBalance(accountablePartyId, tx.billedAmount || 0);
+             if (tx.txType === 'Sale') {
+                updateBalance(tx.customerId, tx.billedAmount || 0);
+                const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                updateBalance(tx.brokerId, -(brokerCommission));
             }
             else if (tx.txType === 'Purchase') {
-                const accountablePartyId = tx.agentId || tx.supplierId;
-                updateBalance(accountablePartyId, -(tx.totalAmount || 0));
+                updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
+                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                updateBalance(tx.agentId, -(agentCommission));
             }
             else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
             else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
             else if (tx.txType === 'PurchaseReturn') {
-                const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if (p) {
-                    const accountablePartyId = p.agentId || p.supplierId;
-                    updateBalance(accountablePartyId, tx.returnAmount || 0);
-                }
+                 const p = purchases.find(p => p.id === tx.originalPurchaseId);
+                 if(p) updateBalance(p.supplierId, tx.returnAmount || 0);
             } else if (tx.txType === 'SaleReturn') {
-                const s = sales.find(s => s.id === tx.originalSaleId);
-                if (s) {
-                    const accountablePartyId = s.brokerId || s.customerId;
-                    updateBalance(accountablePartyId, -(tx.returnAmount || 0));
-                }
+                 const s = sales.find(s => s.id === tx.originalSaleId);
+                 if(s) updateBalance(s.customerId, -(tx.returnAmount || 0));
             }
         });
 

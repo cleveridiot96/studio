@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useMemo } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -67,42 +66,30 @@ export const OutstandingSummary = () => {
         ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
     ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
     
-    // Step 2: Process all transactions chronologically up to the start of the current financial year to get the correct opening balance for the period
-    const transactionsBeforeFY = allTransactionsSorted.filter(tx => tx && isDateBeforeFinancialYear(tx.date, currentFinancialYearString));
-    
     const updateBalance = (partyId: string | undefined, amount: number) => {
         if (!partyId || !balances.has(partyId)) return;
         balances.set(partyId, balances.get(partyId)! + amount);
     };
 
-    transactionsBeforeFY.forEach(tx => {
-        if (tx.txType === 'Sale') updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
-        else if (tx.txType === 'Purchase') updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
-        else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-        else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
-        else if (tx.txType === 'PurchaseReturn') {
-            const p = purchases.find(p => p.id === tx.originalPurchaseId);
-            if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
-        } else if (tx.txType === 'SaleReturn') {
-            const s = sales.find(s => s.id === tx.originalSaleId);
-            if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
+    allTransactionsSorted.forEach(tx => {
+        if (tx.txType === 'Sale') {
+            updateBalance(tx.customerId, tx.billedAmount || 0);
+            const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+            updateBalance(tx.brokerId, -(brokerCommission));
         }
-    });
-
-    // Step 3: Process transactions within the current financial year to get the final balances
-    const transactionsInFY = allTransactionsSorted.filter(tx => tx && isDateInFinancialYear(tx.date, currentFinancialYearString));
-
-    transactionsInFY.forEach(tx => {
-        if (tx.txType === 'Sale') updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
-        else if (tx.txType === 'Purchase') updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
+        else if (tx.txType === 'Purchase') {
+            updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
+            const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+            updateBalance(tx.agentId, -(agentCommission));
+        }
         else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
         else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
         else if (tx.txType === 'PurchaseReturn') {
             const p = purchases.find(p => p.id === tx.originalPurchaseId);
-            if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
+            if(p) updateBalance(p.supplierId, tx.returnAmount || 0);
         } else if (tx.txType === 'SaleReturn') {
             const s = sales.find(s => s.id === tx.originalSaleId);
-            if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
+            if(s) updateBalance(s.customerId, -(tx.returnAmount || 0));
         }
     });
 
