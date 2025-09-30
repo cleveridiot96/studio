@@ -130,112 +130,85 @@ export function AccountsLedgerClient() {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
   }, [allMasters]);
   
-  const getPartyTransactions = React.useCallback((partyId: string): { date: string, debit: number, credit: number, displayEntry: DisplayLedgerEntry }[] => {
-    if (!partyId) return [];
-
-    let transactions: { date: string, debit: number, credit: number, displayEntry: DisplayLedgerEntry }[] = [];
-    
-    // Purchases increase what you owe (Credit)
-    purchases.forEach(p => {
-        if (p.supplierId === partyId || p.agentId === partyId) {
-            transactions.push({
-                date: p.date, debit: 0, credit: p.totalAmount,
-                displayEntry: { id: `pur-goods-${p.id}`, date: p.date, type: 'Purchase', particulars: `Vakkal: ${p.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: p.totalAmount, href: `/purchases#${p.id}` }
-            });
-        }
-    });
-
-    // Sales increase what you are owed (Debit)
-    sales.forEach(s => {
-        const accountablePartyId = s.brokerId || s.customerId;
-        if(accountablePartyId === partyId) {
-            transactions.push({
-                date: s.date, debit: s.billedAmount, credit: 0,
-                displayEntry: { id: `sale-goods-${s.id}`, date: s.date, type: 'Sale', particulars: `To: ${s.customerName} (Bill: ${s.billNumber || 'N/A'})`, debit: s.billedAmount, credit: 0, href: `/sales#${s.id}` }
-            });
-        }
-    });
-
-    // Payments decrease what you owe (Debit)
-    payments.filter(p => p.partyId === partyId).forEach(p => {
-        const particularDetails = p.transactionType === 'On Account'
-            ? `On Account Payment (${p.paymentMethod})`
-            : `Payment via ${p.paymentMethod} against Bill(s): ${p.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
-        transactions.push({
-            date: p.date, debit: p.amount, credit: 0,
-            displayEntry: { id: `pay-${p.id}`, date: p.date, type: 'Payment', particulars: particularDetails, debit: p.amount, credit: 0, href: `/payments#${p.id}` }
-        });
-    });
-
-    // Receipts decrease what you are owed (Credit)
-    receipts.filter(r => r.partyId === partyId).forEach(r => {
-        const particularDetails = r.transactionType === 'On Account'
-            ? `On Account Receipt (${r.paymentMethod})`
-            : `Receipt via ${r.paymentMethod} against Bill(s): ${r.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
-        transactions.push({
-            date: r.date, debit: 0, credit: r.amount + (r.cashDiscount || 0),
-            displayEntry: { id: `receipt-${r.id}`, date: r.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: r.amount + (r.cashDiscount || 0), href: `/receipts#${r.id}` }
-        });
-    });
-    
-    // Purchase returns decrease what you owe (Debit)
-    purchaseReturns.forEach(pr => {
-        const originalPurchase = purchases.find(p => p.id === pr.originalPurchaseId);
-        if (!originalPurchase) return;
-        const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
-        if (accountablePartyId === partyId) {
-            transactions.push({
-                date: pr.date, debit: pr.returnAmount, credit: 0,
-                displayEntry: { id: `pret-${pr.id}`, date: pr.date, type: 'Purchase Return', particulars: `Return of Vakkal: ${pr.originalLotNumber}`, debit: pr.returnAmount, credit: 0, href: `/purchases#${pr.id}` }
-            });
-        }
-    });
-
-    // Sale returns decrease what you are owed (Credit)
-    saleReturns.forEach(sr => {
-        const originalSale = sales.find(s => s.id === sr.originalSaleId);
-        if (!originalSale) return;
-        const accountablePartyId = originalSale.brokerId || originalSale.customerId;
-        if (accountablePartyId === partyId) {
-             transactions.push({
-                date: sr.date, debit: 0, credit: sr.returnAmount,
-                displayEntry: { id: `sret-${sr.id}`, date: sr.date, type: 'Sale Return', particulars: `Return from ${sr.originalCustomerName} of Vakkal: ${sr.originalLotNumber}`, debit: 0, credit: sr.returnAmount, href: `/sales#${sr.id}` }
-            });
-        }
-    });
-    
-    // Ledger entries are direct debit/credit
-    ledgerData.forEach(entry => {
-        if (entry.partyId === partyId) {
-             transactions.push({
-                date: entry.date, debit: entry.debit, credit: entry.credit,
-                displayEntry: { id: entry.id, date: entry.date, type: entry.type, particulars: `${entry.account} (Vch: ${entry.relatedVoucher?.slice(-5) || 'N/A'})`, debit: entry.debit, credit: entry.credit, href: entry.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : entry.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }
-            });
-        }
-    });
-
-    return transactions;
-  }, [purchases, sales, payments, receipts, purchaseReturns, saleReturns, ledgerData]);
-
   const financialLedgerData = React.useMemo(() => {
     if (!selectedPartyId || !dateRange?.from || !hydrated) return initialFinancialLedgerData;
+
     const party = allMasters.find(p => p.id === selectedPartyId);
     if (!party) return initialFinancialLedgerData;
-    
-    const allPartyTransactions = getPartyTransactions(selectedPartyId);
-    let openingBalance = party.openingBalance || 0;
-    if (party.openingBalanceType === 'Cr') openingBalance = -openingBalance;
 
-    allPartyTransactions.forEach(tx => {
-      if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
-        openingBalance += (tx.debit - tx.credit);
-      }
+    let openingBalance = party.openingBalanceType === 'Cr' ? -(party.openingBalance || 0) : (party.openingBalance || 0);
+
+    const allTransactions = [
+        ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
+        ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
+        ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
+        ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const })),
+        ...ledgerData.map(l => ({ ...l, txType: 'LedgerEntry' as const }))
+    ].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
+
+    // Calculate opening balance by summing up all transactions before the start date
+    allTransactions.forEach(tx => {
+        if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
+            if (tx.txType === 'Sale') {
+                const accountablePartyId = tx.brokerId || tx.customerId;
+                if(accountablePartyId === party.id) openingBalance += tx.billedAmount;
+            } else if (tx.txType === 'Purchase') {
+                const accountablePartyId = tx.agentId || tx.supplierId;
+                 if(accountablePartyId === party.id) openingBalance -= tx.totalAmount;
+            } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
+                openingBalance += tx.amount;
+            } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
+                openingBalance -= (tx.amount + (tx.cashDiscount || 0));
+            } else if (tx.txType === 'PurchaseReturn') {
+                const p = purchases.find(p => p.id === tx.originalPurchaseId);
+                if(p && (p.agentId === party.id || p.supplierId === party.id)) openingBalance += tx.returnAmount;
+            } else if (tx.txType === 'SaleReturn') {
+                const s = sales.find(s => s.id === tx.originalSaleId);
+                if(s && (s.brokerId === party.id || s.customerId === party.id)) openingBalance -= tx.returnAmount;
+            } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
+                openingBalance += (tx.debit - tx.credit);
+            }
+        }
     });
 
-    const periodTransactions = allPartyTransactions
+    const periodTransactions = allTransactions
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
-        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime() || a.displayEntry.id.localeCompare(b.displayEntry.id))
-        .map(tx => tx.displayEntry);
+        .map(tx => {
+            if (tx.txType === 'Sale') {
+                const accountablePartyId = tx.brokerId || tx.customerId;
+                if(accountablePartyId === party.id) {
+                    return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
+                }
+            } else if (tx.txType === 'Purchase') {
+                const accountablePartyId = tx.agentId || tx.supplierId;
+                if(accountablePartyId === party.id) {
+                    return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalAmount, href: `/purchases#${tx.id}` };
+                }
+            } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
+                const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT PAYMENT (${tx.paymentMethod})` : `PAYMENT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
+                return { id: `pay-${tx.id}`, date: tx.date, type: 'Payment', particulars: particularDetails, debit: tx.amount, credit: 0, href: `/payments#${tx.id}` };
+            } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
+                const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT RECEIPT (${tx.paymentMethod})` : `RECEIPT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
+                return { id: `receipt-${tx.id}`, date: tx.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: tx.amount + (tx.cashDiscount || 0), href: `/receipts#${tx.id}` };
+            } else if (tx.txType === 'PurchaseReturn') {
+                const p = purchases.find(p => p.id === tx.originalPurchaseId);
+                if (p && (p.agentId === party.id || p.supplierId === party.id)) {
+                    return { id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.id}` };
+                }
+            } else if (tx.txType === 'SaleReturn') {
+                const s = sales.find(s => s.id === tx.originalSaleId);
+                if (s && (s.brokerId === party.id || s.customerId === party.id)) {
+                    return { id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.id}` };
+                }
+            } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
+                return { id: tx.id, date: tx.date, type: tx.type, particulars: `${tx.account} (VCH: ${tx.relatedVoucher?.slice(-5) || 'N/A'})`, debit: tx.debit, credit: tx.credit, href: tx.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : tx.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' };
+            }
+            return null;
+        })
+        .filter(Boolean) as DisplayLedgerEntry[];
 
     let debitTransactions: DisplayLedgerEntry[] = [];
     let creditTransactions: DisplayLedgerEntry[] = [];
@@ -264,7 +237,7 @@ export function AccountsLedgerClient() {
       totalCredit,
       balanceType: closingBalance >= 0 ? 'Dr' : 'Cr',
     };
-  }, [selectedPartyId, dateRange, hydrated, getPartyTransactions, allMasters]);
+  }, [selectedPartyId, dateRange, hydrated, allMasters, purchases, sales, payments, receipts, purchaseReturns, saleReturns, ledgerData]);
   
   const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
 
