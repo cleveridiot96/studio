@@ -6,7 +6,6 @@ import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, Sale
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
-import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { parseISO } from 'date-fns';
@@ -110,7 +109,7 @@ export const OutstandingSummary = () => {
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold text-foreground">OUTSTANDING BALANCES</CardTitle>
+        <CardTitle className="text-xl font-semibold text-foreground">OUTSTANDING BALANCES (ALL TIME)</CardTitle>
         <CardDescription>A SUMMARY OF TOTAL MONEY TO BE PAID AND RECEIVED. CLICK A CARD TO SEE DETAILS.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
