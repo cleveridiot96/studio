@@ -130,14 +130,28 @@
 
 @layer components {
   .liquid-gradient-background {
-    /* Fallback if CSS variables aren't set */
-    --gradient-from: #3b82f6; 
-    --gradient-to: #1d4ed8;
-    
     background: linear-gradient(-45deg, var(--gradient-from), var(--gradient-to), var(--gradient-from), var(--gradient-to));
     background-size: 400% 400%;
     animation: gradientBG 15s ease infinite;
   }
+
+  /* Define specific gradients for dashboard tiles */
+  .gradient-purple { --gradient-from: #a855f7; --gradient-to: #6d28d9; }
+  .gradient-blue { --gradient-from: #3b82f6; --gradient-to: #1d4ed8; }
+  .gradient-cyan { --gradient-from: #06b6d4; --gradient-to: #0e7490; }
+  .gradient-teal { --gradient-from: #14b8a6; --gradient-to: #0f766e; }
+  .gradient-red-dark { --gradient-from: #b91c1c; --gradient-to: #7f1d1d; }
+  .gradient-teal-bright { --gradient-from: #1beec7; --gradient-to: #14b8a6; }
+  .gradient-pink { --gradient-from: #ec4899; --gradient-to: #be185d; }
+  .gradient-rose { --gradient-from: #ffa5ab; --gradient-to: #fb7185; }
+  .gradient-yellow { --gradient-from: #facc15; --gradient-to: #ca8a04; }
+  .gradient-green-light { --gradient-from: #4ade80; --gradient-to: #16a34a; }
+  .gradient-sky { --gradient-from: #0ea5e9; --gradient-to: #0369a1; }
+  .gradient-sky-light { --gradient-from: #38bdf8; --gradient-to: #0284c7; }
+  .gradient-emerald { --gradient-from: #34d399; --gradient-to: #059669; }
+  .gradient-red { --gradient-from: #ef4444; --gradient-to: #b91c1c; }
+  .gradient-green { --gradient-from: #22c55e; --gradient-to: #15803d; }
+
 
   @keyframes gradientBG {
     0% {
