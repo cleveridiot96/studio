@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -20,7 +21,7 @@ export function FinancialYearToggle() {
   const { 
     financialYear, 
     setFinancialYear, 
-    getPreviousFinancialYear, // Kept for potential future use or if direct year options are limited
+    getPreviousFinancialYear,
     getNextFinancialYear 
   } = useSettings();
   const { toast } = useToast();
@@ -35,7 +36,6 @@ export function FinancialYearToggle() {
     const options = [];
     const currentFyParts = financialYear.split('-').map(Number);
     if (currentFyParts.length !== 2 || isNaN(currentFyParts[0])) {
-        // Fallback to a default range if current financialYear is malformed
         const currentActualYear = new Date().getFullYear();
          for (let i = 2; i >= -2; i--) {
             const startYear = currentActualYear - i;
@@ -46,11 +46,11 @@ export function FinancialYearToggle() {
 
     const [currentFyStart] = currentFyParts;
     
-    for (let i = 2; i >= -2; i--) { // Show current, 2 past, 2 future relative to current FY
+    for (let i = 2; i >= -2; i--) { // Show current, 2 past, 2 future
       const startYear = currentFyStart - i;
       options.push(`${startYear}-${startYear + 1}`);
     }
-    return options.sort((a,b) => b.localeCompare(a)); // Show most recent first in dropdown
+    return options.sort((a,b) => b.localeCompare(a)); // Show most recent first
   }, [financialYear]);
 
   const yearOptions = generateYearOptions();
@@ -73,6 +73,11 @@ export function FinancialYearToggle() {
       duration: 4000,
     });
   };
+  
+  const handleYearSelect = (year: string) => {
+    setFinancialYear(year);
+  };
+
 
   return (
     <div className="flex items-center">
@@ -85,15 +90,16 @@ export function FinancialYearToggle() {
         <DropdownMenuContent align="center" className="w-[200px]">
           <DropdownMenuLabel>Select Financial Year</DropdownMenuLabel>
           <DropdownMenuSeparator />
- {yearOptions.map(year => (
- <DropdownMenuRadioItem 
-              key={year} 
- value={year}
- onSelect={() => setFinancialYear(year)}
-            >
-              {year}
- </DropdownMenuRadioItem>
- ))}
+          <DropdownMenuRadioGroup value={financialYear} onValueChange={handleYearSelect}>
+            {yearOptions.map(year => (
+              <DropdownMenuRadioItem 
+                key={year} 
+                value={year}
+              >
+                {year}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleAddNextFinancialYear} className="text-primary hover:!text-primary-foreground hover:!bg-primary">
             <CalendarPlus className="mr-2 h-4 w-4" />

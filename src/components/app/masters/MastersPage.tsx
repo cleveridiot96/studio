@@ -43,14 +43,14 @@ const ALL_FIXED_IDS = [...FIXED_WAREHOUSE_IDS, ...FIXED_EXPENSE_IDS];
 type MasterPageTabKey = MasterItemType | 'All';
 
 const TABS_CONFIG: { value: MasterPageTabKey; label: string; icon: React.ElementType; colorClass: string; }[] = [
-  { value: "All", label: "All Parties", icon: List, colorClass: 'text-white bg-red-800 hover:bg-red-900 data-[state=active]:bg-red-900 data-[state=active]:text-white' },
-  { value: "Customer", label: "Customers", icon: Users, colorClass: 'bg-blue-500 hover:bg-blue-600 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white' },
-  { value: "Broker", label: "Brokers", icon: Handshake, colorClass: 'bg-yellow-400 hover:bg-yellow-500 text-gray-800 data-[state=active]:bg-yellow-500 data-[state=active]:text-black' },
-  { value: "Supplier", label: "Suppliers", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
-  { value: "Agent", label: "Agents", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
-  { value: "Warehouse", label: "Warehouses", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
-  { value: "Transporter", label: "Transport", icon: Truck, colorClass: 'bg-[#531253] hover:bg-[#531253]/90 text-white data-[state=active]:bg-[#531253] data-[state=active]:text-white' },
-  { value: "Expense", label: "Expenses", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
+  { value: "All", label: "ALL PARTIES", icon: List, colorClass: 'text-white bg-red-800 hover:bg-red-900 data-[state=active]:bg-red-900 data-[state=active]:text-white' },
+  { value: "Customer", label: "CUSTOMERS", icon: Users, colorClass: 'bg-blue-500 hover:bg-blue-600 text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white' },
+  { value: "Broker", label: "BROKERS", icon: Handshake, colorClass: 'bg-yellow-400 hover:bg-yellow-500 text-gray-800 data-[state=active]:bg-yellow-500 data-[state=active]:text-black' },
+  { value: "Supplier", label: "SUPPLIERS", icon: Truck, colorClass: 'bg-orange-500 hover:bg-orange-600 text-white data-[state=active]:bg-orange-600 data-[state=active]:text-white' },
+  { value: "Agent", label: "AGENTS", icon: UserCheck, colorClass: 'bg-green-500 hover:bg-green-600 text-white data-[state=active]:bg-green-600 data-[state=active]:text-white' },
+  { value: "Warehouse", label: "WAREHOUSES", icon: Building, colorClass: 'bg-teal-500 hover:bg-teal-600 text-white data-[state=active]:bg-teal-600 data-[state=active]:text-white' },
+  { value: "Transporter", label: "TRANSPORT", icon: Truck, colorClass: 'bg-[#531253] hover:bg-[#531253]/90 text-white data-[state=active]:bg-[#531253] data-[state=active]:text-white' },
+  { value: "Expense", label: "EXPENSES", icon: DollarSign, colorClass: 'bg-purple-500 hover:bg-purple-600 text-white data-[state=active]:bg-purple-600 data-[state=active]:text-white' },
 ];
 
 const dispatchSearchReindex = () => {
@@ -62,6 +62,10 @@ const fuseOptions = {
   includeScore: true,
   threshold: 0.4,
   includeMatches: true,
+};
+
+const validateMasterItem = (item: any): item is MasterItem => {
+  return item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.type === 'string';
 };
 
 export default function MastersPage() {
@@ -90,7 +94,7 @@ export default function MastersPage() {
   const allMasterItems = useMemo(() => {
     if (!hydrated) return []; 
     return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses, ...expenses]
-      .filter(item => item && item.id && item.name && item.type) 
+      .filter(validateMasterItem) 
       .sort((a,b) => a.name.localeCompare(b.name));
   }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, hydrated]);
 
@@ -136,14 +140,15 @@ export default function MastersPage() {
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
+    const filterValid = (data: MasterItem[]) => data.filter(validateMasterItem);
     switch (type) {
-      case 'Customer': return { data: customers, setData: setCustomers };
-      case 'Supplier': return { data: suppliers, setData: setSuppliers };
-      case 'Agent': return { data: agents, setData: setAgents };
-      case 'Transporter': return { data: transporters, setData: setTransporters };
-      case 'Broker': return { data: brokers, setData: setBrokers };
-      case 'Warehouse': return { data: warehouses, setData: setWarehouses };
-      case 'Expense': return { data: expenses, setData: setExpenses };
+      case 'Customer': return { data: filterValid(customers), setData: setCustomers };
+      case 'Supplier': return { data: filterValid(suppliers), setData: setSuppliers };
+      case 'Agent': return { data: filterValid(agents), setData: setAgents };
+      case 'Transporter': return { data: filterValid(transporters), setData: setTransporters };
+      case 'Broker': return { data: filterValid(brokers), setData: setBrokers };
+      case 'Warehouse': return { data: filterValid(warehouses), setData: setWarehouses };
+      case 'Expense': return { data: filterValid(expenses), setData: setExpenses };
       case 'All': return { data: allMasterItems, setData: () => {} }; 
       default: return { data: [], setData: () => {} };
     }
@@ -238,10 +243,10 @@ export default function MastersPage() {
   }, []);
 
   const addButtonLabel = useMemo(() => {
-    if (activeTab === 'All') return "Add New Party/Entity";
+    if (activeTab === 'All') return "ADD NEW PARTY/ENTITY";
     const currentTabConfig = TABS_CONFIG.find(t => t.value === activeTab);
-    const singularLabel = currentTabConfig?.label.endsWith('s') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
-    return `Add New ${singularLabel || 'Item'}`;
+    const singularLabel = currentTabConfig?.label.endsWith('S') ? currentTabConfig.label.slice(0, -1) : currentTabConfig?.label;
+    return `ADD NEW ${singularLabel || 'ITEM'}`;
   }, [activeTab]);
 
   const addButtonDynamicClass = useMemo(() => {
@@ -277,6 +282,7 @@ export default function MastersPage() {
     return fuse.search(searchQuery);
   };
 
+  const MemoizedMasterList = React.memo(MasterList);
 
   if (!hydrated) {
     return (
@@ -287,13 +293,13 @@ export default function MastersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Masters</h1>
+          <h1 className="text-2xl font-bold text-foreground">MASTERS</h1>
         </div>
         <Button onClick={openFormForNewItem} size="lg" className={cn(
-            "text-base py-3 px-6 shadow-md",
+            "text-base py-2 px-5 shadow-md",
             addButtonDynamicClass
         )}>
             <PlusCircle className="mr-2 h-5 w-5" /> {addButtonLabel}
@@ -307,41 +313,39 @@ export default function MastersPage() {
               key={tab.value}
               value={tab.value}
               className={cn(
-                "py-3 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
+                "py-2 text-sm font-medium flex-wrap !shadow-none data-[state=inactive]:opacity-90 transition-all rounded-md focus-visible:ring-offset-muted flex items-center justify-center",
                 tab.colorClass,
                 tab.value === 'Broker' && 'data-[state=active]:!text-black'
               )}
             >
-              <tab.icon className="w-5 h-5 mr-2" /> {tab.label}
+              <tab.icon className="w-4 h-4 mr-1.5" /> {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
         {TABS_CONFIG.map(tab => {
-            const filteredData = getFilteredDataForTab(tab.value);
-            const totalCount = getMasterDataState(tab.value).data.length;
             return (
-              <TabsContent key={tab.value} value={tab.value} className="mt-6">
+              <TabsContent key={tab.value} value={tab.value} className="mt-4">
                 <Card className="shadow-lg">
-                  <CardHeader className="sticky top-0 bg-card z-10 py-4 border-b">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                        <CardTitle className="text-2xl text-primary">Manage {tab.label}</CardTitle>
+                  <CardHeader className="sticky top-0 bg-card z-10 py-3 border-b">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                        <CardTitle className="text-xl text-primary">MANAGE {tab.label}</CardTitle>
                         <div className="w-full sm:w-auto sm:max-w-xs relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
-                                placeholder={`Search in ${tab.label}...`}
+                                placeholder={`SEARCH IN ${tab.label}...`}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10"
+                                className="pl-9 h-9"
                             />
                         </div>
                     </div>
                      {searchQuery && searchDidYouMean && (
-                        <p className="text-sm text-muted-foreground mt-2">Did you mean: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
+                        <p className="text-sm text-muted-foreground mt-1">DID YOU MEAN: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
                     )}
                   </CardHeader>
-                  <CardContent className="pt-4">
-                    <MasterList
-                      data={filteredData}
+                  <CardContent className="pt-2">
+                    <MemoizedMasterList
+                      data={getFilteredDataForTab(tab.value)}
                       itemType={tab.value as MasterItemType | 'All'}
                       isAllItemsTab={tab.value === "All"}
                       onEdit={handleEditItem}
@@ -350,9 +354,9 @@ export default function MastersPage() {
                       searchActive={!!searchQuery}
                     />
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="py-2">
                     <p className="text-xs text-muted-foreground">
-                      {searchQuery ? `Showing ${filteredData.length} of ${totalCount} items` : `Total items: ${totalCount}`}
+                      {searchQuery ? `SHOWING ${getFilteredDataForTab(tab.value).length} OF ${getMasterDataState(tab.value).data.length} ITEMS` : `TOTAL ITEMS: ${getMasterDataState(tab.value).data.length}`}
                     </p>
                   </CardFooter>
                 </Card>
@@ -381,9 +385,9 @@ export default function MastersPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>CANCEL</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteItem} className="bg-destructive hover:bg-destructive/90">
-              Delete
+              DELETE
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
