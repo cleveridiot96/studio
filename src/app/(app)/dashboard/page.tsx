@@ -48,7 +48,7 @@ export default function DashboardPage() {
       description: "Record and manage purchases",
       href: "/purchases",
       iconName: "ShoppingCart",
-      className: "liquid-gradient-background gradient-purple text-white",
+      className: "bg-purple-600 hover:bg-purple-700 text-white",
       shortcut: "Alt + P",
     },
     {
@@ -56,7 +56,7 @@ export default function DashboardPage() {
       description: "Create and manage sales",
       href: "/sales",
       iconName: "Receipt",
-      className: "liquid-gradient-background gradient-blue text-white",
+      className: "bg-blue-600 hover:bg-blue-700 text-white",
       shortcut: "Alt + S",
     },
     {
@@ -64,7 +64,7 @@ export default function DashboardPage() {
       description: "Transfer stock between locations",
       href: "/location-transfer",
       iconName: "ArrowRightLeft",
-      className: "liquid-gradient-background gradient-cyan text-white",
+      className: "bg-cyan-600 hover:bg-cyan-700 text-white",
       shortcut: "Alt + L",
     },
     {
@@ -72,7 +72,7 @@ export default function DashboardPage() {
       description: "View and manage stock",
       href: "/inventory",
       iconName: "Package",
-      className: "liquid-gradient-background gradient-teal text-white",
+      className: "bg-teal-600 hover:bg-teal-700 text-white",
       shortcut: "Alt + I",
     },
     {
@@ -80,7 +80,7 @@ export default function DashboardPage() {
       description: "View party stock ledgers",
       href: "/ledger",
       iconName: "BookUser",
-      className: "liquid-gradient-background gradient-red-dark text-white",
+      className: "bg-red-800 hover:bg-red-900 text-white",
       shortcut: "Alt + K",
     },
     {
@@ -88,7 +88,7 @@ export default function DashboardPage() {
       description: "View party financial statements",
       href: "/accounts-ledger",
       iconName: "BookCopy",
-      className: "liquid-gradient-background gradient-teal-bright text-black",
+      className: "bg-teal-500 hover:bg-teal-600 text-white",
       shortcut: "Alt + A",
     },
      {
@@ -96,7 +96,7 @@ export default function DashboardPage() {
       description: "Track cash transactions",
       href: "/cashbook",
       iconName: "BookOpen",
-      className: "liquid-gradient-background gradient-pink text-white",
+      className: "bg-pink-600 hover:bg-pink-700 text-white",
       shortcut: "Alt + C",
     },
      {
@@ -104,7 +104,7 @@ export default function DashboardPage() {
       description: "View all daily transactions",
       href: "/daybook",
       iconName: "BookMarked",
-      className: "liquid-gradient-background gradient-rose text-white",
+      className: "bg-rose-500 hover:bg-rose-600 text-white",
       shortcut: "Alt + D",
     },
     {
@@ -112,7 +112,7 @@ export default function DashboardPage() {
       description: "Receivables & Payables",
       href: "/outstanding",
       iconName: "ClipboardList",
-      className: "liquid-gradient-background gradient-yellow text-black",
+      className: "bg-yellow-500 hover:bg-yellow-600 text-black",
       shortcut: "Alt + O",
     },
     {
@@ -120,7 +120,7 @@ export default function DashboardPage() {
       description: "View profit/loss reports",
       href: "/profit-analysis",
       iconName: "Rocket",
-      className: "liquid-gradient-background gradient-green-light text-white",
+      className: "bg-green-500 hover:bg-green-600 text-white",
       shortcut: "Alt + Shift + A",
     },
     {
@@ -128,14 +128,14 @@ export default function DashboardPage() {
       description: "Manage people & companies",
       href: "/masters",
       iconName: "Users2",
-      className: "liquid-gradient-background gradient-sky text-white",
+      className: "bg-sky-600 hover:bg-sky-700 text-white",
       shortcut: "Alt + M",
     },
     {
       title: "Backup Data",
       description: "Save your application data",
       iconName: "FileJson",
-      className: "liquid-gradient-background gradient-sky-light text-white",
+      className: "bg-sky-500 hover:bg-sky-600 text-white",
       action: handleExportClick,
       shortcut: "Alt + B",
     },
@@ -143,7 +143,7 @@ export default function DashboardPage() {
       title: "Restore Data",
       description: "Load data from a backup file",
       iconName: "UploadCloud",
-      className: "liquid-gradient-background gradient-emerald text-white",
+      className: "bg-emerald-500 hover:bg-emerald-600 text-white",
       action: handleRestoreTriggerClick,
       shortcut: "Alt + V",
     },
@@ -152,7 +152,7 @@ export default function DashboardPage() {
       description: "Record outgoing payments",
       href: "/payments",
       iconName: "ArrowRightCircle",
-      className: "liquid-gradient-background gradient-red text-white",
+      className: "bg-red-600 hover:bg-red-700 text-white",
       shortcut: "Alt + Shift + P",
     },
     {
@@ -160,7 +160,7 @@ export default function DashboardPage() {
       description: "Record incoming payments",
       href: "/receipts",
       iconName: "ArrowLeftCircle",
-      className: "liquid-gradient-background gradient-green text-white",
+      className: "bg-green-600 hover:bg-green-700 text-white",
       shortcut: "Alt + R",
     },
   ];
