@@ -38,8 +38,14 @@ const LOCAL_STORAGE_KEYS = {
 
 const useSearchData = () => {
   const [searchData, setSearchData] = React.useState<any[]>([]);
+  const [hydrated, setHydrated] = React.useState(false);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const reindexData = useCallback(() => {
+    if (!hydrated) return;
     try {
       const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
       const sales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]') as Sale[];
@@ -67,7 +73,7 @@ const useSearchData = () => {
     } catch (error) {
       console.error("Error re-indexing search data:", error);
     }
-  }, []);
+  }, [hydrated]);
 
   useEffect(() => {
     reindexData();
@@ -128,7 +134,14 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+    const target = event.target as HTMLElement;
+    // Do not trigger shortcuts if the user is typing in an input, textarea, or a content-editable element.
+    const isTyping =
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable;
+    
+    if (isTyping) {
         return;
     }
     
