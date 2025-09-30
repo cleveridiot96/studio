@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -36,7 +37,7 @@ const useCalculatorState = () => {
     
     const handleCalculate = () => {
         try {
-          if (!input.trim() || /[+\-*/.]$/.test(input.trim())) return;
+          if (!input.trim() || /[+\-*/.%]$/.test(input.trim())) return;
 
           const sanitizedInput = input
             .replace(/%/g, '/100*')
@@ -48,6 +49,10 @@ const useCalculatorState = () => {
           }
 
           const evalResult = new Function(`return ${sanitizedInput}`)();
+          if (typeof evalResult !== 'number' || !isFinite(evalResult)) {
+            setResult('Error');
+            return;
+          }
           const resultString = String(parseFloat(evalResult.toFixed(10)));
           
           setResult(resultString);

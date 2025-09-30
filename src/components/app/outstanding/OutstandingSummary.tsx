@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { parseISO, isBefore } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { isDateInFinancialYear, isDateBeforeFinancialYear } from "@/lib/utils";
 
 
@@ -52,12 +52,12 @@ export const OutstandingSummary = () => {
     const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
     const balances = new Map<string, number>();
 
-    // Step 1: Initialize with opening balances and adjust for all transactions *before* the current FY
+    // Step 1: Initialize balances with their defined opening balance
     allMasters.forEach(m => {
         let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
         balances.set(m.id, openingBalance);
     });
-    
+
     const allTransactionsSorted = [
         ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
         ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
@@ -66,8 +66,8 @@ export const OutstandingSummary = () => {
         ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
         ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
     ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-
+    
+    // Step 2: Process all transactions chronologically up to the start of the current financial year to get the correct opening balance for the period
     const transactionsBeforeFY = allTransactionsSorted.filter(tx => tx && isDateBeforeFinancialYear(tx.date, currentFinancialYearString));
     
     const updateBalance = (partyId: string | undefined, amount: number) => {
@@ -89,7 +89,7 @@ export const OutstandingSummary = () => {
         }
     });
 
-    // Step 2: Process transactions *within* the current financial year
+    // Step 3: Process transactions within the current financial year to get the final balances
     const transactionsInFY = allTransactionsSorted.filter(tx => tx && isDateInFinancialYear(tx.date, currentFinancialYearString));
 
     transactionsInFY.forEach(tx => {

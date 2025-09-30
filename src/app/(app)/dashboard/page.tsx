@@ -3,13 +3,14 @@
 
 import React, { useRef, type ChangeEvent, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import DashboardClient from "@/components/app/dashboard/DashboardClient";
 import { Separator } from "@/components/ui/separator";
 import { DashboardTile } from "@/components/DashboardTile";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KEY } from "@/lib/backupRestoreUtils";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { ProfitAnalysisClient } from '@/components/app/profit-analysis/ProfitAnalysisClient';
+import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -184,7 +185,9 @@ export default function DashboardPage() {
         id="dashboard-restore-input"
       />
       <Separator className="my-2"/>
-      <DashboardClient />
+      <OutstandingSummary />
+      <Separator className="my-6"/>
+      <ProfitAnalysisClient/>
     </div>
   );
 }
