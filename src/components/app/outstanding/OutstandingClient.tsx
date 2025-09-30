@@ -237,7 +237,7 @@ export function OutstandingClient() {
       let partyId: string | undefined;
       
       if (tx.txType === 'Sale') {
-        partyId = tx.brokerId || tx.customerId;
+        partyId = tx.customerId; // Customer is always the primary party for a sale
         if(partyId && partyBalances.has(partyId)) {
           const partyData = partyBalances.get(partyId)!;
           partyData.balance += tx.billedAmount;
@@ -251,8 +251,10 @@ export function OutstandingClient() {
               });
           }
         }
+        // If there's a broker, we might need separate logic for them.
+        // For now, sales affect customer balance.
       } else if (tx.txType === 'Purchase') {
-        partyId = tx.agentId || tx.supplierId;
+        partyId = tx.supplierId;
         if(partyId && partyBalances.has(partyId)) {
           const partyData = partyBalances.get(partyId)!;
           partyData.balance -= tx.totalAmount;
@@ -266,6 +268,7 @@ export function OutstandingClient() {
             });
            }
         }
+        // Handle agent if necessary
       } else if (tx.txType === 'Receipt') {
         partyId = tx.partyId;
         if(partyId && partyBalances.has(partyId)) {
@@ -279,7 +282,7 @@ export function OutstandingClient() {
       } else if (tx.txType === 'SaleReturn') {
          const originalSale = sales.find(s => s.id === tx.originalSaleId);
          if (originalSale) {
-           partyId = originalSale.brokerId || originalSale.customerId;
+           partyId = originalSale.customerId;
            if(partyId && partyBalances.has(partyId)) {
              partyBalances.get(partyId)!.balance -= tx.returnAmount;
            }
@@ -287,7 +290,7 @@ export function OutstandingClient() {
       } else if (tx.txType === 'PurchaseReturn') {
          const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
          if (originalPurchase) {
-           partyId = originalPurchase.agentId || originalPurchase.supplierId;
+           partyId = originalPurchase.supplierId;
            if(partyId && partyBalances.has(partyId)) {
              partyBalances.get(partyId)!.balance += tx.returnAmount;
            }

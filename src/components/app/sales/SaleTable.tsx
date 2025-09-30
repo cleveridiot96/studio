@@ -17,6 +17,11 @@ interface SaleTableProps {
   onEdit: (sale: Sale) => void;
   onDelete: (saleId: string) => void;
   onDownloadPdf?: (sale: Sale) => void;
+  currentPage: number;
+  totalPages: number;
+  goToPage: (page: number) => void;
+  nextPage: () => void;
+  prevPage: () => void;
 }
 
 const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
