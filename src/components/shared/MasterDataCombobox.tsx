@@ -103,6 +103,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     }
   }
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearch(suggestion);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -150,7 +154,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     {notFoundMessage}
                     {didYouMeanSuggest && (
                         <div className="mt-1 text-xs text-muted-foreground">
-                            Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+                            Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => handleSuggestionClick(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
                         </div>
                     )}
                     {onAddNew && (
@@ -167,7 +171,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                 <>
                   {didYouMeanSuggest && search && !filteredOptions.some(opt => opt.label.toLowerCase() === didYouMeanSuggest.toLowerCase()) && (
                       <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        No exact match. Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+                        No exact match. Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => handleSuggestionClick(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
                       </div>
                   )}
                   {filteredOptions.map((option) => (
