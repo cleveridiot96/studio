@@ -6,10 +6,9 @@ import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, Sale
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
-import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateBeforeFinancialYear, isDateInFinancialYear } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+import { parseISO } from 'date-fns';
 
 
 // All the data keys
@@ -52,60 +51,35 @@ export const OutstandingSummary = () => {
     const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
     const balances = new Map<string, number>();
 
-    // Step 1: Initialize with opening balances and adjust for transactions before the current FY
+    // Step 1: Initialize balances with their defined opening balance
     allMasters.forEach(m => {
         let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-
-        const transactionsBeforeFY = [
-            ...purchases, ...sales, ...receipts, ...payments, ...purchaseReturns, ...saleReturns
-        ].filter(tx => tx && isDateBeforeFinancialYear(tx.date, currentFinancialYearString));
-        
-        transactionsBeforeFY.forEach(tx => {
-            if ('billedAmount' in tx) { // Sale
-                const accountablePartyId = tx.brokerId || tx.customerId;
-                if(accountablePartyId === m.id) openingBalance += tx.billedAmount || 0;
-            } else if ('totalAmount' in tx) { // Purchase
-                const accountablePartyId = tx.agentId || tx.supplierId;
-                if(accountablePartyId === m.id) openingBalance -= (tx.totalAmount || 0);
-            } else if ('paymentMethod' in tx && 'cashDiscount' in tx) { // Receipt
-                if(tx.partyId === m.id) openingBalance -= (tx.amount + (tx.cashDiscount || 0));
-            } else if ('paymentMethod' in tx) { // Payment
-                if(tx.partyId === m.id) openingBalance += tx.amount || 0;
-            } else if ('originalPurchaseId' in tx) { // PurchaseReturn
-                const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if(p && (p.agentId === m.id || p.supplierId === m.id)) openingBalance += tx.returnAmount || 0;
-            } else if ('originalSaleId' in tx) { // SaleReturn
-                const s = sales.find(s => s.id === tx.originalSaleId);
-                if(s && (s.brokerId === m.id || s.customerId === m.id)) openingBalance -= (tx.returnAmount || 0);
-            }
-        });
-
         balances.set(m.id, openingBalance);
     });
-    
-    // Step 2: Process transactions *within* the current financial year
-    const transactionsInFY = [
-        ...purchases, ...sales, ...receipts, ...payments, ...purchaseReturns, ...saleReturns
-    ].filter(tx => tx && isDateInFinancialYear(tx.date, currentFinancialYearString));
 
+    const allTransactionsSorted = [
+        ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
+        ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
+        ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
+        ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
+    ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    
     const updateBalance = (partyId: string | undefined, amount: number) => {
         if (!partyId || !balances.has(partyId)) return;
         balances.set(partyId, balances.get(partyId)! + amount);
     };
-    
-    transactionsInFY.forEach(tx => {
-        if ('billedAmount' in tx) { // Sale
-            updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
-        } else if ('totalAmount' in tx) { // Purchase
-            updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
-        } else if ('paymentMethod' in tx && 'cashDiscount' in tx) { // Receipt
-            updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-        } else if ('paymentMethod' in tx) { // Payment
-            updateBalance(tx.partyId, tx.amount || 0);
-        } else if ('originalPurchaseId' in tx) { // PurchaseReturn
+
+    allTransactionsSorted.forEach(tx => {
+        if (tx.txType === 'Sale') updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
+        else if (tx.txType === 'Purchase') updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
+        else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+        else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
+        else if (tx.txType === 'PurchaseReturn') {
             const p = purchases.find(p => p.id === tx.originalPurchaseId);
             if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
-        } else if ('originalSaleId' in tx) { // SaleReturn
+        } else if (tx.txType === 'SaleReturn') {
             const s = sales.find(s => s.id === tx.originalSaleId);
             if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
         }
@@ -125,19 +99,19 @@ export const OutstandingSummary = () => {
 
   }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
   
-  if(!hydrated) return <Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
+  if(!hydrated) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-foreground">Outstanding Balances (FY {currentFinancialYearString})</CardTitle>
-        <CardDescription>A summary of total money to be paid and received. Click a card to see details.</CardDescription>
+        <CardTitle className="text-xl font-semibold text-foreground">OUTSTANDING BALANCES (FY {currentFinancialYearString})</CardTitle>
+        <CardDescription>A SUMMARY OF TOTAL MONEY TO BE PAID AND RECEIVED. CLICK A CARD TO SEE DETAILS.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link href="/outstanding" className="block group">
               <Card className="bg-green-50 dark:bg-green-900/30 border-green-500/50 h-full transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-1">
                   <CardHeader>
-                      <CardTitle className="text-green-700 dark:text-green-300">Total Receivables</CardTitle>
+                      <CardTitle className="text-green-700 dark:text-green-300">TOTAL RECEIVABLES</CardTitle>
                   </CardHeader>
                   <CardContent>
                       <p className="text-3xl font-bold text-green-600 dark:text-green-400">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
@@ -147,17 +121,17 @@ export const OutstandingSummary = () => {
              <Link href="/outstanding" className="block group">
                <Card className="bg-red-50 dark:bg-red-900/30 border-red-500/50 h-full transition-all duration-200 group-hover:shadow-xl group-hover:-translate-y-1">
                   <CardHeader>
-                      <CardTitle className="text-red-700 dark:text-red-300">Total Payables</CardTitle>
+                      <CardTitle className="text-red-700 dark:text-red-300">TOTAL PAYABLES</CardTitle>
                   </CardHeader>
                   <CardContent>
-                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{totalPayable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
+                      <p className="text-3xl font-bold text-red-600 dark:text-red-400">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
                   </CardContent>
               </Card>
             </Link>
       </CardContent>
       <CardFooter>
         <Button asChild className="w-full">
-            <Link href="/outstanding">View Full Outstanding Report</Link>
+            <Link href="/outstanding">VIEW FULL OUTSTANDING REPORT</Link>
         </Button>
       </CardFooter>
     </Card>

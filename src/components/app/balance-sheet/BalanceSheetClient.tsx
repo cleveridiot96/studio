@@ -11,6 +11,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear, getFinancialYearDateRange, isDateBeforeFinancialYear } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { parseISO } from 'date-fns';
 
 // All the data keys
 const keys = {
@@ -159,55 +160,48 @@ export const BalanceSheetClient = () => {
         const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
         const balances = new Map<string, number>();
 
+        // Step 1: Initialize balances with their defined opening balance
         allMasters.forEach(m => {
-            let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-
-            const transactionsBeforeFY = [...purchases, ...sales, ...receipts, ...payments, ...purchaseReturns, ...saleReturns]
-                .filter(tx => tx && isDateBeforeFinancialYear(tx.date, currentFinancialYearString));
-
-            transactionsBeforeFY.forEach(tx => {
-                if ('billedAmount' in tx && (tx.brokerId === m.id || tx.customerId === m.id)) {
-                    openingBalance += tx.billedAmount || 0;
-                } else if ('totalAmount' in tx && (tx.agentId === m.id || tx.supplierId === m.id)) {
-                    openingBalance -= tx.totalAmount || 0;
-                } else if ('paymentMethod' in tx && 'cashDiscount' in tx && tx.partyId === m.id) {
-                    openingBalance -= (tx.amount + (tx.cashDiscount || 0));
-                } else if ('paymentMethod' in tx && tx.partyId === m.id) {
-                    openingBalance += tx.amount || 0;
-                } else if ('originalPurchaseId' in tx) {
-                    const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                    if(p && (p.agentId === m.id || p.supplierId === m.id)) openingBalance += tx.returnAmount || 0;
-                } else if ('originalSaleId' in tx) {
-                    const s = sales.find(s => s.id === tx.originalSaleId);
-                    if(s && (s.brokerId === m.id || s.customerId === m.id)) openingBalance -= (tx.returnAmount || 0);
-                }
-            });
-            balances.set(m.id, openingBalance);
+            balances.set(m.id, m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0));
         });
 
-        const transactionsInFY = [...purchases, ...sales, ...receipts, ...payments, ...purchaseReturns, ...saleReturns]
-            .filter(tx => tx && isDateInFinancialYear(tx.date, currentFinancialYearString));
-        
+        const allTransactionsSorted = [
+            ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
+            ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
+            ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
+            ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
+            ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
+            ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
+        ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+
         const updateBalance = (partyId: string | undefined, amount: number) => {
             if (!partyId || !balances.has(partyId)) return;
             balances.set(partyId, balances.get(partyId)! + amount);
         };
     
-        transactionsInFY.forEach(tx => {
-            if ('billedAmount' in tx) {
-                updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
-            } else if ('totalAmount' in tx) {
-                updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
-            } else if ('paymentMethod' in tx && 'cashDiscount' in tx) {
-                updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-            } else if ('paymentMethod' in tx) {
-                updateBalance(tx.partyId, tx.amount || 0);
-            } else if ('originalPurchaseId' in tx) {
+        allTransactionsSorted.forEach(tx => {
+            if (tx.txType === 'Sale') {
+                const accountablePartyId = tx.brokerId || tx.customerId;
+                updateBalance(accountablePartyId, tx.billedAmount || 0);
+            }
+            else if (tx.txType === 'Purchase') {
+                const accountablePartyId = tx.agentId || tx.supplierId;
+                updateBalance(accountablePartyId, -(tx.totalAmount || 0));
+            }
+            else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+            else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
+            else if (tx.txType === 'PurchaseReturn') {
                 const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
-            } else if ('originalSaleId' in tx) {
+                if (p) {
+                    const accountablePartyId = p.agentId || p.supplierId;
+                    updateBalance(accountablePartyId, tx.returnAmount || 0);
+                }
+            } else if (tx.txType === 'SaleReturn') {
                 const s = sales.find(s => s.id === tx.originalSaleId);
-                if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
+                if (s) {
+                    const accountablePartyId = s.brokerId || s.customerId;
+                    updateBalance(accountablePartyId, -(tx.returnAmount || 0));
+                }
             }
         });
     

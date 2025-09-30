@@ -22,7 +22,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -237,9 +237,9 @@ export function OutstandingClient() {
       let partyId: string | undefined;
       
       if (tx.txType === 'Sale') {
-        partyId = tx.customerId; // Customer is always the primary party for a sale
-        if(partyId && partyBalances.has(partyId)) {
-          const partyData = partyBalances.get(partyId)!;
+        const accountablePartyId = tx.brokerId || tx.customerId;
+        if(accountablePartyId && partyBalances.has(accountablePartyId)) {
+          const partyData = partyBalances.get(accountablePartyId)!;
           partyData.balance += tx.billedAmount;
           const paid = billPaidAmounts.get(tx.id) || 0;
           if(tx.billedAmount - paid > 0.01) {
@@ -251,12 +251,10 @@ export function OutstandingClient() {
               });
           }
         }
-        // If there's a broker, we might need separate logic for them.
-        // For now, sales affect customer balance.
       } else if (tx.txType === 'Purchase') {
-        partyId = tx.supplierId;
-        if(partyId && partyBalances.has(partyId)) {
-          const partyData = partyBalances.get(partyId)!;
+        const accountablePartyId = tx.agentId || tx.supplierId;
+        if(accountablePartyId && partyBalances.has(accountablePartyId)) {
+          const partyData = partyBalances.get(accountablePartyId)!;
           partyData.balance -= tx.totalAmount;
           const paid = billPaidAmounts.get(tx.id) || 0;
            if (tx.totalAmount - paid > 0.01) {
@@ -268,7 +266,6 @@ export function OutstandingClient() {
             });
            }
         }
-        // Handle agent if necessary
       } else if (tx.txType === 'Receipt') {
         partyId = tx.partyId;
         if(partyId && partyBalances.has(partyId)) {
@@ -282,17 +279,17 @@ export function OutstandingClient() {
       } else if (tx.txType === 'SaleReturn') {
          const originalSale = sales.find(s => s.id === tx.originalSaleId);
          if (originalSale) {
-           partyId = originalSale.customerId;
-           if(partyId && partyBalances.has(partyId)) {
-             partyBalances.get(partyId)!.balance -= tx.returnAmount;
+           const accountablePartyId = originalSale.brokerId || originalSale.customerId;
+           if(accountablePartyId && partyBalances.has(accountablePartyId)) {
+             partyBalances.get(accountablePartyId)!.balance -= tx.returnAmount;
            }
          }
       } else if (tx.txType === 'PurchaseReturn') {
          const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
          if (originalPurchase) {
-           partyId = originalPurchase.supplierId;
-           if(partyId && partyBalances.has(partyId)) {
-             partyBalances.get(partyId)!.balance += tx.returnAmount;
+           const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
+           if(accountablePartyId && partyBalances.has(accountablePartyId)) {
+             partyBalances.get(accountablePartyId)!.balance += tx.returnAmount;
            }
          }
       }

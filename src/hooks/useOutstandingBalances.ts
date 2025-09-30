@@ -6,7 +6,6 @@ import { useLocalStorageState } from "./useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { isDateBeforeFinancialYear, isDateInFinancialYear } from "@/lib/utils";
 import { parseISO } from 'date-fns';
 
 const keys = {
@@ -76,16 +75,28 @@ export const useOutstandingBalances = () => {
         };
 
         allTransactionsSorted.forEach(tx => {
-            if (tx.txType === 'Sale') updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
-            else if (tx.txType === 'Purchase') updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
+            if (tx.txType === 'Sale') {
+                const accountablePartyId = tx.brokerId || tx.customerId;
+                updateBalance(accountablePartyId, tx.billedAmount || 0);
+            }
+            else if (tx.txType === 'Purchase') {
+                const accountablePartyId = tx.agentId || tx.supplierId;
+                updateBalance(accountablePartyId, -(tx.totalAmount || 0));
+            }
             else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
             else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
             else if (tx.txType === 'PurchaseReturn') {
                 const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if (p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
+                if (p) {
+                    const accountablePartyId = p.agentId || p.supplierId;
+                    updateBalance(accountablePartyId, tx.returnAmount || 0);
+                }
             } else if (tx.txType === 'SaleReturn') {
                 const s = sales.find(s => s.id === tx.originalSaleId);
-                if (s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
+                if (s) {
+                    const accountablePartyId = s.brokerId || s.customerId;
+                    updateBalance(accountablePartyId, -(tx.returnAmount || 0));
+                }
             }
         });
 
