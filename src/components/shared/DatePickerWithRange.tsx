@@ -31,7 +31,9 @@ export function DatePickerWithRange({
 
   const handleSelect = (selectedDate: DateRange | undefined) => {
     onDateChange(selectedDate);
-    if (selectedDate?.from && selectedDate?.to) {
+    // Only close the popover if a "to" date has been selected,
+    // which signifies the completion of the range selection.
+    if (selectedDate?.to) {
       setIsOpen(false);
     }
   };
