@@ -230,8 +230,8 @@ export function LedgerClient() {
     };
   }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, hydrated]);
 
-  const handlePartySelect = React.useCallback((value: string) => {
-    setSelectedPartyId(value);
+  const handlePartySelect = React.useCallback((value: string | undefined) => {
+    setSelectedPartyId(value || "");
     const newPath = value ? `/ledger?partyId=${value}` : '/ledger';
     router.push(newPath, { scroll: false });
   }, [router]);
@@ -291,7 +291,7 @@ export function LedgerClient() {
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <MasterDataCombobox
                         triggerId="ledger-party-selector-trigger" value={selectedPartyId}
-                        onChange={(value) => handlePartySelect(value || "")} options={partyOptions}
+                        onChange={handlePartySelect} options={partyOptions}
                         placeholder="SELECT PARTY..." searchPlaceholder="SEARCH PARTIES..."
                         notFoundMessage="NO PARTY FOUND." className="h-9 text-base"
                         onEdit={handleEditParty}
