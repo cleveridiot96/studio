@@ -26,7 +26,6 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem" // This is the width of the icon-only sidebar
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-const SIDEBAR_AUTO_COLLAPSE_DELAY = 10000; // 10 seconds
 
 type SidebarContext = {
   state: "expanded" | "collapsed"
@@ -55,6 +54,7 @@ const SidebarProvider = React.forwardRef<
     defaultOpen?: boolean
     open?: boolean
     onOpenChange?: (open: boolean) => void
+    collapsible?: "offcanvas" | "icon" | "none"
   }
 >(
   (
@@ -65,15 +65,22 @@ const SidebarProvider = React.forwardRef<
       className,
       style,
       children,
+      collapsible = "icon",
       ...props
     },
     ref
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
-    const autoCollapseTimer = React.useRef<NodeJS.Timeout | null>(null);
 
-    const [_open, _setOpen] = React.useState(defaultOpen)
+    const [_open, _setOpen] = React.useState(() => {
+        if (typeof window !== 'undefined') {
+            const cookieValue = document.cookie.split('; ').find(row => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))?.split('=')[1];
+            return cookieValue ? cookieValue === 'true' : defaultOpen;
+        }
+        return defaultOpen;
+    });
+
     const open = openProp ?? _open
     
     const setOpen = React.useCallback(
@@ -97,25 +104,6 @@ const SidebarProvider = React.forwardRef<
         : setOpen((current) => !current)
     }, [isMobile, setOpen, setOpenMobile])
     
-    // Auto-collapse logic
-    React.useEffect(() => {
-        if (autoCollapseTimer.current) {
-            clearTimeout(autoCollapseTimer.current);
-        }
-
-        if (open && !isMobile) {
-            autoCollapseTimer.current = setTimeout(() => {
-                setOpen(false);
-            }, SIDEBAR_AUTO_COLLAPSE_DELAY);
-        }
-
-        return () => {
-            if (autoCollapseTimer.current) {
-                clearTimeout(autoCollapseTimer.current);
-            }
-        };
-    }, [open, isMobile, setOpen]);
-
 
     React.useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
@@ -217,7 +205,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden liquid-gradient-background"
+            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -273,7 +261,7 @@ const Sidebar = React.forwardRef<
           <div
             data-sidebar="sidebar"
             className={cn(
-                "flex h-full w-full flex-col bg-sidebar liquid-gradient-background",
+                "flex h-full w-full flex-col bg-sidebar",
                 variant === "floating" && "rounded-lg border border-sidebar-border shadow"
             )}
           >

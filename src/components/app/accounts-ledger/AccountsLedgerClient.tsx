@@ -152,22 +152,18 @@ export function AccountsLedgerClient() {
     // Calculate opening balance by summing up all transactions before the start date
     allTransactions.forEach(tx => {
         if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
-            if (tx.txType === 'Sale') {
-                const accountablePartyId = tx.brokerId || tx.customerId;
-                if(accountablePartyId === party.id) openingBalance += tx.billedAmount;
-            } else if (tx.txType === 'Purchase') {
-                const accountablePartyId = tx.agentId || tx.supplierId;
-                 if(accountablePartyId === party.id) openingBalance -= tx.totalAmount;
+            if (tx.txType === 'Sale' && tx.customerId === party.id) {
+                openingBalance += tx.billedAmount;
+            } else if (tx.txType === 'Purchase' && tx.supplierId === party.id) {
+                openingBalance -= tx.totalAmount;
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 openingBalance += tx.amount;
             } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
                 openingBalance -= (tx.amount + (tx.cashDiscount || 0));
-            } else if (tx.txType === 'PurchaseReturn') {
-                const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if(p && (p.agentId === party.id || p.supplierId === party.id)) openingBalance += tx.returnAmount;
-            } else if (tx.txType === 'SaleReturn') {
-                const s = sales.find(s => s.id === tx.originalSaleId);
-                if(s && (s.brokerId === party.id || s.customerId === party.id)) openingBalance -= tx.returnAmount;
+            } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
+                openingBalance += tx.returnAmount;
+            } else if (tx.txType === 'SaleReturn' && tx.originalCustomerId === party.id) {
+                openingBalance -= tx.returnAmount;
             } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
                 openingBalance += (tx.debit - tx.credit);
             }
@@ -177,32 +173,20 @@ export function AccountsLedgerClient() {
     const periodTransactions = allTransactions
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
         .map(tx => {
-            if (tx.txType === 'Sale') {
-                const accountablePartyId = tx.brokerId || tx.customerId;
-                if(accountablePartyId === party.id) {
-                    return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
-                }
-            } else if (tx.txType === 'Purchase') {
-                const accountablePartyId = tx.agentId || tx.supplierId;
-                if(accountablePartyId === party.id) {
-                    return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalAmount, href: `/purchases#${tx.id}` };
-                }
+            if (tx.txType === 'Sale' && tx.customerId === party.id) {
+                return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
+            } else if (tx.txType === 'Purchase' && tx.supplierId === party.id) {
+                return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalAmount, href: `/purchases#${tx.id}` };
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT PAYMENT (${tx.paymentMethod})` : `PAYMENT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
                 return { id: `pay-${tx.id}`, date: tx.date, type: 'Payment', particulars: particularDetails, debit: tx.amount, credit: 0, href: `/payments#${tx.id}` };
             } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT RECEIPT (${tx.paymentMethod})` : `RECEIPT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
                 return { id: `receipt-${tx.id}`, date: tx.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: tx.amount + (tx.cashDiscount || 0), href: `/receipts#${tx.id}` };
-            } else if (tx.txType === 'PurchaseReturn') {
-                const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if (p && (p.agentId === party.id || p.supplierId === party.id)) {
-                    return { id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.id}` };
-                }
-            } else if (tx.txType === 'SaleReturn') {
-                const s = sales.find(s => s.id === tx.originalSaleId);
-                if (s && (s.brokerId === party.id || s.customerId === party.id)) {
-                    return { id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.id}` };
-                }
+            } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
+                return { id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` };
+            } else if (tx.txType === 'SaleReturn' && tx.originalCustomerId === party.id) {
+                 return { id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` };
             } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
                 return { id: tx.id, date: tx.date, type: tx.type, particulars: `${tx.account} (VCH: ${tx.relatedVoucher?.slice(-5) || 'N/A'})`, debit: tx.debit, credit: tx.credit, href: tx.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : tx.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' };
             }

@@ -30,6 +30,7 @@ import {
   BookCopy,
   ClipboardList,
   BookMarked,
+  Landmark,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -63,6 +64,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   BookCopy,
   ClipboardList,
   BookMarked,
+  Landmark,
 };
 
 interface DashboardTileProps {
@@ -77,7 +79,7 @@ interface DashboardTileProps {
 
 const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, onClick, shortcut }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
-
+  
   const cardContent = (
     <motion.div
       whileTap={{ scale: 0.95 }}
