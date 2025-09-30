@@ -71,6 +71,7 @@ export interface AggregatedStockItemForForm {
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false);
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
@@ -82,18 +83,12 @@ export function SalesClient() {
   const [showDeleteReturnConfirm, setShowDeleteReturnConfirm] = React.useState(false);
   const [saleReturnToDeleteId, setSaleReturnToDeleteId] = React.useState<string | null>(null);
 
-  const [isSalesClientHydrated, setIsSalesClientHydrated] = React.useState(false);
   const [saleForPdf, setSaleForPdf] = React.useState<Sale | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage] = React.useState(10);
   const [activeTab, setActiveTab] = React.useState('sales');
-
-  const memoizedInitialSales = React.useMemo(() => initialSalesData, []);
-  const memoizedInitialSaleReturns = React.useMemo(() => initialSaleReturnsData, []);
-
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, memoizedInitialSales, salesMigrator);
-  const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, memoizedInitialSaleReturns);
+  
+  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
+  const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []);
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
   const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []);
@@ -106,9 +101,18 @@ export function SalesClient() {
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 
-  React.useEffect(() => setIsSalesClientHydrated(true), []);
   React.useEffect(() => {
-    if (isSalesClientHydrated) {
+    setHydrated(true);
+    if (localStorage.getItem(SALES_STORAGE_KEY) === null) {
+      setSales(initialSalesData);
+    }
+    if (localStorage.getItem(SALE_RETURNS_STORAGE_KEY) === null) {
+      setSaleReturns(initialSaleReturnsData);
+    }
+  }, [setSales, setSaleReturns]);
+
+  React.useEffect(() => {
+    if (hydrated) {
         setExpenses(prev => {
             const expenseMap = new Map(prev.map(e => [e.id, e]));
             let updated = false;
@@ -121,11 +125,11 @@ export function SalesClient() {
             return updated ? Array.from(expenseMap.values()).sort((a,b)=>a.name.localeCompare(b.name)) : prev;
         });
     }
-  }, [isSalesClientHydrated, setExpenses]);
+  }, [hydrated, setExpenses]);
 
 
   const aggregatedStockForSalesForm = React.useMemo((): AggregatedStockItemForForm[] => {
-    if (isAppHydrating || !isSalesClientHydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
 
     const stockMap = new Map<string, {
         currentBags: number;
@@ -150,7 +154,7 @@ export function SalesClient() {
         if (tx.txType === 'purchase') {
             (tx.items || []).forEach((item: PurchaseItem) => {
                 const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
-                const landedCost = item.landedCostPerKg || tx.effectiveRate;
+                const landedCost = item.landedCostPerKg || 0;
                 const purchaseExpensesPerKg = landedCost - item.rate;
                 
                 stockMap.set(key, {
@@ -242,11 +246,11 @@ export function SalesClient() {
     });
     
     return result;
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, isSalesClientHydrated, financialYear, saleToEdit]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, hydrated, financialYear, saleToEdit]);
 
 
   const filteredSales = React.useMemo(() => {
-    if (isAppHydrating || !isSalesClientHydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
     const fySales = sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
 
     const enrichedSales = fySales.map(sale => {
@@ -273,22 +277,13 @@ export function SalesClient() {
     }).filter(Boolean) as Sale[];
 
     return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [sales, receipts, financialYear, isAppHydrating, isSalesClientHydrated]);
+  }, [sales, receipts, financialYear, isAppHydrating, hydrated]);
 
 
   const filteredSaleReturns = React.useMemo(() => {
-    if (isAppHydrating || !isSalesClientHydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
     return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
-  }, [saleReturns, financialYear, isAppHydrating, isSalesClientHydrated]);
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedSales = React.useMemo(() => filteredSales.slice(startIndex, endIndex), [filteredSales, startIndex, endIndex]);
-  const totalPages = React.useMemo(() => Math.ceil(filteredSales.length / itemsPerPage), [filteredSales, itemsPerPage]);
-
-  const goToPage = React.useCallback((page: number) => setCurrentPage(page), []);
-  const nextPage = React.useCallback(() => setCurrentPage(prev => Math.min(prev + 1, totalPages)), [totalPages]);
-  const prevPage = React.useCallback(() => setCurrentPage(prev => Math.max(prev - 1, 1)), []);
+  }, [saleReturns, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     const isEditing = sales.some(s => s.id === sale.id);
@@ -437,7 +432,7 @@ export function SalesClient() {
     }
   }, [saleForPdf, toast]);
 
-  if (isAppHydrating || !isSalesClientHydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading sales data...</p></div>;
+  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading sales data...</p></div>;
 
   return (
     <div className="space-y-4 print-area">
@@ -464,7 +459,7 @@ export function SalesClient() {
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
-          <SaleTable data={paginatedSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} onDownloadPdf={triggerDownloadSalePdf} />
+          <SaleTable data={filteredSales} onEdit={handleEditSale} onDelete={handleDeleteSaleAttempt} onDownloadPdf={triggerDownloadSalePdf} />
         </TabsContent>
 
         <TabsContent value="saleReturns">
@@ -497,5 +492,3 @@ export function SalesClient() {
     </div>
   );
 }
-
-    

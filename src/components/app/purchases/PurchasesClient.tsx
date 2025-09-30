@@ -58,12 +58,10 @@ const LEDGER_STORAGE_KEY = 'ledgerData';
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false);
 
-  const memoizedInitialPurchases = React.useMemo(() => initialPurchasesData, []);
-  const memoizedInitialPurchaseReturns = React.useMemo(() => initialPurchaseReturnsData, []);
-
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedInitialPurchases, purchaseMigrator);
-  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, memoizedInitialPurchaseReturns);
+  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
+  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
@@ -88,15 +86,23 @@ export function PurchasesClient() {
 
   const [purchaseForPdf, setPurchaseForPdf] = React.useState<Purchase | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
-  const [isPurchasesClientHydrated, setIsPurchasesClientHydrated] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('purchases');
 
   React.useEffect(() => {
-    setIsPurchasesClientHydrated(true);
-  }, []);
+    setHydrated(true);
+    
+    // Set initial data on first load if localStorage is empty
+    if (localStorage.getItem(PURCHASES_STORAGE_KEY) === null) {
+      setPurchases(initialPurchasesData);
+    }
+    if (localStorage.getItem(PURCHASE_RETURNS_STORAGE_KEY) === null) {
+      setPurchaseReturns(initialPurchaseReturnsData);
+    }
+
+  }, [setPurchases, setPurchaseReturns]);
   
   React.useEffect(() => {
-    if (isPurchasesClientHydrated) {
+    if (hydrated) {
         const fixedItemsUpdater = (currentItems: MasterItem[], fixedItems: readonly MasterItem[], setter: React.Dispatch<React.SetStateAction<MasterItem[]>>) => {
             const itemsMap = new Map(currentItems.map(item => [item.id, item]));
             let updated = false;
@@ -116,25 +122,25 @@ export function PurchasesClient() {
         fixedItemsUpdater(warehouses, FIXED_WAREHOUSES, setWarehouses);
         fixedItemsUpdater(expenses, FIXED_EXPENSES, setExpenses);
     }
-  }, [isPurchasesClientHydrated, warehouses, setWarehouses, expenses, setExpenses]);
+  }, [hydrated, warehouses, setWarehouses, expenses, setExpenses]);
 
   const allExpenseParties = React.useMemo(() => {
-    if (!isPurchasesClientHydrated) return [];
+    if (!hydrated) return [];
     return [...suppliers, ...agents, ...transporters, ...brokers, ...customers, ...expenses]
         .filter(p => p && p.id && p.name)
         .sort((a,b) => a.name.localeCompare(b.name));
-  }, [isPurchasesClientHydrated, suppliers, agents, transporters, brokers, customers, expenses]);
+  }, [hydrated, suppliers, agents, transporters, brokers, customers, expenses]);
 
 
   const filteredPurchases = React.useMemo(() => {
-    if (isAppHydrating || !isPurchasesClientHydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
     return purchases.filter(purchase => purchase && purchase.date && isDateInFinancialYear(purchase.date, financialYear));
-  }, [purchases, financialYear, isAppHydrating, isPurchasesClientHydrated]);
+  }, [purchases, financialYear, isAppHydrating, hydrated]);
 
   const filteredPurchaseReturns = React.useMemo(() => {
-    if (isAppHydrating || !isPurchasesClientHydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
     return purchaseReturns.filter(pr => pr && pr.date && isDateInFinancialYear(pr.date, financialYear));
-  }, [purchaseReturns, financialYear, isAppHydrating, isPurchasesClientHydrated]);
+  }, [purchaseReturns, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     const isEditing = purchases.some(p => p.id === purchase.id);
@@ -321,7 +327,7 @@ export function PurchasesClient() {
     }
   }, [purchaseForPdf, toast]);
 
-  if (isAppHydrating || !isPurchasesClientHydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
+  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
 
   return (
     <div className="space-y-2 print-area">

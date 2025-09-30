@@ -42,13 +42,10 @@ export function ReceiptsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
-  const memoizedInitialReceipts = React.useMemo(() => initialReceiptsData, []);
-  const memoizedEmptyMasters = React.useMemo(() => [], []);
 
-
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
+  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
@@ -61,7 +58,10 @@ export function ReceiptsClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-  }, []);
+    if (localStorage.getItem(RECEIPTS_STORAGE_KEY) === null) {
+      setReceipts(initialReceiptsData);
+    }
+  }, [setReceipts]);
 
   const allReceiptParties = React.useMemo(() => {
     if (!hydrated) return [];

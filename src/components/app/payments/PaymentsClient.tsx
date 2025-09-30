@@ -41,17 +41,15 @@ const LEDGER_STORAGE_KEY = 'ledgerData';
 export function PaymentsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
+  const [hydrated, setHydrated] = React.useState(false);
 
-  const memoizedInitialPayments = React.useMemo(() => initialPaymentsData, []);
-  const memoizedEmptyMasters = React.useMemo(() => [], []);
-
-  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, memoizedEmptyMasters);
+  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, []);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
+  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 
@@ -60,11 +58,13 @@ export function PaymentsClient() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = React.useState<string | null>(null);
-  const [hydrated, setHydrated] = React.useState(false);
-
+  
   React.useEffect(() => {
     setHydrated(true);
-  }, []);
+    if (localStorage.getItem(PAYMENTS_STORAGE_KEY) === null) {
+      setPayments(initialPaymentsData);
+    }
+  }, [setPayments]);
 
   const allPaymentParties = React.useMemo(() => {
     if (!hydrated) return [];

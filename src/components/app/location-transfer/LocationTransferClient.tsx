@@ -86,7 +86,7 @@ export function LocationTransferClient() {
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
 
-  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, initialLocationTransfersData, locationTransferMigrator);
+  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, [], locationTransferMigrator);
   const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
   const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, []);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
@@ -114,11 +114,14 @@ export function LocationTransferClient() {
 
   React.useEffect(() => {
     setHydrated(true);
+     if (localStorage.getItem(LOCATION_TRANSFERS_STORAGE_KEY) === null) {
+      setLocationTransfers(initialLocationTransfersData);
+    }
     if (!dateRange) {
         const today = new Date();
         setDateRange({ from: startOfDay(subDays(today, 30)), to: endOfDay(today) });
     }
-  }, [dateRange]);
+  }, [dateRange, setLocationTransfers]);
 
   const allExpenseParties = React.useMemo(() => {
       if (!hydrated) return [];
@@ -605,5 +608,3 @@ export function LocationTransferClient() {
     </div>
   );
 }
-
-    
