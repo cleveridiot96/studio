@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -100,14 +99,14 @@ const useCalculatorState = () => {
     }
 };
 
-const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClose: () => void }) => {
+export const Calculator = ({ isVisible, onClose }: { isVisible: boolean, onClose: () => void }) => {
     const calcState = useCalculatorState();
     const calcRef = React.useRef<HTMLDivElement>(null);
 
     const [isMounted, setIsMounted] = React.useState(false);
     React.useEffect(() => { setIsMounted(true); }, []);
     
-    const [position, setPosition] = useLocalStorageState('calculatorPosition', { x: typeof window !== 'undefined' ? window.innerWidth - 370 : 0, y: typeof window !== 'undefined' ? window.innerHeight - 620 : 0 });
+    const [position, setPosition] = useLocalStorageState('calculatorPosition', { x: typeof window !== 'undefined' ? window.innerWidth - 370 : 0, y: 80 });
     const [size, setSize] = useLocalStorageState('calculatorSize', { width: 340, height: 520 });
     
     const isDragging = React.useRef(false);
@@ -232,8 +231,10 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
                            <div key={direction} onMouseDown={e => handleResizeMouseDown(e, direction)} className={`absolute ${className}`} style={{cursor}}/>
                        ))}
                         
-                        <div onMouseDown={handleDragMouseDown} className="flex justify-center items-center py-1 text-muted-foreground cursor-move flex-shrink-0" title="Drag Calculator">
+                        <div onMouseDown={handleDragMouseDown} className="flex justify-between items-center py-1 text-muted-foreground cursor-move flex-shrink-0" title="Drag Calculator">
+                           <div className="w-8"></div>
                            <GripVertical className="h-5 w-5" />
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground cursor-pointer" title="Close Calculator" onClick={onClose}><X className="h-5 w-5"/></Button>
                         </div>
 
                         <CardHeader className="pb-2 pt-0 flex-shrink-0">
@@ -304,34 +305,4 @@ const FloatingCalculator = ({ isVisible, onClose }: { isVisible: boolean, onClos
             )}
         </AnimatePresence>
     );
-};
-
-const FloatingActionButton = ({ onClick }: { onClick: () => void }) => (
-    <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.2 }}
-        className="fixed bottom-6 right-6 z-50 print:hidden"
-    >
-        <Button
-            size="icon"
-            className="w-16 h-16 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-transform duration-200"
-            aria-label={"Open Calculator"}
-            onClick={onClick}
-        >
-            <CalculatorIcon className="h-8 w-8" />
-        </Button>
-    </motion.div>
-);
-
-
-export const Calculator = () => {
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  return (
-    <>
-      <FloatingCalculator isVisible={isOpen} onClose={() => setIsOpen(false)} />
-      {!isOpen && <FloatingActionButton onClick={() => setIsOpen(true)} />}
-    </>
-  );
 };

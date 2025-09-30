@@ -1,10 +1,9 @@
-
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark, CalculatorIcon } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -82,6 +81,7 @@ const useSearchData = () => {
 };
 
 function AppHeaderContentInternal() {
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   return (
     <>
       <Link href="/dashboard">
@@ -97,6 +97,10 @@ function AppHeaderContentInternal() {
             FINANCIAL SUMMARY
         </Button>
       </Link>
+      <Button variant="ghost" size="icon" aria-label="Open Calculator" onClick={() => setIsCalculatorOpen(true)}>
+        <CalculatorIcon className="h-5 w-5 text-foreground" />
+      </Button>
+      <Calculator isVisible={isCalculatorOpen} onClose={() => setIsCalculatorOpen(false)} />
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Settings">
@@ -218,8 +222,6 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
                 </div>
               </ErrorBoundary>
             </SidebarInset>
-           
-            <Calculator />
           </div>
         </div>
     </>
