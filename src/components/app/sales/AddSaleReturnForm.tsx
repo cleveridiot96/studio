@@ -47,6 +47,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
       ? {
           date: new Date(saleReturnToEdit.date),
           originalSaleId: saleReturnToEdit.originalSaleId,
+          originalLotNumber: saleReturnToEdit.originalLotNumber,
           quantityReturned: saleReturnToEdit.quantityReturned,
           netWeightReturned: saleReturnToEdit.netWeightReturned,
           returnReason: saleReturnToEdit.returnReason || "",
@@ -56,6 +57,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
       : {
           date: new Date(),
           originalSaleId: undefined,
+          originalLotNumber: undefined,
           quantityReturned: undefined,
           netWeightReturned: undefined,
           returnReason: "",
@@ -64,10 +66,10 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
         },
   });
 
-  const { control, handleSubmit, reset, watch, setValue } = formMethods;
+  const { control, handleSubmit, reset, watch, setValue, getValues } = formMethods;
   const watchedOriginalSaleId = watch("originalSaleId");
+  const watchedOriginalLotNumber = watch("originalLotNumber");
   const watchedQuantityReturned = watch("quantityReturned");
-
 
   React.useEffect(() => {
     if (isOpen) {
@@ -75,13 +77,14 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
         ? {
             date: new Date(saleReturnToEdit.date),
             originalSaleId: saleReturnToEdit.originalSaleId,
+            originalLotNumber: saleReturnToEdit.originalLotNumber,
             quantityReturned: saleReturnToEdit.quantityReturned,
             netWeightReturned: saleReturnToEdit.netWeightReturned,
             returnReason: saleReturnToEdit.returnReason || "",
             notes: saleReturnToEdit.notes || "",
             restockingFee: saleReturnToEdit.restockingFee || undefined,
           }
-        : { date: new Date(), originalSaleId: undefined, quantityReturned: undefined, netWeightReturned: undefined, returnReason: "", notes: "", restockingFee: undefined }
+        : { date: new Date(), originalSaleId: undefined, originalLotNumber: undefined, quantityReturned: undefined, netWeightReturned: undefined, returnReason: "", notes: "", restockingFee: undefined }
       );
       setSelectedOriginalSale(saleReturnToEdit ? sales.find(s => s.id === saleReturnToEdit.originalSaleId) || null : null);
     }
@@ -91,32 +94,43 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
     if (watchedOriginalSaleId) {
       const sale = sales.find(s => s.id === watchedOriginalSaleId);
       setSelectedOriginalSale(sale || null);
+       if (sale && !sale.items.some(item => item.lotNumber === getValues("originalLotNumber"))) {
+        setValue("originalLotNumber", undefined, { shouldValidate: true });
+       }
     } else {
       setSelectedOriginalSale(null);
     }
-  }, [watchedOriginalSaleId, sales]);
+  }, [watchedOriginalSaleId, sales, getValues, setValue]);
 
   React.useEffect(() => {
-    if (selectedOriginalSale && watchedQuantityReturned && watchedQuantityReturned > 0) {
-      const avgWeightPerBag = selectedOriginalSale.totalNetWeight / selectedOriginalSale.totalQuantity;
-      if (!isNaN(avgWeightPerBag) && formMethods.getValues("netWeightReturned") === 0) {
-        setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)));
+    if (selectedOriginalSale && watchedOriginalLotNumber && watchedQuantityReturned && watchedQuantityReturned > 0) {
+      const originalItem = selectedOriginalSale.items.find(i => i.lotNumber === watchedOriginalLotNumber);
+      if (originalItem) {
+        const avgWeightPerBag = originalItem.netWeight / originalItem.quantity;
+        if (!isNaN(avgWeightPerBag) && getValues("netWeightReturned") === 0) {
+            setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)));
+        }
       }
     }
-  }, [watchedQuantityReturned, selectedOriginalSale, setValue, formMethods]);
+  }, [watchedQuantityReturned, watchedOriginalLotNumber, selectedOriginalSale, setValue, getValues]);
 
 
   const processSubmit = (values: SaleReturnFormValues) => {
     setIsSubmitting(true);
     const originalSale = sales.find(s => s.id === values.originalSaleId);
-    if (!originalSale || !values.quantityReturned || !values.netWeightReturned) {
+    if (!originalSale || !values.originalLotNumber || !values.quantityReturned || !values.netWeightReturned) {
       toast({ title: "Error", description: "Original sale or return quantities are missing.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
     
-    const originalItem = originalSale.items[0]; // Assuming single item for now, needs improvement for multi-item returns
-    const rate = originalItem?.rate || 0;
+    const originalItem = originalSale.items.find(i => i.lotNumber === values.originalLotNumber);
+    if (!originalItem) {
+        toast({ title: "Error", description: "Lot number not found in original sale.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
+    const rate = originalItem.rate;
 
     const returnAmount = (values.netWeightReturned * rate) - (values.restockingFee || 0);
 
@@ -127,7 +141,7 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
       originalBillNumber: originalSale.billNumber,
       originalCustomerId: originalSale.customerId,
       originalCustomerName: originalSale.customerName,
-      originalLotNumber: originalItem.lotNumber,
+      originalLotNumber: values.originalLotNumber,
       originalSaleRate: rate,
       quantityReturned: values.quantityReturned,
       netWeightReturned: values.netWeightReturned,
@@ -146,6 +160,11 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
     value: s.id,
     label: `${s.billNumber || s.id.slice(-5)} - ${s.customerName || s.customerId} (${s.items.map(i => i.lotNumber).join(', ')}, ${format(parseISO(s.date), "dd-MM-yy")})`,
   }));
+
+  const lotOptions = selectedOriginalSale?.items.map(item => ({
+    value: item.lotNumber,
+    label: item.lotNumber,
+  })) || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
@@ -196,13 +215,30 @@ export const AddSaleReturnForm: React.FC<AddSaleReturnFormProps> = ({
                   <FormMessage />
                 </FormItem>)}
               />
+              {selectedOriginalSale && selectedOriginalSale.items.length > 1 && (
+                 <FormField
+                  control={control}
+                  name="originalLotNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vakkal/Lot to Return</FormLabel>
+                      <MasterDataCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={lotOptions}
+                        placeholder="Select Lot to Return"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               {selectedOriginalSale && (
                 <div className="p-3 border rounded-md bg-muted/50 text-sm uppercase">
                   <p><strong>Bill:</strong> {selectedOriginalSale.billNumber || selectedOriginalSale.id.slice(-5)}</p>
                   <p><strong>Customer:</strong> {selectedOriginalSale.customerName || selectedOriginalSale.customerId}</p>
-                  <p><strong>Lot(s):</strong> {selectedOriginalSale.items.map(i => i.lotNumber).join(', ')}</p>
-                  <p><strong>Original Sale Rate:</strong> ₹{selectedOriginalSale.items[0]?.rate.toFixed(2)}/kg</p>
-                  <p><strong>Original Qty:</strong> {selectedOriginalSale.totalQuantity} bags, {selectedOriginalSale.totalNetWeight.toFixed(2)} kg</p>
+                  <p><strong>Selected Lot:</strong> {watchedOriginalLotNumber || selectedOriginalSale.items[0]?.lotNumber || 'N/A'}</p>
+                  <p><strong>Original Sale Rate:</strong> ₹{selectedOriginalSale.items.find(i => i.lotNumber === (watchedOriginalLotNumber || selectedOriginalSale.items[0]?.lotNumber))?.rate.toFixed(2)}/kg</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">

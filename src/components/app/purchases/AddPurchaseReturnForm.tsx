@@ -48,6 +48,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
       ? {
           date: new Date(purchaseReturnToEdit.date),
           originalPurchaseId: purchaseReturnToEdit.originalPurchaseId,
+          originalLotNumber: purchaseReturnToEdit.originalLotNumber,
           quantityReturned: purchaseReturnToEdit.quantityReturned,
           netWeightReturned: purchaseReturnToEdit.netWeightReturned,
           returnReason: purchaseReturnToEdit.returnReason || "",
@@ -56,6 +57,7 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
       : {
           date: new Date(),
           originalPurchaseId: undefined,
+          originalLotNumber: undefined,
           quantityReturned: undefined,
           netWeightReturned: undefined,
           returnReason: "",
@@ -63,8 +65,9 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
         },
   });
 
-  const { control, handleSubmit, reset, watch, setValue } = formMethods;
+  const { control, handleSubmit, reset, watch, setValue, getValues } = formMethods;
   const watchedOriginalPurchaseId = watch("originalPurchaseId");
+  const watchedOriginalLotNumber = watch("originalLotNumber");
   const watchedQuantityReturned = watch("quantityReturned");
 
   React.useEffect(() => {
@@ -73,12 +76,13 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
         ? {
             date: new Date(purchaseReturnToEdit.date),
             originalPurchaseId: purchaseReturnToEdit.originalPurchaseId,
+            originalLotNumber: purchaseReturnToEdit.originalLotNumber,
             quantityReturned: purchaseReturnToEdit.quantityReturned,
             netWeightReturned: purchaseReturnToEdit.netWeightReturned,
             returnReason: purchaseReturnToEdit.returnReason || "",
             notes: purchaseReturnToEdit.notes || "",
           }
-        : { date: new Date(), originalPurchaseId: undefined, quantityReturned: undefined, netWeightReturned: undefined, returnReason: "", notes: "" };
+        : { date: new Date(), originalPurchaseId: undefined, originalLotNumber: undefined, quantityReturned: undefined, netWeightReturned: undefined, returnReason: "", notes: "" };
       reset(defaultVals);
       setSelectedOriginalPurchase(purchaseReturnToEdit ? purchases.find(p => p.id === purchaseReturnToEdit.originalPurchaseId) || null : null);
       setNetWeightReturnedManuallySet(!!purchaseReturnToEdit?.netWeightReturned);
@@ -89,48 +93,57 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
     if (watchedOriginalPurchaseId) {
       const purchase = purchases.find(p => p.id === watchedOriginalPurchaseId);
       setSelectedOriginalPurchase(purchase || null);
-      if (formMethods.getValues("quantityReturned") === 0) {
+       // If purchase changes, reset the lot number selection if it's no longer valid
+       if (purchase && !purchase.items.some(item => item.lotNumber === getValues("originalLotNumber"))) {
+        setValue("originalLotNumber", undefined, { shouldValidate: true });
+       }
+      if (getValues("quantityReturned") === 0) {
         setNetWeightReturnedManuallySet(false);
       }
     } else {
       setSelectedOriginalPurchase(null);
       setNetWeightReturnedManuallySet(false);
     }
-  }, [watchedOriginalPurchaseId, purchases, formMethods]);
+  }, [watchedOriginalPurchaseId, purchases, getValues, setValue]);
 
   React.useEffect(() => {
-    if (selectedOriginalPurchase && watchedQuantityReturned && watchedQuantityReturned > 0 && !netWeightReturnedManuallySet) {
-      const avgWeightPerBag = (selectedOriginalPurchase.totalQuantity > 0)
-        ? selectedOriginalPurchase.totalNetWeight / selectedOriginalPurchase.totalQuantity
-        : 50; 
-      if (!isNaN(avgWeightPerBag)) {
-        setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)), { shouldValidate: true });
+    if (selectedOriginalPurchase && watchedOriginalLotNumber && watchedQuantityReturned && watchedQuantityReturned > 0 && !netWeightReturnedManuallySet) {
+      const originalItem = selectedOriginalPurchase.items.find(i => i.lotNumber === watchedOriginalLotNumber);
+      if (originalItem) {
+        const avgWeightPerBag = originalItem.netWeight / originalItem.quantity;
+        if (!isNaN(avgWeightPerBag)) {
+            setValue("netWeightReturned", parseFloat((watchedQuantityReturned * avgWeightPerBag).toFixed(2)), { shouldValidate: true });
+        }
       }
     } else if (!watchedQuantityReturned && !netWeightReturnedManuallySet) {
         setValue("netWeightReturned", undefined, { shouldValidate: true });
     }
-  }, [watchedQuantityReturned, selectedOriginalPurchase, netWeightReturnedManuallySet, setValue]);
+  }, [watchedQuantityReturned, watchedOriginalLotNumber, selectedOriginalPurchase, netWeightReturnedManuallySet, setValue]);
 
 
   const processSubmit = (values: PurchaseReturnFormValues) => {
     setIsSubmitting(true);
     const originalPurchase = purchases.find(p => p.id === values.originalPurchaseId);
-    if (!originalPurchase || !values.quantityReturned || !values.netWeightReturned) {
+    if (!originalPurchase || !values.originalLotNumber || !values.quantityReturned || !values.netWeightReturned) {
       toast({ title: "Error", description: "Missing required information for the return.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
     
-    // Find the original item to get its rate
-    const originalItem = originalPurchase.items.find(item => item.lotNumber === originalPurchase.items[0]?.lotNumber); // Assuming single lot for simplicity in return for now
-    const rate = originalItem?.rate || 0;
+    const originalItem = originalPurchase.items.find(item => item.lotNumber === values.originalLotNumber);
+    if (!originalItem) {
+        toast({ title: "Error", description: "Lot number not found in the original purchase.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
+    const rate = originalItem.rate;
     const returnAmount = values.netWeightReturned * rate;
 
     const purchaseReturnData: PurchaseReturn = {
       id: purchaseReturnToEdit?.id || `pr-${Date.now()}`,
       date: format(values.date, "yyyy-MM-dd"),
       originalPurchaseId: originalPurchase.id,
-      originalLotNumber: originalPurchase.items[0]?.lotNumber || 'N/A', // Simplified for now
+      originalLotNumber: values.originalLotNumber,
       originalSupplierId: originalPurchase.supplierId,
       originalSupplierName: originalPurchase.supplierName,
       originalPurchaseRate: rate,
@@ -150,6 +163,11 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
     value: p.id,
     label: `${p.items.map(i => i.lotNumber).join(', ')} - ${p.supplierName || p.supplierId} (Date: ${format(parseISO(p.date), "dd-MM-yy")})`,
   }));
+  
+  const lotOptions = selectedOriginalPurchase?.items.map(item => ({
+    value: item.lotNumber,
+    label: item.lotNumber,
+  })) || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={(openState) => { if (!openState) onClose(); }}>
@@ -200,12 +218,29 @@ export const AddPurchaseReturnForm: React.FC<AddPurchaseReturnFormProps> = ({
                   <FormMessage />
                 </FormItem>)}
               />
+              {selectedOriginalPurchase && selectedOriginalPurchase.items.length > 1 && (
+                <FormField
+                  control={control}
+                  name="originalLotNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vakkal/Lot to Return</FormLabel>
+                      <MasterDataCombobox
+                        value={field.value}
+                        onChange={field.onChange}
+                        options={lotOptions}
+                        placeholder="Select Lot to Return"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               {selectedOriginalPurchase && (
                 <div className="p-3 border rounded-md bg-muted/50 text-sm uppercase">
-                  <p><strong>Lot(s):</strong> {selectedOriginalPurchase.items.map(i => i.lotNumber).join(', ')}</p>
+                  <p><strong>Selected Lot:</strong> {watchedOriginalLotNumber || selectedOriginalPurchase.items[0]?.lotNumber || 'N/A'}</p>
                   <p><strong>Supplier:</strong> {selectedOriginalPurchase.supplierName || selectedOriginalPurchase.supplierId}</p>
-                  <p><strong>Original Rate:</strong> ₹{selectedOriginalPurchase.items[0]?.rate.toFixed(2)}/kg</p>
-                  <p><strong>Original Qty:</strong> {selectedOriginalPurchase.totalQuantity} bags, {selectedOriginalPurchase.totalNetWeight.toFixed(2)} kg</p>
+                  <p><strong>Original Rate:</strong> ₹{selectedOriginalPurchase.items.find(i => i.lotNumber === (watchedOriginalLotNumber || selectedOriginalPurchase.items[0]?.lotNumber))?.rate.toFixed(2)}/kg</p>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">

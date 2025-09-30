@@ -1,14 +1,18 @@
 
 import { z } from 'zod';
-import type { Purchase, PurchaseReturn } from '@/lib/types';
+import type { Purchase, PurchaseReturn, PurchaseItem } from '@/lib/types';
 
-// Helper to calculate available stock for return from a specific purchase
+// Helper to calculate available stock for return from a specific item within a purchase
 const getAvailableForReturn = (
   purchase: Purchase,
+  lotNumber: string,
   existingReturns: PurchaseReturn[]
 ): { availableBags: number; availableWeight: number } => {
-  const returnedForThisPurchase = existingReturns
-    .filter(pr => pr.originalPurchaseId === purchase.id)
+  const originalItem = purchase.items.find(item => item.lotNumber === lotNumber);
+  if (!originalItem) return { availableBags: 0, availableWeight: 0 };
+
+  const returnedForThisLot = existingReturns
+    .filter(pr => pr.originalPurchaseId === purchase.id && pr.originalLotNumber === lotNumber)
     .reduce((acc, pr) => {
       acc.bags += pr.quantityReturned;
       acc.weight += pr.netWeightReturned;
@@ -16,8 +20,8 @@ const getAvailableForReturn = (
     }, { bags: 0, weight: 0 });
 
   return {
-    availableBags: purchase.quantity - returnedForThisPurchase.bags,
-    availableWeight: purchase.netWeight - returnedForThisPurchase.weight,
+    availableBags: originalItem.quantity - returnedForThisLot.bags,
+    availableWeight: originalItem.netWeight - returnedForThisLot.weight,
   };
 };
 
@@ -28,6 +32,7 @@ export const purchaseReturnSchema = (
   date: z.date({ required_error: "Return date is required." }),
   originalPurchaseId: z.string().min(1, "Original purchase selection is required.")
     .refine(id => allPurchases.some(p => p.id === id), { message: "Invalid original purchase selected." }),
+  originalLotNumber: z.string().min(1, "Vakkal/Lot to be returned is required."),
   quantityReturned: z.coerce.number().min(0.01, "Quantity returned must be greater than 0."),
   netWeightReturned: z.coerce.number().min(0.01, "Net weight returned must be greater than 0."),
   returnReason: z.string().optional(),
@@ -35,36 +40,36 @@ export const purchaseReturnSchema = (
 }).superRefine((data, ctx) => {
   const originalPurchase = allPurchases.find(p => p.id === data.originalPurchaseId);
   if (!originalPurchase) {
-    // This should ideally be caught by the refine on originalPurchaseId, but defensive check.
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Original purchase details not found.",
-      path: ["originalPurchaseId"],
-    });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Original purchase details not found.", path: ["originalPurchaseId"] });
+    return z.NEVER;
+  }
+  
+  const originalItem = originalPurchase.items.find(i => i.lotNumber === data.originalLotNumber);
+  if (!originalItem) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selected Lot/Vakkal not found in the original purchase.", path: ["originalLotNumber"] });
     return z.NEVER;
   }
 
-  const { availableBags, availableWeight } = getAvailableForReturn(originalPurchase, existingPurchaseReturns);
+  const { availableBags, availableWeight } = getAvailableForReturn(originalPurchase, data.originalLotNumber, existingPurchaseReturns);
 
   if (data.quantityReturned > availableBags) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Quantity to return (${data.quantityReturned}) exceeds available quantity (${availableBags} bags) for this purchase.`,
+      message: `Return Qty (${data.quantityReturned}) exceeds available (${Math.round(availableBags)} bags).`,
       path: ["quantityReturned"],
     });
   }
   if (data.netWeightReturned > availableWeight) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Net weight to return (${data.netWeightReturned}kg) exceeds available weight (${availableWeight.toFixed(2)}kg) for this purchase.`,
+      message: `Return Wt (${data.netWeightReturned}kg) exceeds available (${availableWeight.toFixed(2)}kg).`,
       path: ["netWeightReturned"],
     });
   }
-  // Optional: Check if netWeightReturned makes sense for quantityReturned
-  const avgWeightPerBag = originalPurchase.netWeight / originalPurchase.quantity;
-  if (Math.abs((data.quantityReturned * avgWeightPerBag) - data.netWeightReturned) > (data.quantityReturned * avgWeightPerBag * 0.1) ) { // Allow 10% variance
-    // This is a soft warning, maybe not a hard error unless business logic dictates
-    // console.warn("Net weight returned seems inconsistent with quantity and original average weight per bag.");
+
+  const avgWeightPerBag = originalItem.netWeight / originalItem.quantity;
+  if (Math.abs((data.quantityReturned * avgWeightPerBag) - data.netWeightReturned) > (data.quantityReturned * avgWeightPerBag * 0.1) ) { 
+    // This is a soft warning, so we don't add an issue. It's just for consideration.
   }
 });
 

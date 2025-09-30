@@ -2,13 +2,16 @@
 import { z } from 'zod';
 import type { Sale, SaleReturn } from '@/lib/types';
 
-// Helper to calculate available stock for return from a specific sale
 const getAvailableForSaleReturn = (
   sale: Sale,
+  lotNumber: string,
   existingReturns: SaleReturn[]
 ): { availableBags: number; availableWeight: number } => {
-  const returnedForThisSale = existingReturns
-    .filter(sr => sr.originalSaleId === sale.id)
+  const originalItem = sale.items.find(item => item.lotNumber === lotNumber);
+  if (!originalItem) return { availableBags: 0, availableWeight: 0 };
+  
+  const returnedForThisLot = existingReturns
+    .filter(sr => sr.originalSaleId === sale.id && sr.originalLotNumber === lotNumber)
     .reduce((acc, sr) => {
       acc.bags += sr.quantityReturned;
       acc.weight += sr.netWeightReturned;
@@ -16,8 +19,8 @@ const getAvailableForSaleReturn = (
     }, { bags: 0, weight: 0 });
 
   return {
-    availableBags: sale.totalQuantity - returnedForThisSale.bags,
-    availableWeight: sale.totalNetWeight - returnedForThisSale.weight,
+    availableBags: originalItem.quantity - returnedForThisLot.bags,
+    availableWeight: originalItem.netWeight - returnedForThisLot.weight,
   };
 };
 
@@ -29,6 +32,7 @@ export const saleReturnSchema = (
   date: z.date({ required_error: "Return date is required." }),
   originalSaleId: z.string().min(1, "Original sale selection is required.")
     .refine(id => allSales.some(s => s.id === id), { message: "Invalid original sale selected." }),
+  originalLotNumber: z.string().min(1, "Vakkal/Lot to be returned is required."),
   quantityReturned: z.coerce.number().min(0.01, "Quantity returned must be > 0."),
   netWeightReturned: z.coerce.number().min(0.01, "Net weight returned must be > 0."),
   returnReason: z.string().optional(),
@@ -40,19 +44,26 @@ export const saleReturnSchema = (
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Original sale details not found.", path: ["originalSaleId"]});
     return z.NEVER;
   }
-  const { availableBags, availableWeight } = getAvailableForSaleReturn(originalSale, existingSaleReturns);
+
+  const originalItem = originalSale.items.find(i => i.lotNumber === data.originalLotNumber);
+  if (!originalItem) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Selected Lot/Vakkal not found in the original sale.", path: ["originalLotNumber"] });
+    return z.NEVER;
+  }
+
+  const { availableBags, availableWeight } = getAvailableForSaleReturn(originalSale, data.originalLotNumber, existingSaleReturns);
 
   if (data.quantityReturned > availableBags) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Quantity to return (${data.quantityReturned}) exceeds available quantity (${availableBags} bags) for this sale.`,
+      message: `Return Qty (${data.quantityReturned}) exceeds available (${availableBags} bags).`,
       path: ["quantityReturned"],
     });
   }
   if (data.netWeightReturned > availableWeight) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: `Net weight to return (${data.netWeightReturned}kg) exceeds available weight (${availableWeight.toFixed(2)}kg) for this sale.`,
+      message: `Return Wt (${data.netWeightReturned}kg) exceeds available (${availableWeight.toFixed(2)}kg).`,
       path: ["netWeightReturned"],
     });
   }
