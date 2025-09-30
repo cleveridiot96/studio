@@ -169,7 +169,8 @@ export function InventoryClient() {
                     const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
                     let toEntry = inventoryMap.get(toKey);
                     
-                    const newEffectiveRate = costPerKg + (tx.perKgExpense || 0);
+                    const perKgExpense = tx.perKgExpense || 0;
+                    const newEffectiveRate = costPerKg + perKgExpense;
 
                     if (!toEntry) {
                         toEntry = {
