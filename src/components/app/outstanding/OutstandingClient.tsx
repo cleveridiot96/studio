@@ -6,7 +6,7 @@ import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, Sale
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Printer, Users } from "lucide-react";
+import { ArrowUpDown, Printer, Users, ChevronDown } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, addDays, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,11 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 const keys = {
   purchases: 'purchasesData',
@@ -55,41 +60,52 @@ interface OutstandingBill {
   paid: number;
   balance: number;
   daysOverdue: number;
+  partyName: string; // Added for detailed view
 }
 
 const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
-  const agingBuckets = {
-    current: { label: 'Current (0-30 Days)', total: 0, count: 0, items: [] as OutstandingBill[] },
-    '31-60': { label: '31-60 Days', total: 0, count: 0, items: [] as OutstandingBill[] },
-    '61-90': { label: '61-90 Days', total: 0, count: 0, items: [] as OutstandingBill[] },
-    '90+': { label: '90+ Days', total: 0, count: 0, items: [] as OutstandingBill[] },
-  };
+  const [openBucket, setOpenBucket] = useState<string | null>(null);
 
-  data.forEach(party => {
-    party.bills.forEach(bill => {
-      if (bill.type === 'Sale' && bill.balance > 0) {
-        if (bill.daysOverdue <= 30) {
-          agingBuckets.current.total += bill.balance;
-          agingBuckets.current.count++;
-        } else if (bill.daysOverdue <= 60) {
-          agingBuckets['31-60'].total += bill.balance;
-          agingBuckets['31-60'].count++;
-        } else if (bill.daysOverdue <= 90) {
-          agingBuckets['61-90'].total += bill.balance;
-          agingBuckets['61-90'].count++;
-        } else {
-          agingBuckets['90+'].total += bill.balance;
-          agingBuckets['90+'].count++;
+  const agingBuckets = useMemo(() => {
+    const buckets = {
+      current: { label: 'Current (0-30 Days)', total: 0, count: 0, bills: [] as OutstandingBill[] },
+      '31-60': { label: '31-60 Days', total: 0, count: 0, bills: [] as OutstandingBill[] },
+      '61-90': { label: '61-90 Days', total: 0, count: 0, bills: [] as OutstandingBill[] },
+      '90+': { label: '90+ Days', total: 0, count: 0, bills: [] as OutstandingBill[] },
+    };
+
+    data.forEach(party => {
+      party.bills.forEach(bill => {
+        if (bill.type === 'Sale' && bill.balance > 0) {
+          const billWithParty = { ...bill, partyName: party.partyName };
+          if (bill.daysOverdue <= 30) {
+            buckets.current.total += bill.balance;
+            buckets.current.count++;
+            buckets.current.bills.push(billWithParty);
+          } else if (bill.daysOverdue <= 60) {
+            buckets['31-60'].total += bill.balance;
+            buckets['31-60'].count++;
+            buckets['31-60'].bills.push(billWithParty);
+          } else if (bill.daysOverdue <= 90) {
+            buckets['61-90'].total += bill.balance;
+            buckets['61-90'].count++;
+            buckets['61-90'].bills.push(billWithParty);
+          } else {
+            buckets['90+'].total += bill.balance;
+            buckets['90+'].count++;
+            buckets['90+'].bills.push(billWithParty);
+          }
         }
-      }
+      });
     });
-  });
+    return buckets;
+  }, [data]);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-xl">Receivables Aging Summary</CardTitle>
-        <CardDescription>A summary of your outstanding receivables based on how long they have been overdue.</CardDescription>
+        <CardDescription>A summary of your outstanding receivables. Click a row to see detailed invoices.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -101,12 +117,56 @@ const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Object.values(agingBuckets).map(bucket => (
-              <TableRow key={bucket.label} className={cn(bucket.total > 0 && 'font-medium', bucket.label.includes('90+') && bucket.total > 0 && 'text-destructive font-bold')}>
-                <TableCell>{bucket.label}</TableCell>
-                <TableCell className="text-right">₹{bucket.total.toLocaleString('en-IN')}</TableCell>
-                <TableCell className="text-right">{bucket.count}</TableCell>
-              </TableRow>
+            {Object.entries(agingBuckets).map(([key, bucket]) => (
+              <Collapsible asChild key={key} open={openBucket === key} onOpenChange={(isOpen) => setOpenBucket(isOpen ? key : null)}>
+                <>
+                  <CollapsibleTrigger asChild>
+                    <TableRow className={cn("font-medium cursor-pointer hover:bg-muted/50", bucket.label.includes('90+') && bucket.total > 0 && "text-destructive font-bold")}>
+                      <TableCell className="flex items-center gap-2">
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", openBucket === key && "rotate-180")} />
+                        {bucket.label}
+                      </TableCell>
+                      <TableCell className="text-right">₹{bucket.total.toLocaleString('en-IN')}</TableCell>
+                      <TableCell className="text-right">{bucket.count}</TableCell>
+                    </TableRow>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent asChild>
+                    <tr className="bg-muted/20">
+                      <td colSpan={3} className="p-0">
+                        <div className="p-4">
+                          <h4 className="font-semibold mb-2">Invoices for: {bucket.label}</h4>
+                          {bucket.bills.length > 0 ? (
+                            <ScrollArea className="h-48">
+                              <Table size="sm">
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Party</TableHead>
+                                    <TableHead>Bill</TableHead>
+                                    <TableHead className="text-right">Days Overdue</TableHead>
+                                    <TableHead className="text-right">Balance (₹)</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {bucket.bills.sort((a,b) => b.daysOverdue - a.daysOverdue).map(bill => (
+                                    <TableRow key={bill.id}>
+                                      <TableCell>{bill.partyName}</TableCell>
+                                      <TableCell>{bill.vakkal}</TableCell>
+                                      <TableCell className="text-right">{bill.daysOverdue}</TableCell>
+                                      <TableCell className="text-right font-semibold">₹{bill.balance.toLocaleString('en-IN')}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </ScrollArea>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No invoices in this bucket.</p>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  </CollapsibleContent>
+                </>
+              </Collapsible>
             ))}
           </TableBody>
         </Table>
@@ -185,7 +245,8 @@ export function OutstandingClient() {
               partyData.bills.push({
                 id: tx.id, type: 'Sale', date: tx.date, vakkal: tx.billNumber || tx.items.map(i => i.lotNumber).join(', '),
                 totalAmount: tx.billedAmount, paid: paid, balance: tx.billedAmount - paid,
-                daysOverdue: differenceInDays(new Date(), parseISO(tx.date))
+                daysOverdue: differenceInDays(new Date(), parseISO(tx.date)),
+                partyName: partyData.party.name // Added for detail view
               });
           }
         }
@@ -199,7 +260,8 @@ export function OutstandingClient() {
             partyData.bills.push({
               id: tx.id, type: 'Purchase', date: tx.date, vakkal: tx.items.map(i => i.lotNumber).join(', '),
               totalAmount: tx.totalAmount, paid: paid, balance: tx.totalAmount - paid,
-              daysOverdue: differenceInDays(new Date(), parseISO(tx.date))
+              daysOverdue: differenceInDays(new Date(), parseISO(tx.date)),
+              partyName: partyData.party.name // Added for detail view
             });
            }
         }
