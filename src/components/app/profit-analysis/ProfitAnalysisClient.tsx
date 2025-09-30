@@ -90,7 +90,7 @@ export function ProfitAnalysisClient() {
   
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(() => {
     const today = new Date();
-    return { from: startOfMonth(today), to: endOfDay(endOfMonth(today)) };
+    return { from: startOfMonth(today), to: endOfDay(today) };
   });
 
   React.useEffect(() => { setHydrated(true); }, []);
