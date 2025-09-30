@@ -37,6 +37,11 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
       cell: ({ row }) => row.original.billNumber || 'N/A',
     },
     {
+        accessorKey: 'brokerName',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Broker" />,
+        cell: ({ row }) => row.original.brokerName || 'N/A',
+    },
+    {
         accessorKey: 'customerName',
         header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
     },
