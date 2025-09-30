@@ -185,19 +185,26 @@ export function ProfitAnalysisClient() {
     };
   }, [filteredTransactionsForPeriod, sales, currentFinancialYearString, dateRange]);
 
-  const setDateFilter = (type: "today" | "yesterday" | "dayBeforeYesterday" | "currentFY") => {
+  const setDateFilter = (type: "today" | "yesterday" | "dayBeforeYesterday" | "currentFY" | "ytd") => {
     const today = new Date();
     let from, to;
+    const [startYearStr] = currentFinancialYearString.split('-');
+    const currentFYStartYear = parseInt(startYearStr, 10);
+    
     switch (type) {
       case "today": from = startOfDay(today); to = endOfDay(today); break;
       case "yesterday": from = startOfDay(subDays(today, 1)); to = endOfDay(subDays(today, 1)); break;
       case "dayBeforeYesterday": from = startOfDay(subDays(today, 2)); to = endOfDay(subDays(today, 2)); break;
       case "currentFY":
-        const [startYearStr] = currentFinancialYearString.split('-');
-        if (!isNaN(parseInt(startYearStr, 10))) {
-          const startYear = parseInt(startYearStr, 10);
-          from = new Date(startYear, 3, 1);
-          to = endOfDay(new Date(startYear + 1, 2, 31));
+        if (!isNaN(currentFYStartYear)) {
+          from = new Date(currentFYStartYear, 3, 1);
+          to = endOfDay(new Date(currentFYStartYear + 1, 2, 31));
+        }
+        break;
+      case "ytd":
+         if (!isNaN(currentFYStartYear)) {
+          from = new Date(currentFYStartYear, 3, 1);
+          to = endOfDay(today);
         }
         break;
     }
@@ -243,6 +250,7 @@ export function ProfitAnalysisClient() {
                 <DatePickerWithRange date={dateRange} onDateChange={setDateRange}/>
                 <Button variant="outline" size="sm" onClick={() => setDateFilter("today")}>Today</Button>
                 <Button variant="outline" size="sm" onClick={() => setDateFilter("yesterday")}>Yesterday</Button>
+                <Button variant="outline" size="sm" onClick={() => setDateFilter("ytd")}>YTD</Button>
                 <Button variant="outline" size="sm" onClick={() => setDateFilter("dayBeforeYesterday")}>{format(subDays(new Date(), 2), 'EEEE')}</Button>
               </div>
             </div>
