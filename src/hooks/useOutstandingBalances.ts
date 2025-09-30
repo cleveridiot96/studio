@@ -76,14 +76,20 @@ export const useOutstandingBalances = () => {
 
         allTransactionsSorted.forEach(tx => {
              if (tx.txType === 'Sale') {
-                updateBalance(tx.customerId, tx.billedAmount || 0); // Customer owes us for the sale
+                // Customer owes us for the sale
+                updateBalance(tx.customerId, tx.billedAmount || 0); 
+                
+                // We owe the broker their commission, which is a credit to their account (a liability for us)
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                updateBalance(tx.brokerId, -brokerCommission); // We owe broker commission (credit balance)
+                updateBalance(tx.brokerId, -brokerCommission);
             }
             else if (tx.txType === 'Purchase') {
-                updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0)); // We owe supplier for goods (credit balance)
+                // We owe the supplier for the goods, which is a credit to their account (a liability for us)
+                updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
+                
+                // We owe the agent their commission, also a credit to their account
                 const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                updateBalance(tx.agentId, -agentCommission); // We owe agent commission (credit balance)
+                updateBalance(tx.agentId, -agentCommission);
             }
             else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
             else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
@@ -132,3 +138,5 @@ export const useOutstandingBalances = () => {
         isBalancesLoading: !hydrated
     };
 };
+
+    

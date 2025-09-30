@@ -178,36 +178,41 @@ export function AccountsLedgerClient() {
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
         .map(tx => {
             if (tx.txType === 'Sale') {
+                const results: DisplayLedgerEntry[] = [];
                 if (tx.customerId === party.id) {
-                  return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
+                  results.push({ id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` });
                 }
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if (tx.brokerId === party.id && brokerCommission > 0) {
-                  return { id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMMISSION FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` };
+                  results.push({ id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMMISSION FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` });
                 }
+                return results;
             } else if (tx.txType === 'Purchase') {
+                const results: DisplayLedgerEntry[] = [];
                 if(tx.supplierId === party.id) {
-                  return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalGoodsValue, href: `/purchases#${tx.id}` };
+                  results.push({ id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalGoodsValue, href: `/purchases#${tx.id}` });
                 }
                 const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if(tx.agentId === party.id && agentCommission > 0) {
-                  return { id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` };
+                  results.push({ id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` });
                 }
+                return results;
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT PAYMENT (${tx.paymentMethod})` : `PAYMENT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
-                return { id: `pay-${tx.id}`, date: tx.date, type: 'Payment', particulars: particularDetails, debit: tx.amount, credit: 0, href: `/payments#${tx.id}` };
+                return [{ id: `pay-${tx.id}`, date: tx.date, type: 'Payment', particulars: particularDetails, debit: tx.amount, credit: 0, href: `/payments#${tx.id}` }];
             } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT RECEIPT (${tx.paymentMethod})` : `RECEIPT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
-                return { id: `receipt-${tx.id}`, date: tx.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: tx.amount + (tx.cashDiscount || 0), href: `/receipts#${tx.id}` };
+                return [{ id: `receipt-${tx.id}`, date: tx.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: tx.amount + (tx.cashDiscount || 0), href: `/receipts#${tx.id}` }];
             } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
-                return { id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` };
+                return [{ id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` }];
             } else if (tx.txType === 'SaleReturn' && tx.originalCustomerId === party.id) {
-                 return { id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` };
+                 return [{ id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` }];
             } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
-                return { id: tx.id, date: tx.date, type: tx.type, particulars: `${tx.account} (VCH: ${tx.relatedVoucher?.slice(-5) || 'N/A'})`, debit: tx.debit, credit: tx.credit, href: tx.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : tx.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' };
+                return [{ id: tx.id, date: tx.date, type: tx.type, particulars: `${tx.account} (VCH: ${tx.relatedVoucher?.slice(-5) || 'N/A'})`, debit: tx.debit, credit: tx.credit, href: tx.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : tx.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }];
             }
             return null;
         })
+        .flat() // Flatten the array of arrays
         .filter(Boolean) as DisplayLedgerEntry[];
 
     let debitTransactions: DisplayLedgerEntry[] = [];
@@ -490,3 +495,5 @@ export function AccountsLedgerClient() {
     </TooltipProvider>
   );
 }
+
+    

@@ -1,113 +1,24 @@
+
 "use client";
 import React, { useMemo } from 'react';
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
+import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { useSettings } from "@/contexts/SettingsContext";
-import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { parseISO } from 'date-fns';
-import { isDateInFinancialYear, isDateBeforeFinancialYear } from "@/lib/utils";
 
-
-// All the data keys
-const keys = {
-  purchases: 'purchasesData',
-  purchaseReturns: 'purchaseReturnsData',
-  sales: 'salesData',
-  saleReturns: 'saleReturnsData',
-  receipts: 'receiptsData',
-  payments: 'paymentsData',
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  brokers: 'masterBrokers',
-  expenses: 'masterExpenses',
-};
 
 export const OutstandingSummary = () => {
-  const [hydrated, setHydrated] = React.useState(false);
   const { financialYear: currentFinancialYearString } = useSettings();
-  React.useEffect(() => { setHydrated(true) }, []);
-
-  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
-  const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
-  const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
-  const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
-  const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
-  const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
-  const [transporters] = useLocalStorageState<MasterItem[]>(keys.transporters, []);
-  const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
-  const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
-
-  const { totalReceivable, totalPayable } = useMemo(() => {
-    if (!hydrated) return { totalReceivable: 0, totalPayable: 0 };
-    
-    const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
-    const balances = new Map<string, number>();
-
-    // Step 1: Initialize balances with their defined opening balance
-    allMasters.forEach(m => {
-        let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
-        balances.set(m.id, openingBalance);
-    });
-
-    const allTransactionsSorted = [
-        ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
-        ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
-        ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
-        ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
-    ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-    
-    const updateBalance = (partyId: string | undefined, amount: number) => {
-        if (!partyId || !balances.has(partyId)) return;
-        balances.set(partyId, balances.get(partyId)! + amount);
-    };
-
-    allTransactionsSorted.forEach(tx => {
-        if (tx.txType === 'Sale') {
-            updateBalance(tx.customerId, tx.billedAmount || 0);
-            const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-            updateBalance(tx.brokerId, -(brokerCommission));
-        }
-        else if (tx.txType === 'Purchase') {
-            updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
-            const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-            updateBalance(tx.agentId, -(agentCommission));
-        }
-        else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-        else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
-        else if (tx.txType === 'PurchaseReturn') {
-            const p = purchases.find(p => p.id === tx.originalPurchaseId);
-            if(p) updateBalance(p.supplierId, tx.returnAmount || 0);
-        } else if (tx.txType === 'SaleReturn') {
-            const s = sales.find(s => s.id === tx.originalSaleId);
-            if(s) updateBalance(s.customerId, -(tx.returnAmount || 0));
-        }
-    });
-
-    let totalReceivable = 0;
-    let totalPayable = 0;
-    balances.forEach((balance) => {
-        if (balance > 0.01) {
-            totalReceivable += balance;
-        } else if (balance < -0.01) {
-            totalPayable += Math.abs(balance);
-        }
-    });
-
-    return { totalReceivable, totalPayable };
-
-  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
+  const { receivableParties, payableParties, isBalancesLoading } = useOutstandingBalances();
   
-  if(!hydrated) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
+  const { totalReceivable, totalPayable } = useMemo(() => {
+    const totalReceivable = receivableParties.reduce((sum, party) => sum + (party.balance || 0), 0);
+    const totalPayable = payableParties.reduce((sum, party) => sum + Math.abs(party.balance || 0), 0);
+    return { totalReceivable, totalPayable };
+  }, [receivableParties, payableParties]);
+  
+  if(isBalancesLoading) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">
@@ -145,3 +56,5 @@ export const OutstandingSummary = () => {
     </Card>
   )
 }
+
+    
