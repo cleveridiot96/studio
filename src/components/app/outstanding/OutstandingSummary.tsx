@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link';
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { parseISO } from 'date-fns';
+import { parseISO, isBefore } from 'date-fns';
+import { isDateInFinancialYear, isDateBeforeFinancialYear } from "@/lib/utils";
 
 
 // All the data keys
@@ -51,37 +52,52 @@ export const OutstandingSummary = () => {
     const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
     const balances = new Map<string, number>();
 
-    // Step 1: Initialize with opening balances from master files
+    // Step 1: Initialize with opening balances and adjust for all transactions *before* the current FY
     allMasters.forEach(m => {
         let openingBalance = m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0);
         balances.set(m.id, openingBalance);
     });
     
-    // Step 2: Process all transactions chronologically to get the final balance
-    const allTransactions = [
+    const allTransactionsSorted = [
         ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
         ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
         ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
         ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
         ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
         ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
-    ].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
+
+    const transactionsBeforeFY = allTransactionsSorted.filter(tx => tx && isDateBeforeFinancialYear(tx.date, currentFinancialYearString));
+    
     const updateBalance = (partyId: string | undefined, amount: number) => {
         if (!partyId || !balances.has(partyId)) return;
         balances.set(partyId, balances.get(partyId)! + amount);
     };
-    
-    allTransactions.forEach(tx => {
-        if (tx.txType === 'Sale') {
-            updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
-        } else if (tx.txType === 'Purchase') {
-            updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
-        } else if (tx.txType === 'Receipt') {
-            updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-        } else if (tx.txType === 'Payment') {
-            updateBalance(tx.partyId, tx.amount || 0);
-        } else if (tx.txType === 'PurchaseReturn') {
+
+    transactionsBeforeFY.forEach(tx => {
+        if (tx.txType === 'Sale') updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
+        else if (tx.txType === 'Purchase') updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
+        else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+        else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
+        else if (tx.txType === 'PurchaseReturn') {
+            const p = purchases.find(p => p.id === tx.originalPurchaseId);
+            if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
+        } else if (tx.txType === 'SaleReturn') {
+            const s = sales.find(s => s.id === tx.originalSaleId);
+            if(s) updateBalance(s.brokerId || s.customerId, -(tx.returnAmount || 0));
+        }
+    });
+
+    // Step 2: Process transactions *within* the current financial year
+    const transactionsInFY = allTransactionsSorted.filter(tx => tx && isDateInFinancialYear(tx.date, currentFinancialYearString));
+
+    transactionsInFY.forEach(tx => {
+        if (tx.txType === 'Sale') updateBalance(tx.brokerId || tx.customerId, tx.billedAmount || 0);
+        else if (tx.txType === 'Purchase') updateBalance(tx.agentId || tx.supplierId, -(tx.totalAmount || 0));
+        else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+        else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
+        else if (tx.txType === 'PurchaseReturn') {
             const p = purchases.find(p => p.id === tx.originalPurchaseId);
             if(p) updateBalance(p.agentId || p.supplierId, tx.returnAmount || 0);
         } else if (tx.txType === 'SaleReturn') {
@@ -102,14 +118,14 @@ export const OutstandingSummary = () => {
 
     return { totalReceivable, totalPayable };
 
-  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns]);
+  }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
   
   if(!hydrated) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-xl font-semibold text-foreground">OUTSTANDING BALANCES (ALL TIME)</CardTitle>
+        <CardTitle className="text-xl font-semibold text-foreground">OUTSTANDING BALANCES (FY {currentFinancialYearString})</CardTitle>
         <CardDescription>A SUMMARY OF TOTAL MONEY TO BE PAID AND RECEIVED. CLICK A CARD TO SEE DETAILS.</CardDescription>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">

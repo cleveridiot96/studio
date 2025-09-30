@@ -31,8 +31,9 @@ export function DatePickerWithRange({
 
   const handleSelect = (selectedDate: DateRange | undefined) => {
     onDateChange(selectedDate);
-    // Do not close the popover automatically. Let the user close it by clicking outside.
-    // This allows selecting a 'from' and then a 'to' date without it closing.
+    if (selectedDate?.from && selectedDate?.to) {
+      setIsOpen(false);
+    }
   };
 
   return (
