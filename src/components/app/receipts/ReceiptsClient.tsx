@@ -25,9 +25,9 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { salesMigrator } from '@/lib/dataMigrators';
 
 
+// TRIAL PACKAGE 1 DATA
 const initialReceiptsData: Receipt[] = [
-    { "id": "receipt-fy2526-1", "date": "2025-05-25", "partyId": "cust-lalit", "partyName": "Lalit Traders", "partyType": "Customer", "amount": 20000, "paymentMethod": "Bank", "transactionType": "On Account", "notes": "Advance payment" },
-    { "id": "receipt-fy2526-2", "date": "2025-06-20", "partyId": "broker-arun", "partyName": "Arun Kumar", "partyType": "Broker", "amount": 15000, "paymentMethod": "Cash", "transactionType": "Against Bill", "againstBills": [{ "billId": "sale-fy2526-1", "amount": 15000 }], "cashDiscount": 350 },
+    { id: "rec-tp1-1", date: "2024-07-28", partyId: "cust-lalit", partyName: "LALIT TRADERS", partyType: "Customer", amount: 50000, paymentMethod: "Bank", transactionType: "Against Bill", againstBills: [{ billId: "sale-tp1-1", amount: 50000, billVakkal: "VAKKAL-A1-T50", billDate: "2024-07-20", billTotal: 87500 }], cashDiscount: 500, notes: "PARTIAL PAYMENT RECEIVED" },
 ];
 
 
@@ -83,7 +83,7 @@ export function ReceiptsClient() {
       if (isEditing) {
         return prevReceipts.map(r => r.id === receipt.id ? receipt : r);
       } else {
-        return [receipt, ...prevReceipts];
+        return [{...receipt, id: receipt.id || `receipt-${Date.now()}`},...prevReceipts];
       }
     });
 

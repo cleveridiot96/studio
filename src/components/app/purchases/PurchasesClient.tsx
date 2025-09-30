@@ -33,14 +33,13 @@ import { cn } from "@/lib/utils";
 import { purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
+// TRIAL PACKAGE 1 DATA
 const initialPurchasesData: Purchase[] = [
-  { "id": "purchase-fy2526-1", "date": "2025-05-16", "supplierId": "supp-anand", "supplierName": "ANAND AGRO PRODUCTS", "agentId": "agent-ajay", "agentName": "AJAY KUMAR", "items": [{"lotNumber": "BU/5", "quantity": 5, "netWeight": 250, "rate": 300, "goodsValue": 75000, "landedCostPerKg": 323}], "expenses": [{"account": "Transport Charges", "amount": 3250, "paymentMode": "Pending", "party": "SUDHA TRANSPORTS"}], "transporterId": "trans-sudha", "transporterName": "SUDHA TRANSPORTS", "locationId": "wh-chiplun", "locationName": "CHIPLUN STORAGE", "totalGoodsValue": 75000, "totalQuantity": 5, "totalNetWeight": 250, "totalAmount": 78250, "effectiveRate": 313 },
-  { "id": "purchase-fy2526-2", "date": "2025-06-15", "supplierId": "supp-meena", "supplierName": "MEENA FARMS", "items": [{"lotNumber": "FY2526-LOT-B/50", "quantity": 50, "netWeight": 2500, "rate": 25, "goodsValue": 62500, "landedCostPerKg": 25.48}], "expenses": [{"account": "Transport Charges", "amount": 1000, "paymentMode": "Pending", "party":"RELIABLE TRANSPORTS"}, {"account": "Labour Charges", "amount": 200, "paymentMode": "Cash", "party":"Self"}], "locationId": "wh-pune", "locationName": "PUNE NORTH GODOWN", "totalGoodsValue": 62500, "totalQuantity": 50, "totalNetWeight": 2500, "totalAmount": 63700, "effectiveRate": 25.48 },
-  { "id": "purchase-fy2425-1", "date": "2024-08-01", "supplierId": "supp-uma", "supplierName": "UMA ORGANICS", "items": [{"lotNumber": "FY2425-LOT-X/90", "quantity": 90, "netWeight": 4500, "rate": 28, "goodsValue": 126000, "landedCostPerKg": 28.6}], "expenses": [{"account":"Transport Charges", "amount":2250, "paymentMode":"Pending", "party":"RELIABLE TRANSPORTS"}, {"account":"Misc Expenses", "amount":450, "paymentMode":"Cash", "party":"Self"}], "transporterId": "trans-reliable", "transporterName": "RELIABLE TRANSPORTS", "locationId": "wh-mum", "locationName": "MUMBAI CENTRAL WAREHOUSE", "totalGoodsValue": 126000, "totalQuantity": 90, "totalNetWeight": 4500, "totalAmount": 128700, "effectiveRate": 28.6 },
+    { id: "pur-tp1-1", date: "2024-07-10", supplierId: "supp-anand", supplierName: "ANAND AGRO PRODUCTS", items: [{ lotNumber: "VAKKAL-A1", quantity: 100, netWeight: 5000, rate: 25, goodsValue: 125000, landedCostPerKg: 25.5 }], expenses: [], locationId: "fixed-wh-chiplun", locationName: "CHIPLUN", totalGoodsValue: 125000, totalQuantity: 100, totalNetWeight: 5000, totalAmount: 127500, effectiveRate: 25.5 },
+    { id: "pur-tp1-2", date: "2024-07-12", supplierId: "supp-meena", supplierName: "MEENA FARMS", agentId: "agent-ajay", agentName: "AJAY KUMAR", items: [{ lotNumber: "VAKKAL-B2", quantity: 200, netWeight: 10000, rate: 28, goodsValue: 280000, landedCostPerKg: 28 }], expenses: [], locationId: "fixed-wh-sawantwadi", locationName: "SAWANTWADI", totalGoodsValue: 280000, totalQuantity: 200, totalNetWeight: 10000, totalAmount: 280000, effectiveRate: 28 },
 ];
-
 const initialPurchaseReturnsData: PurchaseReturn[] = [
-    { "id": "pr-fy2526-1", "date": "2025-05-20", "originalPurchaseId": "purchase-fy2526-1", "originalLotNumber": "BU/5", "originalSupplierId": "supp-anand", "originalSupplierName": "ANAND AGRO PRODUCTS", "originalPurchaseRate": 300, "quantityReturned": 1, "netWeightReturned": 50, "returnAmount": 15000, "returnReason": "DAMAGED BAGS", "notes": "PARTIAL RETURN DUE TO DAMAGE." },
+    { id: "pret-tp1-1", date: "2024-07-15", originalPurchaseId: "pur-tp1-2", originalLotNumber: "VAKKAL-B2", originalSupplierId: "supp-meena", originalSupplierName: "MEENA FARMS", originalPurchaseRate: 28, quantityReturned: 10, netWeightReturned: 500, returnAmount: 14000, returnReason: "QUALITY ISSUE", notes: "10 bags returned." },
 ];
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
@@ -317,7 +316,8 @@ export function PurchasesClient() {
         } catch (err) { console.error("Error PDF:", err); toast({ title: "PDF Failed", variant: "destructive" }); }
         finally { setPurchaseForPdf(null); }
       };
-      const timer = setTimeout(generatePdf, 300); return () => clearTimeout(timer);
+      const timer = setTimeout(generatePdf, 300);
+      return () => clearTimeout(timer);
     }
   }, [purchaseForPdf, toast]);
 

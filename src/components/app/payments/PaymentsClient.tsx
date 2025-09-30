@@ -23,9 +23,9 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 
+// TRIAL PACKAGE 1 DATA
 const initialPaymentsData: Payment[] = [
-    { "id": "payment-fy2526-1", "date": "2025-05-17", "partyId": "trans-sudha", "partyName": "Sudha Transports", "partyType": "Transporter", "amount": 3250, "paymentMethod": "Cash", "transactionType": "On Account", "notes": "Paid for transport of BU/5" },
-    { "id": "payment-fy2425-1", "date": "2024-08-10", "partyId": "supp-uma", "partyName": "Uma Organics", "partyType": "Supplier", "amount": 100000, "paymentMethod": "Bank", "transactionType": "On Account", "notes": "Advance for lot X/90" },
+    { id: "pay-tp1-1", date: "2024-07-20", partyId: "supp-anand", partyName: "ANAND AGRO PRODUCTS", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", transactionType: "On Account", notes: "PART PAYMENT FOR VAKKAL-A1" },
 ];
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';

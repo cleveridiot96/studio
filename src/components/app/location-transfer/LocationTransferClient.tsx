@@ -43,8 +43,9 @@ import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 
+// TRIAL PACKAGE 1 DATA
 const initialLocationTransfersData: LocationTransfer[] = [
-    { "id": "lt-fy2526-1", "date": "2025-06-20", "fromWarehouseId": "wh-pune", "fromWarehouseName": "Pune North Godown", "toWarehouseId": "wh-mum", "toWarehouseName": "Mumbai Central Warehouse", "transporterId": "trans-reliable", "transporterName": "Reliable Transports", "items": [ { "originalLotNumber": "FY2526-LOT-B/50", "newLotNumber": "FY2526-LOT-B/50/10", "bagsToTransfer": 10, "netWeightToTransfer": 500, "grossWeightToTransfer": 500, "preTransferLandedCost": 25.48 } ], "expenses": [ { "account": "Transport Charges", "amount": 300, "paymentMode": "Pending", "partyId": "trans-reliable", "partyName": "Reliable Transports" } ], "totalExpenses": 300, "perKgExpense": 0.6, "totalNetWeight": 500, "totalGrossWeight": 500 },
+    { id: "lt-tp1-1", date: "2024-07-15", fromWarehouseId: "fixed-wh-chiplun", fromWarehouseName: "CHIPLUN", toWarehouseId: "fixed-wh-mumbai", toWarehouseName: "MUMBAI", items: [{ originalLotNumber: "VAKKAL-A1", newLotNumber: "VAKKAL-A1-T50", bagsToTransfer: 50, netWeightToTransfer: 2500, grossWeightToTransfer: 2500, preTransferLandedCost: 25.5 }], expenses: [{ account: "Transport Charges", amount: 500, paymentMode: "Cash", partyName: "Self" }], totalExpenses: 500, perKgExpense: 0.2, totalNetWeight: 2500, totalGrossWeight: 2500 },
 ];
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';

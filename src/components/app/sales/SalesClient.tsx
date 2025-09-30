@@ -33,10 +33,14 @@ import html2canvas from 'html2canvas';
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
+// TRIAL PACKAGE 1 DATA
 const initialSalesData: Sale[] = [
-    { "id": "sale-fy2526-1", "date": "2025-05-18", "billNumber": "B001", "customerId": "cust-lalit", "customerName": "Lalit Traders", "brokerId": "broker-arun", "brokerName": "Arun Kumar", "items": [ { "lotNumber": "BU/5", "quantity": 2, "netWeight": 100, "rate": 350, "goodsValue": 35000, "purchaseRate": 300, "costOfGoodsSold": 31300, "itemGrossProfit": 5000, "itemNetProfit": 3700, "costBreakdown": { "baseRate": 300, "purchaseExpenses": 13, "transferExpenses": 0 } } ], "expenses": [ { "account": "Broker Commission", "amount": 350, "paymentMode": "Pending", "partyId": "broker-arun", "partyName": "Arun Kumar" } ], "totalGoodsValue": 35000, "billedAmount": 35000, "totalQuantity": 2, "totalNetWeight": 100, "totalCostOfGoodsSold": 31300, "totalGrossProfit": 5000, "totalCalculatedProfit": 3350, "notes": "2 bags sold" },
+    { id: "sale-tp1-1", date: "2024-07-20", billNumber: "B-101", customerId: "cust-lalit", customerName: "LALIT TRADERS", brokerId: "broker-arun", brokerName: "ARUN KUMAR", items: [{ lotNumber: "VAKKAL-A1-T50", quantity: 50, netWeight: 2500, rate: 35, goodsValue: 87500, purchaseRate: 25, costOfGoodsSold: 64250, itemGrossProfit: 25000, itemNetProfit: 24650, costBreakdown: { baseRate: 25, purchaseExpenses: 0.5, transferExpenses: 0.2 } }], expenses: [{ account: "Broker Commission", amount: 350, paymentMode: "Pending", partyId: "broker-arun", partyName: "ARUN KUMAR" }], totalGoodsValue: 87500, billedAmount: 87500, totalQuantity: 50, totalNetWeight: 2500, totalCostOfGoodsSold: 64250, totalGrossProfit: 25000, totalCalculatedProfit: 23250 },
+    { id: "sale-tp1-2", date: "2024-07-22", billNumber: "B-102", customerId: "cust-mahesh", customerName: "MAHESH & CO", items: [{ lotNumber: "VAKKAL-B2", quantity: 20, netWeight: 1000, rate: 40, goodsValue: 40000, purchaseRate: 28, costOfGoodsSold: 28000, itemGrossProfit: 12000, itemNetProfit: 12000, costBreakdown: { baseRate: 28, purchaseExpenses: 0, transferExpenses: 0 } }], expenses: [], totalGoodsValue: 40000, billedAmount: 35000, cbAmount: 5000, totalQuantity: 20, totalNetWeight: 1000, totalCostOfGoodsSold: 28000, totalGrossProfit: 12000, totalCalculatedProfit: 12000 },
 ];
-const initialSaleReturnsData: SaleReturn[] = [];
+const initialSaleReturnsData: SaleReturn[] = [
+    { id: "sret-tp1-1", date: "2024-07-25", originalSaleId: "sale-tp1-1", originalBillNumber: "B-101", originalCustomerId: "cust-lalit", originalCustomerName: "LALIT TRADERS", originalLotNumber: "VAKKAL-A1-T50", originalSaleRate: 35, quantityReturned: 5, netWeightReturned: 250, returnAmount: 8750, restockingFee: 0, returnReason: "Surplus stock" }
+];
 
 
 const SALES_STORAGE_KEY = 'salesData';
