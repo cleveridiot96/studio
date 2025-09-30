@@ -10,6 +10,7 @@ import { ArrowUpDown, Printer, Users, ChevronDown } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, addDays, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
@@ -331,14 +332,18 @@ export function OutstandingClient() {
         <div className="no-print">
             <h1 className="text-3xl font-bold text-foreground mb-4 flex items-center gap-3"><Users/>OUTSTANDING DASHBOARD</h1>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader><CardTitle className="text-base text-green-700">TOTAL RECEIVABLES</CardTitle></CardHeader>
-                <CardContent className="text-2xl text-green-600 font-bold">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
-              </Card>
-              <Card>
-                <CardHeader><CardTitle className="text-base text-orange-600">TOTAL PAYABLES</CardTitle></CardHeader>
-                <CardContent className="text-2xl text-orange-600 font-bold">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
-              </Card>
+              <Link href="/receipts" className="block group">
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader><CardTitle className="text-base text-green-700">TOTAL RECEIVABLES</CardTitle></CardHeader>
+                  <CardContent className="text-2xl text-green-600 font-bold">₹{totalReceivable.toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
+                </Card>
+              </Link>
+              <Link href="/payments" className="block group">
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader><CardTitle className="text-base text-orange-600">TOTAL PAYABLES</CardTitle></CardHeader>
+                  <CardContent className="text-2xl text-orange-600 font-bold">₹{Math.abs(totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
+                </Card>
+              </Link>
               <Card>
                 <CardHeader><CardTitle className="text-base text-primary">NET OUTSTANDING</CardTitle></CardHeader>
                 <CardContent className="text-2xl font-bold">₹{(totalReceivable + totalPayable).toLocaleString('en-IN', {minimumFractionDigits: 2})}</CardContent>
