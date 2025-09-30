@@ -146,7 +146,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                 <Separator className="my-1" />
 
               {filteredOptions.length === 0 && search.length > 0 ? (
-                <CommandEmpty>
+                <div className="py-6 text-center text-sm">
                     {notFoundMessage}
                     {didYouMeanSuggest && (
                         <div className="mt-1 text-xs text-muted-foreground">
@@ -162,7 +162,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                         </div>
                     )}
-                </CommandEmpty>
+                </div>
               ) : (
                 <>
                   {didYouMeanSuggest && search && !filteredOptions.some(opt => opt.label.toLowerCase() === didYouMeanSuggest.toLowerCase()) && (

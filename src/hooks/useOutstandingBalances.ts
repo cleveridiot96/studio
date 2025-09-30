@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from 'react';
 import { useMemo, useEffect } from 'react';
 import { useLocalStorageState } from "./useLocalStorageState";
 import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
