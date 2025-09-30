@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -177,17 +178,19 @@ export function AccountsLedgerClient() {
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
         .map(tx => {
             if (tx.txType === 'Sale') {
-                const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if (tx.customerId === party.id) {
                   return { id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` };
-                } else if (tx.brokerId === party.id && brokerCommission > 0) {
+                }
+                const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                if (tx.brokerId === party.id && brokerCommission > 0) {
                   return { id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMMISSION FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` };
                 }
             } else if (tx.txType === 'Purchase') {
-                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if(tx.supplierId === party.id) {
                   return { id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalGoodsValue, href: `/purchases#${tx.id}` };
-                } else if(tx.agentId === party.id && agentCommission > 0) {
+                }
+                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+                if(tx.agentId === party.id && agentCommission > 0) {
                   return { id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` };
                 }
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {

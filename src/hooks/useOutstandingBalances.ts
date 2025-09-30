@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useEffect } from 'react';
@@ -75,14 +76,14 @@ export const useOutstandingBalances = () => {
 
         allTransactionsSorted.forEach(tx => {
              if (tx.txType === 'Sale') {
-                updateBalance(tx.customerId, tx.billedAmount || 0);
+                updateBalance(tx.customerId, tx.billedAmount || 0); // Customer owes us for the sale
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                updateBalance(tx.brokerId, -(brokerCommission));
+                updateBalance(tx.brokerId, -brokerCommission); // We owe broker commission (credit balance)
             }
             else if (tx.txType === 'Purchase') {
-                updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
+                updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0)); // We owe supplier for goods (credit balance)
                 const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                updateBalance(tx.agentId, -(agentCommission));
+                updateBalance(tx.agentId, -agentCommission); // We owe agent commission (credit balance)
             }
             else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
             else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
