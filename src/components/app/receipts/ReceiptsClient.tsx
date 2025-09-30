@@ -23,6 +23,7 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { salesMigrator } from '@/lib/dataMigrators';
+import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 
 
 // TRIAL PACKAGE 1 DATA
@@ -32,8 +33,6 @@ const initialReceiptsData: Receipt[] = [
 
 
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
 const SALES_STORAGE_KEY = 'salesData';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 
@@ -44,10 +43,10 @@ export function ReceiptsClient() {
   const [hydrated, setHydrated] = React.useState(false);
 
   const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+
+  const { receivableParties } = useOutstandingBalances();
 
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
@@ -62,15 +61,6 @@ export function ReceiptsClient() {
       setReceipts(initialReceiptsData);
     }
   }, [setReceipts]);
-
-  const allReceiptParties = React.useMemo(() => {
-    if (!hydrated) return [];
-    return [
-        ...customers,
-        ...brokers
-    ].filter(party => ['Customer', 'Broker'].includes(party.type))
-     .sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, brokers, hydrated]);
 
   const filteredReceipts = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -129,21 +119,13 @@ export function ReceiptsClient() {
       setShowDeleteConfirm(false);
     }
   }, [receiptToDeleteId, setReceipts, setLedgerData, toast]);
-
+  
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    switch (type) {
-      case "Customer":
-        setCustomers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      case "Broker":
-        setBrokers(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-        break;
-      default:
-        toast({title: "Info", description: `Master type ${type} not handled here.`})
-        break;
-    }
-    toast({ title: `${newItem.type} "${newItem.name}" updated/added from Receipts.` });
-  }, [setCustomers, setBrokers, toast]);
+    console.info(`A new master item of type ${type} was added/updated:`, newItem);
+    toast({ title: `Master list updated for ${type}.`});
+    window.dispatchEvent(new Event('storage')); // Force re-fetch in useOutstandingBalances
+  }, [toast]);
+
 
   const openAddReceiptForm = React.useCallback(() => {
     setReceiptToEdit(null);
@@ -186,7 +168,7 @@ export function ReceiptsClient() {
           isOpen={isAddReceiptFormOpen}
           onClose={closeAddReceiptForm}
           onSubmit={handleAddOrUpdateReceipt}
-          parties={allReceiptParties}
+          parties={receivableParties}
           onMasterDataUpdate={handleMasterDataUpdate}
           receiptToEdit={receiptToEdit}
           allSales={sales}

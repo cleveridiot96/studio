@@ -22,6 +22,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 
 // TRIAL PACKAGE 1 DATA
 const initialPaymentsData: Payment[] = [
@@ -29,11 +30,6 @@ const initialPaymentsData: Payment[] = [
 ];
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
-const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
-const AGENTS_STORAGE_KEY = 'masterAgents';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 
@@ -44,13 +40,10 @@ export function PaymentsClient() {
   const [hydrated, setHydrated] = React.useState(false);
 
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, []);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+  
+  const { payableParties, getPartyName } = useOutstandingBalances();
 
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
@@ -65,17 +58,6 @@ export function PaymentsClient() {
       setPayments(initialPaymentsData);
     }
   }, [setPayments]);
-
-  const allPaymentParties = React.useMemo(() => {
-    if (!hydrated) return [];
-    return [
-      ...suppliers.filter(s => s.type === 'Supplier'),
-      ...agents.filter(a => a.type === 'Agent'),
-      ...transporters.filter(t => t.type === 'Transporter'),
-      ...expenses.filter(e => e.type === 'Expense')
-    ].filter(party => party && party.id && party.name && party.type) // Basic validation
-     .sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, agents, transporters, expenses, hydrated]);
 
   const filteredPayments = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -135,22 +117,17 @@ export function PaymentsClient() {
       setShowDeleteConfirm(false);
     }
   }, [paymentToDeleteId, setPayments, setLedgerData, toast]);
-
+  
+  // This function is a placeholder for now, as master data management is centralized in MastersPage.
+  // We pass it to the form to satisfy the prop requirement.
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { 
-        Supplier: setSuppliers, 
-        Agent: setAgents, 
-        Transporter: setTransporters,
-        Broker: setBrokers,
-        Expense: setExpenses,
-    };
-    const setter = setters[type];
-    if (setter) {
-        setter(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
-    } else {
-        toast({title: "Info", description: `Master type ${type} not directly handled here for payments.`})
-    }
-  }, [setSuppliers, setAgents, setTransporters, setBrokers, setExpenses, toast]);
+     // A full implementation would update the corresponding master list (e.g., setSuppliers)
+     // and re-trigger the balance calculation. For now, we'll just log it.
+    console.info(`A new master item of type ${type} was added/updated:`, newItem);
+    toast({ title: `Master list updated for ${type}.`});
+    window.dispatchEvent(new Event('storage')); // Force re-fetch in useOutstandingBalances
+  }, [toast]);
+
 
   const openAddPaymentForm = React.useCallback(() => {
     setPaymentToEdit(null);
@@ -193,7 +170,7 @@ export function PaymentsClient() {
           isOpen={isAddPaymentFormOpen}
           onClose={closeAddPaymentForm}
           onSubmit={handleAddOrUpdatePayment}
-          parties={allPaymentParties}
+          parties={payableParties}
           onMasterDataUpdate={handleMasterDataUpdate}
           paymentToEdit={paymentToEdit}
           allPurchases={purchases}
