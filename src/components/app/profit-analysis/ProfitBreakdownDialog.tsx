@@ -1,133 +1,100 @@
-
 "use client";
 
-import * as React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableRow } from '@/components/ui/table';
-import type { TransactionalProfitInfo } from './ProfitAnalysisClient';
-import { ArrowDown, Minus, Plus, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MoreVertical, Pencil, Trash2, Download } from "lucide-react";
+import type { Sale } from "@/lib/types";
+import { format, parseISO } from 'date-fns';
+import { DataTableColumnHeader } from "@/components/shared/DataTableColumnHeader";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/shared/DataTable";
 
-interface ProfitBreakdownDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  item: TransactionalProfitInfo | null;
+interface SaleTableProps {
+  data: Sale[];
+  onEdit: (sale: Sale) => void;
+  onDelete: (saleId: string) => void;
+  onDownloadPdf?: (sale: Sale) => void;
 }
 
-const BreakdownRow: React.FC<{ label: string; value: number; isSub?: boolean; isTotal?: boolean; color?: 'green' | 'red' | 'blue' | 'orange' }> = ({ label, value, isSub = false, isTotal = false, color }) => (
-  <TableRow className={cn(isTotal && 'font-bold bg-muted/50 text-base', color === 'green' && 'text-green-600', color === 'red' && 'text-red-600', color === 'blue' && 'text-blue-600', color === 'orange' && 'text-orange-600')}>
-    <TableCell className={cn('py-1', isSub ? 'pl-8' : 'pl-4')}>
-      {isSub ? <span className="text-muted-foreground mr-1">↳</span> : <Plus className="h-3 w-3 inline-block mr-2" />}
-      {label}
-    </TableCell>
-    <TableCell className="text-right py-1 font-mono">₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-  </TableRow>
-);
-const DeductionRow: React.FC<{ label: string; value: number; isSub?: boolean; isTotal?: boolean; color?: 'green' | 'red' }> = ({ label, value, isSub = false, isTotal = false, color }) => (
-    <TableRow className={cn(isTotal && 'font-bold bg-muted/50 text-base', color === 'green' && 'text-green-600', color === 'red' && 'text-red-600')}>
-      <TableCell className={cn('py-1', isSub ? 'pl-8' : 'pl-4')}>
-        {isSub ? <span className="text-muted-foreground mr-1">↳</span> : <Minus className="h-3 w-3 inline-block mr-2" />}
-        {label}
-      </TableCell>
-      <TableCell className="text-right py-1 font-mono">(-) ₹{value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-    </TableRow>
-  );
-
-export const ProfitBreakdownDialog: React.FC<ProfitBreakdownDialogProps> = ({ isOpen, onClose, item }) => {
-  if (!item) return null;
-
-  const { costBreakdown, saleExpenses } = item;
-  const effectiveSaleRate = item.saleRatePerKg - (saleExpenses.total / item.saleNetWeightKg);
+const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
+  const columns = React.useMemo<ColumnDef<Sale>[]>(() => [
+    {
+      accessorKey: 'date',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+      cell: ({ row }) => format(parseISO(row.original.date), "dd/MM/yy"),
+    },
+    {
+      accessorKey: 'billNumber',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Bill No." />,
+      cell: ({ row }) => row.original.billNumber || 'N/A',
+    },
+    {
+        accessorKey: 'customerName',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Customer" />,
+    },
+    {
+        id: 'lots',
+        header: 'Vakkal / Lot(s)',
+        accessorFn: row => row.items.map(i => i.lotNumber).join(', '),
+        cell: ({ row }) => row.original.items.map(i => i.lotNumber).join(', '),
+    },
+    {
+        accessorKey: 'totalQuantity',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Bags" className="justify-end"/>,
+        cell: ({row}) => <div className="text-right">{Math.round(row.original.totalQuantity).toLocaleString('en-IN')}</div>
+    },
+    {
+        accessorKey: 'totalNetWeight',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Net Wt.(kg)" className="justify-end"/>,
+        cell: ({row}) => <div className="text-right">{row.original.totalNetWeight.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+    },
+    {
+        accessorKey: 'billedAmount',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Billed Amt (₹)" className="justify-end"/>,
+        cell: ({row}) => <div className="text-right font-semibold">{Math.round(row.original.billedAmount).toLocaleString('en-IN')}</div>
+    },
+    {
+        accessorKey: 'balanceAmount',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Balance (₹)" className="justify-end"/>,
+        cell: ({row}) => <div className="text-right font-bold text-blue-600">{Math.round(row.original.balanceAmount || 0).toLocaleString('en-IN')}</div>
+    },
+     {
+        accessorKey: 'totalCalculatedProfit',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Profit (₹)" className="justify-end"/>,
+        cell: ({row}) => <div className={`text-right font-semibold ${Math.round(row.original.totalCalculatedProfit || 0) < 0 ? 'text-destructive' : 'text-green-600'}`}>{Math.round(row.original.totalCalculatedProfit || 0).toLocaleString('en-IN')}</div>
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" /><span className="sr-only">Actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(row.original)}><Pencil className="mr-2 h-4 w-4" />EDIT</DropdownMenuItem>
+            {onDownloadPdf && <DropdownMenuItem onClick={() => onDownloadPdf(row.original)}><Download className="mr-2 h-4 w-4" />DOWNLOAD CHITTI (PDF)</DropdownMenuItem>}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onDelete(row.original.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" />DELETE</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ], [onEdit, onDelete, onDownloadPdf]);
+  
+  if (data.length === 0) {
+    return <p className="text-center text-muted-foreground py-8 uppercase">NO SALES RECORDED YET.</p>;
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="uppercase">Profit Breakdown for Vakkal: {item.lotNumber}</DialogTitle>
-          <DialogDescription>
-            This shows how the landed cost and net profit were calculated for this specific item in Sale Bill #{item.billNumber || item.saleId.slice(-5)}.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4 max-h-[60vh] overflow-y-auto">
-          {/* Landed Cost Calculation */}
-          <div className="space-y-2 p-3 border rounded-lg bg-background">
-            <h3 className="font-semibold text-lg text-primary flex items-center"><ArrowDown className="mr-2 h-5 w-5"/>Landed Cost/kg</h3>
-            <Table>
-              <TableBody>
-                <BreakdownRow label="Base Purchase Rate" value={costBreakdown?.baseRate || item.basePurchaseRate} />
-                {costBreakdown?.purchaseExpenses > 0 ? <BreakdownRow label="Purchase Expenses" value={costBreakdown.purchaseExpenses} isSub /> : null}
-                {costBreakdown?.transferExpenses > 0 ? <BreakdownRow label="Transfer Expenses" value={costBreakdown.transferExpenses} isSub /> : null}
-                <TableRow className="bg-primary/10 font-bold text-primary text-base">
-                    <TableCell className="py-2 pl-4">✅ Final Landed Cost</TableCell>
-                    <TableCell className="py-2 text-right font-mono">₹{item.landedCostPerKg.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-          {/* Sale & Profit Calculation */}
-          <div className="space-y-2 p-3 border rounded-lg bg-background">
-             <h3 className="font-semibold text-lg text-primary flex items-center"><Zap className="mr-2 h-5 w-5"/>Sale & Profit/kg</h3>
-             <Table>
-                <TableBody>
-                    <BreakdownRow label="Sale Rate" value={item.saleRatePerKg} color="green" />
-                    {saleExpenses.brokerage > 0 ? <DeductionRow label="Brokerage" value={saleExpenses.brokerage / item.saleNetWeightKg} isSub /> : null}
-                    {saleExpenses.extraBrokerage > 0 ? <DeductionRow label="Extra Brokerage" value={saleExpenses.extraBrokerage / item.saleNetWeightKg} isSub /> : null}
-                    {saleExpenses.transport > 0 ? <DeductionRow label="Transport" value={saleExpenses.transport / item.saleNetWeightKg} isSub /> : null}
-                    {saleExpenses.packing > 0 ? <DeductionRow label="Packing" value={saleExpenses.packing / item.saleNetWeightKg} isSub /> : null}
-                    {saleExpenses.labour > 0 ? <DeductionRow label="Labour" value={saleExpenses.labour / item.saleNetWeightKg} isSub /> : null}
-                    {saleExpenses.misc > 0 ? <DeductionRow label="Misc." value={saleExpenses.misc / item.saleNetWeightKg} isSub /> : null}
-                    <TableRow className="bg-green-500/10 font-bold text-green-700 text-base">
-                        <TableCell className="py-2 pl-4">✅ Effective Sale Rate</TableCell>
-                        <TableCell className="py-2 text-right font-mono">₹{effectiveSaleRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                    </TableRow>
-                </TableBody>
-             </Table>
-          </div>
-        </div>
-
-        {/* Final Summary */}
-        <div className="p-4 bg-muted rounded-lg">
-            <h3 className="font-semibold text-center text-lg mb-2 uppercase">Final Calculation</h3>
-            <div className="flex justify-between items-center text-base">
-                <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Effective Sale Rate</p>
-                    <p className="font-bold text-lg text-green-600">₹{effectiveSaleRate.toFixed(2)}</p>
-                </div>
-                <Minus className="h-6 w-6 text-muted-foreground" />
-                 <div className="text-center">
-                    <p className="text-sm text-muted-foreground">Landed Cost</p>
-                    <p className="font-bold text-lg text-red-600">₹{item.landedCostPerKg.toFixed(2)}</p>
-                </div>
-                <div className="font-extrabold text-2xl text-muted-foreground mx-2">=</div>
-                 <div className="text-center p-2 rounded-md bg-background shadow-inner">
-                    <p className="text-sm text-muted-foreground">Net Profit/kg</p>
-                    <p className={cn("font-bold text-2xl", (effectiveSaleRate - item.landedCostPerKg) >= 0 ? 'text-primary' : 'text-destructive')}>
-                        ₹{(effectiveSaleRate - item.landedCostPerKg).toFixed(2)}
-                    </p>
-                </div>
-            </div>
-             <div className="text-center text-xl font-bold mt-4 pt-2 border-t">
-                Total Net Profit for {item.saleNetWeightKg} kg: 
-                <span className={cn("ml-2", item.netProfit >=0 ? 'text-primary' : 'text-destructive')}>
-                  ₹{item.netProfit.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2})}
-                </span>
-             </div>
-        </div>
-
-        <DialogFooter>
-          <Button onClick={onClose} variant="outline">Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <DataTable
+      columns={columns}
+      data={data}
+      getRowId={(row) => row.id}
+    />
   );
-};
-
-    
+}
+export const SaleTable = React.memo(SaleTableComponent);
