@@ -1,4 +1,6 @@
 
+"use client";
+
 import Link from 'next/link';
 import { Card, CardTitle } from '@/components/ui/card';
 import type { LucideProps } from 'lucide-react';
@@ -28,10 +30,9 @@ import {
   BookCopy,
   ClipboardList,
   BookMarked,
-  Badge,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { ComponentType } from 'react';
+import type { ComponentType, CSSProperties } from 'react';
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -64,7 +65,6 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   BookMarked,
 };
 
-
 interface DashboardTileProps {
   title: string;
   iconName: string;
@@ -75,8 +75,45 @@ interface DashboardTileProps {
   shortcut?: string;
 }
 
+const tailwindColorMap: Record<string, string> = {
+  'from-purple-500': '#a855f7', 'to-purple-700': '#6d28d9',
+  'from-blue-500': '#3b82f6', 'to-blue-700': '#1d4ed8',
+  'from-cyan-500': '#06b6d4', 'to-cyan-700': '#0e7490',
+  'from-teal-500': '#14b8a6', 'to-teal-700': '#0f766e',
+  'from-red-700': '#b91c1c', 'to-red-900': '#7f1d1d',
+  'from-[#1beec7]': '#1beec7', 'to-[#14b8a6]': '#14b8a6',
+  'from-pink-500': '#ec4899', 'to-pink-700': '#be185d',
+  'from-[#ffa5ab]': '#ffa5ab', 'to-[#fb7185]': '#fb7185',
+  'from-yellow-400': '#facc15', 'to-yellow-600': '#ca8a04',
+  'from-green-400': '#4ade80', 'to-green-600': '#16a34a',
+  'from-sky-500': '#0ea5e9', 'to-sky-700': '#0369a1',
+  'from-sky-400': '#38bdf8', 'to-sky-600': '#0284c7',
+  'from-emerald-400': '#34d399', 'to-emerald-600': '#059669',
+  'from-red-500': '#ef4444', 'to-red-700': '#b91c1c',
+  'from-green-500': '#22c55e', 'to-green-700': '#15803d',
+};
+
+const getGradientColorsFromClassName = (className?: string): { from: string, to: string } => {
+    if (!className) return { from: '#3b82f6', to: '#1d4ed8' }; // Default blue
+
+    const fromClass = className.split(' ').find(c => c.startsWith('from-'));
+    const toClass = className.split(' ').find(c => c.startsWith('to-'));
+    
+    const fromColor = fromClass ? tailwindColorMap[fromClass] || '#3b82f6' : '#3b82f6';
+    const toColor = toClass ? tailwindColorMap[toClass] || '#1d4ed8' : '#1d4ed8';
+
+    return { from: fromColor, to: toColor };
+}
+
+
 const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, onClick, shortcut }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
+  const { from, to } = getGradientColorsFromClassName(className);
+
+  const cardStyle: CSSProperties = {
+    '--gradient-from': from,
+    '--gradient-to': to,
+  } as CSSProperties;
 
   const cardContent = (
     <motion.div
@@ -84,9 +121,10 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
       transition={{ type: "spring", stiffness: 400, damping: 15 }}
       className="h-full w-full"
     >
-        <Card className={cn(
+        <Card style={cardStyle} className={cn(
           "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-          "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px] liquid-gradient-background text-white",
+          "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px] text-white",
+          "liquid-gradient-background", // Use the generic liquid gradient class
           className
         )}>
           <Icon className="h-7 w-7 mb-2" />
