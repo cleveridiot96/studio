@@ -45,7 +45,7 @@ import type { DateRange } from "react-day-picker";
 
 // TRIAL PACKAGE 1 DATA
 const initialLocationTransfersData: LocationTransfer[] = [
-    { id: "lt-tp1-1", date: "2024-07-15", fromWarehouseId: "fixed-wh-chiplun", fromWarehouseName: "CHIPLUN", toWarehouseId: "fixed-wh-mumbai", toWarehouseName: "MUMBAI", items: [{ originalLotNumber: "VAKKAL-A1", newLotNumber: "VAKKAL-A1-T50", bagsToTransfer: 50, netWeightToTransfer: 2500, grossWeightToTransfer: 2500, preTransferLandedCost: 25.5 }], expenses: [{ account: "Transport Charges", amount: 500, paymentMode: "Cash", partyName: "Self" }], totalExpenses: 500, perKgExpense: 0.2, totalNetWeight: 2500, totalGrossWeight: 2500 },
+    { id: "lt-tp1-1", date: "2024-07-15", fromWarehouseId: "fixed-wh-chiplun", fromWarehouseName: "CHIPLUN", toWarehouseId: "fixed-wh-mumbai", toWarehouseName: "MUMBAI", items: [{ originalLotNumber: "VAKKAL-A1", newLotNumber: "VAKKAL-A1/50", bagsToTransfer: 50, netWeightToTransfer: 2500, grossWeightToTransfer: 2500, preTransferLandedCost: 25.5 }], expenses: [{ account: "Transport Charges", amount: 500, paymentMode: "Cash", partyName: "Self" }], totalExpenses: 500, perKgExpense: 0.2, totalNetWeight: 2500, totalGrossWeight: 2500 },
 ];
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
@@ -207,7 +207,7 @@ export function LocationTransferClient() {
                     stockMap.set(toKey, toEntry);
                 }
             });
-        } else if (tx.txType === 'sale') {
+        } else if (tx.txType === 'sale' && tx.id !== transferToEdit?.id) {
              (tx.items || []).forEach((item: SaleItem) => {
                 const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
                 if (saleLotKey) {
@@ -246,7 +246,7 @@ export function LocationTransferClient() {
     });
 
     return result;
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear, transferToEdit]);
 
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
@@ -605,3 +605,5 @@ export function LocationTransferClient() {
     </div>
   );
 }
+
+    

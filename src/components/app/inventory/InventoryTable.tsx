@@ -50,7 +50,7 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchi
         <TableBody>
           {items.map((item) => (
             <TableRow
-              key={`${item.lotNumber}-${item.locationId}`}
+              key={item.key}
               className={cn(
                 "uppercase",
                 isArchivedView ? 'bg-muted/40' : '',
@@ -111,3 +111,5 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchi
 };
     
 export const InventoryTable = React.memo(InventoryTableComponent);
+
+    

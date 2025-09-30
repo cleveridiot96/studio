@@ -1,16 +1,7 @@
 
-// @ts-nocheck
 "use client";
-
 import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Users, Truck, UserCheck, UserCog, Handshake, Building, Lock, DollarSign } from "lucide-react";
 import type { MasterItem, MasterItemType } from "@/lib/types";
@@ -173,3 +164,5 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
 };
 
 export const MasterList = React.memo(MasterListComponent);
+
+    

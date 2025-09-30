@@ -12,16 +12,15 @@ export const purchaseMigrator = (storedValue: any): Purchase[] => {
             if (!p) return null; // Handle null/undefined items in array
 
             // If already has an expenses array, assume it's the new format
-            if (p.expenses) return p;
-
-            const migratedExpenses: ExpenseItem[] = [];
-            if (p.transportCharges) migratedExpenses.push({ account: 'Transport Charges', amount: p.transportCharges, paymentMode: 'Pending', party: p.transporterName || 'Self' });
-            if (p.packingCharges) migratedExpenses.push({ account: 'Packing Charges', amount: p.packingCharges, paymentMode: 'Cash', party: 'Self' });
-            if (p.labourCharges) migratedExpenses.push({ account: 'Labour Charges', amount: p.labourCharges, paymentMode: 'Cash', party: 'Self' });
-            if (p.miscExpenses) migratedExpenses.push({ account: 'Misc Expenses', amount: p.miscExpenses, paymentMode: 'Cash', party: 'Self' });
-            if (p.brokerageCharges) migratedExpenses.push({ account: 'Broker Commission', amount: p.brokerageCharges, paymentMode: 'Pending', party: p.agentName || 'Self' });
-            
-            p.expenses = migratedExpenses;
+            if (!p.expenses) {
+                 const migratedExpenses: ExpenseItem[] = [];
+                if (p.transportCharges) migratedExpenses.push({ account: 'Transport Charges', amount: p.transportCharges, paymentMode: 'Pending', party: p.transporterName || 'Self' });
+                if (p.packingCharges) migratedExpenses.push({ account: 'Packing Charges', amount: p.packingCharges, paymentMode: 'Cash', party: 'Self' });
+                if (p.labourCharges) migratedExpenses.push({ account: 'Labour Charges', amount: p.labourCharges, paymentMode: 'Cash', party: 'Self' });
+                if (p.miscExpenses) migratedExpenses.push({ account: 'Misc Expenses', amount: p.miscExpenses, paymentMode: 'Cash', party: 'Self' });
+                if (p.brokerageCharges) migratedExpenses.push({ account: 'Broker Commission', amount: p.brokerageCharges, paymentMode: 'Pending', party: p.agentName || 'Self' });
+                p.expenses = migratedExpenses;
+            }
 
             // Delete old top-level keys
             delete p.transportCharges;
@@ -49,7 +48,7 @@ export const purchaseMigrator = (storedValue: any): Purchase[] => {
             
             if (!p.items) p.items = [];
 
-            const totalExpenses = p.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+            const totalExpenses = p.expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
             const expensesPerKg = p.totalNetWeight > 0 ? totalExpenses / p.totalNetWeight : 0;
 
             p.items = p.items.map((item: any) => {
@@ -80,21 +79,19 @@ export const salesMigrator = (storedValue: any): Sale[] => {
         return storedValue.map(sale => {
             if (!sale) return null;
 
-            if (sale.expenses) return sale; // Already migrated
-
-            const migratedExpenses: ExpenseItem[] = [];
-            if(sale.isCB && sale.cbAmount) migratedExpenses.push({ account: 'Cash Discount', amount: sale.cbAmount, paymentMode: 'Auto-adjusted', party: sale.customerName || 'Self' });
-            if(sale.transportCost) migratedExpenses.push({ account: 'Transport Charges', amount: sale.transportCost, paymentMode: 'Pending', party: sale.transporterName || 'Self' });
-            if(sale.packingCost) migratedExpenses.push({ account: 'Packing Charges', amount: sale.packingCost, paymentMode: 'Cash', party: 'Self' });
-            if(sale.labourCost) migratedExpenses.push({ account: 'Labour Charges', amount: sale.labourCost, paymentMode: 'Cash', party: 'Self' });
-            if(sale.miscExpenses) migratedExpenses.push({ account: 'Misc Expenses', amount: sale.miscExpenses, paymentMode: 'Cash', party: 'Self' });
-            if(sale.calculatedBrokerageCommission) migratedExpenses.push({ account: 'Broker Commission', amount: sale.calculatedBrokerageCommission, paymentMode: 'Pending', party: sale.brokerName || 'Self' });
-            if(sale.calculatedExtraBrokerage) migratedExpenses.push({ account: 'Extra Brokerage', amount: sale.calculatedExtraBrokerage, paymentMode: 'Pending', party: sale.brokerName || 'Self' });
-
-            sale.expenses = migratedExpenses;
+            if (!sale.expenses) {
+                const migratedExpenses: ExpenseItem[] = [];
+                if(sale.isCB && sale.cbAmount) migratedExpenses.push({ account: 'Cash Discount', amount: sale.cbAmount, paymentMode: 'Auto-adjusted', party: sale.customerName || 'Self' });
+                if(sale.transportCost) migratedExpenses.push({ account: 'Transport Charges', amount: sale.transportCost, paymentMode: 'Pending', party: sale.transporterName || 'Self' });
+                if(sale.packingCost) migratedExpenses.push({ account: 'Packing Charges', amount: sale.packingCost, paymentMode: 'Cash', party: 'Self' });
+                if(sale.labourCost) migratedExpenses.push({ account: 'Labour Charges', amount: sale.labourCost, paymentMode: 'Cash', party: 'Self' });
+                if(sale.miscExpenses) migratedExpenses.push({ account: 'Misc Expenses', amount: sale.miscExpenses, paymentMode: 'Cash', party: 'Self' });
+                if(sale.calculatedBrokerageCommission) migratedExpenses.push({ account: 'Broker Commission', amount: sale.calculatedBrokerageCommission, paymentMode: 'Pending', party: sale.brokerName || 'Self' });
+                if(sale.calculatedExtraBrokerage) migratedExpenses.push({ account: 'Extra Brokerage', amount: sale.calculatedExtraBrokerage, paymentMode: 'Pending', party: sale.brokerName || 'Self' });
+                sale.expenses = migratedExpenses;
+            }
             
             delete sale.isCB;
-            delete sale.cbAmount;
             delete sale.transportCost;
             delete sale.packingCost;
             delete sale.labourCost;
@@ -135,8 +132,8 @@ export const locationTransferMigrator = (storedValue: any): LocationTransfer[] =
             let wasUpdated = false;
 
             // Migration 1: Add newLotNumber if it doesn't exist
-            if (lt.items && lt.items.length > 0 && lt.items.some(item => !item.newLotNumber)) {
-                lt.items = lt.items.map(item => ({
+            if (lt.items && lt.items.length > 0 && lt.items.some((item: any) => !item.newLotNumber)) {
+                lt.items = lt.items.map((item: any) => ({
                     ...item,
                     newLotNumber: item.newLotNumber || `${item.originalLotNumber}/${Math.round(item.bagsToTransfer)}`
                 }));
@@ -171,3 +168,5 @@ export const locationTransferMigrator = (storedValue: any): LocationTransfer[] =
     }
     return [];
 };
+
+    

@@ -37,10 +37,10 @@ const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
-
-const DEAD_STOCK_THRESHOLD_DAYS = 180;
+const KEY_SEPARATOR = '_$_';
 
 export interface AggregatedInventoryItem {
+  key: string; // Unique key: lotNumber_$_locationId
   lotNumber: string;
   locationId: string;
   locationName: string;
@@ -88,7 +88,6 @@ export function InventoryClient() {
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
-  const [notifiedLowStock, setNotifiedLowStock] = React.useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = React.useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string | null>(null);
 
@@ -102,11 +101,11 @@ export function InventoryClient() {
     const inventoryMap = new Map<string, AggregatedInventoryItem>();
 
     const transactions = [
-        ...purchases.map(p => ({ ...p, txType: 'purchase' })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' })),
-        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' })),
-        ...sales.map(s => ({ ...s, txType: 'sale' })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' }))
+        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
+        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
+        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     for (const tx of transactions) {
@@ -114,10 +113,11 @@ export function InventoryClient() {
 
         if (tx.txType === 'purchase') {
             (tx.items || []).forEach((item: PurchaseItem) => {
-                const key = `${item.lotNumber}-${tx.locationId}`;
+                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
                 const landedCost = item.landedCostPerKg || tx.effectiveRate;
                 
                 inventoryMap.set(key, {
+                    key: key,
                     lotNumber: item.lotNumber,
                     locationId: tx.locationId,
                     locationName: tx.locationName || 'Unknown',
@@ -147,7 +147,7 @@ export function InventoryClient() {
         } else if (tx.txType === 'purchaseReturn') {
             const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
             if (originalPurchase) {
-                const key = `${tx.originalLotNumber}-${originalPurchase.locationId}`;
+                const key = `${tx.originalLotNumber}${KEY_SEPARATOR}${originalPurchase.locationId}`;
                 const entry = inventoryMap.get(key);
                 if (entry) {
                     entry.totalPurchaseReturnedBags += tx.quantityReturned;
@@ -156,24 +156,22 @@ export function InventoryClient() {
             }
         } else if (tx.txType === 'locationTransfer') {
             (tx.items || []).forEach((item: LocationTransferItem) => {
-                const fromKey = `${item.originalLotNumber}-${tx.fromWarehouseId}`;
+                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
                 const fromEntry = inventoryMap.get(fromKey);
 
                 if (fromEntry) {
-                    const costPerKg = fromEntry.cogs / fromEntry.currentWeight;
-                    const costOfGoodsToTransfer = costPerKg * item.netWeightToTransfer;
-
                     fromEntry.totalTransferredOutBags += item.bagsToTransfer;
                     fromEntry.totalTransferredOutWeight += item.netWeightToTransfer;
 
-                    const toKey = `${item.newLotNumber}-${tx.toWarehouseId}`;
+                    const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
                     let toEntry = inventoryMap.get(toKey);
                     
                     const perKgExpense = tx.perKgExpense || 0;
-                    const newEffectiveRate = costPerKg + perKgExpense;
+                    const newEffectiveRate = (item.preTransferLandedCost || 0) + perKgExpense;
 
                     if (!toEntry) {
                         toEntry = {
+                          key: toKey,
                           ...fromEntry, // Copy details from source
                           lotNumber: item.newLotNumber,
                           locationId: tx.toWarehouseId,
@@ -194,6 +192,7 @@ export function InventoryClient() {
                           totalTransferredInWeight: 0,
                           currentBags: 0,
                           currentWeight: 0,
+                          purchaseDate: tx.date, // Set purchase date to transfer date
                           effectiveRate: newEffectiveRate,
                           cogs: 0,
                         };
@@ -201,15 +200,13 @@ export function InventoryClient() {
                     
                     toEntry.totalTransferredInBags += item.bagsToTransfer;
                     toEntry.totalTransferredInWeight += item.netWeightToTransfer;
-                    toEntry.effectiveRate = newEffectiveRate;
-                    toEntry.cogs += item.netWeightToTransfer * newEffectiveRate;
-
+                    toEntry.effectiveRate = newEffectiveRate; // Update rate in case of multiple transfers to same lot
                     inventoryMap.set(toKey, toEntry);
                 }
             });
         } else if (tx.txType === 'sale') {
             (tx.items || []).forEach((item: SaleItem) => {
-                const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber));
+                const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
                 if (saleLotKey) {
                     const entry = inventoryMap.get(saleLotKey);
                     if (entry) {
@@ -246,11 +243,11 @@ export function InventoryClient() {
   }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, hydrated, isAppHydrating, financialYear]);
   
   const activeInventory = React.useMemo(() => {
-    return allAggregatedInventory.filter(item => !archivedLotKeys.includes(`${item.lotNumber}-${item.locationId}`));
+    return allAggregatedInventory.filter(item => !archivedLotKeys.includes(item.key));
   }, [allAggregatedInventory, archivedLotKeys]);
 
   const archivedInventory = React.useMemo(() => {
-    return allAggregatedInventory.filter(item => archivedLotKeys.includes(`${item.lotNumber}-${item.locationId}`));
+    return allAggregatedInventory.filter(item => archivedLotKeys.includes(item.key));
   }, [allAggregatedInventory, archivedLotKeys]);
 
   const warehouseSummary = React.useMemo(() => {
@@ -284,13 +281,13 @@ export function InventoryClient() {
   };
   const confirmArchiveItem = () => {
     if (itemToArchive) {
-      setArchivedLotKeys(prev => [...prev, `${itemToArchive.lotNumber}-${itemToArchive.locationId}`]);
+      setArchivedLotKeys(prev => [...prev, itemToArchive.key]);
       toast({ title: "Lot Archived", description: `Lot "${itemToArchive.lotNumber}" at ${itemToArchive.locationName} has been archived.` });
       setItemToArchive(null); setShowArchiveConfirm(false);
     }
   };
   const handleUnarchiveItem = (item: AggregatedInventoryItem) => {
-    setArchivedLotKeys(prev => prev.filter(key => key !== `${item.lotNumber}-${item.locationId}`));
+    setArchivedLotKeys(prev => prev.filter(key => key !== item.key));
     toast({ title: "Lot Restored", description: `Lot "${item.lotNumber}" has been restored to the active inventory view.` });
   };
 
@@ -373,3 +370,5 @@ export function InventoryClient() {
     </div>
   );
 }
+
+    
