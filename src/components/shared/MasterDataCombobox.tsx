@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Command, CommandInput, CommandList } from "@/components/ui/command";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown, Pencil } from "lucide-react";
@@ -55,28 +55,24 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     threshold: 0.3,
   }), [options]);
 
-  const didYouMeanSuggest = React.useMemo(() => {
-    if (!search) return null;
-    const suggestions = didYouMean(search, options.map(opt => opt.label), {
-      threshold: 0.6,
-      caseSensitive: false,
-    });
-    return Array.isArray(suggestions) ? suggestions[0] : suggestions;
-  }, [search, options]);
-
-  const filteredOptions = React.useMemo(() => {
+  const { filteredOptions, suggestion } = React.useMemo(() => {
     if (!search) {
-      return options;
+      return { filteredOptions: options, suggestion: null };
     }
-    const fuseResults = fuse.search(search).map(result => result.item);
-    if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
-        const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
-        if (suggestionOption) {
-            return [suggestionOption, ...fuseResults];
-        }
+    const fuseResults = fuse.search(search);
+    const filtered = fuseResults.map(result => result.item);
+    
+    let suggestion: string | null = null;
+    if (fuseResults.length === 0) {
+      const didYouMeanSuggestion = didYouMean(search, options.map(opt => opt.label), {
+        threshold: 0.6,
+        caseSensitive: false,
+      });
+      suggestion = Array.isArray(didYouMeanSuggestion) ? didYouMeanSuggestion[0] : didYouMeanSuggestion;
     }
-    return fuseResults;
-  }, [options, search, fuse, didYouMeanSuggest]);
+
+    return { filteredOptions: filtered, suggestion };
+  }, [options, search, fuse]);
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
@@ -135,56 +131,41 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           />
           <TooltipProvider>
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
-                <div
-                    onClick={() => handleSelect(undefined)}
-                    className={cn(
+                <CommandItem
+                    onSelect={() => handleSelect(undefined)}
+                     className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
                         !value && "font-semibold bg-accent"
                     )}
-                    role="option"
-                    aria-selected={!value}
                 >
                     <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
                     <span className="italic">CLEAR SELECTION</span>
-                </div>
+                </CommandItem>
                 <Separator className="my-1" />
 
               {filteredOptions.length === 0 && search.length > 0 ? (
-                <div className="py-6 text-center text-sm">
-                    {notFoundMessage}
-                    {didYouMeanSuggest && (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                            Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => handleSuggestionClick(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
-                        </div>
-                    )}
-                    {onAddNew && (
-                        <div
-                        onClick={handleAddNew}
-                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground mt-2 border-t"
-                        role="button"
-                        >
-                        <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                        </div>
-                    )}
-                </div>
-              ) : (
-                <>
-                  {didYouMeanSuggest && search && !filteredOptions.some(opt => opt.label.toLowerCase() === didYouMeanSuggest.toLowerCase()) && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        No exact match. Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => handleSuggestionClick(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+                <CommandEmpty>
+                  {notFoundMessage}
+                  {suggestion && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                          Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => handleSuggestionClick(suggestion)}>{suggestion}</Button>?
                       </div>
                   )}
+                  {onAddNew && (
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-2 border-t">
+                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                    </CommandItem>
+                  )}
+                </CommandEmpty>
+              ) : (
+                <>
                   {filteredOptions.map((option) => (
                     <Tooltip key={option.value} delayDuration={300}>
                       <TooltipTrigger asChild>
-                        <div
-                          onClick={() => handleSelect(option.value)}
-                          className={cn(
-                            "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground uppercase",
-                            value === option.value && "font-semibold"
-                          )}
-                          role="option"
-                          aria-selected={value === option.value}
+                        <CommandItem
+                          value={option.value}
+                          onSelect={() => handleSelect(option.value)}
+                          className="uppercase"
                         >
                           <Check
                               className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
@@ -201,7 +182,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                                 <Pencil className="h-3 w-3" />
                             </Button>
                           )}
-                        </div>
+                        </CommandItem>
                       </TooltipTrigger>
                       {option.tooltipContent && (
                         <TooltipContent side="right" align="start">
@@ -211,13 +192,9 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     </Tooltip>
                   ))}
                   {onAddNew && (
-                    <div
-                        onClick={handleAddNew}
-                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground mt-1 border-t"
-                        role="button"
-                    >
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </div>
+                    </CommandItem>
                   )}
                 </>
               )}
