@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
+import { SidebarMenu, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"; 
 import type { NavItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -14,7 +14,7 @@ import {
   ShoppingCart,
   Receipt,
   Boxes,
-  FileText,
+  ClipboardList,
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
@@ -24,7 +24,6 @@ import {
   TrendingDown,
   HelpCircle as FallbackIcon,
   ArrowRightLeft,
-  ClipboardList,
   Rocket,
   BookCopy,
   DollarSign, // Added for Expenses
@@ -38,7 +37,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   ShoppingCart,
   Receipt,
   Boxes,
-  FileText,
+  ClipboardList,
   ArrowRightCircle,
   ArrowLeftCircle,
   BookOpen,
@@ -47,7 +46,6 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   DatabaseBackup,
   TrendingDown,
   ArrowRightLeft,
-  ClipboardList,
   Rocket,
   BookCopy,
   DollarSign,
@@ -61,7 +59,14 @@ interface ClientSidebarMenuProps {
 
 export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
   const pathname = usePathname();
-  const { state: sidebarState } = useSidebar(); 
+  const { state: sidebarState, setOpenMobile } = useSidebar(); 
+
+  const handleLinkClick = () => {
+    // Only close the sidebar on mobile after a navigation action
+    if (setOpenMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -97,6 +102,7 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                 <TooltipTrigger asChild>
                   <Link
                     href={item.href}
+                    onClick={handleLinkClick} // Add this onClick handler
                     className={cn(
                       "relative flex items-center transition-colors duration-150 ease-in-out group focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar-background",
                       "text-sidebar-foreground hover:text-sidebar-accent-foreground rounded-md",
