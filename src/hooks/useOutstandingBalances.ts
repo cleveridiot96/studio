@@ -85,19 +85,9 @@ export const useOutstandingBalances = () => {
                 }
 
             } else if (tx.txType === 'Purchase') {
-                updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
+                const primaryCreditorId = tx.agentId || tx.supplierId;
+                updateBalance(primaryCreditorId, -(tx.totalAmount || 0));
                 
-                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                if (tx.agentId && agentCommission > 0) {
-                    updateBalance(tx.agentId, -agentCommission);
-                }
-                
-                tx.expenses?.forEach(exp => {
-                    if (exp.account !== 'Broker Commission' && exp.partyId && exp.amount > 0) {
-                        updateBalance(exp.partyId, -exp.amount);
-                    }
-                });
-
             } else if (tx.txType === 'Receipt') {
                 updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
             } else if (tx.txType === 'Payment') {
@@ -105,7 +95,8 @@ export const useOutstandingBalances = () => {
             } else if (tx.txType === 'PurchaseReturn') {
                 const p = purchases.find(p => p.id === tx.originalPurchaseId);
                 if (p) {
-                    updateBalance(p.supplierId, tx.returnAmount || 0);
+                    const primaryCreditorId = p.agentId || p.supplierId;
+                    updateBalance(primaryCreditorId, tx.returnAmount || 0);
                 }
             } else if (tx.txType === 'SaleReturn') {
                 const s = sales.find(s => s.id === tx.originalSaleId);

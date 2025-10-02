@@ -26,7 +26,7 @@ import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 
 // TRIAL PACKAGE 1 DATA
 const initialPaymentsData: Payment[] = [
-    { id: "pay-tp1-1", date: "2024-07-20", partyId: "supp-anand", partyName: "ANAND AGRO PRODUCTS", partyType: "Supplier", amount: 50000, paymentMethod: "Bank", transactionType: "On Account", notes: "PART PAYMENT FOR VAKKAL-A1" },
+    { id: "pay-tp1-1", date: "2024-07-20", partyId: "agent-ajay", partyName: "AJAY KUMAR", partyType: "Agent", amount: 50000, paymentMethod: "Bank", transactionType: "On Account", notes: "ADVANCE PAYMENT" },
 ];
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
@@ -43,7 +43,7 @@ export function PaymentsClient() {
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
   
-  const { payableParties, getPartyName } = useOutstandingBalances();
+  const { payableParties } = useOutstandingBalances();
 
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);

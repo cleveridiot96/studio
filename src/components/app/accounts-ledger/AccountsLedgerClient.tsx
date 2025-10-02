@@ -162,24 +162,22 @@ export function AccountsLedgerClient() {
                     openingBalance -= brokerCommission;
                 }
             } else if (tx.txType === 'Purchase') {
-                 if (tx.supplierId === party.id) {
-                    openingBalance -= (tx.totalGoodsValue || 0);
+                const primaryCreditorId = tx.agentId || tx.supplierId;
+                if(primaryCreditorId === party.id) {
+                    openingBalance -= (tx.totalAmount || 0);
                 }
-                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                if (tx.agentId === party.id && agentCommission > 0) {
-                    openingBalance -= agentCommission;
-                }
-                tx.expenses?.forEach(exp => {
-                    if (exp.account !== 'Broker Commission' && exp.partyId === party.id && exp.amount > 0) {
-                        openingBalance -= exp.amount;
-                    }
-                });
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 openingBalance += tx.amount;
             } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
                 openingBalance -= (tx.amount + (tx.cashDiscount || 0));
-            } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
-                openingBalance += tx.returnAmount;
+            } else if (tx.txType === 'PurchaseReturn') {
+                const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
+                if (originalPurchase) {
+                    const primaryCreditorId = originalPurchase.agentId || originalPurchase.supplierId;
+                    if(primaryCreditorId === party.id) {
+                        openingBalance += tx.returnAmount;
+                    }
+                }
             } else if (tx.txType === 'SaleReturn') {
                 const originalSale = sales.find(s => s.id === tx.originalSaleId);
                 if (originalSale) {
@@ -203,6 +201,7 @@ export function AccountsLedgerClient() {
                 if (primaryDebtorId === party.id) {
                     results.push({ id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` });
                 }
+                // Informational entry for customer if broker is the debtor
                 if (tx.customerId === party.id && tx.brokerId && party.id !== tx.brokerId) {
                     const brokerName = allMasters.find(m => m.id === tx.brokerId)?.name || 'Unknown Broker';
                     results.push({ id: `sale-info-${tx.id}`, date: tx.date, type: 'Sale Info', particulars: `VIA: ${brokerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: 0, credit: 0, href: `/sales#${tx.id}` });
@@ -212,26 +211,29 @@ export function AccountsLedgerClient() {
                     results.push({ id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMM. FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` });
                 }
             } else if (tx.txType === 'Purchase') {
-                if(tx.supplierId === party.id) {
-                  results.push({ id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalGoodsValue, href: `/purchases#${tx.id}` });
-                }
-                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                if(tx.agentId === party.id && agentCommission > 0) {
-                  results.push({ id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` });
-                }
-                 tx.expenses?.forEach(exp => {
-                  if (exp.account !== 'Broker Commission' && exp.partyId === party.id && exp.amount > 0) {
-                      results.push({ id: `pur-exp-${tx.id}-${exp.account.replace(' ','')}`, date: tx.date, type: 'Purchase Expense', particulars: `EXP: ${exp.account}`, debit: 0, credit: exp.amount, href: `/purchases#${tx.id}` });
-                  }
-                });
+                 const primaryCreditorId = tx.agentId || tx.supplierId;
+                 if(primaryCreditorId === party.id) {
+                    results.push({ id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `FROM: ${tx.supplierName} (LOTS: ${tx.items.map(i=>i.lotNumber).join(', ')})`, debit: 0, credit: tx.totalAmount, href: `/purchases#${tx.id}` });
+                 }
+                 // Informational entry for supplier if agent is primary creditor
+                 if(tx.supplierId === party.id && tx.agentId && party.id !== tx.agentId) {
+                    const agentName = allMasters.find(m => m.id === tx.agentId)?.name || 'Unknown Agent';
+                    results.push({ id: `pur-info-${tx.id}`, date: tx.date, type: 'Purchase Info', particulars: `VIA: ${agentName}`, debit: 0, credit: 0, href: `/purchases#${tx.id}` });
+                 }
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT PAYMENT (${tx.paymentMethod})` : `PAYMENT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
                 results.push({ id: `pay-${tx.id}`, date: tx.date, type: 'Payment', particulars: particularDetails, debit: tx.amount, credit: 0, href: `/payments#${tx.id}` });
             } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT RECEIPT (${tx.paymentMethod})` : `RECEIPT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
                 results.push({ id: `receipt-${tx.id}`, date: tx.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: tx.amount + (tx.cashDiscount || 0), href: `/receipts#${tx.id}` });
-            } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
-                results.push({ id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` });
+            } else if (tx.txType === 'PurchaseReturn') {
+                 const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
+                 if(originalPurchase) {
+                     const primaryCreditorId = originalPurchase.agentId || originalPurchase.supplierId;
+                     if(primaryCreditorId === party.id) {
+                        results.push({ id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` });
+                     }
+                 }
             } else if (tx.txType === 'SaleReturn') {
                  const originalSale = sales.find(s => s.id === tx.originalSaleId);
                  if (originalSale) {
