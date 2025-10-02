@@ -71,7 +71,7 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchi
               <TableCell className="text-center">
                 {isArchivedView ? (<Badge variant="outline" className="uppercase">ARCHIVED</Badge>) :
                 item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground uppercase">DEAD STOCK</Badge>) :
-                item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase">ZERO STOCK</Badge>) :
+                item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase animate-pulse-destructive">ZERO STOCK</Badge>) :
                 item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">LOW STOCK</Badge>) :
                 (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white uppercase"><TrendingUp className="h-3 w-3 mr-1" /> FAST</Badge>) :
                 (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase"><TrendingDown className="h-3 w-3 mr-1" /> SLOW</Badge>) :
