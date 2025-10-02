@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, MasterItemType, LedgerEntry } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, MasterItemType, LedgerEntry, Agent, Broker } from "@/lib/types";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
@@ -20,7 +20,7 @@ import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
-import { FIXED_EXPENSES } from "@/lib/constants";
+import { FIXED_EXPENSES, FIXED_WAREHOUSES } from "@/lib/constants";
 
 
 const MASTERS_KEYS = {
@@ -71,9 +71,9 @@ export function AccountsLedgerClient() {
   // Master data states
   const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.customers, memoizedEmptyArray);
   const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.suppliers, memoizedEmptyArray);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.agents, memoizedEmptyArray);
+  const [agents, setAgents] = useLocalStorageState<Agent[]>(MASTERS_KEYS.agents, memoizedEmptyArray);
   const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.transporters, memoizedEmptyArray);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.brokers, memoizedEmptyArray);
+  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(MASTERS_KEYS.brokers, memoizedEmptyArray);
   const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.expenses, memoizedEmptyArray);
 
   // Transaction data states
@@ -153,25 +153,27 @@ export function AccountsLedgerClient() {
     allTransactions.forEach(tx => {
         if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
           if (tx.txType === 'Sale') {
-              const accountablePartyId = tx.brokerId || tx.customerId;
-              if (accountablePartyId === party.id) {
+              const primaryDebtorId = tx.brokerId || tx.customerId;
+              if (primaryDebtorId === party.id) {
                   openingBalance += tx.billedAmount || 0;
               }
-              // If the current party is the broker, their commission is a liability for us, reducing their net receivable
               const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
               if (tx.brokerId === party.id && brokerCommission > 0) {
                   openingBalance -= brokerCommission;
               }
           } else if (tx.txType === 'Purchase') {
-              // We owe the supplier for goods
               if (tx.supplierId === party.id) {
                   openingBalance -= (tx.totalGoodsValue || 0);
               }
-              // We owe the agent for commission
               const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
               if (tx.agentId === party.id && agentCommission > 0) {
                   openingBalance -= agentCommission;
               }
+              tx.expenses?.forEach(exp => {
+                if (exp.account !== 'Broker Commission' && exp.partyId === party.id && exp.amount > 0) {
+                    openingBalance -= exp.amount;
+                }
+              });
           } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
               openingBalance += tx.amount;
           } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
@@ -180,8 +182,11 @@ export function AccountsLedgerClient() {
               openingBalance += tx.returnAmount;
           } else if (tx.txType === 'SaleReturn') {
               const originalSale = sales.find(s => s.id === tx.originalSaleId);
-              if (originalSale && (originalSale.brokerId === party.id || originalSale.customerId === party.id)) {
-                openingBalance -= tx.returnAmount;
+              if (originalSale) {
+                  const primaryDebtorId = originalSale.brokerId || originalSale.customerId;
+                  if (primaryDebtorId === party.id) {
+                    openingBalance -= tx.returnAmount;
+                  }
               }
           } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
               openingBalance += (tx.debit - tx.credit);
@@ -194,19 +199,20 @@ export function AccountsLedgerClient() {
         .flatMap(tx => {
             if (tx.txType === 'Sale') {
                 const results: DisplayLedgerEntry[] = [];
-                const accountablePartyId = tx.brokerId || tx.customerId;
+                const primaryDebtorId = tx.brokerId || tx.customerId;
 
-                // If the selected party is the accountable party (broker or customer)
-                if (accountablePartyId === party.id) {
+                // If the selected party is the primary debtor (broker or direct customer)
+                if (primaryDebtorId === party.id) {
                   results.push({ id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` });
                 }
                 
                 // If the selected party IS the customer, but the sale was via a broker, show an informational entry.
                 if (tx.customerId === party.id && tx.brokerId) {
                     const brokerName = allMasters.find(m => m.id === tx.brokerId)?.name || 'Unknown Broker';
-                    results.push({ id: `sale-info-${tx.id}`, date: tx.date, type: 'Sale Info', particulars: `VIA: ${brokerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: 0, credit: 0, href: `/sales#${tx.id}` });
+                    results.push({ id: `sale-info-${tx.id}`, date: tx.date, type: 'Sale Info', particulars: `SALE VIA BROKER: ${brokerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: 0, credit: 0, href: `/sales#${tx.id}` });
                 }
                 
+                // If the selected party is the broker, add their commission as a credit (a liability for us).
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if (tx.brokerId === party.id && brokerCommission > 0) {
                   results.push({ id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMMISSION FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` });
@@ -223,6 +229,12 @@ export function AccountsLedgerClient() {
                 if(tx.agentId === party.id && agentCommission > 0) {
                   results.push({ id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` });
                 }
+                 // Other expenses
+                 tx.expenses?.forEach(exp => {
+                  if (exp.account !== 'Broker Commission' && exp.partyId === party.id && exp.amount > 0) {
+                      results.push({ id: `pur-exp-${tx.id}-${exp.account.replace(' ','')}`, date: tx.date, type: 'Purchase Expense', particulars: `EXP: ${exp.account}`, debit: 0, credit: exp.amount, href: `/purchases#${tx.id}` });
+                  }
+                });
                 return results;
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 const particularDetails = tx.transactionType === 'On Account' ? `ON ACCOUNT PAYMENT (${tx.paymentMethod})` : `PAYMENT VIA ${tx.paymentMethod} AGAINST BILL(S): ${tx.againstBills?.map(b => b.billId).join(', ') || 'N/A'}`;
@@ -234,8 +246,11 @@ export function AccountsLedgerClient() {
                 return [{ id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` }];
             } else if (tx.txType === 'SaleReturn') {
                  const originalSale = sales.find(s => s.id === tx.originalSaleId);
-                 if (originalSale && (originalSale.brokerId === party.id || originalSale.customerId === party.id)) {
-                    return [{ id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` }];
+                 if (originalSale) {
+                    const primaryDebtorId = originalSale.brokerId || originalSale.customerId;
+                    if(primaryDebtorId === party.id) {
+                      return [{ id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` }];
+                    }
                  }
             } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
                 return [{ id: tx.id, date: tx.date, type: tx.type, particulars: `${tx.account} (VCH: ${tx.relatedVoucher?.slice(-5) || 'N/A'})`, debit: tx.debit, credit: tx.credit, href: tx.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : tx.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }];
@@ -301,7 +316,7 @@ export function AccountsLedgerClient() {
   };
 
   const handleMasterFormSubmit = (updatedItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = {
+    const setters: Record<string, React.Dispatch<React.SetStateAction<any[]>>> = {
         'Customer': setCustomers,
         'Supplier': setSuppliers,
         'Agent': setAgents,
@@ -517,7 +532,7 @@ export function AccountsLedgerClient() {
             onSubmit={handleMasterFormSubmit}
             initialData={masterItemToEdit}
             itemTypeFromButton={masterItemToEdit?.type || 'Customer'}
-            fixedIds={allMasters.filter(m => ['fixed-wh-mumbai', 'fixed-wh-chiplun', 'fixed-wh-sawantwadi'].includes(m.id) || FIXED_EXPENSES.some(fe => fe.id === m.id)).map(m => m.id)}
+            fixedIds={[...FIXED_WAREHOUSES.map(w=>w.id), ...FIXED_EXPENSES.map(e=>e.id)]}
         />
       )}
     </div>

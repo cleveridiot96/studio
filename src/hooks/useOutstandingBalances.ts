@@ -3,7 +3,7 @@
 
 import React, { useMemo, useEffect } from 'react';
 import { useLocalStorageState } from "./useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, Agent, Broker } from "@/lib/types";
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { parseISO } from 'date-fns';
@@ -76,26 +76,27 @@ export const useOutstandingBalances = () => {
 
         allTransactionsSorted.forEach(tx => {
             if (tx.txType === 'Sale') {
-                const accountablePartyId = tx.brokerId || tx.customerId;
-                updateBalance(accountablePartyId, tx.billedAmount || 0);
+                // The primary debtor is the broker if one exists, otherwise it's the customer.
+                const primaryDebtorId = tx.brokerId || tx.customerId;
+                updateBalance(primaryDebtorId, tx.billedAmount || 0);
 
+                // The broker's commission is a liability for us, so we credit their account (making it more negative).
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if(tx.brokerId && brokerCommission > 0) {
-                  // This is a liability for us, so we credit the broker's account (make it more negative)
                   updateBalance(tx.brokerId, -brokerCommission);
                 }
 
             } else if (tx.txType === 'Purchase') {
-                 // For purchases, the main liability is to the supplier.
+                 // For purchases, our main liability is to the supplier for the goods.
                 updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
 
-                // If there's an agent, their commission is a separate liability.
+                // The agent's commission is a separate liability for us.
                 const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if (tx.agentId && agentCommission > 0) {
                     updateBalance(tx.agentId, -agentCommission);
                 }
                 
-                // Other expenses are also liabilities to the respective parties.
+                // Other direct purchase expenses are also liabilities to the respective parties.
                 tx.expenses?.forEach(exp => {
                     if (exp.account !== 'Broker Commission' && exp.partyId && exp.amount > 0) {
                         updateBalance(exp.partyId, -exp.amount);
@@ -109,15 +110,15 @@ export const useOutstandingBalances = () => {
             } else if (tx.txType === 'PurchaseReturn') {
                 const p = purchases.find(p => p.id === tx.originalPurchaseId);
                 if (p) {
-                    // When we return goods, our liability to the supplier decreases.
+                    // When we return goods, our liability to the supplier decreases (balance moves towards positive).
                     updateBalance(p.supplierId, tx.returnAmount || 0);
                 }
             } else if (tx.txType === 'SaleReturn') {
                 const s = sales.find(s => s.id === tx.originalSaleId);
                 if (s) {
-                    const accountablePartyId = s.brokerId || s.customerId;
-                    // When goods are returned to us, the receivable from the accountable party decreases.
-                    updateBalance(accountablePartyId, -(tx.returnAmount || 0));
+                    const primaryDebtorId = s.brokerId || s.customerId;
+                    // When goods are returned to us, the receivable from the debtor decreases.
+                    updateBalance(primaryDebtorId, -(tx.returnAmount || 0));
                 }
             }
         });
