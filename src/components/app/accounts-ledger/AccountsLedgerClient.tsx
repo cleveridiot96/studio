@@ -152,36 +152,61 @@ export function AccountsLedgerClient() {
     // Calculate opening balance by summing up all transactions before the start date
     allTransactions.forEach(tx => {
         if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
-            if (tx.txType === 'Sale') {
-                if (tx.customerId === party.id) openingBalance += tx.billedAmount;
-                const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                if (tx.brokerId === party.id) openingBalance -= brokerCommission;
-            } else if (tx.txType === 'Purchase') {
-                if (tx.supplierId === party.id) openingBalance -= tx.totalGoodsValue;
-                const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                if (tx.agentId === party.id) openingBalance -= agentCommission;
-            } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
-                openingBalance += tx.amount;
-            } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
-                openingBalance -= (tx.amount + (tx.cashDiscount || 0));
-            } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
-                openingBalance += tx.returnAmount;
-            } else if (tx.txType === 'SaleReturn' && tx.originalCustomerId === party.id) {
+          if (tx.txType === 'Sale') {
+              const accountablePartyId = tx.brokerId || tx.customerId;
+              if (accountablePartyId === party.id) {
+                  openingBalance += tx.billedAmount || 0;
+              }
+              // If the current party is the broker, their commission is a liability for us, reducing their net receivable
+              const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+              if (tx.brokerId === party.id && brokerCommission > 0) {
+                  openingBalance -= brokerCommission;
+              }
+          } else if (tx.txType === 'Purchase') {
+              // We owe the supplier for goods
+              if (tx.supplierId === party.id) {
+                  openingBalance -= (tx.totalGoodsValue || 0);
+              }
+              // We owe the agent for commission
+              const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
+              if (tx.agentId === party.id && agentCommission > 0) {
+                  openingBalance -= agentCommission;
+              }
+          } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
+              openingBalance += tx.amount;
+          } else if (tx.txType === 'Receipt' && tx.partyId === party.id) {
+              openingBalance -= (tx.amount + (tx.cashDiscount || 0));
+          } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
+              openingBalance += tx.returnAmount;
+          } else if (tx.txType === 'SaleReturn') {
+              const originalSale = sales.find(s => s.id === tx.originalSaleId);
+              if (originalSale && (originalSale.brokerId === party.id || originalSale.customerId === party.id)) {
                 openingBalance -= tx.returnAmount;
-            } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
-                openingBalance += (tx.debit - tx.credit);
-            }
+              }
+          } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
+              openingBalance += (tx.debit - tx.credit);
+          }
         }
     });
 
     const periodTransactions = allTransactions
         .filter(tx => isWithinInterval(parseISO(tx.date), { start: startOfDay(dateRange.from!), end: endOfDay(dateRange.to || dateRange.from!) }))
-        .map(tx => {
+        .flatMap(tx => {
             if (tx.txType === 'Sale') {
                 const results: DisplayLedgerEntry[] = [];
-                if (tx.customerId === party.id) {
+                const accountablePartyId = tx.brokerId || tx.customerId;
+
+                // If the selected party is the accountable party (broker or customer)
+                if (accountablePartyId === party.id) {
                   results.push({ id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` });
                 }
+                
+                // If the selected party IS the customer, but the sale was via a broker, show an informational entry.
+                if (tx.customerId === party.id && tx.brokerId) {
+                    const brokerName = allMasters.find(m => m.id === tx.brokerId)?.name || 'Unknown Broker';
+                    results.push({ id: `sale-info-${tx.id}`, date: tx.date, type: 'Sale Info', particulars: `VIA: ${brokerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: 0, credit: 0, href: `/sales#${tx.id}` });
+                }
+                
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if (tx.brokerId === party.id && brokerCommission > 0) {
                   results.push({ id: `sale-comm-${tx.id}`, date: tx.date, type: 'Sale Commission', particulars: `COMMISSION FOR BILL: ${tx.billNumber || 'N/A'}`, debit: 0, credit: brokerCommission, href: `/sales#${tx.id}` });
@@ -189,9 +214,11 @@ export function AccountsLedgerClient() {
                 return results;
             } else if (tx.txType === 'Purchase') {
                 const results: DisplayLedgerEntry[] = [];
+                // Liability to supplier for goods
                 if(tx.supplierId === party.id) {
                   results.push({ id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: tx.totalGoodsValue, href: `/purchases#${tx.id}` });
                 }
+                // Liability to agent for commission
                 const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
                 if(tx.agentId === party.id && agentCommission > 0) {
                   results.push({ id: `pur-comm-${tx.id}`, date: tx.date, type: 'Purchase Commission', particulars: `COMM. FOR VAKKAL: ${tx.items.map(i=>i.lotNumber).join(', ')}`, debit: 0, credit: agentCommission, href: `/purchases#${tx.id}` });
@@ -205,14 +232,16 @@ export function AccountsLedgerClient() {
                 return [{ id: `receipt-${tx.id}`, date: tx.date, type: 'Receipt', particulars: particularDetails, debit: 0, credit: tx.amount + (tx.cashDiscount || 0), href: `/receipts#${tx.id}` }];
             } else if (tx.txType === 'PurchaseReturn' && tx.originalSupplierId === party.id) {
                 return [{ id: `pret-${tx.id}`, date: tx.date, type: 'Purchase Return', particulars: `RETURN OF VAKKAL: ${tx.originalLotNumber}`, debit: tx.returnAmount, credit: 0, href: `/purchases#${tx.originalPurchaseId}` }];
-            } else if (tx.txType === 'SaleReturn' && tx.originalCustomerId === party.id) {
-                 return [{ id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` }];
+            } else if (tx.txType === 'SaleReturn') {
+                 const originalSale = sales.find(s => s.id === tx.originalSaleId);
+                 if (originalSale && (originalSale.brokerId === party.id || originalSale.customerId === party.id)) {
+                    return [{ id: `sret-${tx.id}`, date: tx.date, type: 'Sale Return', particulars: `RETURN FROM ${tx.originalCustomerName} OF VAKKAL: ${tx.originalLotNumber}`, debit: 0, credit: tx.returnAmount, href: `/sales#${tx.originalSaleId}` }];
+                 }
             } else if (tx.txType === 'LedgerEntry' && tx.partyId === party.id) {
                 return [{ id: tx.id, date: tx.date, type: tx.type, particulars: `${tx.account} (VCH: ${tx.relatedVoucher?.slice(-5) || 'N/A'})`, debit: tx.debit, credit: tx.credit, href: tx.linkedTo?.voucherType === 'Transfer' ? '/location-transfer' : tx.linkedTo?.voucherType === 'Purchase' ? '/purchases' : '/sales' }];
             }
-            return null;
+            return [];
         })
-        .flat() // Flatten the array of arrays
         .filter(Boolean) as DisplayLedgerEntry[];
 
     let debitTransactions: DisplayLedgerEntry[] = [];
@@ -495,5 +524,3 @@ export function AccountsLedgerClient() {
     </TooltipProvider>
   );
 }
-
-    

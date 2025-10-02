@@ -12,6 +12,7 @@ import { isDateInFinancialYear, getFinancialYearDateRange, isDateBeforeFinancial
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { parseISO } from 'date-fns';
+import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 
 // All the data keys
 const keys = {
@@ -34,6 +35,7 @@ const keys = {
 export const BalanceSheetClient = () => {
     const [hydrated, setHydrated] = React.useState(false);
     const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
+    const { receivableParties, payableParties, isBalancesLoading } = useOutstandingBalances();
     React.useEffect(() => { setHydrated(true) }, []);
 
     // Load all data from all time
@@ -41,15 +43,7 @@ export const BalanceSheetClient = () => {
     const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
     const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
     const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
-    const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
-    const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
     const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, []);
-    const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
-    const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
-    const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
-    const [transporters] = useLocalStorageState<MasterItem[]>(keys.transporters, []);
-    const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
-    const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
     
     // --- 1. Stock Valuation Logic ---
     const { totalStockValue, totalStockBags } = useMemo(() => {
@@ -155,73 +149,16 @@ export const BalanceSheetClient = () => {
 
     // --- 2. Receivables & Payables Logic ---
     const { totalReceivable, totalPayable, receivablePartiesCount, payablePartiesCount } = useMemo(() => {
-        if (!hydrated) return { totalReceivable: 0, totalPayable: 0, receivablePartiesCount: 0, payablePartiesCount: 0 };
-        
-        const allMasters = [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses];
-        const balances = new Map<string, number>();
+      const totalReceivable = receivableParties.reduce((sum, p) => sum + (p.balance || 0), 0);
+      const totalPayable = payableParties.reduce((sum, p) => sum + Math.abs(p.balance || 0), 0);
 
-        // Step 1: Initialize balances with their defined opening balance
-        allMasters.forEach(m => {
-            balances.set(m.id, m.openingBalanceType === 'Cr' ? -(m.openingBalance || 0) : (m.openingBalance || 0));
-        });
-
-        const allTransactionsSorted = [
-            ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
-            ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
-            ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
-            ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
-            ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
-            ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
-        ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-        const updateBalance = (partyId: string | undefined, amount: number) => {
-            if (!partyId || !balances.has(partyId)) return;
-            balances.set(partyId, balances.get(partyId)! + amount);
-        };
-    
-        allTransactionsSorted.forEach(tx => {
-            if (tx.txType === 'Sale') {
-                const accountablePartyId = tx.brokerId || tx.customerId;
-                updateBalance(accountablePartyId, tx.billedAmount || 0);
-            }
-            else if (tx.txType === 'Purchase') {
-                const accountablePartyId = tx.agentId || tx.supplierId;
-                updateBalance(accountablePartyId, -(tx.totalAmount || 0));
-            }
-            else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-            else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
-            else if (tx.txType === 'PurchaseReturn') {
-                const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                if (p) {
-                    const accountablePartyId = p.agentId || p.supplierId;
-                    updateBalance(accountablePartyId, tx.returnAmount || 0);
-                }
-            } else if (tx.txType === 'SaleReturn') {
-                const s = sales.find(s => s.id === tx.originalSaleId);
-                if (s) {
-                    const accountablePartyId = s.brokerId || s.customerId;
-                    updateBalance(accountablePartyId, -(tx.returnAmount || 0));
-                }
-            }
-        });
-    
-        let totalReceivable = 0;
-        let totalPayable = 0;
-        let receivablePartiesCount = 0;
-        let payablePartiesCount = 0;
-
-        balances.forEach((balance) => {
-            if (balance > 0.01) {
-                totalReceivable += balance;
-                receivablePartiesCount++;
-            } else if (balance < -0.01) {
-                totalPayable += balance;
-                payablePartiesCount++;
-            }
-        });
-    
-        return { totalReceivable, totalPayable: Math.abs(totalPayable), receivablePartiesCount, payablePartiesCount };
-    }, [hydrated, purchases, sales, receipts, payments, customers, suppliers, agents, transporters, brokers, expenses, purchaseReturns, saleReturns, currentFinancialYearString]);
+      return {
+        totalReceivable,
+        totalPayable,
+        receivablePartiesCount: receivableParties.length,
+        payablePartiesCount: payableParties.length
+      }
+    }, [receivableParties, payableParties]);
 
 
     // --- 3. Profit Logic ---
@@ -235,7 +172,7 @@ export const BalanceSheetClient = () => {
     }, [sales, hydrated, currentFinancialYearString]);
 
 
-    if (isAppHydrating || !hydrated) {
+    if (isAppHydrating || !hydrated || isBalancesLoading) {
         return (
             <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
                 <p className="text-lg text-muted-foreground">Calculating financial summary...</p>

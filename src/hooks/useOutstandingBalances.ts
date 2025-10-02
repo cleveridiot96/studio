@@ -41,9 +41,9 @@ export const useOutstandingBalances = () => {
     const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
     const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
     const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
-    const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
+    const [agents] = useLocalStorageState<Agent[]>(keys.agents, []);
     const [transporters] = useLocalStorageState<MasterItem[]>(keys.transporters, []);
-    const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
+    const [brokers] = useLocalStorageState<Broker[]>(keys.brokers, []);
     const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
 
     const allMasters = useMemo(() => 
@@ -75,30 +75,50 @@ export const useOutstandingBalances = () => {
         };
 
         allTransactionsSorted.forEach(tx => {
-             if (tx.txType === 'Sale') {
-                // Customer owes us for the sale
-                updateBalance(tx.customerId, tx.billedAmount || 0); 
-                
-                // We owe the broker their commission, which is a credit to their account (a liability for us)
+            if (tx.txType === 'Sale') {
+                const accountablePartyId = tx.brokerId || tx.customerId;
+                updateBalance(accountablePartyId, tx.billedAmount || 0);
+
                 const brokerCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                updateBalance(tx.brokerId, -brokerCommission);
-            }
-            else if (tx.txType === 'Purchase') {
-                // We owe the supplier for the goods, which is a credit to their account (a liability for us)
+                if(tx.brokerId && brokerCommission > 0) {
+                  // This is a liability for us, so we credit the broker's account (make it more negative)
+                  updateBalance(tx.brokerId, -brokerCommission);
+                }
+
+            } else if (tx.txType === 'Purchase') {
+                 // For purchases, the main liability is to the supplier.
                 updateBalance(tx.supplierId, -(tx.totalGoodsValue || 0));
-                
-                // We owe the agent their commission, also a credit to their account
+
+                // If there's an agent, their commission is a separate liability.
                 const agentCommission = tx.expenses?.find(e => e.account === 'Broker Commission')?.amount || 0;
-                updateBalance(tx.agentId, -agentCommission);
-            }
-            else if (tx.txType === 'Receipt') updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
-            else if (tx.txType === 'Payment') updateBalance(tx.partyId, tx.amount || 0);
-            else if (tx.txType === 'PurchaseReturn') {
-                 const p = purchases.find(p => p.id === tx.originalPurchaseId);
-                 if(p) updateBalance(p.supplierId, tx.returnAmount || 0);
+                if (tx.agentId && agentCommission > 0) {
+                    updateBalance(tx.agentId, -agentCommission);
+                }
+                
+                // Other expenses are also liabilities to the respective parties.
+                tx.expenses?.forEach(exp => {
+                    if (exp.account !== 'Broker Commission' && exp.partyId && exp.amount > 0) {
+                        updateBalance(exp.partyId, -exp.amount);
+                    }
+                });
+
+            } else if (tx.txType === 'Receipt') {
+                updateBalance(tx.partyId, -(tx.amount + (tx.cashDiscount || 0)));
+            } else if (tx.txType === 'Payment') {
+                updateBalance(tx.partyId, tx.amount || 0);
+            } else if (tx.txType === 'PurchaseReturn') {
+                const p = purchases.find(p => p.id === tx.originalPurchaseId);
+                if (p) {
+                    // When we return goods, our liability to the supplier decreases.
+                    updateBalance(p.supplierId, tx.returnAmount || 0);
+                }
             } else if (tx.txType === 'SaleReturn') {
-                 const s = sales.find(s => s.id === tx.originalSaleId);
-                 if(s) updateBalance(s.customerId, -(tx.returnAmount || 0));
+                const s = sales.find(s => s.id === tx.originalSaleId);
+                if (s) {
+                    const accountablePartyId = s.brokerId || s.customerId;
+                    // When goods are returned to us, the receivable from the accountable party decreases.
+                    updateBalance(accountablePartyId, -(tx.returnAmount || 0));
+                }
             }
         });
 
@@ -138,5 +158,3 @@ export const useOutstandingBalances = () => {
         isBalancesLoading: !hydrated
     };
 };
-
-    

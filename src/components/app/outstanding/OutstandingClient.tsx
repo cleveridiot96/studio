@@ -27,7 +27,9 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/components/ui/collapsible";
+import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
+
 
 const keys = {
   purchases: 'purchasesData',
@@ -180,133 +182,50 @@ const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
 export function OutstandingClient() {
   const [hydrated, setHydrated] = useState(false);
   const [selectedPartyId, setSelectedPartyId] = useState<string | undefined>();
-  const { financialYear: currentFinancialYearString } = useSettings();
   const router = useRouter();
 
   useEffect(() => { setHydrated(true) }, []);
 
-  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
   const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
   const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
-  const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(keys.purchaseReturns, []);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
   
-  const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
-  const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
-  const [agents] = useLocalStorageState<MasterItem[]>(keys.agents, []);
-  const [brokers] = useLocalStorageState<MasterItem[]>(keys.brokers, []);
+  const { receivableParties, payableParties, isBalancesLoading } = useOutstandingBalances();
 
-  const allMasters = useMemo(() => [...customers, ...suppliers, ...agents, ...brokers], [customers, suppliers, agents, brokers]);
-  
-  const outstandingData = useMemo((): OutstandingParty[] => {
-    if (!hydrated) return [];
-    
-    const partyBalances = new Map<string, { party: MasterItem, balance: number, bills: OutstandingBill[] }>();
-
-    // Initialize all parties
-    allMasters.forEach(party => {
-      partyBalances.set(party.id, {
-        party: party,
-        balance: party.openingBalanceType === 'Cr' ? -(party.openingBalance || 0) : (party.openingBalance || 0),
-        bills: []
-      });
-    });
-
-    const allTransactions = [
-        ...purchases.map(p => ({ ...p, txType: 'Purchase' as const })),
-        ...sales.map(s => ({ ...s, txType: 'Sale' as const })),
-        ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
-        ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
-    ].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-
-
+  const outstandingData = useMemo(() => {
     const billPaidAmounts = new Map<string, number>();
 
-    allTransactions.forEach(tx => {
-        if (tx.txType === 'Receipt' || tx.txType === 'Payment') {
-            (tx.againstBills || []).forEach(ab => {
-                billPaidAmounts.set(ab.billId, (billPaidAmounts.get(ab.billId) || 0) + ab.amount);
-            });
-        }
+    receipts.forEach(tx => {
+        (tx.againstBills || []).forEach(ab => {
+            billPaidAmounts.set(ab.billId, (billPaidAmounts.get(ab.billId) || 0) + ab.amount);
+        });
     });
-    
-    allTransactions.forEach(tx => {
-      let partyId: string | undefined;
+
+    const allParties = [...receivableParties, ...payableParties];
+
+    return allParties.map(party => {
+      const partySales = sales.filter(s => s.brokerId === party.id || s.customerId === party.id);
+
+      const bills: OutstandingBill[] = partySales.map(s => {
+        const paid = billPaidAmounts.get(s.id) || 0;
+        return {
+          id: s.id, type: 'Sale', date: s.date, vakkal: s.billNumber || s.items.map(i => i.lotNumber).join(', '),
+          totalAmount: s.billedAmount, paid: paid, balance: s.billedAmount - paid,
+          daysOverdue: differenceInDays(new Date(), parseISO(s.date)),
+          partyName: party.name,
+        }
+      }).filter(b => b.balance > 0.01);
       
-      if (tx.txType === 'Sale') {
-        const accountablePartyId = tx.brokerId || tx.customerId;
-        if(accountablePartyId && partyBalances.has(accountablePartyId)) {
-          const partyData = partyBalances.get(accountablePartyId)!;
-          partyData.balance += tx.billedAmount;
-          const paid = billPaidAmounts.get(tx.id) || 0;
-          if(tx.billedAmount - paid > 0.01) {
-              partyData.bills.push({
-                id: tx.id, type: 'Sale', date: tx.date, vakkal: tx.billNumber || tx.items.map(i => i.lotNumber).join(', '),
-                totalAmount: tx.billedAmount, paid: paid, balance: tx.billedAmount - paid,
-                daysOverdue: differenceInDays(new Date(), parseISO(tx.date)),
-                partyName: partyData.party.name // Added for detail view
-              });
-          }
-        }
-      } else if (tx.txType === 'Purchase') {
-        const accountablePartyId = tx.agentId || tx.supplierId;
-        if(accountablePartyId && partyBalances.has(accountablePartyId)) {
-          const partyData = partyBalances.get(accountablePartyId)!;
-          partyData.balance -= tx.totalAmount;
-          const paid = billPaidAmounts.get(tx.id) || 0;
-           if (tx.totalAmount - paid > 0.01) {
-            partyData.bills.push({
-              id: tx.id, type: 'Purchase', date: tx.date, vakkal: tx.items.map(i => i.lotNumber).join(', '),
-              totalAmount: tx.totalAmount, paid: paid, balance: tx.totalAmount - paid,
-              daysOverdue: differenceInDays(new Date(), parseISO(tx.date)),
-              partyName: partyData.party.name // Added for detail view
-            });
-           }
-        }
-      } else if (tx.txType === 'Receipt') {
-        partyId = tx.partyId;
-        if(partyId && partyBalances.has(partyId)) {
-          partyBalances.get(partyId)!.balance -= (tx.amount + (tx.cashDiscount || 0));
-        }
-      } else if (tx.txType === 'Payment') {
-        partyId = tx.partyId;
-        if(partyId && partyBalances.has(partyId)) {
-          partyBalances.get(partyId)!.balance += tx.amount;
-        }
-      } else if (tx.txType === 'SaleReturn') {
-         const originalSale = sales.find(s => s.id === tx.originalSaleId);
-         if (originalSale) {
-           const accountablePartyId = originalSale.brokerId || originalSale.customerId;
-           if(accountablePartyId && partyBalances.has(accountablePartyId)) {
-             partyBalances.get(accountablePartyId)!.balance -= tx.returnAmount;
-           }
-         }
-      } else if (tx.txType === 'PurchaseReturn') {
-         const originalPurchase = purchases.find(p => p.id === tx.originalPurchaseId);
-         if (originalPurchase) {
-           const accountablePartyId = originalPurchase.agentId || originalPurchase.supplierId;
-           if(accountablePartyId && partyBalances.has(accountablePartyId)) {
-             partyBalances.get(accountablePartyId)!.balance += tx.returnAmount;
-           }
-         }
+      return {
+        partyId: party.id,
+        partyName: party.name,
+        partyType: party.type,
+        balance: party.balance || 0,
+        bills: bills,
       }
-    });
+    }).sort((a,b) => b.balance - a.balance);
 
-    return Array.from(partyBalances.values())
-        .filter(p => Math.abs(p.balance) > 0.01)
-        .map(p => ({
-            partyId: p.party.id,
-            partyName: p.party.name,
-            partyType: p.party.type,
-            balance: p.balance,
-            bills: p.bills,
-        }))
-        .sort((a,b) => b.balance - a.balance);
+  }, [receivableParties, payableParties, sales, receipts]);
 
-  }, [hydrated, purchases, sales, receipts, payments, purchaseReturns, saleReturns, allMasters]);
   
   const partyOptions = useMemo(() => {
     return outstandingData
@@ -323,7 +242,7 @@ export function OutstandingClient() {
   const totalPayable = useMemo(() => filteredData.filter(p => p.balance < 0).reduce((sum, p) => sum + p.balance, 0), [filteredData]);
 
 
-  if(!hydrated) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
+  if(!hydrated || isBalancesLoading) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 
   return (
     <div className="space-y-4 print-area p-4 flex flex-col h-full">
