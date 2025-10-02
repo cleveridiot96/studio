@@ -7,6 +7,7 @@ import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, Sale
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { parseISO } from 'date-fns';
+import { useMasterData } from '@/contexts/MasterDataContext';
 
 const keys = {
   purchases: 'purchasesData',
@@ -15,12 +16,6 @@ const keys = {
   saleReturns: 'saleReturnsData',
   receipts: 'receiptsData',
   payments: 'paymentsData',
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  brokers: 'masterBrokers',
-  expenses: 'masterExpenses',
 };
 
 /**
@@ -31,6 +26,8 @@ export const useOutstandingBalances = () => {
     const { financialYear: currentFinancialYearString } = useSettings();
     const [hydrated, setHydrated] = React.useState(false);
     useEffect(() => { setHydrated(true) }, []);
+    const { getAllMasters } = useMasterData();
+    const allMasters = getAllMasters();
 
     // Load all necessary data from localStorage
     const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
@@ -39,17 +36,6 @@ export const useOutstandingBalances = () => {
     const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
     const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
     const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-    const [customers] = useLocalStorageState<MasterItem[]>(keys.customers, []);
-    const [suppliers] = useLocalStorageState<MasterItem[]>(keys.suppliers, []);
-    const [agents] = useLocalStorageState<Agent[]>(keys.agents, []);
-    const [transporters] = useLocalStorageState<MasterItem[]>(keys.transporters, []);
-    const [brokers] = useLocalStorageState<Broker[]>(keys.brokers, []);
-    const [expenses] = useLocalStorageState<MasterItem[]>(keys.expenses, []);
-
-    const allMasters = useMemo(() => 
-        [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses],
-        [customers, suppliers, agents, transporters, brokers, expenses]
-    );
 
     const partyBalances = useMemo(() => {
         if (!hydrated) return new Map<string, number>();

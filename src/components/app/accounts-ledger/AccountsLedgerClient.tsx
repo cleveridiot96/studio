@@ -21,16 +21,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 import { FIXED_EXPENSES, FIXED_WAREHOUSES } from "@/lib/constants";
+import { useMasterData } from "@/contexts/MasterDataContext";
 
-
-const MASTERS_KEYS = {
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  brokers: 'masterBrokers',
-  expenses: 'masterExpenses',
-};
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
@@ -65,17 +57,10 @@ const initialFinancialLedgerData = {
 export function AccountsLedgerClient() {
   const { toast } = useToast();
   const [hydrated, setHydrated] = React.useState(false);
+  const { getAllMasters, setData: setMasterData } = useMasterData();
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
   
-  // Master data states
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.customers, memoizedEmptyArray);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.suppliers, memoizedEmptyArray);
-  const [agents, setAgents] = useLocalStorageState<Agent[]>(MASTERS_KEYS.agents, memoizedEmptyArray);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.transporters, memoizedEmptyArray);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(MASTERS_KEYS.brokers, memoizedEmptyArray);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.expenses, memoizedEmptyArray);
-
   // Transaction data states
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray, purchaseMigrator);
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray, salesMigrator);
@@ -101,12 +86,7 @@ export function AccountsLedgerClient() {
     setHydrated(true);
   }, []);
   
-  const allMasters = React.useMemo(() => {
-    if (!hydrated) return [];
-    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...expenses]
-      .filter(item => item && item.id && item.name && item.type && item.type !== 'Warehouse')
-      .sort((a,b) => a.name.localeCompare(b.name));
-  }, [hydrated, customers, suppliers, agents, transporters, brokers, expenses]);
+  const allMasters = React.useMemo(() => getAllMasters(), [getAllMasters]);
 
   React.useEffect(() => {
     if (hydrated) {
@@ -165,6 +145,8 @@ export function AccountsLedgerClient() {
                 const primaryCreditorId = tx.agentId || tx.supplierId;
                 if(primaryCreditorId === party.id) {
                     openingBalance -= (tx.totalAmount || 0);
+                } else if(tx.supplierId === party.id) {
+                    // Do nothing for supplier if agent is primary creditor
                 }
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 openingBalance += tx.amount;
@@ -201,7 +183,6 @@ export function AccountsLedgerClient() {
                 if (primaryDebtorId === party.id) {
                     results.push({ id: `sale-goods-${tx.id}`, date: tx.date, type: 'Sale', particulars: `TO: ${tx.customerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: tx.billedAmount, credit: 0, href: `/sales#${tx.id}` });
                 }
-                // Informational entry for customer if broker is the debtor
                 if (tx.customerId === party.id && tx.brokerId && party.id !== tx.brokerId) {
                     const brokerName = allMasters.find(m => m.id === tx.brokerId)?.name || 'Unknown Broker';
                     results.push({ id: `sale-info-${tx.id}`, date: tx.date, type: 'Sale Info', particulars: `VIA: ${brokerName} (BILL: ${tx.billNumber || 'N/A'})`, debit: 0, credit: 0, href: `/sales#${tx.id}` });
@@ -215,7 +196,6 @@ export function AccountsLedgerClient() {
                  if(primaryCreditorId === party.id) {
                     results.push({ id: `pur-goods-${tx.id}`, date: tx.date, type: 'Purchase', particulars: `FROM: ${tx.supplierName} (LOTS: ${tx.items.map(i=>i.lotNumber).join(', ')})`, debit: 0, credit: tx.totalAmount, href: `/purchases#${tx.id}` });
                  }
-                 // Informational entry for supplier if agent is primary creditor
                  if(tx.supplierId === party.id && tx.agentId && party.id !== tx.agentId) {
                     const agentName = allMasters.find(m => m.id === tx.agentId)?.name || 'Unknown Agent';
                     results.push({ id: `pur-info-${tx.id}`, date: tx.date, type: 'Purchase Info', particulars: `VIA: ${agentName}`, debit: 0, credit: 0, href: `/purchases#${tx.id}` });
@@ -306,19 +286,9 @@ export function AccountsLedgerClient() {
   };
 
   const handleMasterFormSubmit = (updatedItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<any[]>>> = {
-        'Customer': setCustomers,
-        'Supplier': setSuppliers,
-        'Agent': setAgents,
-        'Transporter': setTransporters,
-        'Broker': setBrokers,
-        'Expense': setExpenses,
-    };
-    const setter = setters[updatedItem.type];
-    if (setter) {
-        setter(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a,b) => a.name.localeCompare(b.name)));
-        toast({ title: `${updatedItem.type} updated`, description: `Details for ${updatedItem.name} saved.` });
-    }
+    const itemType = updatedItem.type;
+    setMasterData(itemType, prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a, b) => a.name.localeCompare(b.name)));
+    toast({ title: `${itemType} updated`, description: `Details for ${updatedItem.name} saved.` });
     setIsMasterFormOpen(false);
     setMasterItemToEdit(null);
   };

@@ -42,6 +42,7 @@ import { salesMigrator, purchaseMigrator, locationTransferMigrator } from '@/lib
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 // TRIAL PACKAGE 1 DATA
 const initialLocationTransfersData: LocationTransfer[] = [
@@ -49,19 +50,12 @@ const initialLocationTransfersData: LocationTransfer[] = [
 ];
 
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
-const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const LEDGER_STORAGE_KEY = 'ledgerData';
-const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
-const AGENTS_STORAGE_KEY = 'masterAgents';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-
+const KEY_SEPARATOR = '_$_';
 
 export interface AggregatedStockItemForForm {
   lotNumber: string;
@@ -79,27 +73,18 @@ interface ExpandedTransferHistoryItem extends LocationTransfer {
   item: LocationTransferItem;
 }
 
-const KEY_SEPARATOR = '_$_';
-
 export function LocationTransferClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
+  const { data: masterData, getAllMasters, setMasterData } = useMasterData();
 
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, [], locationTransferMigrator);
-  const [warehouses, setWarehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
-
-  const [suppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
-  const [agents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
-  const [brokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
-  const [customers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -123,13 +108,7 @@ export function LocationTransferClient() {
     }
   }, [dateRange, setLocationTransfers]);
 
-  const allExpenseParties = React.useMemo(() => {
-      if (!hydrated) return [];
-      return [...suppliers, ...agents, ...transporters, ...brokers, ...customers, ...expenses]
-          .filter(p => p && p.id && p.name)
-          .sort((a,b) => a.name.localeCompare(b.name));
-  }, [hydrated, suppliers, agents, transporters, brokers, customers, expenses]);
-
+  const allExpenseParties = React.useMemo(() => getAllMasters(), [getAllMasters]);
 
   const aggregatedStockForForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !hydrated) return [];
@@ -304,11 +283,9 @@ export function LocationTransferClient() {
     }
   };
 
-  const handleMasterDataUpdate = React.useCallback((type: "Warehouse" | "Transporter" | "Expense", newItem: MasterItem) => {
-    if (type === "Warehouse") setWarehouses(prev => [newItem as Warehouse, ...prev.filter(w => w.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
-    else if (type === "Transporter") setTransporters(prev => [newItem as Transporter, ...prev.filter(t => t.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
-    else if (type === "Expense") setExpenses(prev => [newItem, ...prev.filter(e => e.id !== newItem.id)].sort((a,b) => a.name.localeCompare(b.name)));
-  }, [setWarehouses, setTransporters, setExpenses]);
+  const handleMasterDataUpdate = (type: MasterItemType, newItem: MasterItem) => {
+    setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+  };
 
   const triggerDownloadTransferPdf = React.useCallback((transfer: LocationTransfer) => {
     setTransferForPdf(transfer);
@@ -583,9 +560,9 @@ export function LocationTransferClient() {
             setTransferToEdit(null);
           }}
           onSubmit={handleAddOrUpdateTransfer}
-          warehouses={warehouses}
-          transporters={transporters}
-          expenses={expenses}
+          warehouses={masterData.Warehouse as Warehouse[]}
+          transporters={masterData.Transporter as Transporter[]}
+          expenses={masterData.Expense}
           allExpenseParties={allExpenseParties}
           availableStock={aggregatedStockForForm}
           onMasterDataUpdate={handleMasterDataUpdate}

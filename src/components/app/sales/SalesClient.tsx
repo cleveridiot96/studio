@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Customer, Transporter, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem, PurchaseItem, LocationTransferItem, LedgerEntry } from "@/lib/types";
+import type { Sale, MasterItem, MasterItemType, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem, PurchaseItem, LocationTransferItem, LedgerEntry } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -32,10 +32,11 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 // TRIAL PACKAGE 1 DATA
 const initialSalesData: Sale[] = [
-    { id: "sale-tp1-1", date: "2024-07-20", billNumber: "B-101", customerId: "cust-lalit", customerName: "LALIT TRADERS", brokerId: "broker-arun", brokerName: "ARUN KUMAR", items: [{ lotNumber: "VAKKAL-A1/50", quantity: 50, netWeight: 2500, rate: 35, goodsValue: 87500, purchaseRate: 25, costOfGoodsSold: 64250, itemGrossProfit: 25000, itemNetProfit: 24650, costBreakdown: { baseRate: 25, purchaseExpenses: 0.5, transferExpenses: 0.2 } }], expenses: [{ account: "Broker Commission", amount: 350, paymentMode: "Pending", partyId: "broker-arun", partyName: "ARUN KUMAR" }], totalGoodsValue: 87500, billedAmount: 87500, totalQuantity: 50, totalNetWeight: 2500, totalCostOfGoodsSold: 64250, totalGrossProfit: 25000, totalCalculatedProfit: 23250 },
+    { id: "sale-tp1-1", date: "2024-07-20", billNumber: "B-101", customerId: "cust-lalit", customerName: "LALIT TRADERS", brokerId: "broker-arun", brokerName: "ARUN KUMAR", items: [{ lotNumber: "VAKKAL-A1-T50", quantity: 50, netWeight: 2500, rate: 35, goodsValue: 87500, purchaseRate: 25, costOfGoodsSold: 64250, itemGrossProfit: 25000, itemNetProfit: 24650, costBreakdown: { baseRate: 25, purchaseExpenses: 0.5, transferExpenses: 0.2 } }], expenses: [{ account: "Broker Commission", amount: 350, paymentMode: "Pending", partyId: "broker-arun", partyName: "ARUN KUMAR" }], totalGoodsValue: 87500, billedAmount: 87500, totalQuantity: 50, totalNetWeight: 2500, totalCostOfGoodsSold: 64250, totalGrossProfit: 25000, totalCalculatedProfit: 23250 },
     { id: "sale-tp1-2", date: "2024-07-22", billNumber: "B-102", customerId: "cust-mahesh", customerName: "MAHESH & CO", items: [{ lotNumber: "VAKKAL-B2", quantity: 20, netWeight: 1000, rate: 40, goodsValue: 40000, purchaseRate: 28, costOfGoodsSold: 28000, itemGrossProfit: 12000, itemNetProfit: 12000, costBreakdown: { baseRate: 28, purchaseExpenses: 0, transferExpenses: 0 } }], expenses: [], totalGoodsValue: 40000, billedAmount: 35000, cbAmount: 5000, totalQuantity: 20, totalNetWeight: 1000, totalCostOfGoodsSold: 28000, totalGrossProfit: 12000, totalCalculatedProfit: 12000 },
 ];
 const initialSaleReturnsData: SaleReturn[] = [
@@ -45,15 +46,10 @@ const initialSaleReturnsData: SaleReturn[] = [
 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
-const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 const KEY_SEPARATOR = '_$_';
 
@@ -72,6 +68,7 @@ export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
+  const { setMasterData } = useMasterData();
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
@@ -89,15 +86,10 @@ export function SalesClient() {
   
   const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, []);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
-  const [warehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
   const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
 
@@ -110,23 +102,6 @@ export function SalesClient() {
       setSaleReturns(initialSaleReturnsData);
     }
   }, [setSales, setSaleReturns]);
-
-  React.useEffect(() => {
-    if (hydrated) {
-        setExpenses(prev => {
-            const expenseMap = new Map(prev.map(e => [e.id, e]));
-            let updated = false;
-            FIXED_EXPENSES.forEach(fe => {
-                if (!expenseMap.has(fe.id)) {
-                    expenseMap.set(fe.id, fe);
-                    updated = true;
-                }
-            });
-            return updated ? Array.from(expenseMap.values()).sort((a,b)=>a.name.localeCompare(b.name)) : prev;
-        });
-    }
-  }, [hydrated, setExpenses]);
-
 
   const aggregatedStockForSalesForm = React.useMemo((): AggregatedStockItemForForm[] => {
     if (isAppHydrating || !hydrated) return [];
@@ -246,7 +221,7 @@ export function SalesClient() {
     });
     
     return result;
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, warehouses, isAppHydrating, hydrated, financialYear, saleToEdit]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear, saleToEdit]);
 
 
   const filteredSales = React.useMemo(() => {
@@ -279,11 +254,6 @@ export function SalesClient() {
     return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [sales, receipts, financialYear, isAppHydrating, hydrated]);
 
-
-  const filteredSaleReturns = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
-    return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
-  }, [saleReturns, financialYear, isAppHydrating, hydrated]);
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     const isEditing = sales.some(s => s.id === sale.id);
@@ -358,18 +328,9 @@ export function SalesClient() {
   }, [saleReturnToDeleteId, setSaleReturns, toast]);
 
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<any[]>>> = { 
-        Customer: setCustomers, 
-        Transporter: setTransporters, 
-        Broker: setBrokers,
-        Expense: setExpenses
-    };
-    const setter = setters[type as keyof typeof setters];
-    if (setter) {
-      setter(prev => { const newSet = new Map(prev.map(item => [item.id, item])); newSet.set(newItem.id, newItem); return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name)); });
-      toast({ title: `${newItem.type} updated.` });
-    } else { toast({title: "Info", description: `Master type ${type} not handled here.`}); }
-  }, [setCustomers, setTransporters, setBrokers, setExpenses, toast]);
+    setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+    toast({ title: `${newItem.type} updated.` });
+  }, [setMasterData, toast]);
 
   const openAddSaleForm = React.useCallback(() => { setSaleToEdit(null); setIsAddSaleFormOpen(true); }, []);
   const closeAddSaleForm = React.useCallback(() => { setIsAddSaleFormOpen(false); setSaleToEdit(null); }, []);
@@ -435,15 +396,15 @@ export function SalesClient() {
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading sales data...</p></div>;
 
   return (
-    <div className="space-y-4 print-area">
-      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
+    <div className="space-y-2 print-area">
+      <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-2" />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2 no-print">
-        <h1 className="text-3xl font-bold text-foreground uppercase">Sales & Returns (FY {financialYear})</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 no-print">
+        <h1 className="text-2xl font-bold text-foreground uppercase">Sales & Returns (FY {financialYear})</h1>
       </div>
       
       <Tabs defaultValue="sales" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 mb-4 no-print">
+        <TabsList className="grid w-full grid-cols-2 h-10 mb-2 no-print">
           <TabsTrigger value="sales" className="py-2.5 text-base rounded-md">
             <ListCollapse className="mr-2 h-5 w-5" />Sales
           </TabsTrigger>
@@ -453,9 +414,9 @@ export function SalesClient() {
         </TabsList>
 
         <TabsContent value="sales">
-          <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddSaleForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
-              <PlusCircle className="mr-2 h-5 w-5" /> Add Sale
+          <div className="flex justify-end gap-2 mb-2 no-print">
+            <Button onClick={openAddSaleForm} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Sale
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
@@ -463,9 +424,9 @@ export function SalesClient() {
         </TabsContent>
 
         <TabsContent value="saleReturns">
-           <div className="flex justify-end gap-2 mb-4 no-print">
-            <Button onClick={openAddSaleReturnForm} size="lg" className={cn("text-base py-3 px-6 shadow-md", addButtonDynamicClass)}>
-              <PlusCircle className="mr-2 h-5 w-5" /> Add Sale Return
+           <div className="flex justify-end gap-2 mb-2 no-print">
+            <Button onClick={openAddSaleReturnForm} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Sale Return
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
@@ -474,7 +435,7 @@ export function SalesClient() {
       </Tabs>
       
       <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white' }}>{saleForPdf && <SaleChittiPrint sale={saleForPdf} />}</div>
-      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} customers={customers as Customer[]} transporters={transporters as Transporter[]} brokers={brokers} availableStock={aggregatedStockForSalesForm} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} expenses={expenses} />}
+      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={aggregatedStockForSalesForm} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
       {isAddSaleReturnFormOpen && <AddSaleReturnForm isOpen={isAddSaleReturnFormOpen} onClose={closeAddSaleReturnForm} onSubmit={handleAddOrUpdateSaleReturn} sales={filteredSales} existingSaleReturns={saleReturns} saleReturnToEdit={saleReturnToEdit} />}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

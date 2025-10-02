@@ -1,3 +1,4 @@
+
 "use client";
 
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
@@ -21,6 +22,7 @@ import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Calculator } from '@/components/shared/Calculator';
+import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
 
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
@@ -28,63 +30,42 @@ const LOCAL_STORAGE_KEYS = {
   receipts: 'receiptsData',
   payments: 'paymentsData',
   locationTransfers: 'locationTransfersData',
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  warehouses: 'masterWarehouses',
-  brokers: 'masterBrokers',
 };
 
-const useSearchData = () => {
-  const [searchData, setSearchData] = React.useState<any[]>([]);
-  const [hydrated, setHydrated] = React.useState(false);
+
+function SearchDataProvider({ children }: { children: React.ReactNode }) {
+  const { getAllMasters } = useMasterData();
 
   useEffect(() => {
-    setHydrated(true);
-  }, []);
+    const reindexData = () => {
+      try {
+        const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
+        const sales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]') as Sale[];
+        const payments = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.payments) || '[]') as Payment[];
+        const receipts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.receipts) || '[]') as Receipt[];
+        const locationTransfers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.locationTransfers) || '[]') as LocationTransfer[];
+        
+        const allMasters = getAllMasters();
 
-  const reindexData = useCallback(() => {
-    if (!hydrated) return;
-    try {
-      const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
-      const sales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]') as Sale[];
-      const payments = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.payments) || '[]') as Payment[];
-      const receipts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.receipts) || '[]') as Receipt[];
-      const locationTransfers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.locationTransfers) || '[]') as LocationTransfer[];
-      
-      const masterCustomers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.customers) || '[]') as MasterItem[];
-      const masterSuppliers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.suppliers) || '[]') as MasterItem[];
-      const masterAgents = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.agents) || '[]') as MasterItem[];
-      const masterTransporters = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.transporters) || '[]') as MasterItem[];
-      const masterWarehouses = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.warehouses) || '[]') as MasterItem[];
-      const masterBrokers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.brokers) || '[]') as MasterItem[];
-      
-      const allMasters = [
-        ...masterCustomers, ...masterSuppliers, ...masterAgents,
-        ...masterTransporters, ...masterWarehouses, ...masterBrokers
-      ];
+        const searchDataset = buildSearchData({
+          sales, purchases, payments, receipts, masters: allMasters, locationTransfers
+        });
+        initSearchEngine(searchDataset);
+      } catch (error) {
+        console.error("Error re-indexing search data:", error);
+      }
+    };
 
-      const searchDataset = buildSearchData({
-        sales, purchases, payments, receipts, masters: allMasters, locationTransfers
-      });
-      initSearchEngine(searchDataset);
-      setSearchData(searchDataset); // Trigger re-render if needed
-    } catch (error) {
-      console.error("Error re-indexing search data:", error);
-    }
-  }, [hydrated]);
-
-  useEffect(() => {
     reindexData();
     window.addEventListener('reindex-search', reindexData);
     return () => {
       window.removeEventListener('reindex-search', reindexData);
     };
-  }, [reindexData]);
+  }, [getAllMasters]);
 
-  return searchData;
-};
+  return <>{children}</>;
+}
+
 
 function AppHeaderContentInternal() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
@@ -130,26 +111,20 @@ function LoadingBarInternal() {
 
 function AppLayoutInternal({ children }: { children: React.ReactNode }) {
   const AppIcon = APP_ICON;
-  useSearchData(); 
   const router = useRouter();
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     const target = event.target as HTMLElement;
-    // Do not trigger shortcuts if the user is typing in an input, textarea, or a content-editable element.
     const isTyping =
       target.tagName === 'INPUT' ||
       target.tagName === 'TEXTAREA' ||
       target.isContentEditable;
     
-    if (isTyping) {
-        return;
-    }
-    
-    if (!event.altKey) return; // All shortcuts must use Alt key
+    if (isTyping) return;
+    if (!event.altKey) return;
 
     const key = event.key.toLowerCase();
     
-    // Alt + Shift shortcuts
     if (event.shiftKey) {
         switch(key) {
             case 'p': event.preventDefault(); router.push('/payments'); break;
@@ -159,7 +134,6 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
         return;
     }
     
-    // Ignore other modifiers for main shortcuts
     if (event.ctrlKey || event.metaKey) return;
 
     switch (key) {
@@ -255,11 +229,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <SettingsProvider>
+          <MasterDataProvider>
             <SidebarProvider defaultOpen={false} collapsible="icon">
                 <AppExitHandler />
-                <AppLayoutInternal>{children}</AppLayoutInternal>
+                <SearchDataProvider>
+                  <AppLayoutInternal>{children}</AppLayoutInternal>
+                </SearchDataProvider>
                 <Toaster />
             </SidebarProvider>
+          </MasterDataProvider>
         </SettingsProvider>
     );
 }

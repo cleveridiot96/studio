@@ -1,19 +1,16 @@
 
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn } from "@/lib/types";
+import type { MasterItem, Sale, Receipt } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown, Printer, Users, ChevronDown } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format, parseISO, addDays, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { useSettings } from "@/contexts/SettingsContext";
-import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 import {
   Accordion,
@@ -29,22 +26,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
-
-
-const keys = {
-  purchases: 'purchasesData',
-  sales: 'salesData',
-  receipts: 'receiptsData',
-  payments: 'paymentsData',
-  purchaseReturns: 'purchaseReturnsData',
-  saleReturns: 'saleReturnsData',
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  brokers: 'masterBrokers',
-  expenses: 'masterExpenses',
-};
 
 interface OutstandingParty {
   partyId: string;
@@ -186,8 +167,8 @@ export function OutstandingClient() {
 
   useEffect(() => { setHydrated(true) }, []);
 
-  const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
-  const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
+  const [sales] = useLocalStorageState<Sale[]>('salesData', [], salesMigrator);
+  const [receipts] = useLocalStorageState<Receipt[]>('receiptsData', []);
   
   const { receivableParties, payableParties, isBalancesLoading } = useOutstandingBalances();
 

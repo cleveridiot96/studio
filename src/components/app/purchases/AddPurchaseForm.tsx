@@ -36,18 +36,12 @@ import { MasterForm } from "@/components/app/masters/MasterForm";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 interface AddPurchaseFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (purchase: Purchase) => void;
-  suppliers: MasterItem[];
-  agents: Agent[];
-  warehouses: MasterItem[];
-  transporters: MasterItem[];
-  expenses: MasterItem[];
-  allExpenseParties: MasterItem[];
-  onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   purchaseToEdit?: Purchase | null;
 }
 
@@ -55,16 +49,12 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  suppliers,
-  agents,
-  warehouses,
-  transporters,
-  expenses,
-  allExpenseParties,
-  onMasterDataUpdate,
   purchaseToEdit,
 }) => {
   const { toast } = useToast();
+  const { data: masterData, setData: setMasterData, getAllMasters } = useMasterData();
+  const { suppliers, agents, warehouses, transporters, expenses } = masterData;
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
@@ -73,10 +63,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
 
-  // IMPORTANT: useMemo is NOT used here to ensure the schema is re-evaluated on every render
-  // This is necessary because the validation logic depends on props that can change (e.g., availableStock)
-  const formSchema = purchaseSchema(suppliers, agents, warehouses, transporters, expenses);
-
+  const formSchema = React.useMemo(() => purchaseSchema(suppliers, agents, warehouses, transporters, expenses), [suppliers, agents, warehouses, transporters, expenses]);
 
   const getDefaultValues = React.useCallback((): PurchaseFormValues => {
     if (purchaseToEdit) {
@@ -205,11 +192,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   
   const handleEditMasterItem = (type: MasterItemType, id: string) => {
     let itemToEdit: MasterItem | null = null;
-    if (type === 'Supplier') itemToEdit = suppliers.find(i => i.id === id) || null;
-    else if (type === 'Agent') itemToEdit = agents.find(i => i.id === id) || null;
-    else if (type === 'Warehouse') itemToEdit = warehouses.find(i => i.id === id) || null;
-    else if (type === 'Transporter') itemToEdit = transporters.find(i => i.id === id) || null;
-    else if (type === 'Expense') itemToEdit = allExpenseParties.find(i => i.id === id) || null;
+    const allMasters = getAllMasters();
+    itemToEdit = allMasters.find(i => i.id === id) || null;
 
     if (itemToEdit) {
         setMasterItemToEdit(itemToEdit);
@@ -258,7 +242,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
       })),
       expenses: values.expenses?.map(exp => ({
         ...exp,
-        partyName: allExpenseParties.find(p => p.id === exp.partyId)?.name || exp.partyName,
+        partyName: getAllMasters().find(p => p.id === exp.partyId)?.name || exp.partyName,
       })),
       totalGoodsValue: Math.round(summary.totalGoodsValue),
       totalQuantity: Math.round(summary.totalQuantity),
@@ -435,7 +419,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                       <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
                         <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
                           <MasterDataCombobox value={itemField.value} onChange={itemField.onChange}
-                            options={allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
+                            options={getAllMasters().map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                             placeholder="Select Party" addNewLabel="Add New Party"
                             onAddNew={() => handleOpenMasterForm("Transporter")} onEdit={(id) => handleEditMasterItem("Expense", id)}
                             disabled={field.account === 'Broker Commission'}

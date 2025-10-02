@@ -3,15 +3,14 @@
 
 import React, { useMemo } from 'react';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, LocationTransfer } from "@/lib/types";
+import type { Purchase, Sale, LocationTransfer } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Link from 'next/link';
 import { Landmark, Package, Rocket, TrendingDown, TrendingUp } from 'lucide-react';
 import { useSettings } from "@/contexts/SettingsContext";
-import { isDateInFinancialYear, getFinancialYearDateRange, isDateBeforeFinancialYear } from "@/lib/utils";
+import { isDateInFinancialYear } from "@/lib/utils";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { parseISO } from 'date-fns';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 
 // All the data keys
@@ -20,16 +19,7 @@ const keys = {
   purchaseReturns: 'purchaseReturnsData',
   sales: 'salesData',
   saleReturns: 'saleReturnsData',
-  receipts: 'receiptsData',
-  payments: 'paymentsData',
   locationTransfers: 'locationTransfersData',
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  transporters: 'masterTransporters',
-  brokers: 'masterBrokers',
-  expenses: 'masterExpenses',
-  warehouses: 'masterWarehouses',
 };
 
 export const BalanceSheetClient = () => {

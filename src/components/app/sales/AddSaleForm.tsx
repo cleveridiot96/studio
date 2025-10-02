@@ -35,7 +35,6 @@ import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Tran
 import type { AggregatedStockItemForForm } from "./SalesClient";
 import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -45,19 +44,15 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FIXED_WAREHOUSES } from "@/lib/constants";
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 
 interface AddSaleFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (sale: Sale) => void;
-  customers: Customer[];
-  transporters: Transporter[];
-  brokers: Broker[];
   availableStock: AggregatedStockItemForForm[];
   existingSales: Sale[];
-  onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
-  expenses: MasterItem[];
   saleToEdit?: Sale | null;
 }
 
@@ -65,16 +60,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   isOpen,
   onClose,
   onSubmit,
-  customers,
-  transporters,
-  brokers,
   availableStock,
   existingSales,
-  onMasterDataUpdate,
-  expenses,
   saleToEdit,
 }) => {
   const { toast } = useToast();
+  const { data: masterData, setData: setMasterData } = useMasterData();
+  const { customers, transporters, brokers, expenses } = masterData;
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);

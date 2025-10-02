@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Receipt, MasterItem, MasterItemType, Customer, Broker, Sale, LedgerEntry } from "@/lib/types";
+import type { Receipt, MasterItem, MasterItemType, Sale, LedgerEntry } from "@/lib/types";
 import { ReceiptTable } from "./ReceiptTable";
 import { AddReceiptForm } from "./AddReceiptForm";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { salesMigrator } from '@/lib/dataMigrators';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
-
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 // TRIAL PACKAGE 1 DATA
 const initialReceiptsData: Receipt[] = [
@@ -47,7 +47,7 @@ export function ReceiptsClient() {
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
 
   const { receivableParties } = useOutstandingBalances();
-
+  const { setMasterData } = useMasterData();
 
   const [isAddReceiptFormOpen, setIsAddReceiptFormOpen] = React.useState(false);
   const [receiptToEdit, setReceiptToEdit] = React.useState<Receipt | null>(null);
@@ -121,10 +121,10 @@ export function ReceiptsClient() {
   }, [receiptToDeleteId, setReceipts, setLedgerData, toast]);
   
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    console.info(`A new master item of type ${type} was added/updated:`, newItem);
+    setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     toast({ title: `Master list updated for ${type}.`});
-    window.dispatchEvent(new Event('storage')); // Force re-fetch in useOutstandingBalances
-  }, [toast]);
+    window.dispatchEvent(new Event('storage'));
+  }, [toast, setMasterData]);
 
 
   const openAddReceiptForm = React.useCallback(() => {

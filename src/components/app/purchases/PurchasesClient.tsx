@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Supplier, Agent, Warehouse, Transporter, PurchaseReturn, Sale, LocationTransfer, LedgerEntry } from "@/lib/types";
+import type { Purchase, MasterItem, MasterItemType, Agent, Warehouse, Transporter, PurchaseReturn, LedgerEntry } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { PurchaseChittiPrint } from "./PurchaseChittiPrint";
@@ -46,13 +46,6 @@ const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
-const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
-const AGENTS_STORAGE_KEY = 'masterAgents';
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const EXPENSES_STORAGE_KEY = 'masterExpenses';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
 const LEDGER_STORAGE_KEY = 'ledgerData';
 
 export function PurchasesClient() {
@@ -64,15 +57,7 @@ export function PurchasesClient() {
   const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
   const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
-  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, []);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
   const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
-
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
@@ -88,49 +73,15 @@ export function PurchasesClient() {
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState('purchases');
 
-  React.useEffect(() => {
+   React.useEffect(() => {
     setHydrated(true);
-    
-    // Set initial data on first load if localStorage is empty
     if (localStorage.getItem(PURCHASES_STORAGE_KEY) === null) {
       setPurchases(initialPurchasesData);
     }
     if (localStorage.getItem(PURCHASE_RETURNS_STORAGE_KEY) === null) {
       setPurchaseReturns(initialPurchaseReturnsData);
     }
-
   }, [setPurchases, setPurchaseReturns]);
-  
-  React.useEffect(() => {
-    if (hydrated) {
-        const fixedItemsUpdater = (currentItems: MasterItem[], fixedItems: readonly MasterItem[], setter: React.Dispatch<React.SetStateAction<MasterItem[]>>) => {
-            const itemsMap = new Map(currentItems.map(item => [item.id, item]));
-            let updated = false;
-            fixedItems.forEach(fixedItem => {
-                const existing = itemsMap.get(fixedItem.id);
-                if (!existing || existing.name !== fixedItem.name) {
-                    itemsMap.set(fixedItem.id, { ...fixedItem });
-                    updated = true;
-                }
-            });
-
-            if (updated) {
-                setter(Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
-            }
-        };
-        
-        fixedItemsUpdater(warehouses, FIXED_WAREHOUSES, setWarehouses);
-        fixedItemsUpdater(expenses, FIXED_EXPENSES, setExpenses);
-    }
-  }, [hydrated, warehouses, setWarehouses, expenses, setExpenses]);
-
-  const allExpenseParties = React.useMemo(() => {
-    if (!hydrated) return [];
-    return [...suppliers, ...agents, ...transporters, ...brokers, ...customers, ...expenses]
-        .filter(p => p && p.id && p.name)
-        .sort((a,b) => a.name.localeCompare(b.name));
-  }, [hydrated, suppliers, agents, transporters, brokers, customers, expenses]);
-
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -148,7 +99,6 @@ export function PurchasesClient() {
       return isEditing ? prevPurchases.map(p => p.id === purchase.id ? purchase : p) : [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
     });
     
-    // Add ledger entries for expenses
     if (purchase.expenses && purchase.expenses.length > 0) {
         const newLedgerEntries: LedgerEntry[] = [];
         purchase.expenses.forEach(exp => {
@@ -248,11 +198,7 @@ export function PurchasesClient() {
     setIsAddPurchaseReturnFormOpen(true);
   }, []);
 
-  const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => {
-    setPurchaseReturnToDeleteId(prId);
-    setShowDeleteReturnConfirm(true);
-  }, []);
-
+  const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => { setPurchaseReturnToDeleteId(prId); setShowDeleteReturnConfirm(true); }, []);
   const confirmDeletePurchaseReturn = React.useCallback(() => {
     if (purchaseReturnToDeleteId) {
       setPurchaseReturns(prev => prev.filter(pr => pr.id !== purchaseReturnToDeleteId));
@@ -261,36 +207,14 @@ export function PurchasesClient() {
     }
   }, [purchaseReturnToDeleteId, setPurchaseReturns, toast]);
 
-  const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = { Supplier: setSuppliers, Agent: setAgents, Warehouse: setWarehouses, Transporter: setTransporters, Expense: setExpenses };
-    const setter = setters[type];
-    if (setter) setter(prev => { const newSet = new Map(prev.map(item => [item.id, item])); newSet.set(newItem.id, newItem); return Array.from(newSet.values()).sort((a,b) => a.name.localeCompare(b.name)); });
-  }, [setSuppliers, setAgents, setWarehouses, setTransporters, setExpenses]);
+  const openAddPurchaseForm = React.useCallback(() => { setPurchaseToEdit(null); setIsAddPurchaseFormOpen(true); }, []);
+  const closeAddPurchaseForm = React.useCallback(() => { setIsAddPurchaseFormOpen(false); setPurchaseToEdit(null); }, []);
+  const openAddPurchaseReturnForm = React.useCallback(() => { setPurchaseReturnToEdit(null); setIsAddPurchaseReturnFormOpen(true); }, []);
+  const closeAddPurchaseReturnForm = React.useCallback(() => { setIsAddPurchaseReturnFormOpen(false); setPurchaseReturnToEdit(null); }, []);
 
-  const openAddPurchaseForm = React.useCallback(() => {
-    setPurchaseToEdit(null);
-    setIsAddPurchaseFormOpen(true);
-  }, []);
 
-  const closeAddPurchaseForm = React.useCallback(() => {
-    setIsAddPurchaseFormOpen(false);
-    setPurchaseToEdit(null);
-  }, []);
-
-  const openAddPurchaseReturnForm = React.useCallback(() => {
-    setPurchaseReturnToEdit(null);
-    setIsAddPurchaseReturnFormOpen(true);
-  }, []);
-
-  const closeAddPurchaseReturnForm = React.useCallback(() => {
-    setIsAddPurchaseReturnFormOpen(false);
-    setPurchaseReturnToEdit(null);
-  }, []);
-
-  const triggerDownloadPurchasePdf = React.useCallback((purchase: Purchase) => {
-    setPurchaseForPdf(purchase);
-  }, []);
-
+  const triggerDownloadPurchasePdf = React.useCallback((purchase: Purchase) => setPurchaseForPdf(purchase), []);
+  
   const addButtonDynamicClass = React.useMemo(() => {
     if (activeTab === 'purchases') {
         return 'bg-blue-600 hover:bg-blue-700 text-white';
@@ -300,7 +224,7 @@ export function PurchasesClient() {
     }
     return 'bg-primary hover:bg-primary/90'; // Fallback
   }, [activeTab]);
-
+  
   React.useEffect(() => {
     if (purchaseForPdf && chittiContainerRef.current) {
       const generatePdf = async () => {
@@ -322,8 +246,7 @@ export function PurchasesClient() {
         } catch (err) { console.error("Error PDF:", err); toast({ title: "PDF Failed", variant: "destructive" }); }
         finally { setPurchaseForPdf(null); }
       };
-      const timer = setTimeout(generatePdf, 300);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(generatePdf, 300); return () => clearTimeout(timer);
     }
   }, [purchaseForPdf, toast]);
 
@@ -374,13 +297,6 @@ export function PurchasesClient() {
           isOpen={isAddPurchaseFormOpen}
           onClose={closeAddPurchaseForm}
           onSubmit={handleAddOrUpdatePurchase}
-          suppliers={suppliers as Supplier[]}
-          agents={agents as Agent[]}
-          warehouses={warehouses as Warehouse[]}
-          transporters={transporters as Transporter[]}
-          expenses={expenses}
-          allExpenseParties={allExpenseParties}
-          onMasterDataUpdate={handleMasterDataUpdate}
           purchaseToEdit={purchaseToEdit}
         />
       )}

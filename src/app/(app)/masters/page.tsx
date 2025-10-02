@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { MasterForm } from '@/components/app/masters/MasterForm';
 import { MasterList } from '@/components/app/masters/MasterList';
 import type { MasterItem, MasterItemType } from '@/lib/types';
-import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -26,15 +25,7 @@ import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
 import { Input } from '@/components/ui/input';
-
-// Storage keys
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
-const AGENTS_STORAGE_KEY = 'masterAgents';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
-const EXPENSES_STORAGE_KEY = 'masterExpenses';
+import { useMasterData } from '@/contexts/MasterDataContext';
 
 const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 const FIXED_EXPENSE_IDS = FIXED_EXPENSES.map(e => e.id);
@@ -70,14 +61,7 @@ const validateMasterItem = (item: any): item is MasterItem => {
 
 export default function MastersPage() {
   const { toast } = useToast();
-  
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(CUSTOMERS_STORAGE_KEY, []);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(SUPPLIERS_STORAGE_KEY, []);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(AGENTS_STORAGE_KEY, []);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(TRANSPORTERS_STORAGE_KEY, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(BROKERS_STORAGE_KEY, []);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(WAREHOUSES_STORAGE_KEY, []);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, []);
+  const { data: masterData, setData: setMasterData, getAllMasters } = useMasterData();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
@@ -87,16 +71,11 @@ export default function MastersPage() {
   const [hydrated, setHydrated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const prevAllMasterItemsRef = useRef<MasterItem[]>([]);
+  const allMasterItems = useMemo(() => getAllMasters(), [getAllMasters]);
+  const prevAllMasterItemsRef = useRef<MasterItem[]>(allMasterItems);
+
 
   useEffect(() => { setHydrated(true); }, []);
-
-  const allMasterItems = useMemo(() => {
-    if (!hydrated) return []; 
-    return [...customers, ...suppliers, ...agents, ...transporters, ...brokers, ...warehouses, ...expenses]
-      .filter(validateMasterItem) 
-      .sort((a,b) => a.name.localeCompare(b.name));
-  }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, hydrated]);
 
   useEffect(() => {
     if (hydrated) {
@@ -117,7 +96,7 @@ export default function MastersPage() {
     }
   }, [allMasterItems, hydrated, toast]);
 
-  const hydrateFixedItems = <T extends MasterItem>(currentItems: T[], fixedItems: readonly T[], setItems: (items: T[]) => void) => {
+  const hydrateFixedItems = <T extends MasterItem>(currentItems: T[], fixedItems: readonly T[], type: MasterItemType) => {
     const itemsMap = new Map(currentItems.map(item => [item.id, item]));
     let updated = false;
     fixedItems.forEach(fixedItem => {
@@ -127,32 +106,28 @@ export default function MastersPage() {
       }
     });
     if (updated) {
-      setItems(Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
+      setMasterData(type, Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
     }
   };
 
   useEffect(() => {
     if (hydrated) {
-      hydrateFixedItems(warehouses, FIXED_WAREHOUSES, setWarehouses);
-      hydrateFixedItems(expenses, FIXED_EXPENSES, setExpenses);
+      hydrateFixedItems(masterData.Warehouse, FIXED_WAREHOUSES, 'Warehouse');
+      hydrateFixedItems(masterData.Expense, FIXED_EXPENSES, 'Expense');
     }
-  }, [hydrated, setWarehouses, warehouses, setExpenses, expenses]);
+  }, [hydrated, masterData.Warehouse, masterData.Expense, setMasterData]);
 
 
   const getMasterDataState = useCallback((type: MasterItemType | 'All') => {
     const filterValid = (data: MasterItem[]) => data.filter(validateMasterItem);
-    switch (type) {
-      case 'Customer': return { data: filterValid(customers), setData: setCustomers };
-      case 'Supplier': return { data: filterValid(suppliers), setData: setSuppliers };
-      case 'Agent': return { data: filterValid(agents), setData: setAgents };
-      case 'Transporter': return { data: filterValid(transporters), setData: setTransporters };
-      case 'Broker': return { data: filterValid(brokers), setData: setBrokers };
-      case 'Warehouse': return { data: filterValid(warehouses), setData: setWarehouses };
-      case 'Expense': return { data: filterValid(expenses), setData: setExpenses };
-      case 'All': return { data: allMasterItems, setData: () => {} }; 
-      default: return { data: [], setData: () => {} };
+    if (type === 'All') {
+        return { data: allMasterItems, setData: () => {} };
     }
-  }, [customers, suppliers, agents, transporters, brokers, warehouses, expenses, setCustomers, setSuppliers, setAgents, setTransporters, setBrokers, setWarehouses, setExpenses, allMasterItems]);
+    return { 
+        data: filterValid(masterData[type]), 
+        setData: (value: MasterItem[] | ((prev: MasterItem[]) => MasterItem[])) => setMasterData(type, value)
+    };
+  }, [allMasterItems, masterData, setMasterData]);
 
   const handleAddOrUpdateMasterItem = useCallback((item: MasterItem) => {
     if (ALL_FIXED_IDS.includes(item.id) && editingItem?.id === item.id) {
@@ -396,6 +371,3 @@ export default function MastersPage() {
     </div>
   );
 }
-
-
-

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItem, MasterItemType, Supplier, Agent, Transporter, Purchase, Sale, LedgerEntry, Broker } from "@/lib/types";
+import type { Payment, MasterItemType, Purchase } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ import { isDateInFinancialYear } from "@/lib/utils";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 // TRIAL PACKAGE 1 DATA
 const initialPaymentsData: Payment[] = [
@@ -31,7 +32,6 @@ const initialPaymentsData: Payment[] = [
 
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
-const LEDGER_STORAGE_KEY = 'ledgerData';
 
 
 export function PaymentsClient() {
@@ -41,10 +41,9 @@ export function PaymentsClient() {
 
   const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, []);
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
-  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
   
   const { payableParties } = useOutstandingBalances();
-
+  const { setMasterData } = useMasterData();
 
   const [isAddPaymentFormOpen, setIsAddPaymentFormOpen] = React.useState(false);
   const [paymentToEdit, setPaymentToEdit] = React.useState<Payment | null>(null);
@@ -74,29 +73,9 @@ export function PaymentsClient() {
       }
     });
 
-    // Add a single, simple ledger entry for the payment itself
-    const newLedgerEntry: LedgerEntry = {
-        id: `ledger-${payment.id}`,
-        date: payment.date,
-        type: 'Payment',
-        account: `${payment.partyType} Payable`, // General account for payments
-        debit: payment.amount, // Payment debits the party's account
-        credit: 0,
-        paymentMode: payment.paymentMethod,
-        party: payment.partyName,
-        partyId: payment.partyId,
-        relatedVoucher: payment.id,
-        linkedTo: {
-            voucherType: 'Purchase', // Assuming payments are mostly for purchases
-            voucherId: payment.id,
-        },
-        remarks: `Payment made: ${payment.notes || ''}`
-    };
-    setLedgerData(prev => [...prev.filter(l => l.id !== `ledger-${payment.id}`), newLedgerEntry]);
-    
     setPaymentToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
-  }, [setPayments, setLedgerData, toast, payments]);
+  }, [setPayments, toast, payments]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -111,22 +90,17 @@ export function PaymentsClient() {
   const confirmDeletePayment = React.useCallback(() => {
     if (paymentToDeleteId) {
       setPayments(prev => prev.filter(p => p.id !== paymentToDeleteId));
-      setLedgerData(prev => prev.filter(l => l.id !== `ledger-${paymentToDeleteId}`));
       toast({ title: "Success!", description: "Payment deleted successfully.", variant: "destructive" });
       setPaymentToDeleteId(null);
       setShowDeleteConfirm(false);
     }
-  }, [paymentToDeleteId, setPayments, setLedgerData, toast]);
+  }, [paymentToDeleteId, setPayments, toast]);
   
-  // This function is a placeholder for now, as master data management is centralized in MastersPage.
-  // We pass it to the form to satisfy the prop requirement.
-  const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-     // A full implementation would update the corresponding master list (e.g., setSuppliers)
-     // and re-trigger the balance calculation. For now, we'll just log it.
-    console.info(`A new master item of type ${type} was added/updated:`, newItem);
-    toast({ title: `Master list updated for ${type}.`});
-    window.dispatchEvent(new Event('storage')); // Force re-fetch in useOutstandingBalances
-  }, [toast]);
+  const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: any) => {
+     setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+     toast({ title: `Master list updated for ${type}.`});
+     window.dispatchEvent(new Event('storage'));
+  }, [toast, setMasterData]);
 
 
   const openAddPaymentForm = React.useCallback(() => {
