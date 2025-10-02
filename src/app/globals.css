@@ -42,14 +42,14 @@
     --chart-5: 158 59% 45%;
 
     /* Sidebar specific colors, can be same as main or distinct */
-    --sidebar-background: 225 47% 10%; /* Deep Navy Blue */
-    --sidebar-foreground: 56 88% 90%; /* Light Cream / Off-white */
-    --sidebar-primary: 45 100% 50%; /* Saffron / Turmeric yellow for active/hover states */
-    --sidebar-primary-foreground: 225 47% 10%; /* Deep Navy for text on saffron */
-    --sidebar-accent: 225 47% 15%; /* Slightly lighter navy for hover backgrounds */
-    --sidebar-accent-foreground: 45 100% 55%; /* Saffron for text on hover */
-    --sidebar-border: 225 47% 20%;
-    --sidebar-ring: 45 100% 50%;
+    --sidebar-background: linear-gradient(135deg, #FFD700, #F0E68C, #BDB76B, #DAA520);
+    --sidebar-foreground: 39 100% 8%; /* Dark brown for high contrast */
+    --sidebar-primary: 225 47% 10%; /* Deep Navy for active/hover states */
+    --sidebar-primary-foreground: 50 100% 85%; /* Light gold */
+    --sidebar-accent: 0 0% 100% / 0.2; /* Semi-transparent white for hover */
+    --sidebar-accent-foreground: 39 100% 8%; /* Dark brown for text on hover */
+    --sidebar-border: 45 30% 70%;
+    --sidebar-ring: 39 100% 15%;
   }
 
   .dark {
@@ -82,12 +82,12 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    --sidebar-background: 0 0% 8%; /* Darker than main dark bg */
-    --sidebar-foreground: 56 88% 85%;
-    --sidebar-primary: 45 100% 55%;
+    --sidebar-background: linear-gradient(135deg, #1a1a1a, #4a4a4a, #2a2a2a, #000000);
+    --sidebar-foreground: 45 80% 85%;
+    --sidebar-primary: 45 100% 60%;
     --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 45 100% 60%;
+    --sidebar-accent: 0 0% 100% / 0.1;
+    --sidebar-accent-foreground: 45 100% 70%;
     --sidebar-border: 0 0% 15%;
     --sidebar-ring: 45 100% 55%;
   }

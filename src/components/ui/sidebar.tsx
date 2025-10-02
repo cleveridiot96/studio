@@ -189,8 +189,10 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
+            "bg-[--sidebar-background] animate-liquid-gold",
             className
           )}
+          style={{ backgroundSize: '400% 400%' }}
           ref={ref}
           {...props}
         >
@@ -205,10 +207,14 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className={cn(
+                "w-[--sidebar-width] p-0 text-sidebar-foreground [&>button]:hidden",
+                "bg-[--sidebar-background] animate-liquid-gold"
+            )}
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+                backgroundSize: '400% 400%'
               } as React.CSSProperties
             }
             side={side}
@@ -261,9 +267,11 @@ const Sidebar = React.forwardRef<
           <div
             data-sidebar="sidebar"
             className={cn(
-                "flex h-full w-full flex-col bg-sidebar",
+                "flex h-full w-full flex-col",
+                "bg-[--sidebar-background] animate-liquid-gold",
                 variant === "floating" && "rounded-lg border border-sidebar-border shadow"
             )}
+             style={{ backgroundSize: '400% 400%' }}
           >
             {children}
           </div>

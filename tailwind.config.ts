@@ -94,12 +94,18 @@ export default {
             transform: 'scale(1.05)',
             opacity: '0.9'
           },
+        },
+        'liquid-gold': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
         }
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-destructive': 'pulse-destructive 2s cubic-bezier(0.4, 0, 0.6, 1) 2', // Runs twice
+        'liquid-gold': 'liquid-gold 15s ease infinite',
   		}
   	}
   },

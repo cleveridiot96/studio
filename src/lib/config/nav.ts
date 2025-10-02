@@ -1,4 +1,3 @@
-
 import {
   LayoutGrid,
   ShoppingCart,
@@ -21,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
-export const APP_NAME = "Kisan Khata Sahayak";
+export const APP_NAME = "Vyapar Saathi";
 export const APP_ICON = LineChart;
 
 export const navItems: NavItem[] = [
@@ -139,5 +138,3 @@ export const navItems: NavItem[] = [
     shortcut: 'Alt + B',
   },
 ];
-
-    
