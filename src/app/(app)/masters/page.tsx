@@ -319,7 +319,7 @@ export default function MastersPage() {
                         <p className="text-sm text-muted-foreground mt-1">DID YOU MEAN: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
                     )}
                   </CardHeader>
-                  <CardContent className="pt-2">
+                  <CardContent className="pt-2 max-h-[calc(100vh-30rem)] overflow-auto">
                     <MasterList
                       data={filteredData}
                       itemType={tab.value as MasterItemType | 'All'}

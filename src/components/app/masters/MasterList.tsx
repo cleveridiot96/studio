@@ -1,3 +1,4 @@
+
 "use client";
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -79,10 +80,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
 
   return (
     <TooltipProvider>
-    <ScrollArea className={cn(
-        "max-h-[calc(100vh-30rem)]", // Set a max height, content will scroll if it overflows
-        "print:h-auto print:overflow-visible"
-    )}>
+    <ScrollArea className="print:h-auto print:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
