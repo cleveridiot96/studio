@@ -91,7 +91,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
   
   const handleEdit = (e: React.MouseEvent, value: string) => {
-    e.stopPropagation(); // Prevent the item from being selected
+    e.stopPropagation();
     if (onEdit) {
       onEdit(value);
       setOpen(false);
@@ -173,22 +173,22 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                             <span className="truncate">{option.label}</span>
                         </div>
                         {onEdit && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
-                                        onClick={(e) => handleEdit(e, option.value)}
-                                        aria-label={`EDIT ${option.label}`}
-                                    >
-                                        <Pencil className="h-3 w-3" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Edit {option.label}</p>
-                                </TooltipContent>
-                            </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
+                                onClick={(e) => handleEdit(e, option.value)}
+                                aria-label={`EDIT ${option.label}`}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit {option.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </CommandItem>
                   ))}
