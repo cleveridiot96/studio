@@ -1,4 +1,3 @@
-
 "use client";
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -81,8 +80,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
   return (
     <TooltipProvider>
     <ScrollArea className={cn(
-        "h-auto",
-        data.length > 30 ? "h-[calc(100vh-30rem)]" : "", // Apply fixed height scroll only if more than 30 items
+        "max-h-[calc(100vh-30rem)]", // Set a max height, content will scroll if it overflows
         "print:h-auto print:overflow-visible"
     )}>
       <Table>
