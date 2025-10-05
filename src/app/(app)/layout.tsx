@@ -184,7 +184,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-2 border-t border-sidebar-border">
-                <SidebarTrigger>
+                <SidebarTrigger className="hidden md:flex">
                   <Menu className="h-6 w-6 text-sidebar-foreground" />
                 </SidebarTrigger>
             </SidebarFooter>
