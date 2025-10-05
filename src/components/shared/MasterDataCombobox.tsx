@@ -6,8 +6,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Fuse from 'fuse.js';
-import didYouMean from 'didyoumean2';
+// Removed problematic external dependencies (Fuse and didYouMean) to ensure stability.
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 
@@ -49,26 +48,20 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-  const fuse = React.useMemo(() => new Fuse(options, {
-    keys: ['label'],
-    threshold: 0.3,
-  }), [options]);
-
-  const { filteredOptions, didYouMeanSuggest } = React.useMemo(() => {
+  // --- FIX: Replaced Fuse/didYouMean with reliable native filtering ---
+  const filteredOptions = React.useMemo(() => {
     if (!search) {
-      return { filteredOptions: options, didYouMeanSuggest: null };
+      return options;
     }
     
-    const fuseResults = fuse.search(search).map(result => result.item);
+    // Perform case-insensitive search using native JavaScript
+    const normalizedSearch = search.toLowerCase();
     
-    const suggestions = didYouMean(search, options.map(opt => opt.label), {
-      threshold: 0.6,
-      caseSensitive: false,
-    });
-    const suggestion = Array.isArray(suggestions) ? suggestions[0] : suggestions;
-
-    return { filteredOptions: fuseResults, didYouMeanSuggest: suggestion };
-  }, [options, search, fuse]);
+    return options.filter(opt => 
+      opt.label.toLowerCase().includes(normalizedSearch)
+    );
+  }, [options, search]);
+  // -------------------------------------------------------------------
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
@@ -87,6 +80,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
   
   const handleEdit = (e: React.MouseEvent, value: string) => {
+    // Crucial: Stop propagation to prevent the click from activating the parent CommandItem's onSelect/onClick
     e.preventDefault();
     e.stopPropagation();
     
@@ -96,10 +90,8 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
       setSearch("");
     }
   }
-  
-  const handleSuggestionClick = (suggestion: string) => {
-    setSearch(suggestion);
-  };
+
+  // Suggestion feature removed as it relied on the unavailable 'didyoumean2' library.
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -131,6 +123,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
                 <CommandItem
                     onSelect={() => handleSelect(undefined)}
+                    // FIX: Ensures mouse click works by preventing default focus change
                     onMouseDown={(e) => { e.preventDefault(); handleSelect(undefined); }}
                      className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
@@ -145,20 +138,12 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               {filteredOptions.length === 0 && search.length > 0 ? (
                 <CommandEmpty>
                   {notFoundMessage}
-                  {didYouMeanSuggest && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Did you mean:{" "}
-                      <button className="font-semibold text-primary" onClick={() => handleSuggestionClick(didYouMeanSuggest as string)}>
-                        {didYouMeanSuggest}
-                      </button>
-                      ?
-                    </p>
-                  )}
                   {onAddNew && (
                     <CommandItem 
-                      onSelect={handleAddNew}
-                      onMouseDown={(e) => { e.preventDefault(); handleAddNew(); }}
-                      className="cursor-pointer mt-2 border-t"
+                        onSelect={handleAddNew} 
+                        // FIX: Ensures mouse click works
+                        onMouseDown={(e) => { e.preventDefault(); handleAddNew(); }}
+                        className="cursor-pointer mt-2 border-t"
                     >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
@@ -171,6 +156,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         key={option.value}
                         value={option.value}
                         onSelect={() => handleSelect(option.value)}
+                        // FIX: Ensures mouse click works
                         onMouseDown={(e) => { e.preventDefault(); handleSelect(option.value); }}
                         className="group uppercase flex justify-between items-center w-full"
                       >
@@ -202,9 +188,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                   ))}
                   {onAddNew && (
                     <CommandItem 
-                      onSelect={handleAddNew}
-                      onMouseDown={(e) => { e.preventDefault(); handleAddNew(); }}
-                      className="cursor-pointer mt-1 border-t"
+                        onSelect={handleAddNew} 
+                        // FIX: Ensures mouse click works
+                        onMouseDown={(e) => { e.preventDefault(); handleAddNew(); }}
+                        className="cursor-pointer mt-1 border-t"
                     >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
