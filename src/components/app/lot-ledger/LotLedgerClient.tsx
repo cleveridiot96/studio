@@ -6,7 +6,6 @@ import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import type { Purchase, Sale, LocationTransfer, PurchaseReturn, SaleReturn } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Printer, ArrowDown, ArrowUp, ArrowRightLeft, Undo2, Redo2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -14,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
+import { MasterDataCombobox } from '@/components/shared/MasterDataCombobox';
 
 const keys = {
   purchases: 'purchasesData',
@@ -46,7 +46,6 @@ export function LotLedgerClient() {
   const searchParams = useSearchParams();
   const lotFromQuery = searchParams.get('lot');
 
-  const [searchQuery, setSearchQuery] = useState(lotFromQuery || '');
   const [activeLot, setActiveLot] = useState(lotFromQuery || '');
   const [hydrated, setHydrated] = useState(false);
 
@@ -57,12 +56,20 @@ export function LotLedgerClient() {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
 
   useEffect(() => { setHydrated(true) }, []);
+  
+  useEffect(() => {
+    if (lotFromQuery) {
+      setActiveLot(lotFromQuery);
+    }
+  }, [lotFromQuery]);
 
-  const handleSearch = () => {
-    const trimmedQuery = searchQuery.trim();
-    if (trimmedQuery) {
-      setActiveLot(trimmedQuery);
-      router.push(`/lot-ledger?lot=${trimmedQuery}`);
+  const handleLotSelect = (lot: string | undefined) => {
+    const newLot = lot || '';
+    setActiveLot(newLot);
+    if (newLot) {
+      router.push(`/lot-ledger?lot=${newLot}`);
+    } else {
+      router.push('/lot-ledger');
     }
   };
 
@@ -159,6 +166,19 @@ export function LotLedgerClient() {
 
     return history.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   }, [activeLot, hydrated, purchases, sales, locationTransfers, purchaseReturns, saleReturns]);
+  
+  const allSystemLots = useMemo(() => {
+    if (!hydrated) return [];
+    const lots = new Set<string>();
+    purchases.forEach(p => p.items.forEach(i => lots.add(i.lotNumber)));
+    locationTransfers.forEach(lt => {
+      lt.items.forEach(item => {
+        lots.add(item.originalLotNumber);
+        lots.add(item.newLotNumber);
+      });
+    });
+    return Array.from(lots).sort().map(lot => ({ value: lot, label: lot }));
+  }, [hydrated, purchases, locationTransfers]);
 
   return (
     <div className="space-y-4 print-area">
@@ -168,19 +188,17 @@ export function LotLedgerClient() {
           <CardTitle className="flex items-center text-2xl font-bold text-foreground">
             <Search className="mr-3 h-6 w-6" /> Vakkal / Lot Traceability Report
           </CardTitle>
-          <CardDescription>Enter a lot number to see its complete history from purchase to sale.</CardDescription>
+          <CardDescription>Select a lot number to see its complete history from purchase to sale.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex w-full max-w-sm items-center space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter Lot Number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            <MasterDataCombobox
+              value={activeLot}
+              onChange={handleLotSelect}
+              options={allSystemLots}
+              placeholder="SELECT OR SEARCH A LOT..."
               className="h-10 text-base"
             />
-            <Button onClick={handleSearch} size="lg">Search</Button>
             <Button variant="outline" size="icon" onClick={() => window.print()} title="Print"><Printer className="h-5 w-5"/></Button>
           </div>
         </CardContent>
@@ -245,7 +263,7 @@ export function LotLedgerClient() {
         </Card>
       ) : (
         <div className="text-center py-10 text-muted-foreground no-print">
-          <p>Please enter a lot number to begin.</p>
+          <p>Please select a lot number to begin.</p>
         </div>
       )}
     </div>
