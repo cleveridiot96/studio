@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -165,6 +164,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         key={option.value}
                         value={option.value}
                         onSelect={() => handleSelect(option.value)}
+                        onMouseDown={(e) => e.preventDefault()}
                         className="group uppercase flex justify-between items-center w-full"
                       >
                          <div className="flex items-center flex-grow truncate mr-2">
