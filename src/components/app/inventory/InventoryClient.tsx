@@ -7,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier, PurchaseItem, SaleItem, LocationTransferItem } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle } from "lucide-react";
+import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ import { InventoryTable } from "./InventoryTable";
 import { cn } from "@/lib/utils";
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
+import { MergeLotsForm } from "./MergeLotsForm";
 
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
@@ -83,12 +84,14 @@ export function InventoryClient() {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []); 
   const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
   const [suppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
+  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
   const [archivedLotKeys, setArchivedLotKeys] = useLocalStorageState<string[]>(ARCHIVED_LOTS_STORAGE_KEY, []);
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string | null>(null);
+  const [isMergeFormOpen, setIsMergeFormOpen] = React.useState(false);
+
 
   React.useEffect(() => {
     setHydrated(true);
@@ -294,6 +297,18 @@ export function InventoryClient() {
     if (!selectedWarehouseId) return "All Warehouses";
     return warehouses.find(w => w.id === selectedWarehouseId)?.name || "Selected Warehouse";
   };
+  
+  const handleMergeSubmit = (mergeData: Omit<LocationTransfer, 'id' | 'date'>) => {
+    const newTransfer: LocationTransfer = {
+      id: `lt-merge-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      ...mergeData,
+    };
+    setLocationTransfers(prev => [newTransfer, ...prev]);
+    toast({ title: "Lots Merged", description: `Successfully merged lots into ${mergeData.items[0].newLotNumber}.` });
+    setIsMergeFormOpen(false);
+  };
+
 
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
@@ -304,6 +319,7 @@ export function InventoryClient() {
         <h1 className="text-3xl font-bold text-foreground">Inventory Dashboard (FY {financialYear})</h1>
         <div className="flex items-center gap-2">
            <Button asChild variant="outline"><Link href="/purchases"><PlusCircle className="mr-2 h-4 w-4" />New Purchase</Link></Button>
+           <Button variant="outline" onClick={() => setIsMergeFormOpen(true)}><GitMerge className="mr-2 h-4 w-4" />Merge Stock</Button>
            <Button asChild variant="outline"><Link href="/location-transfer"><ArrowRightLeft className="mr-2 h-4 w-4" />Transfer Stock</Link></Button>
            <Button asChild><Link href="/sales"><ShoppingCart className="mr-2 h-4 w-4" />Sell Stock</Link></Button>
            <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -369,6 +385,16 @@ export function InventoryClient() {
       <div className="mt-8 no-print">
         <PartyBrokerLeaderboard items={allAggregatedInventory} />
       </div>
+
+      {isMergeFormOpen && (
+        <MergeLotsForm
+          isOpen={isMergeFormOpen}
+          onClose={() => setIsMergeFormOpen(false)}
+          onSubmit={handleMergeSubmit}
+          warehouses={warehouses}
+          availableStock={activeInventory}
+        />
+      )}
 
       {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>This action will hide the lot "<strong>{itemToArchive.lotNumber}</strong>" from the main inventory view. You can view and restore it from the "Archived" tab.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
     </div>
