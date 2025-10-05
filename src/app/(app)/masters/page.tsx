@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign, Search, ChevronDown } from "lucide-react";
@@ -87,6 +88,28 @@ export default function MastersPage() {
 
 
   useEffect(() => { setHydrated(true); }, []);
+
+  const openFormForNewItem = useCallback(() => {
+    setEditingItem(null);
+    setIsFormOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      if (isTyping) return;
+
+      if (event.altKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        openFormForNewItem();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openFormForNewItem]);
 
   useEffect(() => {
     if (hydrated) {
@@ -222,11 +245,6 @@ export default function MastersPage() {
       dispatchSearchReindex();
     }
   }, [itemToDelete, getMasterDataState, toast]);
-
-  const openFormForNewItem = useCallback(() => {
-    setEditingItem(null);
-    setIsFormOpen(true);
-  }, []);
 
   const addButtonLabel = useMemo(() => {
     if (activeTab === 'All') return "ADD NEW PARTY/ENTITY";
@@ -404,3 +422,5 @@ export default function MastersPage() {
     </div>
   );
 }
+
+    
