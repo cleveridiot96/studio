@@ -133,6 +133,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
                 <CommandItem
                     onSelect={() => handleSelect(undefined)}
+                    onMouseDown={(e) => { e.preventDefault(); handleSelect(undefined); }}
                      className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
                         !value && "font-semibold bg-accent"
@@ -152,7 +153,11 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                       </div>
                   )}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-2 border-t">
+                    <CommandItem 
+                        onSelect={handleAddNew}
+                        onMouseDown={(e) => { e.preventDefault(); handleAddNew(); }}
+                        className="cursor-pointer mt-2 border-t"
+                    >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
@@ -164,7 +169,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         key={option.value}
                         value={option.value}
                         onSelect={() => handleSelect(option.value)}
-                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseDown={(e) => { e.preventDefault(); handleSelect(option.value); }}
                         className="group uppercase flex justify-between items-center w-full"
                       >
                          <div className="flex items-center flex-grow truncate mr-2">
@@ -181,6 +186,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                                 size="icon"
                                 className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
                                 onClick={(e) => handleEdit(e, option.value)}
+                                onMouseDown={(e) => e.stopPropagation()} // Prevent parent item from being selected
                                 aria-label={`EDIT ${option.label}`}
                               >
                                 <Pencil className="h-3 w-3" />
@@ -194,7 +200,11 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                       </CommandItem>
                   ))}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
+                    <CommandItem 
+                        onSelect={handleAddNew} 
+                        onMouseDown={(e) => { e.preventDefault(); handleAddNew(); }}
+                        className="cursor-pointer mt-1 border-t"
+                    >
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
