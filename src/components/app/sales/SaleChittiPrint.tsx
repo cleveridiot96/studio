@@ -1,14 +1,18 @@
+
 "use client";
 
 import type { Sale } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
+import { useSettings } from "@/contexts/SettingsContext";
 
 interface SaleChittiPrintProps {
   sale: Sale;
 }
 
 export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
+  const { printSettings } = useSettings();
+
   if (!sale) return null;
   
   const cashDiscount = (sale.expenses || []).find(e => e.account === 'Cash Discount')?.amount || 0;
@@ -61,7 +65,7 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
               <th className="text-right">NET WT (KG)</th>
               <th className="text-right">RATE (₹/KG)</th>
               <th className="text-right">GOODS VALUE (₹)</th>
-              <th className="text-right">PROFIT (₹)</th>
+              {printSettings.showProfitOnSaleChitti && <th className="text-right">PROFIT (₹)</th>}
             </tr>
           </thead>
           <tbody>
@@ -72,19 +76,23 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
                 <td className="text-right">{item.netWeight.toLocaleString()}</td>
                 <td className="text-right">{Math.round(item.rate || 0)}</td>
                 <td className="text-right">{Math.round(item.goodsValue || 0).toLocaleString()}</td>
-                <td className={`text-right font-medium ${Math.round(item.itemNetProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  {Math.round(item.itemNetProfit || 0).toLocaleString()}
-                </td>
+                {printSettings.showProfitOnSaleChitti && (
+                  <td className={`text-right font-medium ${Math.round(item.itemNetProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    {Math.round(item.itemNetProfit || 0).toLocaleString()}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
           <tfoot>
               <tr className="font-bold">
-                  <td colSpan={4}>TOTAL GOODS VALUE</td>
+                  <td colSpan={printSettings.showProfitOnSaleChitti ? 4 : 4}>TOTAL GOODS VALUE</td>
                   <td className="text-right">{Math.round(sale.totalGoodsValue || 0).toLocaleString()}</td>
-                  <td className={`text-right font-bold ${Math.round(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                    {Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
-                  </td>
+                  {printSettings.showProfitOnSaleChitti && (
+                    <td className={`text-right font-bold ${Math.round(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      {Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
+                    </td>
+                  )}
               </tr>
           </tfoot>
         </table>
@@ -103,35 +111,37 @@ export const SaleChittiPrint: React.FC<SaleChittiPrintProps> = ({ sale }) => {
         </div>
       </div>
       
-      <div className="mt-4 pt-2 border-t-2 border-dashed border-gray-400">
-        <h3 className="font-bold text-center text-xs mb-2">PROFIT & LOSS (INTERNAL)</h3>
-        <table className="text-xs">
-           <tbody>
-              <tr>
-                <td>TOTAL GOODS VALUE</td>
-                <td className="text-right font-bold">₹{Math.round(sale.totalGoodsValue || 0).toLocaleString()}</td>
-              </tr>
-              <tr>
-                <td>LESS: TOTAL COST OF GOODS</td>
-                <td className="text-right text-destructive">(-) ₹{Math.round(sale.totalCostOfGoodsSold || 0).toLocaleString()}</td>
-              </tr>
-              <tr className="font-bold border-t">
-                <td>GROSS PROFIT</td>
-                <td className="text-right">₹{Math.round(sale.totalGrossProfit || 0).toLocaleString()}</td>
-              </tr>
-              <tr>
-                <td>LESS: SALE EXPENSES</td>
-                <td className="text-right text-destructive">(-) ₹{Math.round(totalSaleSideExpenses).toLocaleString()}</td>
-              </tr>
-              <tr className="font-bold border-t-2 border-black text-base">
-                <td>NET PROFIT</td>
-                <td className={`text-right ${Math.round(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                  ₹{Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
-                </td>
-              </tr>
-           </tbody>
-        </table>
-      </div>
+      {printSettings.showProfitOnSaleChitti && (
+        <div className="mt-4 pt-2 border-t-2 border-dashed border-gray-400">
+          <h3 className="font-bold text-center text-xs mb-2">PROFIT & LOSS (INTERNAL)</h3>
+          <table className="text-xs">
+            <tbody>
+                <tr>
+                  <td>TOTAL GOODS VALUE</td>
+                  <td className="text-right font-bold">₹{Math.round(sale.totalGoodsValue || 0).toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td>LESS: TOTAL COST OF GOODS</td>
+                  <td className="text-right text-destructive">(-) ₹{Math.round(sale.totalCostOfGoodsSold || 0).toLocaleString()}</td>
+                </tr>
+                <tr className="font-bold border-t">
+                  <td>GROSS PROFIT</td>
+                  <td className="text-right">₹{Math.round(sale.totalGrossProfit || 0).toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td>LESS: SALE EXPENSES</td>
+                  <td className="text-right text-destructive">(-) ₹{Math.round(totalSaleSideExpenses).toLocaleString()}</td>
+                </tr>
+                <tr className="font-bold border-t-2 border-black text-base">
+                  <td>NET PROFIT</td>
+                  <td className={`text-right ${Math.round(sale.totalCalculatedProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                    ₹{Math.round(sale.totalCalculatedProfit || 0).toLocaleString()}
+                  </td>
+                </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {sale.notes && (
         <div className="mt-4 text-xs">

@@ -4,17 +4,23 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
+interface PrintSettings {
+    showProfitOnSaleChitti: boolean;
+}
+
 interface Settings {
   fontSize: number;
   financialYear: string;
   isFinancialYearHydrated: boolean;
-  lowStockThreshold: number; // New setting for low stock
+  lowStockThreshold: number;
+  printSettings: PrintSettings;
 }
 
 interface SettingsContextType extends Settings {
   setFontSize: Dispatch<SetStateAction<number>>;
   setFinancialYear: Dispatch<SetStateAction<string>>;
   setLowStockThreshold: Dispatch<SetStateAction<number>>;
+  setPrintSettings: Dispatch<SetStateAction<PrintSettings>>;
   getFinancialYearShort: () => string;
   getPreviousFinancialYear: () => string;
   getNextFinancialYear: () => string;
@@ -36,7 +42,10 @@ const defaultSettings: Settings = {
   fontSize: 19,
   financialYear: getDefaultFinancialYear(),
   isFinancialYearHydrated: false,
-  lowStockThreshold: 10, // Default to 10 bags
+  lowStockThreshold: 10,
+  printSettings: {
+    showProfitOnSaleChitti: true,
+  },
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -45,12 +54,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [fontSize, setFontSize] = useState<number>(defaultSettings.fontSize);
   const [financialYear, setFinancialYear] = useState<string>(defaultSettings.financialYear);
   const [lowStockThreshold, setLowStockThreshold] = useState<number>(defaultSettings.lowStockThreshold);
-  
+  const [printSettings, setPrintSettings] = useState<PrintSettings>(defaultSettings.printSettings);
+
   const [isFontSizeHydrated, setIsFontSizeHydrated] = useState<boolean>(false);
   const [isFinancialYearHydrated, setIsFinancialYearHydrated] = useState<boolean>(false);
   const [isLowStockHydrated, setIsLowStockHydrated] = useState<boolean>(false);
-  
-  const isAppHydrating = !isFontSizeHydrated || !isFinancialYearHydrated || !isLowStockHydrated;
+  const [isPrintSettingsHydrated, setIsPrintSettingsHydrated] = useState<boolean>(false);
+
+  const isAppHydrating = !isFontSizeHydrated || !isFinancialYearHydrated || !isLowStockHydrated || !isPrintSettingsHydrated;
 
   // Hydration effects
   useEffect(() => {
@@ -62,10 +73,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const storedFy = localStorage.getItem('appFinancialYear');
       if (storedFy) setFinancialYear(storedFy);
       setIsFinancialYearHydrated(true);
-      
+
       const storedLowStock = localStorage.getItem('appLowStockThreshold');
       if (storedLowStock) setLowStockThreshold(parseInt(storedLowStock, 10));
       setIsLowStockHydrated(true);
+
+      const storedPrintSettings = localStorage.getItem('appPrintSettings');
+      if (storedPrintSettings) {
+        try {
+            const parsed = JSON.parse(storedPrintSettings);
+            setPrintSettings(prev => ({...prev, ...parsed}));
+        } catch(e) {
+            console.error("Failed to parse print settings from localStorage", e);
+        }
+      }
+      setIsPrintSettingsHydrated(true);
     }
   }, []);
 
@@ -88,6 +110,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('appLowStockThreshold', lowStockThreshold.toString());
     }
   }, [lowStockThreshold, isLowStockHydrated]);
+
+  useEffect(() => {
+    if (isPrintSettingsHydrated) {
+        localStorage.setItem('appPrintSettings', JSON.stringify(printSettings));
+    }
+  }, [printSettings, isPrintSettingsHydrated]);
 
   const getFinancialYearShort = useCallback(() => {
     const years = financialYear.split('-');
@@ -137,6 +165,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setFinancialYear,
       lowStockThreshold,
       setLowStockThreshold,
+      printSettings,
+      setPrintSettings,
       isAppHydrating,
       isFinancialYearHydrated,
       getFinancialYearShort,
