@@ -145,6 +145,8 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 
   const agentId = watch('agentId');
   React.useEffect(() => {
+    if (!agents) return; // Ensure agents array is available
+    
     const agent = agents.find(a => a.id === agentId);
     const commissionIndex = watchedFormValues.expenses?.findIndex(exp => exp.account === 'Broker Commission');
     
@@ -203,7 +205,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type, newItem);
+    setMasterData(newItem.type, (prev: MasterItem[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     if (newItem.type === masterFormItemType) {
         if (newItem.type === 'Supplier') methods.setValue('supplierId', newItem.id, { shouldValidate: true });
         else if (newItem.type === 'Agent') methods.setValue('agentId', newItem.id, { shouldValidate: true });
