@@ -176,7 +176,7 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               <Link href="/dashboard" className="flex items-center gap-2 group">
                 <AppIcon className="w-8 h-8 text-sidebar-primary group-hover:animate-pulse" />
                 <h1 className="text-xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
-                  {APP_NAME}
+                  
                 </h1>
               </Link>
             </SidebarHeader>
