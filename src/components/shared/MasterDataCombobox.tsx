@@ -165,7 +165,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         key={option.value}
                         value={option.value}
                         onSelect={() => handleSelect(option.value)}
-                        className="uppercase flex justify-between items-center w-full"
+                        className="group uppercase flex justify-between items-center w-full"
                       >
                          <div className="flex items-center flex-grow truncate mr-2">
                             <Check
@@ -179,7 +179,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 shrink-0 p-1 opacity-50 hover:opacity-100"
+                                className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
                                 onClick={(e) => handleEdit(e, option.value)}
                                 aria-label={`EDIT ${option.label}`}
                               >
