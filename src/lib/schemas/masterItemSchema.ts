@@ -13,6 +13,7 @@ const TABS_CONFIG: { value: string; label: string; hasCommission: boolean; hasBa
 
 export const masterItemSchema = z.object({
   name: z.string().trim().min(1, "Name is required."),
+  marka: z.string().optional(),
   type: z.enum(["Customer", "Supplier", "Agent", "Transporter", "Broker", "Warehouse", "Expense"]),
   commission: z.coerce.number().optional(),
   commissionType: z.enum(['Percentage', 'Fixed']).optional(),

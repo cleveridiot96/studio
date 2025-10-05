@@ -89,6 +89,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
         <TableHeader>
           <TableRow>
             <TableHead className="whitespace-nowrap p-2">Name</TableHead>
+            <TableHead className="whitespace-nowrap p-2">Marka</TableHead>
             {showTypeColumn && <TableHead className="whitespace-nowrap p-2">Type</TableHead>}
             {showCommissionColumn && <TableHead className="text-right whitespace-nowrap p-2">Commission</TableHead>}
             {showBalanceColumn && <TableHead className="text-right whitespace-nowrap p-2">Opening Balance (₹)</TableHead>}
@@ -119,6 +120,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
+                <TableCell className="p-2">{item.marka || ''}</TableCell>
                 {showTypeColumn && (
                   <TableCell className="whitespace-nowrap p-2">
                     <Badge variant="secondary" className="text-xs uppercase">
@@ -164,5 +166,3 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
 };
 
 export const MasterList = React.memo(MasterListComponent);
-
-    

@@ -20,6 +20,7 @@ export interface NavItem {
 export interface MasterItem {
   id: string;
   name: string;
+  marka?: string; // Custom field
   commission?: number; // For Agents and Brokers
   commissionType?: 'Percentage' | 'Fixed'; // For Agents and Brokers
   type: MasterItemType;

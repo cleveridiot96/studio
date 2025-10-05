@@ -60,6 +60,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
     resolver: zodResolver(masterItemSchema),
     defaultValues: {
       name: '',
+      marka: '',
       type: itemTypeFromButton || 'Customer',
       commission: undefined,
       commissionType: undefined,
@@ -75,6 +76,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
         if (initialData) {
           form.reset({
             name: initialData.name,
+            marka: initialData.marka || '',
             type: initialData.type,
             commission: initialData.commission,
             commissionType: initialData.commissionType,
@@ -84,6 +86,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
         } else {
           form.reset({
             name: '',
+            marka: '',
             type: itemTypeFromButton || 'Customer',
             commission: undefined,
             commissionType: undefined,
@@ -103,6 +106,7 @@ export const MasterForm: React.FC<MasterFormProps> = ({
     const itemToSubmit: MasterItem = {
       id: initialData?.id || `${values.type.toLowerCase()}-${Date.now()}`,
       name: values.name,
+      marka: values.marka,
       type: values.type,
     };
     if (showCommissionField && values.commission !== undefined ) {
@@ -130,19 +134,34 @@ export const MasterForm: React.FC<MasterFormProps> = ({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder={`Enter ${selectedType ? selectedType.toLowerCase() : 'item'} name`} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder={`Enter ${selectedType ? selectedType.toLowerCase() : 'item'} name`} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="marka"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Marka (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., JTC" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="type"
