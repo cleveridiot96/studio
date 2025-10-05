@@ -91,6 +91,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
   
   const handleEdit = (e: React.MouseEvent, value: string) => {
+    e.preventDefault();
     e.stopPropagation();
     if (onEdit) {
       onEdit(value);
