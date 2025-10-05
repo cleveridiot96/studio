@@ -152,7 +152,7 @@ export const BalanceSheetClient = () => {
 
 
     // --- 3. Profit Logic ---
-    const { totalNetProfit, totalGrossProfit, totalKgSold } = useMemo(() => {
+    const { totalNetProfit, totalKgSold } = useMemo(() => {
         if (!hydrated) return { totalNetProfit: 0, totalGrossProfit: 0, totalKgSold: 0 };
         const fySales = sales.filter(sale => sale && isDateInFinancialYear(sale.date, currentFinancialYearString));
         const totalNetProfit = fySales.reduce((sum, sale) => sum + (sale.totalCalculatedProfit || 0), 0);
@@ -235,7 +235,7 @@ export const BalanceSheetClient = () => {
                     <CardDescription>Profit before any operating expenses, interest, or taxes.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">₹{Math.round(totalGrossProfit).toLocaleString('en-IN')}</div>
+                    <div className="text-2xl font-bold">₹{Math.round(totalNetProfit).toLocaleString('en-IN')}</div>
                     <p className="text-xs text-muted-foreground">(Total Goods Value of Sales) - (Base Purchase Cost of Goods)</p>
                 </CardContent>
             </Card>
