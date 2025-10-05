@@ -49,7 +49,7 @@ export default function DashboardPage() {
       title: "Backup Data",
       description: "Save your application data",
       iconName: "FileJson",
-      className: "bg-sky-500 hover:bg-sky-600 text-white",
+      className: "bg-teal-400 text-white", // Turquoise for Backup
       action: handleExportClick,
       shortcut: "Alt + B",
     },
@@ -57,7 +57,7 @@ export default function DashboardPage() {
       title: "Restore Data",
       description: "Load data from a backup file",
       iconName: "UploadCloud",
-      className: "bg-emerald-500 hover:bg-emerald-600 text-white",
+      className: "bg-pink-600 text-white", // Magenta for Restore
       action: handleRestoreTriggerClick,
       shortcut: "Alt + V",
     },
