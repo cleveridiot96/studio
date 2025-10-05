@@ -441,5 +441,3 @@ export function ProfitAnalysisClient() {
     </TooltipProvider>
   );
 }
-
-    
