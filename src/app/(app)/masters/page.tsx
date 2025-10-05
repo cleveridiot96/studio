@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign, Search, ChevronDown } from "lucide-react";
@@ -81,7 +80,7 @@ export default function MastersPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [displayLimit, setDisplayLimit] = useState(DISPLAY_LIMIT_OPTIONS[0]);
+  const [displayLimit, setDisplayLimit] = useState(DISPLAY_LIMIT_OPTIONS[1]);
 
   const allMasterItems = useMemo(() => getAllMasters(), [getAllMasters]);
   const prevAllMasterItemsRef = useRef<MasterItem[]>(allMasterItems);
@@ -319,8 +318,8 @@ export default function MastersPage() {
                 <Card className="shadow-lg">
                   <CardHeader className="sticky top-0 bg-card z-10 py-3 border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-                        <CardTitle className="text-xl text-primary">MANAGE {tab.label}</CardTitle>
-                        <div className="flex items-center gap-2">
+                        <CardTitle className="text-xl text-primary flex-shrink-0">MANAGE {tab.label}</CardTitle>
+                        <div className="flex-grow flex items-center justify-end gap-2">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" className="h-9">
@@ -353,7 +352,7 @@ export default function MastersPage() {
                         <p className="text-sm text-muted-foreground mt-1">DID YOU MEAN: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
                     )}
                   </CardHeader>
-                  <CardContent className="pt-2">
+                  <CardContent className="p-0">
                     <MasterList
                       data={paginatedData}
                       itemType={tab.value as MasterItemType | 'All'}
