@@ -32,8 +32,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LowStockWarning } from "@/components/app/dashboard/LowStockWarning";
 import { useMasterData } from "@/contexts/MasterDataContext";
 import { AddAdjustmentForm } from "../stock-adjustments/AddAdjustmentForm";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { Badge } from "../ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
 
 
