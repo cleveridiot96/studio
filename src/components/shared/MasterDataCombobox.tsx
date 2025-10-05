@@ -133,6 +133,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
                 <CommandItem
                     onSelect={() => handleSelect(undefined)}
+                    onClick={() => handleSelect(undefined)}
                      className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
                         !value && "font-semibold bg-accent"
@@ -152,7 +153,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                       </div>
                   )}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-2 border-t">
+                    <CommandItem onSelect={handleAddNew} onClick={handleAddNew} className="cursor-pointer mt-2 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
@@ -165,6 +166,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         <CommandItem
                           value={option.value}
                           onSelect={() => handleSelect(option.value)}
+                          onClick={() => handleSelect(option.value)}
                           className="uppercase"
                         >
                           <Check
@@ -192,7 +194,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     </Tooltip>
                   ))}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
+                    <CommandItem onSelect={handleAddNew} onClick={handleAddNew} className="cursor-pointer mt-1 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
