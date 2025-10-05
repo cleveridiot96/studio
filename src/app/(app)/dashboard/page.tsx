@@ -43,19 +43,27 @@ export default function DashboardPage() {
   }, [handleExportClick, handleRestoreTriggerClick]);
 
 
-  const quickActions = [
-    ...navItems.filter(item => item.href !== '/dashboard'), // Exclude dashboard from its own page
-  ];
-
-  // Manually map actions for backup/restore since they are not simple links
-  const getActionForItem = (title: string) => {
+  const getActionForItem = (title: string): (() => void) | undefined => {
     if (title === 'Backup/Restore') {
       return handleExportClick;
     }
-    // In future, you might have a different restore button. For now, one tile handles both.
-    // The navItem for backup/restore will be used for the backup action.
+    if (title === 'Restore Data') {
+        return handleRestoreTriggerClick;
+    }
     return undefined;
   };
+  
+  const allNavItems = [
+      ...navItems,
+      {
+        title: "Restore Data",
+        href: "",
+        iconName: "UploadCloud",
+        iconColor: 'bg-pink-500 text-white', // Magenta
+        description: "Load from a backup file",
+        shortcut: "Alt + V",
+      }
+  ];
 
 
   return (
@@ -66,7 +74,7 @@ export default function DashboardPage() {
       </div>
       
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {quickActions.map((action) => (
+        {allNavItems.filter(item => item.href !== '/dashboard').map((action) => (
            <DashboardTile
             key={action.title}
             title={action.title}
@@ -78,14 +86,6 @@ export default function DashboardPage() {
             shortcut={action.shortcut}
           />
         ))}
-         <DashboardTile
-            title="Restore Data"
-            description="Load from a backup file"
-            iconName="UploadCloud"
-            className="bg-pink-600 text-white"
-            onClick={handleRestoreTriggerClick}
-            shortcut="Alt + V"
-          />
       </div>
       <input
         type="file"

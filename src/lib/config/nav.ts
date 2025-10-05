@@ -1,3 +1,4 @@
+
 import {
   LayoutGrid,
   ShoppingCart,
@@ -30,14 +31,14 @@ export const navItems: NavItem[] = [
     title: 'Dashboard',
     href: '/dashboard',
     iconName: 'LayoutGrid',
-    iconColor: 'bg-yellow-500 text-black', // Gold
+    iconColor: 'bg-yellow-400 text-black', // Gold
     description: "Main hub"
   },
   {
     title: 'Purchases',
     href: '/purchases',
     iconName: 'ShoppingCart',
-    iconColor: 'bg-green-600 text-white', // Green
+    iconColor: 'bg-green-500 text-white', // Green
     shortcut: 'Alt + P',
     description: "Manage incoming goods"
   },
