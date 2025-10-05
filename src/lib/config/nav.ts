@@ -95,6 +95,13 @@ export const navItems: NavItem[] = [
     iconColor: 'bg-orange-500',
   },
   {
+    title: 'Profit Analysis',
+    href: '/profit-analysis',
+    iconName: 'Rocket',
+    iconColor: 'bg-green-500',
+    shortcut: 'Alt + Shift + A',
+  },
+  {
     title: 'Financial Summary',
     href: '/balance-sheet',
     iconName: 'Landmark',
@@ -127,13 +134,6 @@ export const navItems: NavItem[] = [
     iconName: 'BookMarked',
     iconColor: 'bg-rose-500',
     shortcut: 'Alt + D',
-  },
-  {
-    title: 'Profit Analysis',
-    href: '/profit-analysis',
-    iconName: 'Rocket',
-    iconColor: 'bg-green-500',
-    shortcut: 'Alt + Shift + A',
   },
   {
     title: 'Masters',

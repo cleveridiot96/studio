@@ -1,10 +1,9 @@
-
 "use client";
 
 import * as React from "react";
 import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -54,6 +53,7 @@ interface AddSaleFormProps {
   availableStock: AggregatedStockItemForForm[];
   existingSales: Sale[];
   saleToEdit?: Sale | null;
+  onMasterDataUpdate: (type: MasterItemType, newItem: MasterItem) => void;
 }
 
 const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
@@ -63,9 +63,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   availableStock,
   existingSales,
   saleToEdit,
+  onMasterDataUpdate,
 }) => {
   const { toast } = useToast();
-  const { data: masterData, setData: setMasterData } = useMasterData();
+  const { data: masterData } = useMasterData();
   const { customers, transporters, brokers, expenses } = masterData;
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -235,7 +236,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type, newItem);
+    setMasterData(newItem.type, (prev: any) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     if (newItem.type === 'Customer') methods.setValue('customerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
