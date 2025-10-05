@@ -184,6 +184,9 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-2 border-t border-sidebar-border">
+                <SidebarTrigger>
+                  <Menu className="h-6 w-6 text-sidebar-foreground" />
+                </SidebarTrigger>
             </SidebarFooter>
           </Sidebar>
 
@@ -191,9 +194,6 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
             <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
               <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden -ml-2">
-                  <Menu className="h-6 w-6 text-foreground" />
-                </SidebarTrigger>
-                <SidebarTrigger className="hidden md:flex">
                   <Menu className="h-6 w-6 text-foreground" />
                 </SidebarTrigger>
               </div>
@@ -230,7 +230,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <SettingsProvider>
           <MasterDataProvider>
-            <SidebarProvider defaultOpen={true} collapsible="icon">
+            <SidebarProvider defaultOpen={false} collapsible="icon">
                 <AppExitHandler />
                 <SearchDataProvider>
                   <AppLayoutInternal>{children}</AppLayoutInternal>

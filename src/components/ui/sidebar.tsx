@@ -26,6 +26,8 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3.5rem" // This is the width of the icon-only sidebar
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+const SIDEBAR_AUTO_CLOSE_TIMEOUT = 7000;
+
 
 type SidebarContext = {
   state: "expanded" | "collapsed"
@@ -72,6 +74,7 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const inactivityTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const [_open, _setOpen] = React.useState(() => {
         if (typeof window !== 'undefined') {
@@ -103,6 +106,36 @@ const SidebarProvider = React.forwardRef<
         ? setOpenMobile((current) => !current)
         : setOpen((current) => !current)
     }, [isMobile, setOpen, setOpenMobile])
+
+    const resetTimer = React.useCallback(() => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      if (open && !isMobile) {
+        inactivityTimerRef.current = setTimeout(() => {
+          setOpen(false);
+        }, SIDEBAR_AUTO_CLOSE_TIMEOUT);
+      }
+    }, [open, isMobile, setOpen]);
+
+    React.useEffect(() => {
+      const activityEvents: (keyof WindowEventMap)[] = ['mousemove', 'keydown', 'click'];
+      
+      activityEvents.forEach(event => {
+        window.addEventListener(event, resetTimer);
+      });
+
+      resetTimer(); // Initial timer setup
+
+      return () => {
+        if (inactivityTimerRef.current) {
+          clearTimeout(inactivityTimerRef.current);
+        }
+        activityEvents.forEach(event => {
+          window.removeEventListener(event, resetTimer);
+        });
+      };
+    }, [resetTimer]);
     
 
     React.useEffect(() => {
@@ -335,16 +368,20 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"main">
 >(({ className, ...props }, ref) => {
-  const { state } = useSidebar();
+  const { state, isMobile } = useSidebar();
+  
+  const marginLeft = isMobile 
+    ? '0px'
+    : (state === 'expanded' ? 'var(--sidebar-width)' : 'var(--sidebar-width-icon)');
+
   return (
     <main
       ref={ref}
       className={cn(
         "relative flex min-h-svh flex-1 flex-col bg-background transition-[margin-left] duration-300 ease-in-out",
-        state === 'expanded' && "md:ml-[var(--sidebar-width)]",
-        state === 'collapsed' && "md:ml-[var(--sidebar-width-icon)]",
         className
       )}
+      style={{ marginLeft }}
       {...props}
     />
   )
