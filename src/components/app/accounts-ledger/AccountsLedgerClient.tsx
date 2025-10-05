@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -9,7 +8,7 @@ import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, isBefore, subYears } from "date-fns";
-import { BookCopy, Printer } from "lucide-react";
+import { BookCopy, Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -21,7 +20,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 import { FIXED_EXPENSES, FIXED_WAREHOUSES } from "@/lib/constants";
-import { useMasterData } from "@/contexts/MasterDataContext";
+import { useMasterData } from '@/contexts/MasterDataContext';
+import { AccountStatementPrint } from "./AccountStatementPrint";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
@@ -61,7 +63,6 @@ export function AccountsLedgerClient() {
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
   
-  // Transaction data states
   const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray, purchaseMigrator);
   const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray, salesMigrator);
   const [payments] = useLocalStorageState<Payment[]>(TRANSACTIONS_KEYS.payments, memoizedEmptyArray);
@@ -77,6 +78,9 @@ export function AccountsLedgerClient() {
 
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
+
+  const [pdfData, setPdfData] = React.useState<any>(null);
+  const printRef = React.useRef<HTMLDivElement>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -129,7 +133,6 @@ export function AccountsLedgerClient() {
     ].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
 
-    // Calculate opening balance by summing up all transactions before the start date
     allTransactions.forEach(tx => {
         if (isBefore(parseISO(tx.date), startOfDay(dateRange.from!))) {
             if (tx.txType === 'Sale') {
@@ -146,7 +149,6 @@ export function AccountsLedgerClient() {
                 if(primaryCreditorId === party.id) {
                     openingBalance -= (tx.totalAmount || 0);
                 } else if(tx.supplierId === party.id) {
-                    // Do nothing for supplier if agent is primary creditor
                 }
             } else if (tx.txType === 'Payment' && tx.partyId === party.id) {
                 openingBalance += tx.amount;
@@ -292,6 +294,65 @@ export function AccountsLedgerClient() {
     setIsMasterFormOpen(false);
     setMasterItemToEdit(null);
   };
+  
+  const triggerDownloadPdf = React.useCallback(() => {
+    if (selectedPartyDetails && dateRange?.from && dateRange.to) {
+        setPdfData({
+            partyDetails: selectedPartyDetails,
+            dateRange: dateRange,
+            ledgerData: financialLedgerData,
+        });
+    } else {
+        toast({ title: 'Cannot Generate PDF', description: 'Please select a party and date range first.', variant: 'destructive' });
+    }
+  }, [selectedPartyDetails, dateRange, financialLedgerData, toast]);
+
+  React.useEffect(() => {
+    if (pdfData && printRef.current) {
+        const generatePdf = async () => {
+            const elementToCapture = printRef.current?.querySelector('.print-chitti-styles') as HTMLElement;
+            if (!elementToCapture) {
+                toast({ title: "PDF Error", description: "Statement content not found.", variant: "destructive" });
+                setPdfData(null);
+                return;
+            }
+            try {
+                const canvas = await html2canvas(elementToCapture, { scale: 1.5, useCORS: true, width: 550, height: elementToCapture.scrollHeight, logging: false });
+                const imgData = canvas.toDataURL('image/jpeg', 0.85);
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5', compress: true });
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgProps = pdf.getImageProperties(imgData);
+                const margin = 10;
+                let contentWidth = pdfWidth - 2 * margin;
+                let contentHeight = (contentWidth * imgProps.height) / imgProps.width;
+                let heightLeft = contentHeight;
+                let position = margin;
+                
+                pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, contentHeight);
+                heightLeft -= (pdfHeight - (2 * margin));
+                
+                while(heightLeft > 0) {
+                    position = margin - heightLeft;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', margin, position, contentWidth, contentHeight);
+                    heightLeft -= (pdfHeight - (2*margin));
+                }
+
+                const timestamp = format(new Date(), 'ddMMyy_HHmm');
+                pdf.save(`Statement_${pdfData.partyDetails.name.replace(/[\/\s.]/g, '_')}_${timestamp}.pdf`);
+                toast({ title: "PDF Generated", description: `Statement for ${pdfData.partyDetails.name} downloaded.` });
+            } catch(err) {
+                console.error("PDF Generation Error:", err);
+                toast({ title: "PDF Generation Failed", variant: "destructive"});
+            } finally {
+                setPdfData(null);
+            }
+        };
+        const timer = setTimeout(generatePdf, 300);
+        return () => clearTimeout(timer);
+    }
+  }, [pdfData, toast]);
 
   return (
     <TooltipProvider>
@@ -319,8 +380,8 @@ export function AccountsLedgerClient() {
                 <Button variant="outline" size="sm" onClick={() => setDatePreset('1y')}>1Y</Button>
               </div>
               <DatePickerWithRange date={dateRange} onDateChange={setDateRange} className="w-full md:w-auto"/>
-              <Button variant="outline" size="icon" onClick={() => window.print()} title="Print">
-                <Printer className="h-5 w-5" /><span className="sr-only">Print</span>
+              <Button variant="outline" size="icon" onClick={triggerDownloadPdf} title="Download PDF">
+                <Download className="h-5 w-5" /><span className="sr-only">Download PDF</span>
               </Button>
             </div>
           </div>
@@ -341,7 +402,6 @@ export function AccountsLedgerClient() {
 
           <CardContent className="flex flex-col flex-grow min-h-0">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
-                {/* Debit Side */}
                 <div className="md:col-span-1 flex flex-col">
                   <Card className="shadow-inner border-orange-300 flex flex-col flex-1">
                     <CardHeader className="p-0">
@@ -398,7 +458,6 @@ export function AccountsLedgerClient() {
                     </CardContent>
                   </Card>
                 </div>
-                {/* Credit Side */}
                 <div className="md:col-span-1 flex flex-col">
                   <Card className="shadow-inner border-green-300 flex flex-col flex-1">
                     <CardHeader className="p-0">
@@ -495,6 +554,9 @@ export function AccountsLedgerClient() {
             fixedIds={[...FIXED_WAREHOUSES.map(w=>w.id), ...FIXED_EXPENSES.map(e=>e.id)]}
         />
       )}
+      <div ref={printRef} className="fixed left-[-9999px] top-0 z-[-1] p-1 bg-white" aria-hidden="true">
+        {pdfData && <AccountStatementPrint {...pdfData} />}
+      </div>
     </div>
     </TooltipProvider>
   );
