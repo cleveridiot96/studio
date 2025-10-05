@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -28,7 +29,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, Info, Percent, PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { saleSchema, type SaleFormValues } from '@/lib/schemas/saleSchema';
 import type { MasterItem, MasterItemType, Sale, SaleItem, Broker, Customer, Transporter, CostBreakdown, ExpenseItem } from '@/lib/types';
 import type { AggregatedStockItemForForm } from "./SalesClient";
@@ -75,6 +76,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
+  const [lastRates, setLastRates] = React.useState<Record<number, number | null>>({});
 
   const getDefaultValues = React.useCallback((): SaleFormValues => {
     if (saleToEdit) {
@@ -125,6 +127,35 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const { fields: expenseFields, append: appendExpense, remove: removeExpense } = useFieldArray({ control, name: "expenses" });
   
   const watchedFormValues = watch();
+  const watchedCustomerId = watch("customerId");
+  const watchedItems = watch("items");
+
+  React.useEffect(() => {
+    if (!watchedCustomerId || !watchedItems) return;
+  
+    const newLastRates: Record<number, number | null> = {};
+  
+    watchedItems.forEach((item, index) => {
+      if (item.lotNumber && watchedCustomerId) {
+        const pastSales = existingSales
+          .filter(sale => sale.customerId === watchedCustomerId)
+          .filter(sale => sale.items.some(saleItem => saleItem.lotNumber === item.lotNumber))
+          .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  
+        if (pastSales.length > 0) {
+          const lastSaleOfItem = pastSales[0].items.find(i => i.lotNumber === item.lotNumber);
+          newLastRates[index] = lastSaleOfItem ? lastSaleOfItem.rate : null;
+        } else {
+          newLastRates[index] = null;
+        }
+      } else {
+        newLastRates[index] = null;
+      }
+    });
+  
+    setLastRates(newLastRates);
+  }, [watchedCustomerId, watchedItems, existingSales]);
+
 
   const summary = React.useMemo(() => {
     const { items, expenses: formExpenses, cbAmount } = watchedFormValues;
@@ -380,7 +411,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                     {fields.map((field, index) => (
                       <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start p-3 border-b last:border-b-0">
                         <FormField control={control} name={`items.${index}.lotNumber`} render={({ field: itemField }) => (
-                          <FormItem className="md:col-span-5"><FormLabel>Vakkal/Lot</FormLabel>
+                          <FormItem className="md:col-span-4"><FormLabel>Vakkal/Lot</FormLabel>
                             <MasterDataCombobox
                               value={itemField.value}
                               onChange={(lotValue) => {
@@ -424,8 +455,29 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               }}
                           /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (
-                          <FormItem className="md:col-span-2"><FormLabel>Sale Rate</FormLabel><FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl><FormMessage /></FormItem>)} />
-                        <div className="md:col-span-1 flex items-end justify-end"><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></div>
+                          <FormItem className="md:col-span-3">
+                            <FormLabel>Sale Rate</FormLabel>
+                            <div className="relative">
+                              <FormControl><Input type="number" step="0.01" placeholder="₹/kg" {...itemField} value={itemField.value ?? ''} onChange={e => itemField.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                              {lastRates[index] !== null && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground cursor-help underline decoration-dashed">
+                                      LAST: {lastRates[index]}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Last rate for this item & customer was ₹{lastRates[index]}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <div className="md:col-span-1 flex items-end justify-end">
+                           <Tooltip><TooltipTrigger asChild><Button type="button" variant="destructive" size="icon" onClick={() => fields.length > 1 ? remove(index) : null} disabled={fields.length <= 1}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Remove Item</p></TooltipContent></Tooltip>
+                        </div>
                       </div>
                     ))}
                     <div className="flex justify-between items-start mt-2">
