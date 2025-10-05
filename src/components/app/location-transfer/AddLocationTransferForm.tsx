@@ -23,18 +23,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AggregatedStockItemForForm } from './LocationTransferClient';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 
 interface AddLocationTransferFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (transfer: LocationTransfer) => void;
-  warehouses: Warehouse[];
-  transporters: Transporter[];
-  expenses: MasterItem[];
-  allExpenseParties: MasterItem[];
   availableStock: AggregatedStockItemForForm[];
-  onMasterDataUpdate: (type: MasterItemType, item: MasterItem) => void;
   transferToEdit?: LocationTransfer | null;
 }
 
@@ -42,15 +38,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   isOpen,
   onClose,
   onSubmit,
-  warehouses,
-  transporters,
-  expenses,
-  allExpenseParties,
   availableStock,
-  onMasterDataUpdate,
   transferToEdit,
 }) => {
   const { toast } = useToast();
+  const { data: masterData, setData: setMasterData } = useMasterData();
+  const { warehouses, transporters, expenses, Customer, Supplier, Agent, Broker } = masterData;
+  const allExpenseParties = [...warehouses, ...transporters, ...expenses, ...Customer, ...Supplier, ...Agent, ...Broker];
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
@@ -152,13 +147,13 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     const party = allExpenseParties.find(p => p.id === id);
     if(party) {
         setMasterItemToEdit(party);
-        setMasterFormItemType(party.type);
+        setMasterFormItemType(party.type as MasterItemType);
         setIsMasterFormOpen(true);
     }
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    onMasterDataUpdate(newItem.type, newItem);
+    setMasterData(newItem.type, (prev: MasterItem[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     if (newItem.type === "Transporter") {
         methods.setValue('transporterId', newItem.id, { shouldValidate: true });
     }
@@ -402,7 +397,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               }} value={itemField.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="SELECT ACCOUNT" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                  {expenseOptions.map(opt => <SelectItem key={opt.value} value={opt.label}>{opt.label}</SelectItem>)}
+                                  {expenseOptions.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -443,7 +438,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                 </div>
                 
                 <div className="p-4 border rounded-md shadow-sm bg-muted/50">
-                    <h3 className="text-lg font-medium mb-3 text-primary">COST CALCULATION & FINAL LANDED COSTS</h3>
+                    <h3 className="text-lg font-medium mb-3 text-primary">COST CALCULATION &amp; FINAL LANDED COSTS</h3>
                      <p className="text-sm text-muted-foreground mb-3">TOTAL EXPENSES: ₹{Math.round(transferSummary.totalExpenses).toLocaleString('en-IN')} ÷ TOTAL GROSS WT: {transferSummary.totalGrossWeight.toLocaleString('en-IN')} KG = <span className="font-bold">₹{transferSummary.perKgExpense.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}/KG TRANSFER COST</span></p>
                      <ScrollArea className="h-40">
                          <Table>
@@ -460,7 +455,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                     const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === watch('fromWarehouseId'));
                                     const originalLandedCost = stockInfo?.effectiveRate || 0;
                                     const perKgExpense = transferSummary.perKgExpense || 0;
-                                    const finalLandedCost = originalLandedCost > 0 ? originalLandedCost + perKgExpense : 0;
+                                    const finalLandedCost = originalLandedCost &gt; 0 ? originalLandedCost + perKgExpense : 0;
 
                                     return (
                                         <TableRow key={index} className="uppercase">
@@ -511,3 +506,5 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
+
+    
