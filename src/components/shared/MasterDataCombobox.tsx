@@ -92,6 +92,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   
   const handleEdit = (e: React.MouseEvent, value: string) => {
     e.stopPropagation();
+    e.preventDefault();
     if (onEdit) {
       onEdit(value);
       setOpen(false);
@@ -133,7 +134,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
                 <CommandItem
                     onSelect={() => handleSelect(undefined)}
-                    onClick={() => handleSelect(undefined)}
                      className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
                         !value && "font-semibold bg-accent"
@@ -153,7 +153,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                       </div>
                   )}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} onClick={handleAddNew} className="cursor-pointer mt-2 border-t">
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-2 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
@@ -161,40 +161,40 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               ) : (
                 <>
                   {filteredOptions.map((option) => (
-                    <Tooltip key={option.value} delayDuration={300}>
-                      <TooltipTrigger asChild>
-                        <CommandItem
-                          value={option.value}
-                          onSelect={() => handleSelect(option.value)}
-                          onClick={() => handleSelect(option.value)}
-                          className="uppercase"
-                        >
-                          <Check
-                              className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
-                          />
-                          <span className="flex-grow truncate">{option.label}</span>
-                          {onEdit && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
-                                onClick={(e) => handleEdit(e, option.value)}
-                                aria-label={`EDIT ${option.label}`}
-                            >
-                                <Pencil className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </CommandItem>
-                      </TooltipTrigger>
-                      {option.tooltipContent && (
-                        <TooltipContent side="right" align="start">
-                          {option.tooltipContent}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
+                      <CommandItem
+                        key={option.value}
+                        value={option.value}
+                        onSelect={() => handleSelect(option.value)}
+                        className="uppercase flex justify-between items-center"
+                      >
+                        <div className="flex items-center flex-grow truncate">
+                            <Check
+                                className={cn("mr-2 h-4 w-4", value === option.value ? "opacity-100" : "opacity-0")}
+                            />
+                            <span className="truncate">{option.label}</span>
+                        </div>
+                        {onEdit && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 shrink-0 ml-2 rounded-md p-1 opacity-50 hover:opacity-100"
+                                        onClick={(e) => handleEdit(e, option.value)}
+                                        aria-label={`EDIT ${option.label}`}
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Edit {option.label}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        )}
+                      </CommandItem>
                   ))}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} onClick={handleAddNew} className="cursor-pointer mt-1 border-t">
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
