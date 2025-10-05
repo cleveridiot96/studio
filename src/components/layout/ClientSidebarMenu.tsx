@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -29,6 +28,7 @@ import {
   DollarSign, // Added for Expenses
   BookMarked,
   Landmark,
+  Search, // Added for Lot Ledger
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -51,6 +51,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   DollarSign,
   BookMarked,
   Landmark,
+  Search,
 };
 
 interface ClientSidebarMenuProps {

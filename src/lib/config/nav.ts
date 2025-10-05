@@ -1,4 +1,3 @@
-
 import {
   LayoutGrid,
   ShoppingCart,
@@ -18,6 +17,7 @@ import {
   DollarSign,
   BookMarked,
   Landmark,
+  Search, // Added for Lot Ledger
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -80,6 +80,12 @@ export const navItems: NavItem[] = [
     iconName: 'BookCopy',
     iconColor: 'bg-teal-500',
     shortcut: 'Alt + A',
+  },
+  {
+    title: 'Lot Ledger',
+    href: '/lot-ledger',
+    iconName: 'Search',
+    iconColor: 'bg-orange-500',
   },
   {
     title: 'Financial Summary',
