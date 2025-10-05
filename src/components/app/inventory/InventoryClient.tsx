@@ -7,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier, PurchaseItem, SaleItem, LocationTransferItem } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge } from "lucide-react";
+import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { MergeLotsForm } from "./MergeLotsForm";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
@@ -91,6 +92,8 @@ export function InventoryClient() {
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string | null>(null);
   const [isMergeFormOpen, setIsMergeFormOpen] = React.useState(false);
+  const [activeRowSelection, setActiveRowSelection] = React.useState<Record<string, boolean>>({});
+  const [archivedRowSelection, setArchivedRowSelection] = React.useState<Record<string, boolean>>({});
 
 
   React.useEffect(() => {
@@ -292,6 +295,31 @@ export function InventoryClient() {
     setArchivedLotKeys(prev => prev.filter(key => key !== item.key));
     toast({ title: "Lot Restored", description: `Lot "${item.lotNumber}" has been restored to the active inventory view.` });
   };
+  
+  const handleBulkArchive = () => {
+    const keysToArchive = Object.keys(activeRowSelection).filter(key => {
+        const item = activeInventory.find(i => i.key === key);
+        return item && item.currentBags <= 0.001;
+    });
+
+    if (keysToArchive.length > 0) {
+        setArchivedLotKeys(prev => [...new Set([...prev, ...keysToArchive])]);
+        toast({ title: "Bulk Archive", description: `${keysToArchive.length} zero-stock lots archived.` });
+        setActiveRowSelection({});
+    } else {
+        toast({ title: "No Action", description: "No eligible (zero-stock) lots were selected for archival." });
+    }
+  };
+
+  const handleBulkUnarchive = () => {
+    const keysToUnarchive = Object.keys(archivedRowSelection);
+    if (keysToUnarchive.length > 0) {
+        setArchivedLotKeys(prev => prev.filter(key => !keysToUnarchive.includes(key)));
+        toast({ title: "Bulk Restore", description: `${keysToUnarchive.length} lots restored to active inventory.` });
+        setArchivedRowSelection({});
+    }
+  };
+
 
   const getActiveFilterName = () => {
     if (!selectedWarehouseId) return "All Warehouses";
@@ -308,6 +336,9 @@ export function InventoryClient() {
     toast({ title: "Lots Merged", description: `Successfully merged lots into ${mergeData.items[0].newLotNumber}.` });
     setIsMergeFormOpen(false);
   };
+  
+  const activeSelectionCount = Object.keys(activeRowSelection).length;
+  const archivedSelectionCount = Object.keys(archivedRowSelection).length;
 
 
   if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
@@ -375,10 +406,59 @@ export function InventoryClient() {
           <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived Vakkals</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle></CardHeader><CardContent><InventoryTable items={filteredActiveInventory} onArchive={handleArchiveAttempt} lowStockThreshold={lowStockThreshold} /></CardContent></Card>
+          <Card className="shadow-lg">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle>
+                 {activeSelectionCount > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <ListTodo className="mr-2 h-4 w-4" />
+                          Bulk Actions ({activeSelectionCount})
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleBulkArchive}>
+                          <Archive className="mr-2 h-4 w-4" /> Archive Selected
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <InventoryTable items={filteredActiveInventory} onArchive={handleArchiveAttempt} lowStockThreshold={lowStockThreshold} rowSelection={activeRowSelection} setRowSelection={setActiveRowSelection} />
+            </CardContent>
+          </Card>
         </TabsContent>
          <TabsContent value="archived" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock: {getActiveFilterName()}</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={filteredArchivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} lowStockThreshold={lowStockThreshold} /></CardContent></Card>
+          <Card className="shadow-lg">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Archived Stock: {getActiveFilterName()}</CardTitle>
+                {archivedSelectionCount > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline">
+                          <ListTodo className="mr-2 h-4 w-4" />
+                          Bulk Actions ({archivedSelectionCount})
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleBulkUnarchive}>
+                          <RotateCcw className="mr-2 h-4 w-4" /> Restore Selected
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+              </div>
+              <CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InventoryTable items={filteredArchivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} lowStockThreshold={lowStockThreshold} rowSelection={archivedRowSelection} setRowSelection={setArchivedRowSelection} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
       
