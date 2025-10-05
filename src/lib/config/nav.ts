@@ -1,39 +1,15 @@
 
-import {
-  LayoutGrid,
-  ShoppingCart,
-  Receipt,
-  Boxes,
-  ClipboardList,
-  ArrowRightCircle,
-  ArrowLeftCircle,
-  BookOpen,
-  BookUser,
-  Users2,
-  DatabaseBackup,
-  LineChart,
-  ArrowRightLeft,
-  Rocket,
-  BookCopy,
-  DollarSign,
-  BookMarked,
-  Landmark,
-  Search, // Added for Lot Ledger
-  SlidersHorizontal,
-  UploadCloud,
-  FileJson,
-} from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
 export const APP_NAME = "Vyapar Saathi";
-export const APP_ICON = LineChart;
+export const APP_ICON = 'LineChart';
 
 export const navItems: NavItem[] = [
   {
     title: 'Dashboard',
     href: '/dashboard',
     iconName: 'LayoutGrid',
-    iconColor: 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white', 
+    iconColor: 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white',
     description: "Main hub"
   },
   {
@@ -64,7 +40,7 @@ export const navItems: NavItem[] = [
     title: 'Inventory',
     href: '/inventory',
     iconName: 'Boxes',
-    iconColor: 'bg-gradient-to-br from-green-700 to-yellow-800 text-white', // Green & Brown
+    iconColor: 'bg-gradient-to-br from-green-700 via-yellow-800 to-green-700 text-white', // Green & Brown
     shortcut: 'Alt + I',
     description: "View stock levels"
   },
@@ -72,7 +48,7 @@ export const navItems: NavItem[] = [
     title: 'Outstanding',
     href: '/outstanding',
     iconName: 'ClipboardList',
-    iconColor: 'bg-gradient-to-br from-gray-400 to-gray-500 text-black',
+    iconColor: 'bg-gradient-to-br from-gray-400 to-gray-600 text-white',
     shortcut: 'Alt + O',
     description: "Receivables & Payables"
   },
@@ -80,7 +56,7 @@ export const navItems: NavItem[] = [
     title: 'Stock Adjustments',
     href: '/stock-adjustments',
     iconName: 'SlidersHorizontal',
-    iconColor: 'bg-gradient-to-br from-white to-gray-200 text-black',
+    iconColor: 'bg-gradient-to-br from-slate-100 to-gray-300 text-black',
     description: "Manual adjustments"
   },
   {
@@ -103,7 +79,7 @@ export const navItems: NavItem[] = [
     title: 'Lot Ledger',
     href: '/lot-ledger',
     iconName: 'Search',
-    iconColor: 'bg-gradient-to-br from-purple-500 to-indigo-400 text-white', // Purple and white -> gradient
+    iconColor: 'bg-gradient-to-br from-purple-500 via-white to-purple-400 text-purple-800',
     description: "Trace any vakkal"
   },
   {
@@ -141,7 +117,7 @@ export const navItems: NavItem[] = [
     title: 'Cash Book',
     href: '/cashbook',
     iconName: 'BookOpen',
-    iconColor: 'bg-gradient-to-br from-yellow-700 to-amber-800 text-white', // Brown and Yellow
+    iconColor: 'bg-gradient-to-br from-yellow-700 via-amber-800 to-yellow-700 text-white', // Brown and Yellow
     shortcut: 'Alt + C',
     description: "Daily cash flow"
   },
