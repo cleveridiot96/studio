@@ -80,7 +80,7 @@ const MasterListComponent: React.FC<MasterListProps> = ({ data, itemType, isAllI
 
   return (
     <TooltipProvider>
-    <ScrollArea className="print:h-auto print:overflow-visible">
+    <ScrollArea className="max-h-[calc(100vh-32rem)] print:h-auto print:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>

@@ -1,7 +1,7 @@
 
 "use client";
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign, Search } from "lucide-react";
+import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign, Search, ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,15 @@ import Fuse from 'fuse.js';
 import didYouMean from 'didyoumean2';
 import { Input } from '@/components/ui/input';
 import { useMasterData } from '@/contexts/MasterDataContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 const FIXED_WAREHOUSE_IDS = FIXED_WAREHOUSES.map(wh => wh.id);
 const FIXED_EXPENSE_IDS = FIXED_EXPENSES.map(e => e.id);
@@ -59,6 +68,8 @@ const validateMasterItem = (item: any): item is MasterItem => {
   return item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.type === 'string';
 };
 
+const DISPLAY_LIMIT_OPTIONS = ["50", "100", "150", "All"];
+
 export default function MastersPage() {
   const { toast } = useToast();
   const { data: masterData, setData: setMasterData, getAllMasters } = useMasterData();
@@ -70,6 +81,7 @@ export default function MastersPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [displayLimit, setDisplayLimit] = useState(DISPLAY_LIMIT_OPTIONS[0]);
 
   const allMasterItems = useMemo(() => getAllMasters(), [getAllMasters]);
   const prevAllMasterItemsRef = useRef<MasterItem[]>(allMasterItems);
@@ -299,29 +311,51 @@ export default function MastersPage() {
         {TABS_CONFIG.map(tab => {
             const filteredData = getFilteredDataForTab(tab.value);
             const totalCount = getMasterDataState(tab.value).data.length;
+            const limit = displayLimit === 'All' ? filteredData.length : parseInt(displayLimit, 10);
+            const paginatedData = filteredData.slice(0, limit);
+
             return (
               <TabsContent key={tab.value} value={tab.value} className="mt-4">
                 <Card className="shadow-lg">
                   <CardHeader className="sticky top-0 bg-card z-10 py-3 border-b">
                     <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                         <CardTitle className="text-xl text-primary">MANAGE {tab.label}</CardTitle>
-                        <div className="w-full sm:w-auto sm:max-w-xs relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder={`SEARCH IN ${tab.label}...`}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-9"
-                            />
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="h-9">
+                                    Show: {displayLimit} <ChevronDown className="w-4 h-4 ml-2" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuRadioGroup value={displayLimit} onValueChange={setDisplayLimit}>
+                                    {DISPLAY_LIMIT_OPTIONS.map(option => (
+                                        <DropdownMenuRadioItem key={option} value={option}>
+                                        {option}
+                                        </DropdownMenuRadioItem>
+                                    ))}
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <div className="w-full sm:w-auto sm:max-w-xs relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder={`SEARCH IN ${tab.label}...`}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 h-9"
+                                />
+                            </div>
                         </div>
                     </div>
                      {searchQuery && searchDidYouMean && (
                         <p className="text-sm text-muted-foreground mt-1">DID YOU MEAN: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
                     )}
                   </CardHeader>
-                  <CardContent className="pt-2 max-h-[calc(100vh-30rem)] overflow-auto">
+                  <CardContent className="pt-2">
                     <MasterList
-                      data={filteredData}
+                      data={paginatedData}
                       itemType={tab.value as MasterItemType | 'All'}
                       isAllItemsTab={tab.value === "All"}
                       onEdit={handleEditItem}
@@ -332,7 +366,7 @@ export default function MastersPage() {
                   </CardContent>
                   <CardFooter className="py-2">
                     <p className="text-xs text-muted-foreground">
-                      {searchQuery ? `SHOWING ${filteredData.length} OF ${totalCount} ITEMS` : `TOTAL ITEMS: ${totalCount}`}
+                      {searchQuery ? `SHOWING ${paginatedData.length} OF ${filteredData.length} MATCHES (TOTAL: ${totalCount})` : `SHOWING ${paginatedData.length} OF ${totalCount} ITEMS`}
                     </p>
                   </CardFooter>
                 </Card>
