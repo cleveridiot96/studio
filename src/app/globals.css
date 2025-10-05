@@ -41,15 +41,15 @@
     --chart-4: 0 65% 38%;
     --chart-5: 158 59% 45%;
 
-    /* Sidebar specific colors */
-    --sidebar-background: linear-gradient(135deg, #b8860b, #ffd700, #daa520, #b8860b);
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 270 50% 40%; /* Purple for active/hover states */
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 100% / 0.1; /* Hover background */
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 45 30% 70%;
-    --sidebar-ring: 270 50% 50%;
+    /* Sidebar specific colors for luxury theme */
+    --sidebar-background: 225 47% 10%; /* Deep Navy Blue as base */
+    --sidebar-foreground: 50 33% 95%; /* Light gold text */
+    --sidebar-primary: 300 76% 22%; /* Rich Purple for active/hover states */
+    --sidebar-primary-foreground: 50 33% 95%; /* Light gold text for active items */
+    --sidebar-accent: 45 100% 97%; /* A very light gold/cream for hover backgrounds */
+    --sidebar-accent-foreground: 300 76% 18%; /* Darker purple for text on hover */
+    --sidebar-border: 225 47% 15%;
+    --sidebar-ring: 300 76% 30%;
   }
 
   .dark {
@@ -82,14 +82,15 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    --sidebar-background: linear-gradient(135deg, #b8860b, #ffd700, #daa520, #b8860b);
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 270 50% 40%;
+    /* Sidebar dark theme */
+    --sidebar-background: 0 0% 8%; /* Darker than main dark bg */
+    --sidebar-foreground: 50 33% 85%;
+    --sidebar-primary: 300 76% 32%; /* Lighter purple for dark mode active */
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 100% / 0.1;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 45 30% 70%;
-    --sidebar-ring: 270 50% 50%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 50 33% 90%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 300 76% 40%;
   }
 }
 
@@ -124,6 +125,14 @@
 
   .btn-lg { @apply px-5 py-2 text-base; }
   .input-lg { @apply px-3 py-2 text-base; }
+}
+
+@layer components {
+  .animate-liquid-gold {
+    background: linear-gradient(-45deg, #b8860b, #ffd700, #daa520, #b8860b);
+    background-size: 400% 400%;
+    animation: liquid-gold 15s ease infinite;
+  }
 }
 
 @media print {

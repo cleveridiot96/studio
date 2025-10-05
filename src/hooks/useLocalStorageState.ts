@@ -45,5 +45,9 @@ export function useLocalStorageState<T>(
     }
   }, [key, value]);
 
-  return [value, setValue];
+  const stableSetValue: SetValue<T> = useCallback((newValue) => {
+    setValue(newValue);
+  }, []);
+
+  return [value, stableSetValue];
 }

@@ -12,6 +12,7 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ProfitAnalysisClient } from '@/components/app/profit-analysis/ProfitAnalysisClient';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { LowStockWarning } from '@/components/app/dashboard/LowStockWarning';
+import { navItems } from '@/lib/config/nav';
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -44,94 +45,7 @@ export default function DashboardPage() {
 
 
   const quickActions = [
-    {
-      title: "Purchases",
-      description: "Record and manage purchases",
-      href: "/purchases",
-      iconName: "ShoppingCart",
-      className: "bg-purple-600 hover:bg-purple-700 text-white",
-      shortcut: "Alt + P",
-    },
-    {
-      title: "Sales",
-      description: "Create and manage sales",
-      href: "/sales",
-      iconName: "Receipt",
-      className: "bg-blue-600 hover:bg-blue-700 text-white",
-      shortcut: "Alt + S",
-    },
-    {
-      title: "Location Transfer",
-      description: "Transfer stock between locations",
-      href: "/location-transfer",
-      iconName: "ArrowRightLeft",
-      className: "bg-cyan-600 hover:bg-cyan-700 text-white",
-      shortcut: "Alt + L",
-    },
-    {
-      title: "Inventory",
-      description: "View and manage stock",
-      href: "/inventory",
-      iconName: "Package",
-      className: "bg-teal-600 hover:bg-teal-700 text-white",
-      shortcut: "Alt + I",
-    },
-    {
-      title: "Stock Ledger",
-      description: "View party stock ledgers",
-      href: "/ledger",
-      iconName: "BookUser",
-      className: "bg-red-800 hover:bg-red-900 text-white",
-      shortcut: "Alt + K",
-    },
-    {
-      title: "Accounts Ledger",
-      description: "View party financial statements",
-      href: "/accounts-ledger",
-      iconName: "BookCopy",
-      className: "bg-teal-500 hover:bg-teal-600 text-white",
-      shortcut: "Alt + A",
-    },
-     {
-      title: "Cash Book",
-      description: "Track cash transactions",
-      href: "/cashbook",
-      iconName: "BookOpen",
-      className: "bg-pink-600 hover:bg-pink-700 text-white",
-      shortcut: "Alt + C",
-    },
-     {
-      title: "Daybook",
-      description: "View all daily transactions",
-      href: "/daybook",
-      iconName: "BookMarked",
-      className: "bg-rose-500 hover:bg-rose-600 text-white",
-      shortcut: "Alt + D",
-    },
-    {
-      title: "Outstanding",
-      description: "Receivables & Payables",
-      href: "/outstanding",
-      iconName: "ClipboardList",
-      className: "bg-yellow-500 hover:bg-yellow-600 text-black",
-      shortcut: "Alt + O",
-    },
-    {
-      title: "Profit Analysis",
-      description: "View profit/loss reports",
-      href: "/profit-analysis",
-      iconName: "Rocket",
-      className: "bg-green-500 hover:bg-green-600 text-white",
-      shortcut: "Alt + Shift + A",
-    },
-    {
-      title: "Masters",
-      description: "Manage people & companies",
-      href: "/masters",
-      iconName: "Users2",
-      className: "bg-sky-600 hover:bg-sky-700 text-white",
-      shortcut: "Alt + M",
-    },
+    ...navItems.filter(item => item.href !== '/dashboard' && item.href !== '/backup'), // Exclude dashboard & backup from its own page
     {
       title: "Backup Data",
       description: "Save your application data",
@@ -148,22 +62,6 @@ export default function DashboardPage() {
       action: handleRestoreTriggerClick,
       shortcut: "Alt + V",
     },
-     {
-      title: "Payments",
-      description: "Record outgoing payments",
-      href: "/payments",
-      iconName: "ArrowRightCircle",
-      className: "bg-red-600 hover:bg-red-700 text-white",
-      shortcut: "Alt + Shift + P",
-    },
-    {
-      title: "Receipts",
-      description: "Record incoming payments",
-      href: "/receipts",
-      iconName: "ArrowLeftCircle",
-      className: "bg-green-600 hover:bg-green-700 text-white",
-      shortcut: "Alt + R",
-    },
   ];
 
   return (
@@ -175,7 +73,16 @@ export default function DashboardPage() {
       <LowStockWarning />
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {quickActions.map((action) => (
-          <DashboardTile key={action.title} {...action} onClick={action.action} />
+           <DashboardTile
+            key={action.title}
+            title={action.title}
+            description={action.description}
+            href={action.href}
+            iconName={action.iconName}
+            className={action.className || (action as any).iconColor}
+            onClick={(action as any).action}
+            shortcut={action.shortcut}
+          />
         ))}
       </div>
       <input

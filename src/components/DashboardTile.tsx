@@ -31,6 +31,8 @@ import {
   ClipboardList,
   BookMarked,
   Landmark,
+  Search, // Added for Lot Ledger
+  SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -65,6 +67,8 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   ClipboardList,
   BookMarked,
   Landmark,
+  Search,
+  SlidersHorizontal,
 };
 
 interface DashboardTileProps {
@@ -113,6 +117,8 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
         )}
       </>
   );
+
+  if (!shortcut) return tile;
 
   return (
     <TooltipProvider delayDuration={750}>
