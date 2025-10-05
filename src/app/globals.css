@@ -42,14 +42,14 @@
     --chart-5: 158 59% 45%;
 
     /* Sidebar specific colors */
-    --sidebar-background: linear-gradient(135deg, #1a1a1a, #4a4a4a, #2a2a2a, #000000);
-    --sidebar-foreground: 45 80% 85%;
-    --sidebar-primary: 45 100% 60%;
-    --sidebar-primary-foreground: 0 0% 8%;
-    --sidebar-accent: 0 0% 100% / 0.1;
-    --sidebar-accent-foreground: 45 100% 70%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 45 100% 55%;
+    --sidebar-background: linear-gradient(135deg, #b8860b, #ffd700, #daa520, #b8860b);
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 270 50% 40%; /* Purple for active/hover states */
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 100% / 0.1; /* Hover background */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 45 30% 70%;
+    --sidebar-ring: 270 50% 50%;
   }
 
   .dark {
@@ -82,14 +82,14 @@
     --input: 225 47% 18%;
     --ring: 158 59% 35%;
 
-    --sidebar-background: linear-gradient(135deg, #1a1a1a, #4a4a4a, #2a2a2a, #000000);
-    --sidebar-foreground: 45 80% 85%;
-    --sidebar-primary: 45 100% 60%;
-    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-background: linear-gradient(135deg, #b8860b, #ffd700, #daa520, #b8860b);
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 270 50% 40%;
+    --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 0 0% 100% / 0.1;
-    --sidebar-accent-foreground: 45 100% 70%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 45 100% 55%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 45 30% 70%;
+    --sidebar-ring: 270 50% 50%;
   }
 }
 

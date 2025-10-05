@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -83,9 +84,9 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
               <div className={cn( // Icon circle
                   "flex items-center justify-center h-8 w-8 rounded-full shrink-0 transition-colors",
                   sidebarState === 'expanded' && "mr-3",
-                  isActive 
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : item.iconColor ? `${item.iconColor} ${item.textColor || 'text-white'}` : "bg-sidebar-accent text-sidebar-accent-foreground"
+                   isActive 
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "bg-transparent text-sidebar-foreground group-hover:text-sidebar-accent-foreground"
               )}>
                 <IconComponent className="h-5 w-5" />
               </div>
@@ -113,8 +114,8 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                         ? "w-10 h-10 justify-center" 
                         : "w-full justify-start px-2.5 py-2", 
                       isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
-                        : "hover:bg-sidebar-accent/50"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-inner"
+                        : "hover:bg-sidebar-accent"
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
