@@ -29,6 +29,7 @@ import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { MergeLotsForm } from "./MergeLotsForm";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { LowStockWarning } from "@/components/app/dashboard/LowStockWarning";
 
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
@@ -345,6 +346,7 @@ export function InventoryClient() {
 
   return (
     <div className="space-y-6 print-area">
+      <LowStockWarning />
       <PrintHeaderSymbol className="hidden print:block text-center text-lg font-semibold mb-4" />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h1 className="text-3xl font-bold text-foreground">Inventory Dashboard (FY {financialYear})</h1>

@@ -1,13 +1,14 @@
 
 "use client";
+
 import React from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { isDateInFinancialYear } from '@/lib/utils';
 import type { Purchase, Sale, LocationTransfer, PurchaseReturn, SaleReturn } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AlertTriangle, Warehouse } from 'lucide-react';
-import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const KEYS = {
   purchases: 'purchasesData',
@@ -27,6 +28,8 @@ export const LowStockWarning = () => {
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(KEYS.saleReturns, []);
   
   const [hydrated, setHydrated] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
+
   React.useEffect(() => { setHydrated(true) }, []);
 
   const lowStockWarehouses = React.useMemo(() => {
@@ -34,28 +37,14 @@ export const LowStockWarning = () => {
     
     const stockMap = new Map<string, { bags: number, name: string }>();
 
-    const processTransactions = (items: any[], type: 'in' | 'out', lotMap: Map<string, string>) => {
-      items.forEach(item => {
-        const locationId = type === 'in' ? item.locationId || item.toWarehouseId : item.locationId || item.fromWarehouseId;
-        const locationName = type === 'in' ? item.locationName || item.toWarehouseName : item.locationName || item.fromWarehouseName;
-        const bags = type === 'in' ? (item.quantity || item.bagsToTransfer) : -(item.quantity || item.bagsToTransfer);
-        
-        if (locationId) {
-          const current = stockMap.get(locationId) || { bags: 0, name: locationName || locationId };
-          current.bags += bags;
-          current.name = locationName || current.name;
-          stockMap.set(locationId, current);
-        }
-      });
-    };
-    
     const allPurchases = purchases.filter(p => isDateInFinancialYear(p.date, financialYear));
-    allPurchases.forEach(p => processTransactions(p.items, 'in', new Map()));
-
-    const allTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
-    allTransfers.forEach(lt => {
-      processTransactions(lt.items.map(i => ({...i, fromWarehouseId: lt.fromWarehouseId, fromWarehouseName: lt.fromWarehouseName})), 'out', new Map());
-      processTransactions(lt.items.map(i => ({...i, toWarehouseId: lt.toWarehouseId, toWarehouseName: lt.toWarehouseName})), 'in', new Map());
+    allPurchases.forEach(p => {
+        p.items.forEach(item => {
+            const current = stockMap.get(p.locationId) || { bags: 0, name: p.locationName || p.locationId };
+            current.bags += item.quantity;
+            current.name = p.locationName || current.name;
+            stockMap.set(p.locationId, current);
+        });
     });
     
     const allSales = sales.filter(s => isDateInFinancialYear(s.date, financialYear));
@@ -79,7 +68,7 @@ export const LowStockWarning = () => {
             stockMap.set(purchaseOrigin.locationId, current);
         }
     });
-
+    
     const allSaleReturns = saleReturns.filter(sr => isDateInFinancialYear(sr.date, financialYear));
     allSaleReturns.forEach(sr => {
          const saleOrigin = allSales.find(s => s.id === sr.originalSaleId);
@@ -93,6 +82,24 @@ export const LowStockWarning = () => {
          }
     });
 
+    const allTransfers = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear));
+    allTransfers.forEach(transfer => {
+        transfer.items.forEach(item => {
+            // Subtract from source
+            const fromWarehouseId = transfer.fromWarehouseId;
+            const fromWarehouseName = transfer.fromWarehouseName;
+            const fromCurrent = stockMap.get(fromWarehouseId) || { bags: 0, name: fromWarehouseName || fromWarehouseId };
+            fromCurrent.bags -= item.bagsToTransfer;
+            stockMap.set(fromWarehouseId, fromCurrent);
+
+            // Add to destination
+            const toWarehouseId = transfer.toWarehouseId;
+            const toWarehouseName = transfer.toWarehouseName;
+            const toCurrent = stockMap.get(toWarehouseId) || { bags: 0, name: toWarehouseName || toWarehouseId };
+            toCurrent.bags += item.bagsToTransfer;
+            stockMap.set(toWarehouseId, toCurrent);
+        });
+    });
 
     const lowWarehouses = [];
     for (const [id, data] of stockMap.entries()) {
@@ -101,37 +108,45 @@ export const LowStockWarning = () => {
       }
     }
     return lowWarehouses;
-  }, [
-    purchases, sales, locationTransfers, purchaseReturns, saleReturns, 
-    lowStockThreshold, financialYear, isAppHydrating, hydrated
-  ]);
+  }, [purchases, sales, locationTransfers, purchaseReturns, saleReturns, lowStockThreshold, financialYear, isAppHydrating, hydrated]);
+
+  React.useEffect(() => {
+    if (lowStockWarehouses.length > 0) {
+      setIsOpen(true);
+    }
+  }, [lowStockWarehouses]);
+
 
   if (lowStockWarehouses.length === 0) {
     return null;
   }
 
   return (
-    <Link href="/inventory" className="block my-4">
-        <Card className="bg-destructive/10 border-destructive shadow-lg hover:shadow-xl transition-shadow cursor-pointer animate-pulse">
-        <CardHeader>
-            <CardTitle className="flex items-center gap-3 text-destructive">
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-3 text-destructive">
             <AlertTriangle className="h-6 w-6" />
             LOW STOCK WARNING
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-            <p className="text-destructive-foreground font-semibold">The following warehouses are below the {lowStockThreshold} bag threshold:</p>
-            <ul className="list-disc pl-5 mt-2 text-destructive-foreground font-medium grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4">
-            {lowStockWarehouses.map(wh => (
-                <li key={wh.id} className="flex items-center gap-2">
-                    <Warehouse className="h-4 w-4"/>
-                    {wh.name}: {Math.round(wh.bags)} BAGS
-                </li>
-            ))}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            The following warehouses have stock levels below the threshold of {lowStockThreshold} bags.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="my-4">
+            <ul className="list-disc pl-5 space-y-2 text-foreground font-medium">
+                {lowStockWarehouses.map(wh => (
+                    <li key={wh.id} className="flex items-center gap-2">
+                        <Warehouse className="h-4 w-4 text-muted-foreground"/>
+                        {wh.name}: {Math.round(wh.bags)} BAGS
+                    </li>
+                ))}
             </ul>
-            <p className="text-sm text-destructive-foreground/80 mt-2">Click to view inventory and restock.</p>
-        </CardContent>
-        </Card>
-    </Link>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setIsOpen(false)}>OK</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
