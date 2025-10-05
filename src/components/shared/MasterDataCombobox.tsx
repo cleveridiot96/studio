@@ -54,35 +54,40 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     threshold: 0.3,
   }), [options]);
 
-  const didYouMeanSuggest = React.useMemo(() => {
-    if (!search) return null;
+  const { filteredOptions, didYouMeanSuggest } = React.useMemo(() => {
+    if (!search) {
+      return { filteredOptions: options, didYouMeanSuggest: null };
+    }
+    
+    const fuseResults = fuse.search(search).map(result => result.item);
+    
     const suggestions = didYouMean(search, options.map(opt => opt.label), {
       threshold: 0.6,
       caseSensitive: false,
     });
-    return Array.isArray(suggestions) ? suggestions[0] : suggestions;
-  }, [search, options]);
+    const suggestion = Array.isArray(suggestions) ? suggestions[0] : suggestions;
 
-  const filteredOptions = React.useMemo(() => {
-    if (!search) {
-      return options;
-    }
-    const fuseResults = fuse.search(search).map(result => result.item);
-    if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
-        const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
+    if (suggestion && !fuseResults.some(opt => opt.label === suggestion)) {
+        const suggestionOption = options.find(opt => opt.label === suggestion);
         if (suggestionOption) {
-            return [suggestionOption, ...fuseResults];
+            return {
+                filteredOptions: [suggestionOption, ...fuseResults.filter(opt => opt.label !== suggestion)],
+                didYouMeanSuggest: suggestion
+            };
         }
     }
-    return fuseResults;
-  }, [options, search, fuse, didYouMeanSuggest]);
+    
+    return { filteredOptions: fuseResults, didYouMeanSuggest: suggestion };
+  }, [options, search, fuse]);
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
   const handleSelect = (selectedValue: string | undefined) => {
     onChange(selectedValue);
-    setOpen(false);
-    setSearch("");
+    setTimeout(() => {
+      setOpen(false);
+      setSearch("");
+    }, 100);
   };
 
   const handleAddNew = () => {
@@ -138,7 +143,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
                 <CommandItem
                     onSelect={() => handleSelect(undefined)}
-                    onClick={() => handleSelect(undefined)} 
                      className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
                         !value && "font-semibold bg-accent"
@@ -162,7 +166,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     </p>
                   )}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} onClick={handleAddNew} className="cursor-pointer mt-2 border-t">
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-2 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
@@ -174,7 +178,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         key={option.value}
                         value={option.value}
                         onSelect={() => handleSelect(option.value)}
-                        onClick={() => handleSelect(option.value)}
                         className="group uppercase flex justify-between items-center w-full"
                       >
                          <div className="flex items-center flex-grow truncate mr-2">
@@ -204,7 +207,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                       </CommandItem>
                   ))}
                   {onAddNew && (
-                    <CommandItem onSelect={handleAddNew} onClick={handleAddNew} className="cursor-pointer mt-1 border-t">
+                    <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
                       <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                     </CommandItem>
                   )}
