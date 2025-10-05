@@ -91,8 +91,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
   
   const handleEdit = (e: React.MouseEvent, value: string) => {
-    e.stopPropagation();
-    e.preventDefault();
+    e.stopPropagation(); // Prevent the item from being selected
     if (onEdit) {
       onEdit(value);
       setOpen(false);
