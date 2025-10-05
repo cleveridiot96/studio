@@ -81,7 +81,7 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                   "flex items-center justify-center h-8 w-8 rounded-full shrink-0 transition-colors",
                   sidebarState === 'expanded' && "mr-3",
                   isActive 
-                      ? "bg-sidebar-primary-foreground text-sidebar-primary"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
                       : item.iconColor ? `${item.iconColor} ${item.textColor || 'text-white'}` : "bg-sidebar-accent text-sidebar-accent-foreground"
               )}>
                 <IconComponent className="h-5 w-5" />
@@ -110,8 +110,8 @@ export function ClientSidebarMenu({ navItems }: ClientSidebarMenuProps) {
                         ? "w-10 h-10 justify-center" 
                         : "w-full justify-start px-2.5 py-2", 
                       isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
-                        : "hover:bg-sidebar-accent"
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner"
+                        : "hover:bg-sidebar-accent/50"
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >

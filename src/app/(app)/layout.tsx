@@ -14,12 +14,12 @@ import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
-import React, { useEffect, useCallback, useState, useRef } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { useRouter } from 'next/navigation';
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
-import type { Purchase, Sale, Payment, Receipt, MasterItem, LocationTransfer } from '@/lib/types';
+import type { Purchase, Sale, Payment, Receipt, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Calculator } from '@/components/shared/Calculator';
 import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
@@ -230,7 +230,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <SettingsProvider>
           <MasterDataProvider>
-            <SidebarProvider defaultOpen={false} collapsible="icon">
+            <SidebarProvider defaultOpen={true} collapsible="icon">
                 <AppExitHandler />
                 <SearchDataProvider>
                   <AppLayoutInternal>{children}</AppLayoutInternal>

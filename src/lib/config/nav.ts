@@ -77,8 +77,7 @@ export const navItems: NavItem[] = [
     title: 'Accounts Ledger',
     href: '/accounts-ledger',
     iconName: 'BookCopy',
-    iconColor: 'bg-[#1beec7]',
-    textColor: 'text-black',
+    iconColor: 'bg-teal-500',
     shortcut: 'Alt + A',
   },
   {
@@ -112,8 +111,7 @@ export const navItems: NavItem[] = [
     title: 'Daybook',
     href: '/daybook',
     iconName: 'BookMarked',
-    iconColor: 'bg-[#ffa5ab]',
-    textColor: 'text-white',
+    iconColor: 'bg-rose-500',
     shortcut: 'Alt + D',
   },
   {

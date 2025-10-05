@@ -24,7 +24,7 @@ const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem" // This is the width of the icon-only sidebar
+const SIDEBAR_WIDTH_ICON = "3.5rem" // This is the width of the icon-only sidebar
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
@@ -143,7 +143,7 @@ const SidebarProvider = React.forwardRef<
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH,
-                "--sidebar-width-icon": SIDEBAR_WIDTH_ICON, // Used for collapsed state on desktop
+                "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
               } as React.CSSProperties
             }
@@ -234,44 +234,38 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className="group peer hidden md:block text-sidebar-foreground bg-background" // Removed bg-gray-100, use theme
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         data-variant={variant}
         data-side={side}
+        className={cn(
+            "peer hidden md:block text-sidebar-foreground",
+            state === 'expanded' && "w-[--sidebar-width]",
+            state === 'collapsed' && "w-[--sidebar-width-icon]",
+        )}
       >
         <div
           className={cn(
-            "duration-200 relative h-svh bg-transparent transition-[width] ease-linear",
-            "w-[--sidebar-width]", // Default width for expanded
-            "group-data-[collapsible=offcanvas]:w-0",
-            variant === "floating" || variant === "inset"
-              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-              : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)]"
+            "fixed inset-y-0 h-svh transition-[width] duration-300 ease-in-out",
+            side === "left" ? "left-0" : "right-0",
+            state === 'expanded' && "w-[--sidebar-width]",
+            state === 'collapsed' && "w-[--sidebar-width-icon]",
+            variant === 'floating' && 'p-2',
+            variant === 'inset' && 'p-2'
           )}
-        />
-        <div
-          className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] ease-linear md:flex",
-            "w-[--sidebar-width]", // Default width for expanded
-            side === "left"
-              ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
-              : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
-            variant === "floating" || variant === "inset"
-              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-              : "group-data-[collapsible=icon]:w-[var(--sidebar-width-icon)] group-data-[side=left]:border-r group-data-[side=right]:border-l",
-            className
-          )}
-          {...props}
         >
           <div
             data-sidebar="sidebar"
             className={cn(
                 "flex h-full w-full flex-col",
                 "bg-[--sidebar-background] animate-liquid-gold",
-                variant === "floating" && "rounded-lg border border-sidebar-border shadow"
+                variant === "floating" && "rounded-lg border border-sidebar-border shadow",
+                variant !== "floating" && side === 'left' && "border-r",
+                variant !== "floating" && side === 'right' && "border-l",
+                className
             )}
              style={{ backgroundSize: '400% 400%' }}
+             {...props}
           >
             {children}
           </div>
@@ -346,8 +340,8 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background transition-[margin-left] duration-200 ease-linear",
-        "md:ml-[var(--sidebar-width)]",
+        "relative flex min-h-svh flex-1 flex-col bg-background transition-[margin-left] duration-300 ease-in-out",
+        state === 'expanded' && "md:ml-[var(--sidebar-width)]",
         state === 'collapsed' && "md:ml-[var(--sidebar-width-icon)]",
         className
       )}
