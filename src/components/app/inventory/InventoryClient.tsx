@@ -7,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier, PurchaseItem, SaleItem, LocationTransferItem } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign } from "lucide-react";
+import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,7 +73,7 @@ export interface AggregatedInventoryItem {
 }
 
 export function InventoryClient() {
-  const { financialYear, isAppHydrating } = useSettings();
+  const { financialYear, isAppHydrating, lowStockThreshold } = useSettings();
   const { toast } = useToast();
   const [hydrated, setHydrated] = React.useState(false);
 
@@ -327,23 +327,28 @@ export function InventoryClient() {
                   <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(activeInventory.reduce((sum, item) => sum + item.cogs, 0)).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                 </div>
             </button>
-            {warehouseSummary.map(wh => (
-              <button
-                key={wh.id}
-                onClick={() => setSelectedWarehouseId(wh.id)}
-                className={cn(
-                    "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full",
-                    selectedWarehouseId === wh.id ? 'ring-2 ring-primary bg-primary/10' : 'bg-card'
-                )}
-              >
-                  <CardTitle className="text-lg">{wh.name}</CardTitle>
-                  <div>
-                    <p className="text-2xl font-bold">{Math.round(wh.bags).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">BAGS</span></p>
-                    <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} KG</p>
-                    <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(wh.totalValue).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
-                  </div>
-              </button>
-            ))}
+            {warehouseSummary.map(wh => {
+              const isLow = wh.bags < lowStockThreshold;
+              return (
+                <button
+                  key={wh.id}
+                  onClick={() => setSelectedWarehouseId(wh.id)}
+                  className={cn(
+                      "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full relative",
+                      selectedWarehouseId === wh.id ? 'ring-2 ring-primary bg-primary/10' : 'bg-card',
+                      isLow && "border-2 border-destructive"
+                  )}
+                >
+                    {isLow && <AlertTriangle className="h-5 w-5 text-destructive absolute top-2 right-2" />}
+                    <CardTitle className="text-lg">{wh.name}</CardTitle>
+                    <div>
+                      <p className="text-2xl font-bold">{Math.round(wh.bags).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">BAGS</span></p>
+                      <p className="text-sm text-muted-foreground">{wh.netWeight.toLocaleString()} KG</p>
+                      <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(wh.totalValue).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
+                    </div>
+                </button>
+              )
+            })}
            {warehouseSummary.length === 0 && <p className="text-muted-foreground col-span-full">No active stock in any warehouse.</p>}
         </div>
       </div>
@@ -354,10 +359,10 @@ export function InventoryClient() {
           <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived Vakkals</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle></CardHeader><CardContent><InventoryTable items={filteredActiveInventory} onArchive={handleArchiveAttempt} /></CardContent></Card>
+          <Card className="shadow-lg"><CardHeader><CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle></CardHeader><CardContent><InventoryTable items={filteredActiveInventory} onArchive={handleArchiveAttempt} lowStockThreshold={lowStockThreshold} /></CardContent></Card>
         </TabsContent>
          <TabsContent value="archived" className="mt-6">
-          <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock: {getActiveFilterName()}</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={filteredArchivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} /></CardContent></Card>
+          <Card className="shadow-lg"><CardHeader><CardTitle>Archived Stock: {getActiveFilterName()}</CardTitle><CardDescription>These lots have a zero balance and are hidden from the main view. They can be restored.</CardDescription></CardHeader><CardContent><InventoryTable items={filteredArchivedInventory} onArchive={handleArchiveAttempt} onUnarchive={handleUnarchiveItem} isArchivedView={true} lowStockThreshold={lowStockThreshold} /></CardContent></Card>
         </TabsContent>
       </Tabs>
       

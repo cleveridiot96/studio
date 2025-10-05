@@ -7,12 +7,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 interface Settings {
   fontSize: number;
   financialYear: string;
- isFinancialYearHydrated: boolean; // Added to track hydration state for financial year
+  isFinancialYearHydrated: boolean;
+  lowStockThreshold: number; // New setting for low stock
 }
 
 interface SettingsContextType extends Settings {
   setFontSize: Dispatch<SetStateAction<number>>;
   setFinancialYear: Dispatch<SetStateAction<string>>;
+  setLowStockThreshold: Dispatch<SetStateAction<number>>;
   getFinancialYearShort: () => string;
   getPreviousFinancialYear: () => string;
   getNextFinancialYear: () => string;
@@ -34,6 +36,7 @@ const defaultSettings: Settings = {
   fontSize: 19,
   financialYear: getDefaultFinancialYear(),
   isFinancialYearHydrated: false,
+  lowStockThreshold: 10, // Default to 10 bags
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -41,22 +44,32 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [fontSize, setFontSize] = useState<number>(defaultSettings.fontSize);
   const [financialYear, setFinancialYear] = useState<string>(defaultSettings.financialYear);
+  const [lowStockThreshold, setLowStockThreshold] = useState<number>(defaultSettings.lowStockThreshold);
+  
   const [isFontSizeHydrated, setIsFontSizeHydrated] = useState<boolean>(false);
   const [isFinancialYearHydrated, setIsFinancialYearHydrated] = useState<boolean>(false);
-  const isAppHydrating = !isFontSizeHydrated || !isFinancialYearHydrated;
+  const [isLowStockHydrated, setIsLowStockHydrated] = useState<boolean>(false);
+  
+  const isAppHydrating = !isFontSizeHydrated || !isFinancialYearHydrated || !isLowStockHydrated;
 
-
-  // Effect for font size
+  // Hydration effects
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedFontSize = localStorage.getItem('appFontSize');
-      if (storedFontSize) {
-        setFontSize(parseFloat(storedFontSize));
-      }
+      if (storedFontSize) setFontSize(parseFloat(storedFontSize));
       setIsFontSizeHydrated(true);
-      }
+
+      const storedFy = localStorage.getItem('appFinancialYear');
+      if (storedFy) setFinancialYear(storedFy);
+      setIsFinancialYearHydrated(true);
+      
+      const storedLowStock = localStorage.getItem('appLowStockThreshold');
+      if (storedLowStock) setLowStockThreshold(parseInt(storedLowStock, 10));
+      setIsLowStockHydrated(true);
+    }
   }, []);
 
+  // Persistence effects
   useEffect(() => {
     if (isFontSizeHydrated) {
         document.documentElement.style.fontSize = `${fontSize}px`;
@@ -64,30 +77,24 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [fontSize, isFontSizeHydrated]);
 
-  // Effect for financial year
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-       const storedFy = localStorage.getItem('appFinancialYear');
-       if (storedFy) {
-           setFinancialYear(storedFy);
-       }
-       setIsFinancialYearHydrated(true);
-    }
-  }, []);
-
   useEffect(() => {
     if (isFinancialYearHydrated) {
         localStorage.setItem('appFinancialYear', financialYear);
     }
   }, [financialYear, isFinancialYearHydrated]);
 
+  useEffect(() => {
+    if (isLowStockHydrated) {
+        localStorage.setItem('appLowStockThreshold', lowStockThreshold.toString());
+    }
+  }, [lowStockThreshold, isLowStockHydrated]);
 
   const getFinancialYearShort = useCallback(() => {
     const years = financialYear.split('-');
     if (years.length === 2 && years[0].length >= 4 && years[1].length >=4) {
         return `${years[0].slice(-2)}-${years[1].slice(-2)}`;
     }
-    return financialYear; // Fallback if format is unexpected
+    return financialYear;
   }, [financialYear]);
 
   const parseFinancialYear = (fy: string): [number, number] | null => {
@@ -109,16 +116,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const [startYear] = parsed;
       return `${startYear - 1}-${startYear}`;
     }
-    return financialYear; // Fallback
+    return financialYear;
   }, [financialYear]);
 
   const getNextFinancialYear = useCallback(() => {
     const parsed = parseFinancialYear(financialYear);
     if (parsed) {
-      const [, endYear] = parsed; // endYear is the second year of the FY string e.g. 2024 from "2023-2024"
+      const [, endYear] = parsed;
       return `${endYear}-${endYear + 1}`;
     }
-    return financialYear; // Fallback
+    return financialYear;
   }, [financialYear]);
 
 
@@ -128,6 +135,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setFontSize,
       financialYear,
       setFinancialYear,
+      lowStockThreshold,
+      setLowStockThreshold,
       isAppHydrating,
       isFinancialYearHydrated,
       getFinancialYearShort,

@@ -22,9 +22,10 @@ interface InventoryTableProps {
   onArchive: (item: AggregatedInventoryItem) => void;
   onUnarchive?: (item: AggregatedInventoryItem) => void;
   isArchivedView?: boolean;
+  lowStockThreshold: number;
 }
 
-const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchive, onUnarchive, isArchivedView = false }) => {
+const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchive, onUnarchive, isArchivedView = false, lowStockThreshold }) => {
   if (!items || items.length === 0) {
     return <p className="text-center text-muted-foreground py-8">{isArchivedView ? 'NO ARCHIVED INVENTORY.' : 'NO INVENTORY FOR THIS SELECTION.'}</p>;
   }
@@ -56,7 +57,7 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchi
                 isArchivedView ? 'bg-muted/40' : '',
                 !isArchivedView && item.isDeadStock && "bg-destructive text-destructive-foreground",
                 !isArchivedView && !item.isDeadStock && item.currentBags <= 0 && "bg-red-50 dark:bg-red-900/30",
-                !isArchivedView && !item.isDeadStock && item.currentBags > 0 && item.currentBags <= 5 && "bg-yellow-50 dark:bg-yellow-900/30"
+                !isArchivedView && !item.isDeadStock && item.currentBags > 0 && item.currentBags <= lowStockThreshold && "bg-yellow-50 dark:bg-yellow-900/30"
               )}
             >
               <TableCell>{item.lotNumber}</TableCell>
@@ -72,7 +73,7 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchi
                 {isArchivedView ? (<Badge variant="outline" className="uppercase">ARCHIVED</Badge>) :
                 item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground uppercase">DEAD STOCK</Badge>) :
                 item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase animate-pulse-destructive">ZERO STOCK</Badge>) :
-                item.currentBags <= 5 ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">LOW STOCK</Badge>) :
+                item.currentBags <= lowStockThreshold ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">LOW STOCK</Badge>) :
                 (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white uppercase"><TrendingUp className="h-3 w-3 mr-1" /> FAST</Badge>) :
                 (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase"><TrendingDown className="h-3 w-3 mr-1" /> SLOW</Badge>) :
                 (<Badge variant="secondary" className="uppercase">IN STOCK</Badge>)}
@@ -111,5 +112,3 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({ items, onArchi
 };
     
 export const InventoryTable = React.memo(InventoryTableComponent);
-
-    

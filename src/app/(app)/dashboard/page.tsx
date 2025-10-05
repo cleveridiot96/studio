@@ -11,6 +11,7 @@ import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KE
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ProfitAnalysisClient } from '@/components/app/profit-analysis/ProfitAnalysisClient';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
+import { LowStockWarning } from '@/components/app/dashboard/LowStockWarning';
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -171,6 +172,7 @@ export default function DashboardPage() {
       <div className="text-left">
         <h1 className="text-2xl font-bold text-foreground uppercase">Dashboard Central Hub</h1>
       </div>
+      <LowStockWarning />
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {quickActions.map((action) => (
           <DashboardTile key={action.title} {...action} onClick={action.action} />
