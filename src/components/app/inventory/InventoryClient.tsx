@@ -4,10 +4,10 @@
 import * as React from "react";
 import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier, PurchaseItem, SaleItem, LocationTransferItem } from "@/lib/types";
+import type { Purchase, Sale, MasterItem, Warehouse, LocationTransfer, PurchaseReturn, SaleReturn, Supplier, PurchaseItem, SaleItem, LocationTransferItem, StockAdjustment } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo } from "lucide-react";
+import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo, SlidersHorizontal, Undo2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,16 +30,20 @@ import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { MergeLotsForm } from "./MergeLotsForm";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LowStockWarning } from "@/components/app/dashboard/LowStockWarning";
+import { useMasterData } from "@/contexts/MasterDataContext";
+import { AddAdjustmentForm } from "../stock-adjustments/AddAdjustmentForm";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { Badge } from "../ui/badge";
+import { format, parseISO } from "date-fns";
 
 
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData'; 
 const SALES_STORAGE_KEY = 'salesData';
 const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData'; 
-const WAREHOUSES_STORAGE_KEY = 'masterWarehouses';
-const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
 const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
+const ADJUSTMENTS_KEY = 'stockAdjustmentsData';
 const KEY_SEPARATOR = '_$_';
 const DEAD_STOCK_THRESHOLD_DAYS = 180;
 
@@ -64,6 +68,8 @@ export interface AggregatedInventoryItem {
   totalTransferredOutWeight: number;
   totalTransferredInBags: number;
   totalTransferredInWeight: number;
+  totalAdjustedBags: number;
+  totalAdjustedWeight: number;
   currentBags: number;
   currentWeight: number;
   purchaseDate?: string;
@@ -78,16 +84,18 @@ export interface AggregatedInventoryItem {
 export function InventoryClient() {
   const { financialYear, isAppHydrating, lowStockThreshold } = useSettings();
   const { toast } = useToast();
+  const { data: masterData } = useMasterData();
+  const { warehouses, suppliers } = masterData;
   const [hydrated, setHydrated] = React.useState(false);
 
   const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
   const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []); 
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []); 
-  const [warehouses] = useLocalStorageState<Warehouse[]>(WAREHOUSES_STORAGE_KEY, []);
-  const [suppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, []);
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
   const [archivedLotKeys, setArchivedLotKeys] = useLocalStorageState<string[]>(ARCHIVED_LOTS_STORAGE_KEY, []);
+  const [adjustments, setAdjustments] = useLocalStorageState<StockAdjustment[]>(ADJUSTMENTS_KEY, []);
+
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
@@ -95,7 +103,8 @@ export function InventoryClient() {
   const [isMergeFormOpen, setIsMergeFormOpen] = React.useState(false);
   const [activeRowSelection, setActiveRowSelection] = React.useState<Record<string, boolean>>({});
   const [archivedRowSelection, setArchivedRowSelection] = React.useState<Record<string, boolean>>({});
-
+  const [isAdjustmentFormOpen, setIsAdjustmentFormOpen] = React.useState(false);
+  const [itemToReverse, setItemToReverse] = React.useState<StockAdjustment | null>(null);
 
   React.useEffect(() => {
     setHydrated(true);
@@ -111,7 +120,8 @@ export function InventoryClient() {
         ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
         ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
         ...sales.map(s => ({ ...s, txType: 'sale' as const })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const }))
+        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const })),
+        ...adjustments.map(adj => ({ ...adj, txType: 'adjustment' as const }))
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     for (const tx of transactions) {
@@ -123,31 +133,18 @@ export function InventoryClient() {
                 const landedCost = item.landedCostPerKg || tx.effectiveRate;
                 
                 inventoryMap.set(key, {
-                    key: key,
-                    lotNumber: item.lotNumber,
-                    locationId: tx.locationId,
-                    locationName: tx.locationName || 'Unknown',
-                    supplierId: tx.supplierId,
-                    supplierName: tx.supplierName,
-                    sourceType: 'Purchase',
-                    totalPurchasedBags: item.quantity,
-                    totalPurchasedWeight: item.netWeight,
-                    totalSoldBags: 0,
-                    totalSoldWeight: 0,
-                    totalPurchaseReturnedBags: 0,
-                    totalPurchaseReturnedWeight: 0,
-                    totalSaleReturnedBags: 0,
-                    totalSaleReturnedWeight: 0,
-                    totalTransferredOutBags: 0,
-                    totalTransferredOutWeight: 0,
-                    totalTransferredInBags: 0,
-                    totalTransferredInWeight: 0,
-                    currentBags: item.quantity,
-                    currentWeight: item.netWeight,
-                    purchaseDate: tx.date,
-                    purchaseRate: item.rate,
-                    effectiveRate: landedCost,
-                    cogs: item.netWeight * landedCost,
+                    key: key, lotNumber: item.lotNumber, locationId: tx.locationId,
+                    locationName: tx.locationName || 'Unknown', supplierId: tx.supplierId,
+                    supplierName: tx.supplierName, sourceType: 'Purchase',
+                    totalPurchasedBags: item.quantity, totalPurchasedWeight: item.netWeight,
+                    totalSoldBags: 0, totalSoldWeight: 0, totalPurchaseReturnedBags: 0,
+                    totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0,
+                    totalSaleReturnedWeight: 0, totalTransferredOutBags: 0,
+                    totalTransferredOutWeight: 0, totalTransferredInBags: 0,
+                    totalTransferredInWeight: 0, totalAdjustedBags: 0, totalAdjustedWeight: 0,
+                    currentBags: 0, currentWeight: 0, purchaseDate: tx.date,
+                    purchaseRate: item.rate, effectiveRate: landedCost,
+                    cogs: 0,
                 });
             });
         } else if (tx.txType === 'purchaseReturn') {
@@ -177,36 +174,23 @@ export function InventoryClient() {
 
                     if (!toEntry) {
                         toEntry = {
-                          key: toKey,
-                          ...fromEntry, // Copy details from source
-                          lotNumber: item.newLotNumber,
-                          locationId: tx.toWarehouseId,
-                          locationName: tx.toWarehouseName || 'Unknown',
-                          sourceType: 'Transfer',
-                          sourceDetails: `From ${tx.fromWarehouseName}`,
-                          totalPurchasedBags: 0,
-                          totalPurchasedWeight: 0,
-                          totalSoldBags: 0,
-                          totalSoldWeight: 0,
-                          totalPurchaseReturnedBags: 0,
-                          totalPurchaseReturnedWeight: 0,
-                          totalSaleReturnedBags: 0,
-                          totalSaleReturnedWeight: 0,
-                          totalTransferredOutBags: 0,
-                          totalTransferredOutWeight: 0,
-                          totalTransferredInBags: 0,
-                          totalTransferredInWeight: 0,
-                          currentBags: 0,
-                          currentWeight: 0,
-                          purchaseDate: tx.date, // Set purchase date to transfer date
-                          effectiveRate: newEffectiveRate,
-                          cogs: 0,
+                          key: toKey, ...fromEntry, lotNumber: item.newLotNumber,
+                          locationId: tx.toWarehouseId, locationName: tx.toWarehouseName || 'Unknown',
+                          sourceType: 'Transfer', sourceDetails: `From ${tx.fromWarehouseName}`,
+                          totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0,
+                          totalSoldWeight: 0, totalPurchaseReturnedBags: 0,
+                          totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0,
+                          totalSaleReturnedWeight: 0, totalTransferredOutBags: 0,
+                          totalTransferredOutWeight: 0, totalTransferredInBags: 0,
+                          totalTransferredInWeight: 0, totalAdjustedBags: 0, totalAdjustedWeight: 0,
+                          currentBags: 0, currentWeight: 0, purchaseDate: tx.date,
+                          effectiveRate: newEffectiveRate, cogs: 0,
                         };
                     }
                     
                     toEntry.totalTransferredInBags += item.bagsToTransfer;
                     toEntry.totalTransferredInWeight += item.netWeightToTransfer;
-                    toEntry.effectiveRate = newEffectiveRate; // Update rate in case of multiple transfers to same lot
+                    toEntry.effectiveRate = newEffectiveRate;
                     inventoryMap.set(toKey, toEntry);
                 }
             });
@@ -221,14 +205,32 @@ export function InventoryClient() {
                     }
                 }
             });
+        } else if (tx.txType === 'saleReturn') {
+            (tx.items || []).forEach((item: any) => { // Assuming SaleReturn has items
+              const saleReturnLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
+              if (saleReturnLotKey) {
+                const entry = inventoryMap.get(saleReturnLotKey);
+                if (entry) {
+                  entry.totalSaleReturnedBags += item.quantity;
+                  entry.totalSaleReturnedWeight += item.netWeight;
+                }
+              }
+            });
+        } else if (tx.txType === 'adjustment') {
+          const key = `${tx.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
+          const entry = inventoryMap.get(key);
+          if(entry) {
+            entry.totalAdjustedBags += tx.bags;
+            entry.totalAdjustedWeight += tx.weight;
+          }
         }
     }
     
     const result: AggregatedInventoryItem[] = [];
     inventoryMap.forEach(item => {
-      item.currentBags = item.totalPurchasedBags + item.totalTransferredInBags + item.totalSaleReturnedBags
+      item.currentBags = item.totalPurchasedBags + item.totalTransferredInBags + item.totalSaleReturnedBags + item.totalAdjustedBags
                         - item.totalSoldBags - item.totalTransferredOutBags - item.totalPurchaseReturnedBags;
-      item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight
+      item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight + item.totalAdjustedWeight
                         - item.totalSoldWeight - item.totalTransferredOutWeight - item.totalPurchaseReturnedWeight;
       
       item.cogs = item.currentWeight * item.effectiveRate;
@@ -246,7 +248,7 @@ export function InventoryClient() {
     });
 
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, hydrated, isAppHydrating, financialYear]);
+  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, adjustments, hydrated, isAppHydrating, financialYear]);
   
   const activeInventory = React.useMemo(() => {
     return allAggregatedInventory.filter(item => !archivedLotKeys.includes(item.key));
@@ -280,6 +282,23 @@ export function InventoryClient() {
     if (!selectedWarehouseId) return archivedInventory;
     return archivedInventory.filter(item => item.locationId === selectedWarehouseId);
   }, [archivedInventory, selectedWarehouseId]);
+
+  const allLotsInSystem = React.useMemo(() => {
+    const lots = new Set<string>();
+    purchases.forEach(p => p.items.forEach(i => lots.add(i.lotNumber)));
+    locationTransfers.forEach(t => t.items.forEach(i => {
+        lots.add(i.originalLotNumber);
+        lots.add(i.newLotNumber);
+    }));
+    return Array.from(lots).sort();
+  }, [purchases, locationTransfers]);
+
+  const filteredAdjustments = React.useMemo(() => {
+    if (!hydrated) return [];
+    return adjustments
+      .filter(adj => isDateInFinancialYear(adj.date, financialYear))
+      .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [adjustments, financialYear, hydrated]);
 
   const handleArchiveAttempt = (item: AggregatedInventoryItem) => {
     if (item.currentBags <= 0.001) { setItemToArchive(item); setShowArchiveConfirm(true); }
@@ -336,6 +355,50 @@ export function InventoryClient() {
     setLocationTransfers(prev => [newTransfer, ...prev]);
     toast({ title: "Lots Merged", description: `Successfully merged lots into ${mergeData.items[0].newLotNumber}.` });
     setIsMergeFormOpen(false);
+  };
+  
+  const handleAddAdjustment = React.useCallback((newAdjustment: Omit<StockAdjustment, 'id'>) => {
+    setAdjustments(prev => [{ ...newAdjustment, id: `adj-${Date.now()}` }, ...prev]);
+    toast({ title: 'Adjustment Recorded', description: 'The stock adjustment has been successfully saved.' });
+  }, [setAdjustments, toast]);
+
+  const handleReverseAttempt = (adjustment: StockAdjustment) => {
+    if (adjustment.type === 'Reversal') {
+      toast({ title: 'Cannot Reverse', description: 'This is already a reversal transaction.', variant: 'destructive' });
+      return;
+    }
+    setItemToReverse(adjustment);
+  };
+
+  const confirmReversal = () => {
+    if (itemToReverse) {
+      const reversal: Omit<StockAdjustment, 'id'> = {
+        date: format(new Date(), 'yyyy-MM-dd'),
+        lotNumber: itemToReverse.lotNumber,
+        locationId: itemToReverse.locationId,
+        locationName: itemToReverse.locationName,
+        bags: -itemToReverse.bags,
+        weight: -itemToReverse.weight,
+        type: 'Reversal',
+        reason: `Reversal of adjustment ID: ${itemToReverse.id}`,
+      };
+      handleAddAdjustment(reversal);
+      setItemToReverse(null);
+    }
+  };
+
+  const getBadgeVariant = (type: StockAdjustment['type']) => {
+    switch (type) {
+      case 'Wastage':
+      case 'Theft':
+        return 'destructive';
+      case 'Correction':
+        return 'secondary';
+      case 'Reversal':
+        return 'outline';
+      default:
+        return 'default';
+    }
   };
   
   const activeSelectionCount = Object.keys(activeRowSelection).length;
@@ -403,9 +466,10 @@ export function InventoryClient() {
       </div>
 
       <Tabs defaultValue="active" className="w-full pt-6">
-        <TabsList className="grid w-full grid-cols-2 h-auto no-print">
+        <TabsList className="grid w-full grid-cols-3 h-auto no-print">
           <TabsTrigger value="active" className="py-2 sm:py-3 text-sm sm:text-base"><Boxes className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Vakkal-Wise Stock Table</TabsTrigger>
           <TabsTrigger value="archived" className="py-2 sm:py-3 text-sm sm:text-base"><Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Archived Vakkals</TabsTrigger>
+          <TabsTrigger value="adjustments" className="py-2 sm:py-3 text-sm sm:text-base"><SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" /> Adjustments History</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="mt-6">
           <Card className="shadow-lg">
@@ -462,6 +526,62 @@ export function InventoryClient() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="adjustments" className="mt-6">
+           <Card className="shadow-lg">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Stock Adjustments History</CardTitle>
+                <Button onClick={() => setIsAdjustmentFormOpen(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> New Adjustment
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[60vh] overflow-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Lot Number</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Bags</TableHead>
+                      <TableHead className="text-right">Weight (kg)</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAdjustments.length === 0 ? (
+                      <TableRow><TableCell colSpan={8} className="text-center h-24">No adjustments recorded for this financial year.</TableCell></TableRow>
+                    ) : (
+                      filteredAdjustments.map(adj => (
+                        <TableRow key={adj.id}>
+                          <TableCell>{format(parseISO(adj.date), 'dd/MM/yy')}</TableCell>
+                          <TableCell>{adj.lotNumber}</TableCell>
+                          <TableCell>{adj.locationName}</TableCell>
+                          <TableCell><Badge variant={getBadgeVariant(adj.type)}>{adj.type}</Badge></TableCell>
+                          <TableCell className={`text-right font-medium ${adj.bags < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {adj.bags.toLocaleString('en-IN', { signDisplay: 'always' })}
+                          </TableCell>
+                          <TableCell className={`text-right font-medium ${adj.weight < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {adj.weight.toLocaleString('en-IN', { signDisplay: 'always', minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{adj.reason}</TableCell>
+                          <TableCell className="text-center">
+                            <Button variant="ghost" size="icon" onClick={() => handleReverseAttempt(adj)} title="Reverse Transaction" disabled={adj.type === 'Reversal'}>
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
       
       <div className="mt-8 no-print">
@@ -478,7 +598,36 @@ export function InventoryClient() {
         />
       )}
 
+      {isAdjustmentFormOpen && (
+         <AddAdjustmentForm
+            isOpen={isAdjustmentFormOpen}
+            onClose={() => setIsAdjustmentFormOpen(false)}
+            onSubmit={handleAddAdjustment}
+            warehouses={masterData.Warehouse}
+            availableLots={allLotsInSystem}
+        />
+      )}
+
+      {itemToReverse && (
+        <AlertDialog open={!!itemToReverse} onOpenChange={(open) => !open && setItemToReverse(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reverse this Stock Adjustment?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will create a new, opposite adjustment transaction to cancel out the selected one. The original record will remain for audit purposes.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmReversal}>Confirm Reversal</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       {itemToArchive && (<AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Archive Vakkal/Lot?</AlertDialogTitle><AlertDialogDescription>This action will hide the lot "<strong>{itemToArchive.lotNumber}</strong>" from the main inventory view. You can view and restore it from the "Archived" tab.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setItemToArchive(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmArchiveItem} className="bg-blue-600 hover:bg-blue-700">Archive</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>)}
     </div>
   );
 }
+
+    

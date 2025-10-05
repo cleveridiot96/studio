@@ -52,13 +52,6 @@ export const navItems: StyledNavItem[] = [
     style: { backgroundImage: 'linear-gradient(to right top, #9ca3af, #848c98, #6d7681, #57606b, #424b56)', color: 'white' }
   },
   {
-    title: 'Stock Adjustments',
-    href: '/stock-adjustments',
-    iconName: 'SlidersHorizontal',
-    description: "Manual adjustments",
-    style: { backgroundImage: 'linear-gradient(to right top, #ffffff, #f9f9f9, #f2f2f2, #ececec, #e6e6e6)', color: 'black' }
-  },
-  {
     title: 'Stock Ledger',
     href: '/ledger',
     iconName: 'BookUser',
@@ -153,3 +146,5 @@ export const navItems: StyledNavItem[] = [
     style: { backgroundImage: 'linear-gradient(to right top, #d946ef, #c832db, #b71ac8, #a500b5, #9300a2)', color: 'white' }
   }
 ];
+
+    
