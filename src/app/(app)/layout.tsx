@@ -172,21 +172,16 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
     <>
         <div className="flex flex-1 bg-background">
           <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
-            <SidebarHeader className="p-2 border-b border-sidebar-border">
-              <Link href="/dashboard" className="flex items-center gap-2 group">
-                <AppIcon className="w-8 h-8 text-sidebar-primary group-hover:animate-pulse" />
-                <h1 className="text-xl font-bold text-sidebar-foreground group-data-[state=collapsed]:hidden">
-                  
-                </h1>
-              </Link>
+            <SidebarHeader className="flex h-14 items-center justify-center p-2 border-b border-sidebar-border">
+                <SidebarTrigger>
+                  <Menu className="h-6 w-6 text-sidebar-foreground" />
+                </SidebarTrigger>
             </SidebarHeader>
             <SidebarContent className="py-2">
               <ClientSidebarMenu navItems={navItems} />
             </SidebarContent>
             <SidebarFooter className="p-2 border-t border-sidebar-border">
-                <SidebarTrigger className="hidden md:flex">
-                  <Menu className="h-6 w-6 text-sidebar-foreground" />
-                </SidebarTrigger>
+                
             </SidebarFooter>
           </Sidebar>
 
