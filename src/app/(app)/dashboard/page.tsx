@@ -11,7 +11,7 @@ import { exportDataToPortableFile, restoreDataFromFile, LAST_BACKUP_TIMESTAMP_KE
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ProfitAnalysisClient } from '@/components/app/profit-analysis/ProfitAnalysisClient';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
-import { navItems } from '@/lib/config/nav';
+import { navItems, type StyledNavItem } from '@/lib/config/nav';
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -64,18 +64,22 @@ export default function DashboardPage() {
       </div>
       
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {allNavItems.map((action) => (
-           <DashboardTile
-            key={action.title}
-            title={action.title}
-            description={action.description}
-            href={action.href !== '#' ? action.href : undefined}
-            iconName={action.iconName}
-            className={action.iconColor}
-            onClick={getActionForItem(action.title)}
-            shortcut={action.shortcut}
-          />
-        ))}
+        {navItems.map((action) => {
+          const styledAction = action as StyledNavItem;
+          return (
+            <DashboardTile
+              key={action.title}
+              title={action.title}
+              description={action.description}
+              href={action.href !== '#' ? action.href : undefined}
+              iconName={action.iconName}
+              className={styledAction.style?.color as string || 'text-foreground'} // Pass text color
+              style={styledAction.style} // Pass background style
+              onClick={getActionForItem(action.title)}
+              shortcut={action.shortcut}
+            />
+          );
+        })}
       </div>
       <input
         type="file"

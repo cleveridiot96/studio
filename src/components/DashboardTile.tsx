@@ -76,12 +76,13 @@ interface DashboardTileProps {
   iconName: string;
   href?: string;
   description?: string;
-  className?: string;
+  className?: string; // This will now mainly be for text color
+  style?: React.CSSProperties; // New prop for inline styles
   onClick?: () => void;
   shortcut?: string;
 }
 
-const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, onClick, shortcut }) => {
+const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, style, onClick, shortcut }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
   
   const cardContent = (
@@ -90,11 +91,14 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
       transition={{ type: "spring", stiffness: 400, damping: 15 }}
       className="h-full w-full"
     >
-        <Card className={cn(
-          "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
-          "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px] !bg-none", // Added !bg-none to override default card background
-          className
-        )}>
+        <Card 
+          className={cn(
+            "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
+            "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px]",
+            className // Pass text color classes here
+          )}
+          style={style} // Apply inline styles for background gradients
+        >
           <Icon className="h-7 w-7 mb-2" />
           <CardTitle className="text-base font-semibold mb-1 uppercase">{title}</CardTitle>
           {description && <p className="text-xs opacity-80 uppercase">{description}</p>}
