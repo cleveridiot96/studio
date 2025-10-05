@@ -18,6 +18,7 @@ import {
   BookMarked,
   Landmark,
   Search, // Added for Lot Ledger
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -66,6 +67,12 @@ export const navItems: NavItem[] = [
     iconColor: 'bg-yellow-500',
     textColor: 'text-black',
     shortcut: 'Alt + O',
+  },
+  {
+    title: 'Stock Adjustments',
+    href: '/stock-adjustments',
+    iconName: 'SlidersHorizontal',
+    iconColor: 'bg-gray-500',
   },
   {
     title: 'Stock Ledger',

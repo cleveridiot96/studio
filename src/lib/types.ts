@@ -333,3 +333,17 @@ export interface DaybookEntry {
   Icon: React.ElementType;
   colorClass: string;
 }
+
+export type StockAdjustmentType = 'Wastage' | 'Theft' | 'Correction' | 'Reversal';
+
+export interface StockAdjustment {
+  id: string;
+  date: string;
+  lotNumber: string;
+  locationId: string;
+  locationName?: string;
+  bags: number; // Positive for addition, negative for reduction
+  weight: number; // Positive for addition, negative for reduction
+  type: StockAdjustmentType;
+  reason?: string;
+}

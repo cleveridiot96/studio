@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -29,6 +30,7 @@ import {
   BookMarked,
   Landmark,
   Search, // Added for Lot Ledger
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -52,6 +54,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   BookMarked,
   Landmark,
   Search,
+  SlidersHorizontal,
 };
 
 interface ClientSidebarMenuProps {
