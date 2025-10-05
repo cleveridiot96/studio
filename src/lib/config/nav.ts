@@ -20,6 +20,8 @@ import {
   Landmark,
   Search, // Added for Lot Ledger
   SlidersHorizontal,
+  UploadCloud,
+  FileJson,
 } from 'lucide-react';
 import type { NavItem } from '@/lib/types';
 
@@ -31,14 +33,14 @@ export const navItems: NavItem[] = [
     title: 'Dashboard',
     href: '/dashboard',
     iconName: 'LayoutGrid',
-    iconColor: 'bg-yellow-400 text-black', // Gold
+    iconColor: 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white', 
     description: "Main hub"
   },
   {
     title: 'Purchases',
     href: '/purchases',
     iconName: 'ShoppingCart',
-    iconColor: 'bg-green-500 text-white', // Green
+    iconColor: 'bg-gradient-to-br from-green-500 to-emerald-600 text-white',
     shortcut: 'Alt + P',
     description: "Manage incoming goods"
   },
@@ -46,7 +48,7 @@ export const navItems: NavItem[] = [
     title: 'Sales',
     href: '/sales',
     iconName: 'Receipt',
-    iconColor: 'bg-orange-500 text-white', // Orange
+    iconColor: 'bg-gradient-to-br from-orange-500 to-amber-600 text-white',
     shortcut: 'Alt + S',
     description: "Create new sales"
   },
@@ -54,7 +56,7 @@ export const navItems: NavItem[] = [
     title: 'Location Transfer',
     href: '/location-transfer',
     iconName: 'ArrowRightLeft',
-    iconColor: 'bg-blue-500 text-white', // Electric Blue
+    iconColor: 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white',
     shortcut: 'Alt + L',
     description: "Move stock"
   },
@@ -62,7 +64,7 @@ export const navItems: NavItem[] = [
     title: 'Inventory',
     href: '/inventory',
     iconName: 'Boxes',
-    iconColor: 'bg-green-800 text-white', // Green & Brown -> Dark Green
+    iconColor: 'bg-gradient-to-br from-green-700 to-yellow-800 text-white', // Green & Brown
     shortcut: 'Alt + I',
     description: "View stock levels"
   },
@@ -70,7 +72,7 @@ export const navItems: NavItem[] = [
     title: 'Outstanding',
     href: '/outstanding',
     iconName: 'ClipboardList',
-    iconColor: 'bg-gray-400 text-black', // Grey/Silver
+    iconColor: 'bg-gradient-to-br from-gray-400 to-gray-500 text-black',
     shortcut: 'Alt + O',
     description: "Receivables & Payables"
   },
@@ -78,14 +80,14 @@ export const navItems: NavItem[] = [
     title: 'Stock Adjustments',
     href: '/stock-adjustments',
     iconName: 'SlidersHorizontal',
-    iconColor: 'bg-gray-200 text-black', // White
+    iconColor: 'bg-gradient-to-br from-white to-gray-200 text-black',
     description: "Manual adjustments"
   },
   {
     title: 'Stock Ledger',
     href: '/ledger',
     iconName: 'BookUser',
-    iconColor: 'bg-gray-500 text-white', // Grey/Silver
+    iconColor: 'bg-gradient-to-br from-gray-500 to-slate-600 text-white',
     shortcut: 'Alt + K',
     description: "Party-wise stock"
   },
@@ -93,7 +95,7 @@ export const navItems: NavItem[] = [
     title: 'Accounts Ledger',
     href: '/accounts-ledger',
     iconName: 'BookCopy',
-    iconColor: 'bg-black text-white', // Black
+    iconColor: 'bg-gradient-to-br from-slate-800 to-black text-white',
     shortcut: 'Alt + A',
     description: "Party financial ledger"
   },
@@ -101,14 +103,14 @@ export const navItems: NavItem[] = [
     title: 'Lot Ledger',
     href: '/lot-ledger',
     iconName: 'Search',
-    iconColor: 'bg-purple-800 text-white', // Purple & White -> Purple
+    iconColor: 'bg-gradient-to-br from-purple-500 to-indigo-400 text-white', // Purple and white -> gradient
     description: "Trace any vakkal"
   },
   {
     title: 'Profit Analysis',
     href: '/profit-analysis',
     iconName: 'Rocket',
-    iconColor: 'bg-yellow-400 text-black', // Yellow
+    iconColor: 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-black',
     shortcut: 'Alt + Shift + A',
     description: "Analyze profitability"
   },
@@ -116,14 +118,14 @@ export const navItems: NavItem[] = [
     title: 'Financial Summary',
     href: '/balance-sheet',
     iconName: 'Landmark',
-    iconColor: 'bg-yellow-500 text-black', // Gold/Yellow
+    iconColor: 'bg-gradient-to-br from-yellow-400 to-amber-500 text-black',
     description: "Business overview"
   },
   {
     title: 'Payments',
     href: '/payments',
     iconName: 'ArrowRightCircle',
-    iconColor: 'bg-purple-700 text-white', // Dark Blue/Purple
+    iconColor: 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white',
     shortcut: 'Alt + Shift + P',
     description: "Record payments made"
   },
@@ -131,7 +133,7 @@ export const navItems: NavItem[] = [
     title: 'Receipts',
     href: '/receipts',
     iconName: 'ArrowLeftCircle',
-    iconColor: 'bg-pink-500 text-white', // Pink/Rose
+    iconColor: 'bg-gradient-to-br from-pink-500 to-rose-500 text-white',
     shortcut: 'Alt + R',
     description: "Record receipts"
   },
@@ -139,7 +141,7 @@ export const navItems: NavItem[] = [
     title: 'Cash Book',
     href: '/cashbook',
     iconName: 'BookOpen',
-    iconColor: 'bg-yellow-700 text-white', // Brown & Yellow -> Brownish Yellow
+    iconColor: 'bg-gradient-to-br from-yellow-700 to-amber-800 text-white', // Brown and Yellow
     shortcut: 'Alt + C',
     description: "Daily cash flow"
   },
@@ -147,7 +149,7 @@ export const navItems: NavItem[] = [
     title: 'Daybook',
     href: '/daybook',
     iconName: 'BookMarked',
-    iconColor: 'bg-cream-100 text-black', // White/Cream
+    iconColor: 'bg-gradient-to-br from-stone-100 to-gray-200 text-black', // White/Cream
     shortcut: 'Alt + D',
     description: "All daily entries"
   },
@@ -155,16 +157,24 @@ export const navItems: NavItem[] = [
     title: 'Masters',
     href: '/masters',
     iconName: 'Users2',
-    iconColor: 'bg-blue-800 text-white', // Royal Blue
+    iconColor: 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white',
     shortcut: 'Alt + M',
     description: "Manage all parties"
   },
   {
-    title: 'Backup/Restore',
-    href: '/backup',
-    iconName: 'DatabaseBackup',
-    iconColor: 'bg-teal-400 text-white', // Turquoise
+    title: 'Backup Data',
+    href: '#', // Action handled by onClick
+    iconName: 'FileJson',
+    iconColor: 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white',
     shortcut: 'Alt + B',
-    description: "Save or load data"
+    description: "Save your data"
   },
+  {
+    title: 'Restore Data',
+    href: '#', // Action handled by onClick
+    iconName: 'UploadCloud',
+    iconColor: 'bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white',
+    shortcut: 'Alt + V',
+    description: "Load from backup"
+  }
 ];

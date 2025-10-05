@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
 
   const getActionForItem = (title: string): (() => void) | undefined => {
-    if (title === 'Backup/Restore') {
+    if (title === 'Backup Data') {
       return handleExportClick;
     }
     if (title === 'Restore Data') {
@@ -53,17 +53,7 @@ export default function DashboardPage() {
     return undefined;
   };
   
-  const allNavItems = [
-      ...navItems,
-      {
-        title: "Restore Data",
-        href: "",
-        iconName: "UploadCloud",
-        iconColor: 'bg-pink-500 text-white', // Magenta
-        description: "Load from a backup file",
-        shortcut: "Alt + V",
-      }
-  ];
+  const allNavItems = navItems.filter(item => item.href !== '/backup');
 
 
   return (
@@ -74,12 +64,12 @@ export default function DashboardPage() {
       </div>
       
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {allNavItems.filter(item => item.href !== '/dashboard').map((action) => (
+        {allNavItems.map((action) => (
            <DashboardTile
             key={action.title}
             title={action.title}
             description={action.description}
-            href={action.href}
+            href={action.href !== '#' ? action.href : undefined}
             iconName={action.iconName}
             className={action.iconColor}
             onClick={getActionForItem(action.title)}
