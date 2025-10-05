@@ -12,13 +12,6 @@ export const APP_ICON = 'LineChart';
 
 export const navItems: StyledNavItem[] = [
   {
-    title: 'Dashboard',
-    href: '/dashboard',
-    iconName: 'LayoutGrid',
-    description: "Main hub",
-    style: { backgroundImage: 'linear-gradient(to right top, #ffd700, #fdbf00, #f9a800, #f59100, #ef7a00)', color: 'black' }
-  },
-  {
     title: 'Purchases',
     href: '/purchases',
     iconName: 'ShoppingCart',
