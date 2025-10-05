@@ -44,24 +44,19 @@ export default function DashboardPage() {
 
 
   const quickActions = [
-    ...navItems.filter(item => item.href !== '/dashboard' && item.href !== '/backup'), // Exclude dashboard & backup from its own page
-    {
-      title: "Backup Data",
-      description: "Save your application data",
-      iconName: "FileJson",
-      className: "bg-teal-400 text-white", // Turquoise for Backup
-      action: handleExportClick,
-      shortcut: "Alt + B",
-    },
-    {
-      title: "Restore Data",
-      description: "Load data from a backup file",
-      iconName: "UploadCloud",
-      className: "bg-pink-600 text-white", // Magenta for Restore
-      action: handleRestoreTriggerClick,
-      shortcut: "Alt + V",
-    },
+    ...navItems.filter(item => item.href !== '/dashboard'), // Exclude dashboard from its own page
   ];
+
+  // Manually map actions for backup/restore since they are not simple links
+  const getActionForItem = (title: string) => {
+    if (title === 'Backup/Restore') {
+      return handleExportClick;
+    }
+    // In future, you might have a different restore button. For now, one tile handles both.
+    // The navItem for backup/restore will be used for the backup action.
+    return undefined;
+  };
+
 
   return (
     <div className="flex flex-col gap-2">
@@ -78,11 +73,19 @@ export default function DashboardPage() {
             description={action.description}
             href={action.href}
             iconName={action.iconName}
-            className={action.className || (action as any).iconColor}
-            onClick={(action as any).action}
+            className={action.iconColor}
+            onClick={getActionForItem(action.title)}
             shortcut={action.shortcut}
           />
         ))}
+         <DashboardTile
+            title="Restore Data"
+            description="Load from a backup file"
+            iconName="UploadCloud"
+            className="bg-pink-600 text-white"
+            onClick={handleRestoreTriggerClick}
+            shortcut="Alt + V"
+          />
       </div>
       <input
         type="file"

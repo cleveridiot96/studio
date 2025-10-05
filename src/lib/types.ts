@@ -10,6 +10,7 @@ export interface NavItem {
   iconColor?: string; // Background color for the icon's circle
   textColor?: string; // Optional text color for the icon
   label?: string;
+  description?: string;
   disabled?: boolean;
   external?: boolean;
   items?: NavItem[];
