@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Users, Truck, UserCheck, Handshake, PlusCircle, List, Building, DollarSign, Search, ChevronDown } from "lucide-react";
@@ -96,18 +95,27 @@ export default function MastersPage() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      if (isTyping) return;
-
-      if (event.altKey && event.key.toLowerCase() === 'n') {
-        event.preventDefault();
-        openFormForNewItem();
-      }
+        if (event.altKey && event.key.toLowerCase() === 'n') {
+            const target = event.target as HTMLElement;
+            const isTyping = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+            if (isTyping) return;
+            
+            event.preventDefault();
+            openFormForNewItem();
+        }
     };
+    
+    // Also listen for custom event
+    const handleCustomEvent = () => {
+        openFormForNewItem();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-master-form', handleCustomEvent);
+    
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-master-form', handleCustomEvent);
     };
   }, [openFormForNewItem]);
 

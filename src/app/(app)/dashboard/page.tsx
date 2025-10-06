@@ -12,12 +12,14 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { ProfitAnalysisClient } from '@/components/app/profit-analysis/ProfitAnalysisClient';
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { navItems, type StyledNavItem } from '@/lib/config/nav';
+import { useSettings } from '@/contexts/SettingsContext';
 
 export default function DashboardPage() {
   const { toast } = useToast();
   const [lastBackupTimestamp, setLastBackupTimestamp] = useLocalStorageState<number | null>(LAST_BACKUP_TIMESTAMP_KEY, null);
   const restoreFileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { financialYear } = useSettings();
 
   const handleExportClick = useCallback(() => {
     exportDataToPortableFile({ toast, setLastBackupTimestamp, lastBackupTimestampFromState: lastBackupTimestamp });
@@ -60,7 +62,7 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-2">
       <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" />
       <div className="text-left">
-        <h1 className="text-2xl font-bold text-foreground uppercase">Dashboard Central Hub</h1>
+        <h1 className="text-2xl font-bold text-foreground uppercase">Dashboard (FY {financialYear})</h1>
       </div>
       
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">

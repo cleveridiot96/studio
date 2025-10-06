@@ -1,10 +1,12 @@
-
 "use client";
 
+import React, { useEffect, useCallback, useState } from "react";
+import { useRouter } from 'next/navigation';
+import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
 import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
 import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark, CalculatorIcon } from "lucide-react";
+import { Menu, Home, Settings as SettingsIcon, Landmark, CalculatorIcon, LogOut } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
@@ -14,8 +16,6 @@ import { FontEnhancer } from "@/components/layout/FontEnhancer";
 import { FormatButton } from "@/components/layout/FormatButton";
 import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
-import React, { useEffect, useCallback, useState } from "react";
-import { useRouter } from 'next/navigation';
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
@@ -23,6 +23,11 @@ import type { Purchase, Sale, Payment, Receipt, LocationTransfer } from '@/lib/t
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Calculator } from '@/components/shared/Calculator';
 import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
+import { LowStockThresholdSetting } from "@/components/layout/LowStockThresholdSetting";
+
+const AUTH_KEYS = {
+    IS_SETUP_COMPLETE: 'kisan_khata_is_setup_complete',
+};
 
 const LOCAL_STORAGE_KEYS = {
   purchases: 'purchasesData',
@@ -69,6 +74,13 @@ function SearchDataProvider({ children }: { children: React.ReactNode }) {
 
 function AppHeaderContentInternal() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = () => {
+      // In this offline app, "logging out" just means returning to the login screen.
+      router.push('/login');
+  }
+
   return (
     <>
       <Link href="/dashboard">
@@ -96,9 +108,13 @@ function AppHeaderContentInternal() {
         </PopoverTrigger>
         <PopoverContent className="w-auto p-4 space-y-4" align="end">
           <FontEnhancer />
+          <LowStockThresholdSetting />
           <FormatButton />
         </PopoverContent>
       </Popover>
+      <Button variant="ghost" size="icon" aria-label="Logout" onClick={handleLogout}>
+        <LogOut className="h-5 w-5 text-destructive" />
+      </Button>
     </>
   );
 }
@@ -121,6 +137,13 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
       target.isContentEditable;
     
     if (isTyping) return;
+
+    if (event.altKey && event.key.toLowerCase() === 'n' && (window.location.pathname.includes('/masters'))) {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent('open-master-form'));
+        return;
+    }
+
     if (!event.altKey) return;
 
     const key = event.key.toLowerCase();
@@ -213,13 +236,22 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
+    const router = useRouter();
+    const [isSetupComplete] = useLocalStorageState(AUTH_KEYS.IS_SETUP_COMPLETE, false);
     
     useEffect(() => {
         setIsAppLayoutMounted(true);
-    }, []);
+        if (!isSetupComplete) {
+            router.replace('/setup');
+        }
+    }, [isSetupComplete, router]);
 
-    if (!isAppLayoutMounted) {
-        return null;
+    if (!isAppLayoutMounted || !isSetupComplete) {
+        return (
+             <div className="flex h-screen w-screen items-center justify-center bg-background">
+                <p className="text-muted-foreground">Checking application setup...</p>
+            </div>
+        );
     }
 
     return (
