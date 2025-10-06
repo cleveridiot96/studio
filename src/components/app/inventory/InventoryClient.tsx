@@ -251,7 +251,7 @@ export function InventoryClient() {
     setIsMergeFormOpen(false);
   };
   
-  const handleAddAdjustment = React.useCallback((newAdjustment: Omit<StockAdjustment, 'id'>) => {
+  const handleAddAdjustment = useCallback((newAdjustment: Omit<StockAdjustment, 'id'>) => {
     setAdjustments(prev => [{ ...newAdjustment, id: `adj-${Date.now()}` }, ...prev]);
     toast({ title: 'Adjustment Recorded', description: 'The stock adjustment has been successfully saved.' });
   }, [setAdjustments, toast]);

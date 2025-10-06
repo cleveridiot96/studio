@@ -54,7 +54,6 @@ export function LocationTransferClient() {
   const { financialYear, isAppHydrating } = useSettings();
   const { locationTransfers, setLocationTransfers, addLedgerEntry, removeLedgerEntries } = useTransactions();
   const { availableStock } = useInventory();
-  const { setMasterData } = useMasterData();
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
