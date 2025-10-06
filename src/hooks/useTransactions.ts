@@ -28,7 +28,7 @@ interface TransactionsContextType {
   removeLedgerEntries: (voucherId: string) => void;
 }
 
-// Create the context
+// Create the context with a default undefined value
 const TransactionsContext = createContext<TransactionsContextType | undefined>(undefined);
 
 // Storage Keys
@@ -64,7 +64,6 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
   const removeLedgerEntries = useCallback((voucherId: string) => {
     setLedger(prev => prev.filter(entry => entry.relatedVoucher !== voucherId));
   }, [setLedger]);
-
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
