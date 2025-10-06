@@ -2,9 +2,22 @@
 "use client";
 
 import * as React from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, Download } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format, parseISO } from 'date-fns';
@@ -24,7 +37,7 @@ interface SaleTableProps {
   prevPage: () => void;
 }
 
-const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
+const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf, currentPage, totalPages, goToPage, nextPage, prevPage }) => {
   const columns = React.useMemo<ColumnDef<Sale>[]>(() => [
     {
       accessorKey: 'date',
@@ -105,6 +118,12 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
       columns={columns}
       data={data}
       getRowId={(row) => row.id}
+      showPagination={true}
+      currentPage={currentPage}
+      totalPages={totalPages}
+      goToPage={goToPage}
+      nextPage={nextPage}
+      prevPage={prevPage}
     />
   );
 }

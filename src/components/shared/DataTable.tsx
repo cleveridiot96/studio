@@ -44,6 +44,12 @@ interface DataTableProps<TData, TValue> {
   getRowId?: (originalRow: TData, index: number, parent?: any) => string;
   rowSelection?: RowSelectionState;
   setRowSelection?: React.Dispatch<React.SetStateAction<RowSelectionState>>;
+  showPagination?: boolean;
+  currentPage?: number;
+  totalPages?: number;
+  goToPage?: (page: number) => void;
+  nextPage?: () => void;
+  prevPage?: () => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -55,6 +61,12 @@ export function DataTable<TData, TValue>({
   getRowId,
   rowSelection,
   setRowSelection,
+  showPagination = false,
+  currentPage,
+  totalPages,
+  goToPage,
+  nextPage,
+  prevPage
 }: DataTableProps<TData, TValue>) {
   const [internalRowSelection, setInternalRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -150,24 +162,65 @@ export function DataTable<TData, TValue>({
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            PREVIOUS
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            NEXT
-          </Button>
-        </div>
+        {showPagination && currentPage && totalPages && goToPage && nextPage && prevPage && (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+            >
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={prevPage}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={nextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              Last
+            </Button>
+          </div>
+        )}
+        {!showPagination && (
+          <div className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              PREVIOUS
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              NEXT
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

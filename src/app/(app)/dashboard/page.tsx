@@ -54,9 +54,6 @@ export default function DashboardPage() {
     }
     return undefined;
   };
-  
-  const allNavItems = navItems.filter(item => item.href !== '/backup');
-
 
   return (
     <div className="flex flex-col gap-2">
