@@ -67,7 +67,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   onMasterDataUpdate,
 }) => {
   const { toast } = useToast();
-  const { data: masterData } = useMasterData();
+  const { data: masterData, setMasterData } = useMasterData();
   const { customers, transporters, brokers, expenses } = masterData;
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -267,7 +267,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   };
 
   const handleMasterFormSubmit = (newItem: MasterItem) => {
-    setMasterData(newItem.type, (prev: any) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+    setMasterData(newItem.type, (prev: any) => [newItem, ...prev.filter((i:any) => i.id !== newItem.id)]);
     if (newItem.type === 'Customer') methods.setValue('customerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Broker') methods.setValue('brokerId', newItem.id, { shouldValidate: true });
     if (newItem.type === 'Transporter') methods.setValue('transporterId', newItem.id, { shouldValidate: true });
@@ -375,7 +375,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                             <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
                               {field.value ? format(field.value, "dd/MM/yy") : <span>Pick a date</span>} <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button></FormControl></PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(d) => { field.onChange(d); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
+                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(d) => { if(d) field.onChange(d); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus /></PopoverContent>
                           </Popover><FormMessage />
                         </FormItem>)} />
                        <FormField control={control} name="billNumber" render={({ field }) => (
@@ -451,7 +451,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <FormItem className="md:col-span-2"><FormLabel>Net Wt.</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Kg" {...itemField} value={itemField.value ?? ''} 
                               onChange={e => {
                                 setManualNetWeight(prev => ({ ...prev, [index]: true }));
-                                itemField.onChange(parseFloat(e.target.value) || undefined)
+                                if (e.target.value) itemField.onChange(parseFloat(e.target.value)); else itemField.onChange(undefined);
                               }}
                           /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={control} name={`items.${index}.rate`} render={({ field: itemField }) => (

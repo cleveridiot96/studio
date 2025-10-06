@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { MasterItem, Warehouse, Transporter, Purchase, Sale, LocationTransfer, MasterItemType, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown, PurchaseItem, SaleItem, LedgerEntry, ExpenseItem } from "@/lib/types";
+import type { LocationTransfer, MasterItemType, Purchase, Sale, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown, PurchaseItem, SaleItem, LedgerEntry, ExpenseItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,36 +38,13 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
-import { salesMigrator, purchaseMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { useMasterData } from "@/contexts/MasterDataContext";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useInventory } from "@/hooks/useInventory";
 
-// TRIAL PACKAGE 1 DATA
-const initialLocationTransfersData: LocationTransfer[] = [
-    { id: "lt-tp1-1", date: "2024-07-15", fromWarehouseId: "fixed-wh-chiplun", fromWarehouseName: "CHIPLUN", toWarehouseId: "fixed-wh-mumbai", toWarehouseName: "MUMBAI", items: [{ originalLotNumber: "VAKKAL-A1", newLotNumber: "VAKKAL-A1/50", bagsToTransfer: 50, netWeightToTransfer: 2500, grossWeightToTransfer: 2500, preTransferLandedCost: 25.5 }], expenses: [{ account: "Transport Charges", amount: 500, paymentMode: "Cash", partyName: "Self" }], totalExpenses: 500, perKgExpense: 0.2, totalNetWeight: 2500, totalGrossWeight: 2500 },
-];
-
-const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
-const PURCHASES_STORAGE_KEY = 'purchasesData';
-const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
-const SALES_STORAGE_KEY = 'salesData';
-const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
-const LEDGER_STORAGE_KEY = 'ledgerData';
 const KEY_SEPARATOR = '_$_';
-
-export interface AggregatedStockItemForForm {
-  lotNumber: string;
-  locationId: string;
-  locationName?: string;
-  currentBags: number;
-  averageWeightPerBag: number;
-  effectiveRate: number; // This is the up-to-date landed cost per kg
-  purchaseRate: number; // The original base rate
-  costBreakdown: CostBreakdown;
-}
-
 
 interface ExpandedTransferHistoryItem extends LocationTransfer {
   item: LocationTransferItem;
@@ -76,15 +53,9 @@ interface ExpandedTransferHistoryItem extends LocationTransfer {
 export function LocationTransferClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
-  const { data: masterData, getAllMasters, setMasterData } = useMasterData();
-
-  const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, [], locationTransferMigrator);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []);
-  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+  const { locationTransfers, setLocationTransfers, purchases, sales, addLedgerEntry, removeLedgerEntries } = useTransactions();
+  const { availableStock } = useInventory();
+  const { data: masterData, setMasterData } = useMasterData();
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -98,138 +69,13 @@ export function LocationTransferClient() {
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
   React.useEffect(() => {
-    setHydrated(true);
-     if (localStorage.getItem(LOCATION_TRANSFERS_STORAGE_KEY) === null) {
-      setLocationTransfers(initialLocationTransfersData);
-    }
     if (!dateRange) {
         const today = new Date();
         setDateRange({ from: startOfDay(subDays(today, 30)), to: endOfDay(today) });
     }
-  }, [dateRange, setLocationTransfers]);
+  }, [dateRange]);
 
-  const allExpenseParties = React.useMemo(() => getAllMasters(), [getAllMasters]);
-
-  const aggregatedStockForForm = React.useMemo((): AggregatedStockItemForForm[] => {
-    if (isAppHydrating || !hydrated) return [];
-
-    const stockMap = new Map<string, {
-        currentBags: number;
-        currentWeight: number;
-        totalCost: number; // Total value of the stock pile (currentWeight * landedCostPerKg)
-        purchaseRate: number; // The original base rate
-        locationName?: string;
-        costBreakdown: CostBreakdown;
-    }>();
-
-    const transactions = [
-        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
-        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
-        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const }))
-    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    for (const tx of transactions) {
-        if (!isDateInFinancialYear(tx.date, financialYear)) continue;
-        
-        if (tx.txType === 'purchase') {
-            (tx.items || []).forEach((item: PurchaseItem) => {
-                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
-                const landedCost = item.landedCostPerKg || 0;
-                const purchaseExpensesPerKg = landedCost - item.rate;
-                
-                stockMap.set(key, {
-                    currentBags: item.quantity,
-                    currentWeight: item.netWeight,
-                    totalCost: item.netWeight * landedCost,
-                    purchaseRate: item.rate,
-                    locationName: tx.locationName,
-                    costBreakdown: {
-                        baseRate: item.rate,
-                        purchaseExpenses: purchaseExpensesPerKg,
-                        transferExpenses: 0
-                    }
-                });
-            });
-        } else if (tx.txType === 'locationTransfer') {
-            (tx.items || []).forEach((item: LocationTransferItem) => {
-                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
-                const fromEntry = stockMap.get(fromKey);
-
-                if (fromEntry) {
-                    const costOfGoodsToTransfer = fromEntry.currentWeight > 0 ? (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer : 0;
-                    
-                    fromEntry.currentBags -= item.bagsToTransfer;
-                    fromEntry.currentWeight -= item.netWeightToTransfer;
-                    fromEntry.totalCost -= costOfGoodsToTransfer;
-
-                    const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
-                    let toEntry = stockMap.get(toKey);
-
-                    if (!toEntry) {
-                        toEntry = {
-                            currentBags: 0,
-                            currentWeight: 0,
-                            totalCost: 0,
-                            purchaseRate: fromEntry.purchaseRate,
-                            locationName: tx.toWarehouseName,
-                            costBreakdown: { ...fromEntry.costBreakdown }
-                        };
-                    }
-                    
-                    const perKgExpense = (tx.perKgExpense || 0);
-                    const newTotalCostForThisChunk = costOfGoodsToTransfer + (perKgExpense * item.netWeightToTransfer);
-
-                    toEntry.currentBags += item.bagsToTransfer;
-                    toEntry.currentWeight += item.netWeightToTransfer;
-                    toEntry.totalCost += newTotalCostForThisChunk;
-                    toEntry.costBreakdown.transferExpenses += perKgExpense;
-
-                    stockMap.set(toKey, toEntry);
-                }
-            });
-        } else if (tx.txType === 'sale' && tx.id !== transferToEdit?.id) {
-             (tx.items || []).forEach((item: SaleItem) => {
-                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
-                if (saleLotKey) {
-                    const entry = stockMap.get(saleLotKey);
-                    if (entry && entry.currentWeight > 0) {
-                        const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
-                        entry.currentBags -= item.quantity;
-                        entry.currentWeight -= item.netWeight;
-                        entry.totalCost -= costOfGoodsSold;
-                    }
-                }
-            });
-        }
-    }
-
-    const result: AggregatedStockItemForForm[] = [];
-    stockMap.forEach((value, key) => {
-        const separatorIndex = key.indexOf(KEY_SEPARATOR);
-        if (separatorIndex === -1) return;
-        const lotNumber = key.substring(0, separatorIndex);
-        const locationId = key.substring(separatorIndex + KEY_SEPARATOR.length);
-
-        if (value.currentBags > 0.001) {
-            const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
-            result.push({
-                lotNumber,
-                locationId,
-                currentBags: value.currentBags,
-                averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
-                effectiveRate,
-                purchaseRate: value.purchaseRate,
-                locationName: value.locationName,
-                costBreakdown: value.costBreakdown,
-            });
-        }
-    });
-
-    return result;
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear, transferToEdit]);
-
+  const allExpenseParties = masterData ? Object.values(masterData).flat() : [];
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
@@ -237,33 +83,25 @@ export function LocationTransferClient() {
       return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
     });
     
+    removeLedgerEntries(transfer.id);
     if (transfer.expenses && transfer.expenses.length > 0) {
-        const newLedgerEntries: LedgerEntry[] = [];
-        transfer.expenses.forEach(exp => {
-            if (exp.amount > 0) {
-                newLedgerEntries.push({
-                    id: `ledger-${transfer.id}-${exp.account.replace(/\s/g, '')}`,
-                    date: transfer.date,
-                    type: 'Expense',
-                    account: exp.account,
-                    debit: exp.amount,
-                    credit: 0,
-                    paymentMode: exp.paymentMode,
-                    party: exp.partyName || 'Self',
-                    partyId: exp.partyId,
-                    relatedVoucher: transfer.id,
-                    linkedTo: {
-                        voucherType: 'Transfer',
-                        voucherId: transfer.id,
-                    },
-                    remarks: `Expense for transfer from ${transfer.fromWarehouseName} to ${transfer.toWarehouseName}`
-                });
-            }
-        });
+        const newLedgerEntries = transfer.expenses.filter(exp => exp.amount > 0).map(exp => ({
+            id: `ledger-${transfer.id}-${exp.account.replace(/\s/g, '')}`,
+            date: transfer.date,
+            type: 'Expense' as const,
+            account: exp.account,
+            debit: exp.amount,
+            credit: 0,
+            paymentMode: exp.paymentMode,
+            party: exp.partyName || 'Self',
+            partyId: exp.partyId,
+            relatedVoucher: transfer.id,
+            linkedTo: { voucherType: 'Transfer' as const, voucherId: transfer.id },
+            remarks: `Expense for transfer from ${transfer.fromWarehouseName} to ${transfer.toWarehouseName}`
+        }));
 
         if (newLedgerEntries.length > 0) {
-            setLedgerData(prevLedger => [...prevLedger.filter(l => l.relatedVoucher !== transfer.id), ...newLedgerEntries]);
-            toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
+            addLedgerEntry(newLedgerEntries);
         }
     }
 
@@ -277,13 +115,13 @@ export function LocationTransferClient() {
   const confirmDeleteTransfer = () => {
     if (itemToDelete) {
       setLocationTransfers(prev => prev.filter(t => t.id !== itemToDelete!.id));
-      setLedgerData(prev => prev.filter(l => l.relatedVoucher !== itemToDelete!.id));
+      removeLedgerEntries(itemToDelete.id);
       toast({ title: "Transfer Deleted", description: "Record removed.", variant: "destructive" });
       setItemToDelete(null); setShowDeleteConfirm(false);
     }
   };
 
-  const handleMasterDataUpdate = (type: MasterItemType, newItem: MasterItem) => {
+  const handleMasterDataUpdate = (type: MasterItemType, newItem: any) => {
     setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
   };
 
@@ -336,7 +174,7 @@ export function LocationTransferClient() {
   }, [transferForPdf, toast]);
 
   const expandedTransfers = React.useMemo(() => {
-    if (isAppHydrating || !hydrated || !dateRange?.from) return [];
+    if (isAppHydrating || !dateRange?.from) return [];
     
     const filtered = locationTransfers.filter(lt => isDateInFinancialYear(lt.date, financialYear) && new Date(lt.date) >= dateRange.from! && new Date(lt.date) <= (dateRange.to || new Date()));
     
@@ -350,7 +188,7 @@ export function LocationTransferClient() {
     });
 
     return flatList.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [locationTransfers, financialYear, isAppHydrating, hydrated, dateRange]);
+  }, [locationTransfers, financialYear, isAppHydrating, dateRange]);
   
   const transferHistoryTotals = React.useMemo(() => {
     if (!expandedTransfers || expandedTransfers.length === 0) {
@@ -386,7 +224,7 @@ export function LocationTransferClient() {
     setDateRange({ from, to });
   };
 
-  if (isAppHydrating || !hydrated) {
+  if (isAppHydrating) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
   }
 
@@ -430,8 +268,8 @@ export function LocationTransferClient() {
                         <TableHead className="text-right">LANDED RATE (₹/KG)</TableHead>
                     </TableRow></TableHeader>
                         <TableBody>
-                            {aggregatedStockForForm.length === 0 && <TableRow><TableCell colSpan={5} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
-                            {aggregatedStockForForm.map(item => (
+                            {availableStock.length === 0 && <TableRow><TableCell colSpan={5} className="text-center h-24">No stock for FY {financialYear}.</TableCell></TableRow>}
+                            {availableStock.map(item => (
                                 <TableRow key={`${item.locationId}${KEY_SEPARATOR}${item.lotNumber}`} className="uppercase">
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.locationName || item.locationId}</span></TooltipTrigger><TooltipContent><p>{item.locationName || item.locationId}</p></TooltipContent></Tooltip></TableCell>
                                     <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{item.lotNumber}</span></TooltipTrigger><TooltipContent><p>{item.lotNumber}</p></TooltipContent></Tooltip></TableCell>
@@ -560,12 +398,7 @@ export function LocationTransferClient() {
             setTransferToEdit(null);
           }}
           onSubmit={handleAddOrUpdateTransfer}
-          warehouses={masterData.Warehouse as Warehouse[]}
-          transporters={masterData.Transporter as Transporter[]}
-          expenses={masterData.Expense}
-          allExpenseParties={allExpenseParties}
-          availableStock={aggregatedStockForForm}
-          onMasterDataUpdate={handleMasterDataUpdate}
+          availableStock={availableStock}
           transferToEdit={transferToEdit}
         />
       )}

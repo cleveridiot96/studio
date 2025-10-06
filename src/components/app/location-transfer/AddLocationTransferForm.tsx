@@ -238,7 +238,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               mode="single"
                               selected={field.value}
                               onSelect={(date) => {
-                                field.onChange(date);
+                                if (date) field.onChange(date);
                                 setIsDatePickerOpen(false);
                               }}
                               disabled={(date) => date > new Date()}
@@ -397,7 +397,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                               }} value={itemField.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="SELECT ACCOUNT" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                  {expenseOptions.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
+                                  {expenses.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -455,7 +455,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                     const stockInfo = availableStock.find(s => s.lotNumber === item.originalLotNumber && s.locationId === watch('fromWarehouseId'));
                                     const originalLandedCost = stockInfo?.effectiveRate || 0;
                                     const perKgExpense = transferSummary.perKgExpense || 0;
-                                    const finalLandedCost = originalLandedCost &gt; 0 ? originalLandedCost + perKgExpense : 0;
+                                    const finalLandedCost = originalLandedCost > 0 ? originalLandedCost + perKgExpense : 0;
 
                                     return (
                                         <TableRow key={index} className="uppercase">
@@ -506,5 +506,3 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     </>
   );
 };
-
-    

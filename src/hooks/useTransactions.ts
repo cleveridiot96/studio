@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
 import { useLocalStorageState } from './useLocalStorageState';
 import type { Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry, PurchaseReturn, SaleReturn } from '@/lib/types';
 import { purchaseMigrator, salesMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
@@ -44,7 +44,7 @@ const STORAGE_KEYS = {
 };
 
 // Create the provider component
-export const TransactionsProvider = ({ children }: { children: React.ReactNode }) => {
+export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(STORAGE_KEYS.purchases, [], purchaseMigrator);
   const [sales, setSales] = useLocalStorageState<Sale[]>(STORAGE_KEYS.sales, [], salesMigrator);
   const [payments, setPayments] = useLocalStorageState<Payment[]>(STORAGE_KEYS.payments, []);
@@ -54,16 +54,16 @@ export const TransactionsProvider = ({ children }: { children: React.ReactNode }
   const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(STORAGE_KEYS.saleReturns, []);
   const [ledger, setLedger] = useLocalStorageState<LedgerEntry[]>(STORAGE_KEYS.ledger, []);
 
-  const addLedgerEntry = (entryOrEntries: LedgerEntry | LedgerEntry[]) => {
+  const addLedgerEntry = useCallback((entryOrEntries: LedgerEntry | LedgerEntry[]) => {
     setLedger(prev => {
         const entriesToAdd = Array.isArray(entryOrEntries) ? entryOrEntries : [entryOrEntries];
         return [...prev, ...entriesToAdd];
     });
-  };
+  }, [setLedger]);
 
-  const removeLedgerEntries = (voucherId: string) => {
+  const removeLedgerEntries = useCallback((voucherId: string) => {
     setLedger(prev => prev.filter(entry => entry.relatedVoucher !== voucherId));
-  };
+  }, [setLedger]);
 
 
   // Memoize the context value to prevent unnecessary re-renders
@@ -86,7 +86,9 @@ export const TransactionsProvider = ({ children }: { children: React.ReactNode }
     locationTransfers, setLocationTransfers,
     purchaseReturns, setPurchaseReturns,
     saleReturns, setSaleReturns,
-    ledger, setLedger
+    ledger, setLedger,
+    addLedgerEntry,
+    removeLedgerEntries
   ]);
 
   return (
