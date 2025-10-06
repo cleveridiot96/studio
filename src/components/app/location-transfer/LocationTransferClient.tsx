@@ -2,8 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { LocationTransfer, MasterItemType, Purchase, Sale, PurchaseReturn, SaleReturn, LocationTransferItem, CostBreakdown, PurchaseItem, SaleItem, LedgerEntry, ExpenseItem } from "@/lib/types";
+import type { LocationTransfer, MasterItemType, StockAdjustment } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,15 +46,15 @@ import { useInventory } from "@/hooks/useInventory";
 const KEY_SEPARATOR = '_$_';
 
 interface ExpandedTransferHistoryItem extends LocationTransfer {
-  item: LocationTransferItem;
+  item: LocationTransfer['items'][0];
 }
 
 export function LocationTransferClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const { locationTransfers, setLocationTransfers, purchases, sales, addLedgerEntry, removeLedgerEntries } = useTransactions();
+  const { locationTransfers, setLocationTransfers, addLedgerEntry, removeLedgerEntries } = useTransactions();
   const { availableStock } = useInventory();
-  const { data: masterData, setMasterData } = useMasterData();
+  const { setMasterData } = useMasterData();
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -74,8 +73,6 @@ export function LocationTransferClient() {
         setDateRange({ from: startOfDay(subDays(today, 30)), to: endOfDay(today) });
     }
   }, [dateRange]);
-
-  const allExpenseParties = masterData ? Object.values(masterData).flat() : [];
 
   const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
@@ -119,10 +116,6 @@ export function LocationTransferClient() {
       toast({ title: "Transfer Deleted", description: "Record removed.", variant: "destructive" });
       setItemToDelete(null); setShowDeleteConfirm(false);
     }
-  };
-
-  const handleMasterDataUpdate = (type: MasterItemType, newItem: any) => {
-    setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
   };
 
   const triggerDownloadTransferPdf = React.useCallback((transfer: LocationTransfer) => {

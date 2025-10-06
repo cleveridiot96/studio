@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
 import { useLocalStorageState } from './useLocalStorageState';
-import type { Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry, PurchaseReturn, SaleReturn } from '@/lib/types';
+import type { Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry, PurchaseReturn, SaleReturn, StockAdjustment } from '@/lib/types';
 import { purchaseMigrator, salesMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
 
 // Define the shape of the context data
@@ -22,6 +22,8 @@ interface TransactionsContextType {
   setPurchaseReturns: (data: PurchaseReturn[] | ((prev: PurchaseReturn[]) => PurchaseReturn[])) => void;
   saleReturns: SaleReturn[];
   setSaleReturns: (data: SaleReturn[] | ((prev: SaleReturn[]) => SaleReturn[])) => void;
+  adjustments: StockAdjustment[];
+  setAdjustments: (data: StockAdjustment[] | ((prev: StockAdjustment[]) => StockAdjustment[])) => void;
   ledger: LedgerEntry[];
   setLedger: (data: LedgerEntry[] | ((prev: LedgerEntry[]) => LedgerEntry[])) => void;
   addLedgerEntry: (entry: LedgerEntry | LedgerEntry[]) => void;
@@ -40,6 +42,7 @@ const STORAGE_KEYS = {
   locationTransfers: 'locationTransfersData',
   purchaseReturns: 'purchaseReturnsData',
   saleReturns: 'saleReturnsData',
+  adjustments: 'stockAdjustmentsData',
   ledger: 'ledgerData',
 };
 
@@ -52,6 +55,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
   const [locationTransfers, setLocationTransfers] = useLocalStorageState<LocationTransfer[]>(STORAGE_KEYS.locationTransfers, [], locationTransferMigrator);
   const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(STORAGE_KEYS.purchaseReturns, []);
   const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(STORAGE_KEYS.saleReturns, []);
+  const [adjustments, setAdjustments] = useLocalStorageState<StockAdjustment[]>(STORAGE_KEYS.adjustments, []);
   const [ledger, setLedger] = useLocalStorageState<LedgerEntry[]>(STORAGE_KEYS.ledger, []);
 
   const addLedgerEntry = useCallback((entryOrEntries: LedgerEntry | LedgerEntry[]) => {
@@ -74,6 +78,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
     locationTransfers, setLocationTransfers,
     purchaseReturns, setPurchaseReturns,
     saleReturns, setSaleReturns,
+    adjustments, setAdjustments,
     ledger, setLedger,
     addLedgerEntry,
     removeLedgerEntries,
@@ -85,6 +90,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
     locationTransfers, setLocationTransfers,
     purchaseReturns, setPurchaseReturns,
     saleReturns, setSaleReturns,
+    adjustments, setAdjustments,
     ledger, setLedger,
     addLedgerEntry,
     removeLedgerEntries

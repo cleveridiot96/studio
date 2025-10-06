@@ -38,11 +38,12 @@ export function SalesClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
   const { sales, saleReturns, setSales, setSaleReturns, addLedgerEntry, removeLedgerEntries } = useTransactions();
-  const { availableStock } = useInventory();
-  const { setMasterData } = useMasterData();
   
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
+  const { availableStock } = useInventory(saleToEdit?.id); // Pass saleToEdit ID to the hook
+  const { setMasterData } = useMasterData();
+  
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [saleToDeleteId, setSaleToDeleteId] = React.useState<string | null>(null);
   
@@ -235,7 +236,7 @@ export function SalesClient() {
       </Tabs>
       
       <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white' }}>{saleForPdf && <SaleChittiPrint sale={saleForPdf} />}</div>
-      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={availableStock} existingSales={sales} saleToEdit={saleToEdit} onMasterDataUpdate={handleMasterDataUpdate} />}
+      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={availableStock} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
       {isAddSaleReturnFormOpen && <AddSaleReturnForm isOpen={isAddSaleReturnFormOpen} onClose={closeAddSaleReturnForm} onSubmit={handleAddOrUpdateSaleReturn} sales={sales} existingSaleReturns={saleReturns} saleReturnToEdit={saleReturnToEdit} />}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
