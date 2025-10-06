@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { Home, Settings as SettingsIcon, Landmark, CalculatorIcon, AlertTriangle, LogOut } from "lucide-react";
+import { Home, Settings as SettingsIcon, Landmark, CalculatorIcon, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FontEnhancer } from "@/components/layout/FontEnhancer";

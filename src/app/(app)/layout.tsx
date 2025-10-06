@@ -1,57 +1,37 @@
+
 "use client";
 
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useRouter } from 'next/navigation';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
-import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
-import { navItems, APP_NAME, APP_ICON } from "@/lib/config/nav";
-import Link from "next/link";
-import { Menu, Home, Settings as SettingsIcon, Landmark, CalculatorIcon, LogOut } from "lucide-react";
+import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, SidebarHeader, SidebarContent } from "@/components/ui/sidebar";
+import { navItems } from "@/lib/config/nav";
+import { Menu } from "lucide-react";
 import { ClientSidebarMenu } from "@/components/layout/ClientSidebarMenu";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider, useSettings } from "@/contexts/SettingsContext";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { FontEnhancer } from "@/components/layout/FontEnhancer";
-import { FormatButton } from "@/components/layout/FormatButton";
-import { FinancialYearToggle } from "@/components/layout/FinancialYearToggle";
 import { AppExitHandler } from '@/components/layout/AppExitHandler';
 import SearchBar from '@/components/shared/SearchBar';
 import { initSearchEngine } from '@/lib/searchEngine';
 import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { Calculator } from '@/components/shared/Calculator';
 import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
-import { LowStockThresholdSetting } from "@/components/layout/LowStockThresholdSetting";
+import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions';
+import { AppHeaderContentInternal } from "@/components/layout/AppHeaderContentInternal";
 
 const AUTH_KEYS = {
     IS_SETUP_COMPLETE: 'kisan_khata_is_setup_complete',
 };
 
-const LOCAL_STORAGE_KEYS = {
-  purchases: 'purchasesData',
-  sales: 'salesData',
-  receipts: 'receiptsData',
-  payments: 'paymentsData',
-  locationTransfers: 'locationTransfersData',
-};
-
-
 function SearchDataProvider({ children }: { children: React.ReactNode }) {
   const { getAllMasters } = useMasterData();
+  const { sales, purchases, payments, receipts, locationTransfers } = useTransactions();
 
   useEffect(() => {
     const reindexData = () => {
       try {
-        const purchases = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.purchases) || '[]') as Purchase[];
-        const sales = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.sales) || '[]') as Sale[];
-        const payments = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.payments) || '[]') as Payment[];
-        const receipts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.receipts) || '[]') as Receipt[];
-        const locationTransfers = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.locationTransfers) || '[]') as LocationTransfer[];
-        
         const allMasters = getAllMasters();
-
         const searchDataset = buildSearchData({
           sales, purchases, payments, receipts, masters: allMasters, locationTransfers
         });
@@ -66,67 +46,19 @@ function SearchDataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('reindex-search', reindexData);
     };
-  }, [getAllMasters]);
+  }, [getAllMasters, sales, purchases, payments, receipts, locationTransfers]);
 
   return <>{children}</>;
 }
 
 
-function AppHeaderContentInternal() {
-  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
-  const router = useRouter();
-
-  const handleLogout = () => {
-      // In this offline app, "logging out" just means returning to the login screen.
-      router.push('/login');
-  }
-
-  return (
-    <>
-      <Link href="/dashboard">
-        <Button variant="ghost" size="icon" aria-label="Home">
-          <Home className="h-5 w-5 text-foreground" />
-        </Button>
-      </Link>
-      <SearchBar />
-      <FinancialYearToggle />
-      <Link href="/balance-sheet">
-        <Button variant="outline">
-            <Landmark className="mr-2 h-4 w-4"/>
-            FINANCIAL SUMMARY
-        </Button>
-      </Link>
-      <Button variant="ghost" size="icon" aria-label="Open Calculator" onClick={() => setIsCalculatorOpen(true)}>
-        <CalculatorIcon className="h-5 w-5 text-foreground" />
-      </Button>
-      <Calculator isVisible={isCalculatorOpen} onClose={() => setIsCalculatorOpen(false)} />
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Settings">
-            <SettingsIcon className="h-5 w-5 text-foreground" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-4 space-y-4" align="end">
-          <FontEnhancer />
-          <LowStockThresholdSetting />
-          <FormatButton />
-        </PopoverContent>
-      </Popover>
-      <Button variant="ghost" size="icon" aria-label="Logout" onClick={handleLogout}>
-        <LogOut className="h-5 w-5 text-destructive" />
-      </Button>
-    </>
-  );
-}
-
 function LoadingBarInternal() {
   const { isAppHydrating } = useSettings();
   if (!isAppHydrating) return null;
-  return <div className="w-full h-1 bg-primary animate-pulse" />;
+  return <div className="absolute top-0 left-0 w-full h-1 bg-primary animate-pulse" />;
 }
 
 function AppLayoutInternal({ children }: { children: React.ReactNode }) {
-  const AppIcon = APP_ICON;
   const router = useRouter();
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -192,44 +124,39 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <>
-        <div className="flex flex-1 bg-background">
-          <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
-            <SidebarHeader className="flex h-14 items-center justify-center p-2 border-b border-sidebar-border">
-                <SidebarTrigger>
-                  <Menu className="h-6 w-6 text-sidebar-foreground" />
-                </SidebarTrigger>
-            </SidebarHeader>
-            <SidebarContent className="py-2">
-              <ClientSidebarMenu navItems={navItems} />
-            </SidebarContent>
-            <SidebarFooter className="p-2 border-t border-sidebar-border">
-                
-            </SidebarFooter>
-          </Sidebar>
+    <div className="flex flex-1 bg-background h-full">
+      <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
+        <SidebarHeader className="flex h-14 items-center justify-center p-2 border-b border-sidebar-border">
+            <SidebarTrigger>
+              <Menu className="h-6 w-6 text-sidebar-foreground" />
+            </SidebarTrigger>
+        </SidebarHeader>
+        <SidebarContent className="py-2">
+          <ClientSidebarMenu navItems={navItems} />
+        </SidebarContent>
+      </Sidebar>
 
-          <div className="flex flex-col flex-1 min-h-0 relative">
-            <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="md:hidden -ml-2">
-                  <Menu className="h-6 w-6 text-foreground" />
-                </SidebarTrigger>
-              </div>
-              <div className="flex items-center gap-2 flex-1 justify-center min-w-0">
-                <AppHeaderContentInternal />
-              </div>
-            </header>
-            <LoadingBarInternal />
-            <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
-              <ErrorBoundary>
-                <div className="flex flex-col flex-1 w-full min-w-0">
-                    {children}
-                </div>
-              </ErrorBoundary>
-            </SidebarInset>
+      <div className="flex flex-col flex-1 min-h-0 relative">
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="md:hidden -ml-2">
+              <Menu className="h-6 w-6 text-foreground" />
+            </SidebarTrigger>
           </div>
-        </div>
-    </>
+          <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+            <AppHeaderContentInternal />
+          </div>
+        </header>
+        <LoadingBarInternal />
+        <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
+          <ErrorBoundary>
+            <div className="flex flex-col flex-1 w-full min-w-0">
+                {children}
+            </div>
+          </ErrorBoundary>
+        </SidebarInset>
+      </div>
+    </div>
   );
 }
 
@@ -257,13 +184,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <SettingsProvider>
           <MasterDataProvider>
-            <SidebarProvider defaultOpen={false} collapsible="icon">
-                <AppExitHandler />
-                <SearchDataProvider>
-                  <AppLayoutInternal>{children}</AppLayoutInternal>
-                </SearchDataProvider>
-                <Toaster />
-            </SidebarProvider>
+            <TransactionsProvider>
+              <SidebarProvider defaultOpen={false} collapsible="icon">
+                  <AppExitHandler />
+                  <SearchDataProvider>
+                    <AppLayoutInternal>{children}</AppLayoutInternal>
+                  </SearchDataProvider>
+                  <Toaster />
+              </SidebarProvider>
+            </TransactionsProvider>
           </MasterDataProvider>
         </SettingsProvider>
     );

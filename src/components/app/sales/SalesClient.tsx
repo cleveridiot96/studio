@@ -4,7 +4,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, SaleReturn, CostBreakdown, SaleItem } from "@/lib/types";
+import type { Sale, SaleReturn, CostBreakdown, SaleItem, MasterItemType } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -30,25 +30,16 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useInventory } from '@/hooks/useInventory';
+import { useMasterData } from "@/contexts/MasterDataContext";
 
 const KEY_SEPARATOR = '_$_';
-
-export interface AggregatedStockItemForForm {
-  lotNumber: string;
-  currentBags: number;
-  effectiveRate: number; 
-  purchaseRate: number;
-  averageWeightPerBag: number;
-  locationId: string;
-  locationName?: string;
-  costBreakdown: CostBreakdown;
-}
 
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear } = useSettings();
   const { sales, saleReturns, setSales, setSaleReturns, addLedgerEntry, removeLedgerEntries } = useTransactions();
   const { availableStock } = useInventory();
+  const { setMasterData } = useMasterData();
   
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
@@ -66,7 +57,6 @@ export function SalesClient() {
   
   const [currentPage, setCurrentPage] = React.useState(1);
   const ITEMS_PER_PAGE = 25;
-
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
     const isEditing = sales.some(s => s.id === sale.id);
@@ -121,6 +111,12 @@ export function SalesClient() {
     setIsAddSaleReturnFormOpen(false); setSaleReturnToEdit(null);
   }, [setSaleReturns, toast, saleReturns]);
 
+  const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: any) => {
+     setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+     toast({ title: `Master list updated for ${type}.`});
+  }, [toast, setMasterData]);
+
+
   const handleEditSaleReturn = React.useCallback((sr: SaleReturn) => { toast({title: "Info", description:"Editing sale returns is planned."})}, [toast]);
   const handleDeleteSaleReturnAttempt = React.useCallback((srId: string) => { setSaleReturnToDeleteId(srId); setShowDeleteReturnConfirm(true); }, []);
   const confirmDeleteSaleReturn = React.useCallback(() => {
@@ -130,7 +126,6 @@ export function SalesClient() {
       setSaleReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
     }
   }, [saleReturnToDeleteId, setSaleReturns, toast]);
-
 
   const openAddSaleForm = React.useCallback(() => { setSaleToEdit(null); setIsAddSaleFormOpen(true); }, []);
   const closeAddSaleForm = React.useCallback(() => { setIsAddSaleFormOpen(false); setSaleToEdit(null); }, []);
@@ -240,7 +235,7 @@ export function SalesClient() {
       </Tabs>
       
       <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white' }}>{saleForPdf && <SaleChittiPrint sale={saleForPdf} />}</div>
-      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={availableStock} existingSales={sales} saleToEdit={saleToEdit} />}
+      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={availableStock} existingSales={sales} saleToEdit={saleToEdit} onMasterDataUpdate={handleMasterDataUpdate} />}
       {isAddSaleReturnFormOpen && <AddSaleReturnForm isOpen={isAddSaleReturnFormOpen} onClose={closeAddSaleReturnForm} onSubmit={handleAddOrUpdateSaleReturn} sales={sales} existingSaleReturns={saleReturns} saleReturnToEdit={saleReturnToEdit} />}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
