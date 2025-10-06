@@ -9,6 +9,13 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        sans: ['var(--font-sans)', 'system-ui'],
+        poppins: ['Poppins', 'sans-serif'],
+        lora: ['Lora', 'serif'],
+        dancing: ['Dancing Script', 'cursive'],
+        devanagari: ['Tiro Devanagari Hindi', 'serif'],
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

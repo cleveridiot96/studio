@@ -16,6 +16,17 @@ const GREETINGS = [
   "Jai Shree Krishna",
 ];
 
+const FONT_CLASSES = [
+    "font-devanagari",
+    "font-poppins",
+    "font-lora",
+    "font-dancing",
+    "font-poppins",
+    "font-lora",
+    "font-devanagari"
+];
+
+
 // This page now acts as a smart loader and entry point.
 export default function SmartLoaderPage() {
   const [index, setIndex] = useState(0);
@@ -66,7 +77,10 @@ export default function SmartLoaderPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.8 }}
-              className="absolute text-4xl md:text-6xl font-semibold text-center"
+              className={cn(
+                "absolute text-4xl md:text-6xl font-semibold text-center",
+                FONT_CLASSES[index % FONT_CLASSES.length]
+              )}
             >
               {GREETINGS[index]}
             </motion.div>
