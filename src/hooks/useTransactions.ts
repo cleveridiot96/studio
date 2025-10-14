@@ -44,7 +44,7 @@ const STORAGE_KEYS = {
   saleReturns: 'saleReturnsData',
   adjustments: 'stockAdjustmentsData',
   ledger: 'ledgerData',
-};
+} as const;
 
 // Create the provider component
 export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
@@ -59,10 +59,8 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
   const [ledger, setLedger] = useLocalStorageState<LedgerEntry[]>(STORAGE_KEYS.ledger, []);
 
   const addLedgerEntry = useCallback((entryOrEntries: LedgerEntry | LedgerEntry[]) => {
-    setLedger(prev => {
-        const entriesToAdd = Array.isArray(entryOrEntries) ? entryOrEntries : [entryOrEntries];
-        return [...prev, ...entriesToAdd];
-    });
+    const entriesToAdd = Array.isArray(entryOrEntries) ? entryOrEntries : [entryOrEntries];
+    setLedger(prev => [...prev, ...entriesToAdd]);
   }, [setLedger]);
 
   const removeLedgerEntries = useCallback((voucherId: string) => {
@@ -71,15 +69,24 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    purchases, setPurchases,
-    sales, setSales,
-    payments, setPayments,
-    receipts, setReceipts,
-    locationTransfers, setLocationTransfers,
-    purchaseReturns, setPurchaseReturns,
-    saleReturns, setSaleReturns,
-    adjustments, setAdjustments,
-    ledger, setLedger,
+    purchases,
+    setPurchases,
+    sales,
+    setSales,
+    payments,
+    setPayments,
+    receipts,
+    setReceipts,
+    locationTransfers,
+    setLocationTransfers,
+    purchaseReturns,
+    setPurchaseReturns,
+    saleReturns,
+    setSaleReturns,
+    adjustments,
+    setAdjustments,
+    ledger,
+    setLedger,
     addLedgerEntry,
     removeLedgerEntries,
   }), [
@@ -92,8 +99,7 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
     saleReturns, setSaleReturns,
     adjustments, setAdjustments,
     ledger, setLedger,
-    addLedgerEntry,
-    removeLedgerEntries
+    addLedgerEntry, removeLedgerEntries
   ]);
 
   return (
