@@ -50,14 +50,11 @@ export function PurchasesClient() {
 
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
-  const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const [purchaseToDeleteId, setPurchaseToDeleteId] = React.useState<string | null>(null);
-
   const [isAddPurchaseReturnFormOpen, setIsAddPurchaseReturnFormOpen] = React.useState(false);
+  const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
   const [purchaseReturnToEdit, setPurchaseReturnToEdit] = React.useState<PurchaseReturn | null>(null);
-  const [showDeleteReturnConfirm, setShowDeleteReturnConfirm] = React.useState(false);
-  const [purchaseReturnToDeleteId, setPurchaseReturnToDeleteId] = React.useState<string | null>(null);
+
+  const [itemToDelete, setItemToDelete] = React.useState<{id: string, type: 'purchase' | 'return'} | null>(null);
 
   const [purchaseForPdf, setPurchaseForPdf] = React.useState<Purchase | null>(null);
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
@@ -102,6 +99,7 @@ export function PurchasesClient() {
     }
 
     setPurchaseToEdit(null);
+    setIsAddPurchaseFormOpen(false);
     toast({ title: "Success!", description: isEditing ? "Purchase updated." : "Purchase added." });
     window.dispatchEvent(new CustomEvent('reindex-search'));
   }, [purchases, setPurchases, addLedgerEntry, removeLedgerEntries, toast]);
@@ -143,20 +141,8 @@ export function PurchasesClient() {
         return;
     }
 
-    setPurchaseToDeleteId(purchaseId);
-    setShowDeleteConfirm(true);
-}, [purchases, sales, locationTransfers, toast]);
-
-
-  const confirmDeletePurchase = React.useCallback(() => {
-    if (purchaseToDeleteId) {
-      setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
-      removeLedgerEntries(purchaseToDeleteId);
-      toast({ title: "Deleted!", description: "Purchase record removed.", variant: "destructive" });
-      setPurchaseToDeleteId(null); setShowDeleteConfirm(false);
-      window.dispatchEvent(new CustomEvent('reindex-search'));
-    }
-  }, [purchaseToDeleteId, setPurchases, removeLedgerEntries, toast]);
+    setItemToDelete({id: purchaseId, type: 'purchase'});
+  }, [purchases, sales, locationTransfers, toast]);
 
   const handleAddOrUpdatePurchaseReturn = React.useCallback((prData: PurchaseReturn) => {
     setPurchaseReturns(prevReturns => {
@@ -164,6 +150,7 @@ export function PurchasesClient() {
       return isEditing ? prevReturns.map(pr => pr.id === prData.id ? prData : pr) : [{ ...prData, id: prData.id || `pr-${Date.now()}` }, ...prevReturns];
     });
     setPurchaseReturnToEdit(null);
+    setIsAddPurchaseReturnFormOpen(false);
     toast({ title: "Success!", description: purchaseReturns.some(pr => pr.id === prData.id) ? "Purchase return updated." : "Purchase return added." });
     window.dispatchEvent(new CustomEvent('reindex-search'));
   }, [purchaseReturns, setPurchaseReturns, toast]);
@@ -173,21 +160,23 @@ export function PurchasesClient() {
     setIsAddPurchaseReturnFormOpen(true);
   }, []);
 
-  const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => { setPurchaseReturnToDeleteId(prId); setShowDeleteReturnConfirm(true); }, []);
-  const confirmDeletePurchaseReturn = React.useCallback(() => {
-    if (purchaseReturnToDeleteId) {
-      setPurchaseReturns(prev => prev.filter(pr => pr.id !== purchaseReturnToDeleteId));
+  const handleDeletePurchaseReturnAttempt = React.useCallback((prId: string) => { 
+    setItemToDelete({id: prId, type: 'return'});
+  }, []);
+  
+  const confirmDelete = React.useCallback(() => {
+    if (!itemToDelete) return;
+    if (itemToDelete.type === 'purchase') {
+      setPurchases(prev => prev.filter(p => p.id !== itemToDelete.id));
+      removeLedgerEntries(itemToDelete.id);
+      toast({ title: "Deleted!", description: "Purchase record removed.", variant: "destructive" });
+    } else {
+      setPurchaseReturns(prev => prev.filter(pr => pr.id !== itemToDelete.id));
       toast({ title: "Deleted!", description: "Purchase return record removed.", variant: "destructive" });
-      setPurchaseReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
-      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
-  }, [purchaseReturnToDeleteId, setPurchaseReturns, toast]);
-
-  const openAddPurchaseForm = React.useCallback(() => { setPurchaseToEdit(null); setIsAddPurchaseFormOpen(true); }, []);
-  const closeAddPurchaseForm = React.useCallback(() => { setIsAddPurchaseFormOpen(false); setPurchaseToEdit(null); }, []);
-  const openAddPurchaseReturnForm = React.useCallback(() => { setPurchaseReturnToEdit(null); setIsAddPurchaseReturnFormOpen(true); }, []);
-  const closeAddPurchaseReturnForm = React.useCallback(() => { setIsAddPurchaseReturnFormOpen(false); setPurchaseReturnToEdit(null); }, []);
-
+    setItemToDelete(null);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+  }, [itemToDelete, setPurchases, setPurchaseReturns, removeLedgerEntries, toast]);
 
   const triggerDownloadPurchasePdf = React.useCallback((purchase: Purchase) => setPurchaseForPdf(purchase), []);
   
@@ -248,7 +237,7 @@ export function PurchasesClient() {
 
         <TabsContent value="purchases">
           <div className="flex justify-end gap-2 mb-2 no-print">
-            <Button onClick={openAddPurchaseForm} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+            <Button onClick={() => { setPurchaseToEdit(null); setIsAddPurchaseFormOpen(true); }} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase
             </Button>
             <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -258,7 +247,7 @@ export function PurchasesClient() {
 
         <TabsContent value="purchaseReturns">
           <div className="flex justify-end gap-2 mb-2 no-print">
-            <Button onClick={openAddPurchaseReturnForm} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
+            <Button onClick={() => { setPurchaseReturnToEdit(null); setIsAddPurchaseReturnFormOpen(true); }} size="default" className={cn("text-base py-2 px-5 shadow-md", addButtonDynamicClass)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Purchase Return
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
@@ -271,7 +260,7 @@ export function PurchasesClient() {
         <AddPurchaseForm
           key={purchaseToEdit ? `edit-purchase-${purchaseToEdit.id}` : 'add-new-purchase'}
           isOpen={isAddPurchaseFormOpen}
-          onClose={closeAddPurchaseForm}
+          onClose={() => setIsAddPurchaseFormOpen(false)}
           onSubmit={handleAddOrUpdatePurchase}
           purchaseToEdit={purchaseToEdit}
         />
@@ -280,7 +269,7 @@ export function PurchasesClient() {
         <AddPurchaseReturnForm
           key={purchaseReturnToEdit ? `edit-preturn-${purchaseReturnToEdit.id}` : 'add-new-preturn'}
           isOpen={isAddPurchaseReturnFormOpen}
-          onClose={closeAddPurchaseReturnForm}
+          onClose={() => setIsAddPurchaseReturnFormOpen(false)}
           onSubmit={handleAddOrUpdatePurchaseReturn}
           purchases={filteredPurchases}
           existingPurchaseReturns={purchaseReturns}
@@ -292,19 +281,18 @@ export function PurchasesClient() {
           {purchaseForPdf && <PurchaseChittiPrint purchase={purchaseForPdf} />}
       </div>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Delete Purchase Record?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the purchase record.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel onClick={() => setPurchaseToDeleteId(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeletePurchase} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogHeader><AlertDialogTitle>Delete This Record?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently delete this record. This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={showDeleteReturnConfirm} onOpenChange={setShowDeleteReturnConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Delete Purchase Return Record?</AlertDialogTitle><AlertDialogDescription>This will permanently delete this purchase return record. Inventory adjustments will need manual verification if this is undone.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel onClick={() => setPurchaseReturnToDeleteId(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={confirmDeletePurchaseReturn} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

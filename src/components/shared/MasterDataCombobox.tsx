@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Check, Plus, ChevronsUpDown, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
-import didYouMean from 'didyoumean2';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 
@@ -60,30 +59,13 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     });
   }, [options]);
 
-  const didYouMeanSuggest = React.useMemo(() => {
-    if (!search || !options || options.length === 0) return null;
-    const suggestions = didYouMean(search, options.map(opt => opt.label), {
-      threshold: 0.6,
-      caseSensitive: false,
-    });
-    return Array.isArray(suggestions) ? suggestions[0] : suggestions;
-  }, [search, options]);
-  
   const filteredOptions = React.useMemo(() => {
     if (!options || options.length === 0) return [];
     if (!search) {
       return options;
     }
-    const fuseResults = fuse.search(search).map(result => result.item);
-    // This logic ensures the "did you mean" suggestion doesn't cause duplicates
-    if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
-        const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
-        if (suggestionOption) {
-            return [suggestionOption, ...fuseResults];
-        }
-    }
-    return fuseResults;
-  }, [options, search, fuse, didYouMeanSuggest]);
+    return fuse.search(search).map(result => result.item);
+  }, [options, search, fuse]);
 
   const selectedLabel = React.useMemo(() => {
     if (!options || !value) return undefined;
@@ -205,11 +187,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                 !onAddNew && (
                   <CommandEmpty>
                       {notFoundMessage}
-                       {didYouMeanSuggest && (
-                        <div className="py-2 px-2 text-center text-xs text-muted-foreground">
-                          Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
-                        </div>
-                      )}
                   </CommandEmpty>
                 )
               )}
