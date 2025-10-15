@@ -152,33 +152,40 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={() => handleSelectOption(option.value)}
-                    className="group uppercase flex justify-between items-center w-full aria-selected:bg-accent aria-selected:text-accent-foreground"
-                  >
-                    <div className="flex items-center flex-grow truncate mr-2">
-                      <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
-                      <span className="truncate">{option.label}</span>
-                    </div>
-                    {onEdit && (
-                      <Tooltip>
+                    <Tooltip key={option.value} delayDuration={500}>
                         <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
-                            onClick={(e) => handleEdit(e, option.value)}
-                            aria-label={`EDIT ${option.label}`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
+                            <CommandItem
+                                value={option.value}
+                                onSelect={() => handleSelectOption(option.value)}
+                                className="group uppercase flex justify-between items-center w-full aria-selected:bg-accent aria-selected:text-accent-foreground"
+                              >
+                                <div className="flex items-center flex-grow truncate mr-2">
+                                  <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
+                                  <span className="truncate font-medium text-foreground/90">{option.label}</span>
+                                </div>
+                                {onEdit && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
+                                        onClick={(e) => handleEdit(e, option.value)}
+                                        aria-label={`EDIT ${option.label}`}
+                                      >
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Edit {option.label}</p></TooltipContent>
+                                  </Tooltip>
+                                )}
+                            </CommandItem>
                         </TooltipTrigger>
-                        <TooltipContent><p>Edit {option.label}</p></TooltipContent>
-                      </Tooltip>
-                    )}
-                  </CommandItem>
+                         <TooltipContent side="right" align="start" className="bg-popover text-popover-foreground border-border shadow-lg">
+                           <div className="text-base font-semibold">{option.label}</div>
+                           {option.tooltipContent && <div className="mt-1 border-t pt-1">{option.tooltipContent}</div>}
+                         </TooltipContent>
+                    </Tooltip>
                 ))
               ) : (
                 !onAddNew && (
