@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useMemo } from 'react';
@@ -16,6 +15,41 @@ const STORAGE_KEYS: Record<MasterItemType, string> = {
   Expense: 'masterExpenses',
 };
 
+const initialMasterData: Record<MasterItemType, MasterItem[]> = {
+  Customer: [
+    { id: 'cust-lalit', name: 'LALIT TRADERS', type: 'Customer' },
+    { id: 'cust-mahesh', name: 'MAHESH & CO', type: 'Customer' },
+  ],
+  Supplier: [
+    { id: 'supp-anand', name: 'ANAND AGRO PRODUCTS', type: 'Supplier' },
+    { id: 'supp-meena', name: 'MEENA FARMS', type: 'Supplier' },
+  ],
+  Agent: [
+    { id: 'agent-ajay', name: 'AJAY KUMAR', type: 'Agent', commission: 2.5, commissionType: 'Percentage' },
+  ],
+  Transporter: [],
+  Broker: [
+    { id: 'broker-arun', name: 'ARUN KUMAR', type: 'Broker', commission: 1.5, commissionType: 'Percentage' },
+  ],
+  Warehouse: [
+    { id: 'fixed-wh-mumbai', name: 'MUMBAI', type: 'Warehouse' },
+    { id: 'fixed-wh-chiplun', name: 'CHIPLUN', type: 'Warehouse' },
+    { id: 'fixed-wh-sawantwadi', name: 'SAWANTWADI', type: 'Warehouse' },
+  ],
+  Expense: [
+    { id: 'fixed-exp-packing', name: 'PACKING CHARGES', type: 'Expense' },
+    { id: 'fixed-exp-labour', name: 'LABOUR CHARGES', type: 'Expense' },
+    { id: 'fixed-exp-misc', name: 'MISC EXPENSES', type: 'Expense' },
+    { id: 'fixed-exp-transport', name: 'TRANSPORT CHARGES', type: 'Expense' },
+    { id: 'exp-comm', name: 'BROKER COMMISSION', type: 'Expense'},
+    { id: 'exp-ext-brokerage', name: 'EXTRA BROKERAGE', type: 'Expense'},
+  ],
+};
+
+
+// Create the context
+const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
+
 // Define the shape of the context
 interface MasterDataContextType {
   data: Record<MasterItemType, MasterItem[]>;
@@ -23,18 +57,16 @@ interface MasterDataContextType {
   getAllMasters: () => MasterItem[];
 }
 
-// Create the context
-const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
 
 // Create the provider component
 export const MasterDataProvider = ({ children }: { children: React.ReactNode }) => {
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Customer, []);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Supplier, []);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Agent, []);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Transporter, []);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Broker, []);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Warehouse, []);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Expense, []);
+  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Customer, initialMasterData.Customer);
+  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Supplier, initialMasterData.Supplier);
+  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Agent, initialMasterData.Agent);
+  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Transporter, initialMasterData.Transporter);
+  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Broker, initialMasterData.Broker);
+  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Warehouse, initialMasterData.Warehouse);
+  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Expense, initialMasterData.Expense);
 
   const data = useMemo(() => ({
     Customer: customers,

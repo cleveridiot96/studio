@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useMemo, useEffect } from 'react';
 import { useLocalStorageState } from "./useLocalStorageState";
-import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, Agent, Broker } from "@/lib/types";
+import type { MasterItem, Purchase, Sale, Payment, Receipt, PurchaseReturn, SaleReturn, Agent, Broker, LedgerEntry } from "@/lib/types";
 import { useSettings } from "@/contexts/SettingsContext";
 import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { parseISO } from 'date-fns';
@@ -16,6 +15,7 @@ const keys = {
   saleReturns: 'saleReturnsData',
   receipts: 'receiptsData',
   payments: 'paymentsData',
+  ledger: 'ledgerData',
 };
 
 /**
@@ -36,6 +36,8 @@ export const useOutstandingBalances = () => {
     const [saleReturns] = useLocalStorageState<SaleReturn[]>(keys.saleReturns, []);
     const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
     const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
+    const [ledgerData] = useLocalStorageState<LedgerEntry[]>(keys.ledger, []);
+
 
     const partyBalances = useMemo(() => {
         if (!hydrated) return new Map<string, number>();
@@ -52,7 +54,8 @@ export const useOutstandingBalances = () => {
             ...receipts.map(r => ({ ...r, txType: 'Receipt' as const })),
             ...payments.map(p => ({ ...p, txType: 'Payment' as const })),
             ...purchaseReturns.map(pr => ({ ...pr, txType: 'PurchaseReturn' as const })),
-            ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const }))
+            ...saleReturns.map(sr => ({ ...sr, txType: 'SaleReturn' as const })),
+            ...ledgerData.map(l => ({ ...l, txType: 'LedgerEntry' as const }))
         ].sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
         const updateBalance = (partyId: string | undefined, amount: number) => {
@@ -90,11 +93,13 @@ export const useOutstandingBalances = () => {
                     const primaryDebtorId = s.brokerId || s.customerId;
                     updateBalance(primaryDebtorId, -(tx.returnAmount || 0));
                 }
+            } else if (tx.txType === 'LedgerEntry' && tx.partyId) {
+                updateBalance(tx.partyId, tx.debit - tx.credit);
             }
         });
 
         return balances;
-    }, [hydrated, purchases, sales, receipts, payments, purchaseReturns, saleReturns, allMasters]);
+    }, [hydrated, purchases, sales, receipts, payments, purchaseReturns, saleReturns, allMasters, ledgerData]);
 
     const { receivableParties, payableParties } = useMemo(() => {
         const receivables: MasterItem[] = [];
