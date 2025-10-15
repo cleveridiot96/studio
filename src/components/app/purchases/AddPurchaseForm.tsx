@@ -260,8 +260,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
     <>
     <AnimatePresence>

@@ -35,7 +35,7 @@ interface MasterDataComboboxProps {
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   value,
   onChange,
-  options,
+  options = [], // Ensure default empty array
   placeholder = "SELECT AN OPTION",
   searchPlaceholder = "SEARCH...",
   notFoundMessage = "NO MATCH FOUND.",
@@ -49,14 +49,19 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
-  const fuse = React.useMemo(() => new Fuse(options, {
-    keys: ['label'],
-    threshold: 0.3,
-    includeScore: true,
-  }), [options]);
+  const fuse = React.useMemo(() => {
+    if (!options || options.length === 0) {
+      return new Fuse([], { keys: ['label'], threshold: 0.3, includeScore: true });
+    }
+    return new Fuse(options, {
+      keys: ['label'],
+      threshold: 0.3,
+      includeScore: true,
+    });
+  }, [options]);
 
   const didYouMeanSuggest = React.useMemo(() => {
-    if (!search || options.length === 0) return null;
+    if (!search || !options || options.length === 0) return null;
     const suggestions = didYouMean(search, options.map(opt => opt.label), {
       threshold: 0.6,
       caseSensitive: false,
@@ -65,14 +70,15 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   }, [search, options]);
   
   const filteredOptions = React.useMemo(() => {
+    if (!options || options.length === 0) return [];
     if (!search) {
       return options;
     }
     return fuse.search(search).map(result => result.item);
   }, [options, search, fuse]);
 
-
   const selectedLabel = React.useMemo(() => {
+    if (!options || !value) return undefined;
     return options.find((opt) => opt.value === value)?.label;
   }, [options, value]);
 
@@ -136,23 +142,30 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList>
               <CommandItem 
                 onSelect={() => handleSelect(undefined)}
-                onMouseDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 onClick={() => handleSelect(undefined)}
+                className="cursor-pointer"
               >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
                   <span className="italic">CLEAR SELECTION</span>
               </CommandItem>
               <Separator className="my-1" />
 
-              {filteredOptions.length > 0 && (
+              {filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
                   <CommandItem
                     key={option.value}
                     value={option.value}
                     onSelect={() => handleSelect(option.value)}
-                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
                     onClick={() => handleSelect(option.value)}
-                    className="group uppercase flex justify-between items-center w-full"
+                    className="group uppercase flex justify-between items-center w-full cursor-pointer"
                   >
                     <div className="flex items-center flex-grow truncate mr-2">
                       <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
@@ -166,7 +179,10 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                             size="icon"
                             className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
                             onClick={(e) => handleEdit(e, option.value)}
-                            onMouseDown={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
                             aria-label={`EDIT ${option.label}`}
                           >
                             <Pencil className="h-3 w-3" />
@@ -177,20 +193,8 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     )}
                   </CommandItem>
                 ))
-              )}
-                
-              {onAddNew && (
-                <CommandItem 
-                  onSelect={handleAddNew}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={handleAddNew}
-                  className="cursor-pointer mt-1 border-t"
-                >
-                  <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                </CommandItem>
-              )}
-
-              {filteredOptions.length === 0 && !onAddNew && (
+              ) : (
+                !onAddNew && (
                   <CommandEmpty>
                       {notFoundMessage}
                        {didYouMeanSuggest && (
@@ -199,6 +203,21 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                         </div>
                       )}
                   </CommandEmpty>
+                )
+              )}
+                
+              {onAddNew && (
+                <CommandItem 
+                  onSelect={handleAddNew}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onClick={handleAddNew}
+                  className="cursor-pointer mt-1 border-t"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                </CommandItem>
               )}
 
             </CommandList>

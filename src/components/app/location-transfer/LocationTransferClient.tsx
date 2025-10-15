@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -39,7 +38,6 @@ import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
-import { useMasterData } from "@/contexts/MasterDataContext";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useInventory } from '@/hooks/useInventory';
 
