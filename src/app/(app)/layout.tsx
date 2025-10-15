@@ -124,38 +124,36 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <div className="flex flex-1 bg-background h-full">
-      <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
-        <SidebarHeader className="flex h-14 items-center justify-center p-2 border-b border-sidebar-border">
-            <SidebarTrigger>
-              <Menu className="h-6 w-6 text-sidebar-foreground" />
-            </SidebarTrigger>
-        </SidebarHeader>
-        <SidebarContent className="py-2">
-          <ClientSidebarMenu navItems={navItems} />
-        </SidebarContent>
-      </Sidebar>
+    <div className="flex h-screen w-screen overflow-hidden">
+        <Sidebar className="border-r border-sidebar-border shadow-lg print:hidden" collapsible="icon">
+          <SidebarHeader className="flex h-14 items-center justify-center p-2 border-b border-sidebar-border">
+              <SidebarTrigger>
+                <Menu className="h-6 w-6 text-sidebar-foreground" />
+              </SidebarTrigger>
+          </SidebarHeader>
+          <SidebarContent className="py-2">
+            <ClientSidebarMenu navItems={navItems} />
+          </SidebarContent>
+        </Sidebar>
 
-      <div className="flex flex-col flex-1 min-h-0 relative">
-        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="md:hidden -ml-2">
-              <Menu className="h-6 w-6 text-foreground" />
-            </SidebarTrigger>
-          </div>
-          <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-            <AppHeaderContentInternal />
-          </div>
-        </header>
-        <LoadingBarInternal />
-        <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible flex flex-col">
-          <ErrorBoundary>
-            <div className="flex flex-col flex-1 w-full min-w-0">
-                {children}
+        <div className="flex flex-col flex-1 min-h-0 relative">
+          <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="md:hidden -ml-2">
+                <Menu className="h-6 w-6 text-foreground" />
+              </SidebarTrigger>
             </div>
-          </ErrorBoundary>
-        </SidebarInset>
-      </div>
+            <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+              <AppHeaderContentInternal />
+            </div>
+          </header>
+          <LoadingBarInternal />
+          <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible">
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
+          </SidebarInset>
+        </div>
     </div>
   );
 }

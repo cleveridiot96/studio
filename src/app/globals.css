@@ -106,16 +106,12 @@
     height: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    margin: 0;
-    padding: 0;
   }
   body {
     @apply bg-background text-foreground font-sans;
     min-height: 100%; /* Allow body to grow with content */
     display: flex; /* Make body a flex container */
     flex-direction: column; /* Stack children vertically */
-    margin: 0;
-    padding: 0;
     overscroll-behavior: contain;
   }
   h1 { @apply text-2xl font-bold md:text-2xl lg:text-3xl; }
