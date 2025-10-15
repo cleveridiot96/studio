@@ -143,7 +143,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               <CommandItem 
                 value="__clear__"
                 onSelect={() => handleSelectOption(undefined)}
-                className="cursor-pointer"
+                className="cursor-pointer aria-selected:bg-accent aria-selected:text-accent-foreground"
               >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
                   <span className="italic">CLEAR SELECTION</span>
@@ -156,7 +156,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     key={option.value}
                     value={option.value}
                     onSelect={() => handleSelectOption(option.value)}
-                    className="group uppercase flex justify-between items-center w-full"
+                    className="group uppercase flex justify-between items-center w-full aria-selected:bg-accent aria-selected:text-accent-foreground"
                   >
                     <div className="flex items-center flex-grow truncate mr-2">
                       <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
@@ -197,7 +197,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                 <CommandItem 
                   value="__add_new__"
                   onSelect={handleAddNew}
-                  className="cursor-pointer mt-1 border-t"
+                  className="cursor-pointer mt-1 border-t aria-selected:bg-accent aria-selected:text-accent-foreground"
                 >
                   <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                 </CommandItem>
