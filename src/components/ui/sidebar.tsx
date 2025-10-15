@@ -315,7 +315,7 @@ SidebarTrigger.displayName = "SidebarTrigger"
 
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"main">
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const { isMobile, state } = useSidebar();
   
@@ -325,11 +325,11 @@ const SidebarInset = React.forwardRef<
   };
 
   return (
-    <main
+    <div
       ref={ref}
       style={style}
       className={cn(
-        "relative flex min-h-0 flex-1 flex-col bg-background",
+        "flex min-h-0 flex-1 flex-col bg-background w-full",
         className
       )}
       {...props}

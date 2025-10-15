@@ -136,24 +136,26 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
           </SidebarContent>
         </Sidebar>
 
-        <div className="flex flex-col flex-1 min-h-0 relative">
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="md:hidden -ml-2">
-                <Menu className="h-6 w-6 text-foreground" />
-              </SidebarTrigger>
+        <SidebarInset>
+            <div className="flex flex-col flex-1 min-h-0 relative">
+              <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 shadow-sm print:hidden">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger className="md:hidden -ml-2">
+                    <Menu className="h-6 w-6 text-foreground" />
+                  </SidebarTrigger>
+                </div>
+                <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+                  <AppHeaderContentInternal />
+                </div>
+              </header>
+              <LoadingBarInternal />
+              <main className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible">
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
+              </main>
             </div>
-            <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-              <AppHeaderContentInternal />
-            </div>
-          </header>
-          <LoadingBarInternal />
-          <SidebarInset className="flex-1 overflow-y-auto p-2 sm:p-2 w-full print:p-0 print:m-0 print:overflow-visible">
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </SidebarInset>
-        </div>
+        </SidebarInset>
     </div>
   );
 }
