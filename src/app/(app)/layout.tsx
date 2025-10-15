@@ -16,7 +16,7 @@ import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
-import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions.tsx';
+import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions';
 import { AppHeaderContentInternal } from "@/components/layout/AppHeaderContentInternal";
 import { useHydrated } from "@/hooks/useHydrated";
 
@@ -184,7 +184,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SettingsProvider>
           <MasterDataProvider>
             <TransactionsProvider>
-              <SidebarProvider defaultOpen={true} collapsible="icon">
+              <SidebarProvider defaultOpen={false} collapsible="icon">
                   <AppExitHandler />
                   <SearchDataProvider>
                     <AppLayoutInternal>{children}</AppLayoutInternal>
