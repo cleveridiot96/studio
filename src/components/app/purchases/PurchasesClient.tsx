@@ -33,15 +33,6 @@ import { cn } from "@/lib/utils";
 import { purchaseMigrator } from '@/lib/dataMigrators';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 
-// TRIAL PACKAGE 1 DATA
-const initialPurchasesData: Purchase[] = [
-    { id: "pur-tp1-1", date: "2024-07-10", supplierId: "supp-anand", supplierName: "ANAND AGRO PRODUCTS", items: [{ lotNumber: "VAKKAL-A1", quantity: 100, netWeight: 5000, rate: 25, goodsValue: 125000, landedCostPerKg: 25.5 }], expenses: [], locationId: "fixed-wh-chiplun", locationName: "CHIPLUN", totalGoodsValue: 125000, totalQuantity: 100, totalNetWeight: 5000, totalAmount: 127500, effectiveRate: 25.5 },
-    { id: "pur-tp1-2", date: "2024-07-12", supplierId: "supp-meena", supplierName: "MEENA FARMS", agentId: "agent-ajay", agentName: "AJAY KUMAR", items: [{ lotNumber: "VAKKAL-B2", quantity: 200, netWeight: 10000, rate: 28, goodsValue: 280000, landedCostPerKg: 28 }], expenses: [], locationId: "fixed-wh-sawantwadi", locationName: "SAWANTWADI", totalGoodsValue: 280000, totalQuantity: 200, totalNetWeight: 10000, totalAmount: 280000, effectiveRate: 28 },
-];
-const initialPurchaseReturnsData: PurchaseReturn[] = [
-    { id: "pret-tp1-1", date: "2024-07-15", originalPurchaseId: "pur-tp1-2", originalLotNumber: "VAKKAL-B2", originalSupplierId: "supp-meena", originalSupplierName: "MEENA FARMS", originalPurchaseRate: 28, quantityReturned: 10, netWeightReturned: 500, returnAmount: 14000, returnReason: "QUALITY ISSUE", notes: "10 bags returned." },
-];
-
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
 const SALES_STORAGE_KEY = 'salesData';
@@ -75,13 +66,7 @@ export function PurchasesClient() {
 
    React.useEffect(() => {
     setHydrated(true);
-    if (localStorage.getItem(PURCHASES_STORAGE_KEY) === null) {
-      setPurchases(initialPurchasesData);
-    }
-    if (localStorage.getItem(PURCHASE_RETURNS_STORAGE_KEY) === null) {
-      setPurchaseReturns(initialPurchaseReturnsData);
-    }
-  }, [setPurchases, setPurchaseReturns]);
+  }, []);
 
   const filteredPurchases = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -332,3 +317,5 @@ export function PurchasesClient() {
     </div>
   );
 }
+
+    

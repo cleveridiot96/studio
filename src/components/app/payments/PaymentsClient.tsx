@@ -25,11 +25,6 @@ import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 import { useMasterData } from "@/contexts/MasterDataContext";
 
-// TRIAL PACKAGE 1 DATA
-const initialPaymentsData: Payment[] = [
-    { id: "pay-tp1-1", date: "2024-07-20", partyId: "agent-ajay", partyName: "AJAY KUMAR", partyType: "Agent", amount: 50000, paymentMethod: "Bank", transactionType: "On Account", notes: "ADVANCE PAYMENT" },
-];
-
 const PAYMENTS_STORAGE_KEY = 'paymentsData';
 const PURCHASES_STORAGE_KEY = 'purchasesData';
 
@@ -53,10 +48,7 @@ export function PaymentsClient() {
   
   React.useEffect(() => {
     setHydrated(true);
-    if (localStorage.getItem(PAYMENTS_STORAGE_KEY) === null) {
-      setPayments(initialPaymentsData);
-    }
-  }, [setPayments]);
+  }, []);
 
   const filteredPayments = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -171,3 +163,5 @@ export function PaymentsClient() {
     </div>
   );
 }
+
+    

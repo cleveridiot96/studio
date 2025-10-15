@@ -26,12 +26,6 @@ import { salesMigrator } from '@/lib/dataMigrators';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 import { useMasterData } from "@/contexts/MasterDataContext";
 
-// TRIAL PACKAGE 1 DATA
-const initialReceiptsData: Receipt[] = [
-    { id: "rec-tp1-1", date: "2024-07-28", partyId: "cust-lalit", partyName: "LALIT TRADERS", partyType: "Customer", amount: 50000, paymentMethod: "Bank", transactionType: "Against Bill", againstBills: [{ billId: "sale-tp1-1", amount: 50000, billVakkal: "VAKKAL-A1-T50", billDate: "2024-07-20", billTotal: 87500 }], cashDiscount: 500, notes: "PARTIAL PAYMENT RECEIVED" },
-];
-
-
 const RECEIPTS_STORAGE_KEY = 'receiptsData';
 const SALES_STORAGE_KEY = 'salesData';
 const LEDGER_STORAGE_KEY = 'ledgerData';
@@ -57,10 +51,7 @@ export function ReceiptsClient() {
 
   React.useEffect(() => {
     setHydrated(true);
-    if (localStorage.getItem(RECEIPTS_STORAGE_KEY) === null) {
-      setReceipts(initialReceiptsData);
-    }
-  }, [setReceipts]);
+  }, []);
 
   const filteredReceipts = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -195,3 +186,5 @@ export function ReceiptsClient() {
     </div>
   );
 }
+
+    

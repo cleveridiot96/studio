@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useMemo } from 'react';
@@ -16,21 +17,11 @@ const STORAGE_KEYS: Record<MasterItemType, string> = {
 };
 
 const initialMasterData: Record<MasterItemType, MasterItem[]> = {
-  Customer: [
-    { id: 'cust-lalit', name: 'LALIT TRADERS', type: 'Customer' },
-    { id: 'cust-mahesh', name: 'MAHESH & CO', type: 'Customer' },
-  ],
-  Supplier: [
-    { id: 'supp-anand', name: 'ANAND AGRO PRODUCTS', type: 'Supplier' },
-    { id: 'supp-meena', name: 'MEENA FARMS', type: 'Supplier' },
-  ],
-  Agent: [
-    { id: 'agent-ajay', name: 'AJAY KUMAR', type: 'Agent', commission: 2.5, commissionType: 'Percentage' },
-  ],
+  Customer: [],
+  Supplier: [],
+  Agent: [],
   Transporter: [],
-  Broker: [
-    { id: 'broker-arun', name: 'ARUN KUMAR', type: 'Broker', commission: 1.5, commissionType: 'Percentage' },
-  ],
+  Broker: [],
   Warehouse: [
     { id: 'fixed-wh-mumbai', name: 'MUMBAI', type: 'Warehouse' },
     { id: 'fixed-wh-chiplun', name: 'CHIPLUN', type: 'Warehouse' },
@@ -116,3 +107,5 @@ export const useMasterData = () => {
   }
   return context;
 };
+
+    
