@@ -156,18 +156,22 @@
   html, body {
     height: auto !important;
     overflow: visible !important;
-  }
-
-  body {
     background: white !important;
     color: black !important;
     font-size: 10pt !important;
     display: block !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
+
+  body > * {
+    display: none !important; /* Hide direct children of body by default */
+  }
+
+  body .print-area, body .print-area * {
+    display: block !important; /* Explicitly show the print-area and its children */
+    visibility: visible !important; /* Ensure they are visible */
+  }
+
   .print-area {
-    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -176,9 +180,6 @@
     border: none !important;
     overflow: visible !important;
     height: auto !important;
-  }
-  .print-area > * {
-    overflow: visible !important;
   }
   
   .print\:hidden, .no-print, header, nav, footer, aside, [data-sidebar="sidebar"], [data-sidebar="trigger"] {

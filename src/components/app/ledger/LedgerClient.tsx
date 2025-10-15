@@ -305,7 +305,7 @@ export function LedgerClient() {
       </Card>
 
       {selectedPartyId && selectedPartyDetails ? (
-        <Card id="ledger-t-account" className="shadow-lg p-2 flex flex-col flex-1">
+        <Card id="ledger-t-account" className="shadow-lg p-2 flex flex-col flex-1 print-area">
           <CardHeader className="text-center p-2">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
             <CardTitle className="text-xl text-primary flex items-center justify-center uppercase">
