@@ -113,51 +113,44 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                id={triggerId}
-                variant="outline"
-                role="combobox"
-                aria-expanded={open}
-                className={cn("w-full justify-between text-sm uppercase h-9", !value && "text-muted-foreground", className)}
-                disabled={disabled}
-              >
-                <span className="truncate">
-                  {selectedLabel || placeholder}
-                </span>
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          {selectedLabel && (
-            <TooltipContent>
-              <p>{selectedLabel}</p>
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </TooltipProvider>
+    // Only one TooltipProvider at the highest level
+    <TooltipProvider>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            id={triggerId}
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn("w-full justify-between text-sm uppercase h-9", !value && "text-muted-foreground", className)}
+            disabled={disabled}
+          >
+            <span className="truncate">
+              {selectedLabel || placeholder}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
 
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[99999]">
-        <Command shouldFilter={false} onKeyDown={handleKeyDown}>
-          <CommandInput
-            placeholder={searchPlaceholder}
-            value={search}
-            onValueChange={setSearch}
-            autoFocus
-          />
-          <TooltipProvider>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[99999]">
+          <Command shouldFilter={false} onKeyDown={handleKeyDown}>
+            <CommandInput
+              placeholder={searchPlaceholder}
+              value={search}
+              onValueChange={setSearch}
+              autoFocus
+            />
+            
             <CommandList>
               <CommandItem 
                 value="__clear__"
                 onSelect={() => handleSelectOption(undefined)}
-                className="cursor-pointer aria-selected:bg-accent aria-selected:text-accent-foreground group-hover:bg-accent group-hover:text-foreground"
+                // **CRUCIAL FIX: PREVENT FOCUS LOSS ON MOUSE CLICK**
+                onMouseDown={(e) => e.preventDefault()} 
+                className="cursor-pointer aria-selected:bg-accent aria-selected:text-accent-foreground hover:bg-accent hover:text-foreground"
               >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
-                  <span className="italic">CLEAR SELECTION</span>
+                  <span className="italic text-foreground/80">CLEAR SELECTION</span>
               </CommandItem>
               <Separator className="my-1" />
 
@@ -168,28 +161,40 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                       <CommandItem
                         value={option.value}
                         onSelect={() => handleSelectOption(option.value)}
-                        className="group uppercase flex justify-between items-center w-full cursor-pointer text-foreground/90 hover:bg-accent hover:text-foreground aria-selected:bg-accent aria-selected:text-accent-foreground"
+                        // **CRUCIAL FIX: PREVENT FOCUS LOSS ON MOUSE CLICK**
+                        onMouseDown={(e) => e.preventDefault()}
+                        // Stronger classes for dark, active look
+                        className="group uppercase flex justify-between items-center w-full cursor-pointer 
+                                   text-foreground hover:bg-accent hover:text-foreground 
+                                   aria-selected:bg-accent aria-selected:text-accent-foreground"
                       >
                         <div className="flex items-center flex-grow truncate mr-2">
                           <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
                           <span className="truncate font-medium text-foreground">{option.label}</span>
                         </div>
                         {onEdit && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
-                            onClick={(e) => handleEdit(e, option.value)}
-                            aria-label={`EDIT ${option.label}`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
+                          // Tooltip for Edit button
+                          <Tooltip delayDuration={300}> 
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
+                                onClick={(e) => handleEdit(e, option.value)}
+                                aria-label={`EDIT ${option.label}`}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Edit {option.label}</p></TooltipContent>
+                          </Tooltip>
                         )}
                       </CommandItem>
                     </TooltipTrigger>
-                    <TooltipContent side="right" align="start">
-                        <p>{option.label}</p>
-                        {option.tooltipContent && <div>{option.tooltipContent}</div>}
+                    {/* Main Tooltip Content */}
+                    <TooltipContent side="right" align="start" className="bg-popover text-popover-foreground border-border shadow-lg max-w-xs">
+                        <div className="text-base font-semibold">{option.label}</div>
+                        {option.tooltipContent && <div className="mt-1 border-t pt-1">{option.tooltipContent}</div>}
                     </TooltipContent>
                   </Tooltip>
                 ))
@@ -211,15 +216,17 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                 <CommandItem 
                   value="__add_new__"
                   onSelect={handleAddNew}
+                  // **CRUCIAL FIX: PREVENT FOCUS LOSS ON MOUSE CLICK**
+                  onMouseDown={(e) => e.preventDefault()}
                   className="cursor-pointer mt-1 border-t aria-selected:bg-accent aria-selected:text-accent-foreground hover:bg-accent hover:text-foreground"
                 >
                   <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                 </CommandItem>
               )}
             </CommandList>
-          </TooltipProvider>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </TooltipProvider>
   );
 };
