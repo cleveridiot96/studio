@@ -59,7 +59,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen = false,
+      defaultOpen = false, // Changed to false
       open: openProp,
       onOpenChange: setOpenProp,
       className,

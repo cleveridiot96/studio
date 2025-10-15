@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -54,6 +53,8 @@ export function ReceiptsClient() {
       }
     });
 
+    // Remove old ledger entries for this receipt and add new ones
+    removeLedgerEntries(receipt.id);
     const newLedgerEntry: LedgerEntry = {
         id: `ledger-${receipt.id}`,
         date: receipt.date,
@@ -66,7 +67,7 @@ export function ReceiptsClient() {
         partyId: receipt.partyId,
         relatedVoucher: receipt.id,
         linkedTo: {
-            voucherType: 'Sale',
+            voucherType: 'Sale', // Assuming receipts are linked to sales
             voucherId: receipt.id,
         },
         remarks: `Receipt from ${receipt.partyName}: ${receipt.notes || ''}`
@@ -76,7 +77,7 @@ export function ReceiptsClient() {
     setReceiptToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
     window.dispatchEvent(new CustomEvent('reindex-search'));
-  }, [receipts, setReceipts, addLedgerEntry, toast]); 
+  }, [receipts, setReceipts, addLedgerEntry, removeLedgerEntries, toast]); 
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);

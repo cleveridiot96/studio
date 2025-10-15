@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -23,19 +22,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { format as formatDateFn, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { purchaseMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { useTransactions } from "@/hooks/useTransactions";
-
-const SALES_STORAGE_KEY = 'salesData';
-const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 
 export function PurchasesClient() {
   const { toast } = useToast();

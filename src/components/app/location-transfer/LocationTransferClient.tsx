@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -52,7 +51,7 @@ export function LocationTransferClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const { locationTransfers, setLocationTransfers, addLedgerEntry, removeLedgerEntries } = useTransactions();
-  const { availableStock } = useInventory();
+  const { availableStock, isLoading: isInventoryLoading } = useInventory();
 
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
@@ -217,7 +216,7 @@ export function LocationTransferClient() {
     setDateRange({ from, to });
   };
 
-  if (isAppHydrating) {
+  if (isAppHydrating || isInventoryLoading) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
   }
 
