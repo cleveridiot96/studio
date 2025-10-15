@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -51,8 +52,7 @@ export function LocationTransferClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const { locationTransfers, setLocationTransfers, addLedgerEntry, removeLedgerEntries } = useTransactions();
-  const { availableStock, isLoading: isInventoryLoading } = useInventory();
-
+  
   const [isAddFormOpen, setIsAddFormOpen] = React.useState(false);
   const [transferToEdit, setTransferToEdit] = React.useState<LocationTransfer | null>(null);
   const [itemToDelete, setItemToDelete] = React.useState<LocationTransfer | null>(null);
@@ -63,6 +63,8 @@ export function LocationTransferClient() {
 
   const [activeTab, setActiveTab] = React.useState('stockOverview');
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  
+  const { availableStock, isLoading: isInventoryLoading } = useInventory(transferToEdit?.id);
 
   React.useEffect(() => {
     if (!dateRange) {
