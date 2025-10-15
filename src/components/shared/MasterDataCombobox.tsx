@@ -76,29 +76,29 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     return options.find((opt) => opt.value === value)?.label;
   }, [options, value]);
 
-  const handleSelect = (selectedValue: string | undefined) => {
+  const handleSelect = React.useCallback((selectedValue: string | undefined) => {
     onChange(selectedValue);
     setOpen(false);
     setSearch("");
-  };
+  }, [onChange]);
 
-  const handleAddNew = () => {
+  const handleAddNew = React.useCallback(() => {
     if (onAddNew) {
       onAddNew();
       setOpen(false);
       setSearch("");
     }
-  };
+  }, [onAddNew]);
   
-  const handleEdit = (e: React.MouseEvent, val: string) => {
+  const handleEdit = React.useCallback((e: React.MouseEvent, val: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (onEdit) {
       onEdit(val);
-      setOpen(false); // Close popover after edit is initiated
+      setOpen(false);
       setSearch("");
     }
-  }
+  }, [onEdit]);
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && filteredOptions.length === 0 && onAddNew) {
@@ -166,6 +166,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                             size="icon"
                             className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
                             onClick={(e) => handleEdit(e, option.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
                             aria-label={`EDIT ${option.label}`}
                           >
                             <Pencil className="h-3 w-3" />
@@ -179,20 +180,20 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               )}
                 
               {onAddNew && (
-                <CommandItem
-                    onSelect={handleAddNew}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={handleAddNew}
-                    className="cursor-pointer mt-1 border-t"
+                <CommandItem 
+                  onSelect={handleAddNew}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleAddNew}
+                  className="cursor-pointer mt-1 border-t"
                 >
                   <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                 </CommandItem>
               )}
 
-              {filteredOptions.length === 0 && (
+              {filteredOptions.length === 0 && !onAddNew && (
                   <CommandEmpty>
                       {notFoundMessage}
-                      {didYouMeanSuggest && (
+                       {didYouMeanSuggest && (
                         <div className="py-2 px-2 text-center text-xs text-muted-foreground">
                           Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
                         </div>
