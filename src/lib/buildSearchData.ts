@@ -32,11 +32,13 @@ export const buildSearchData = ({
 
   sales.forEach((s) => {
     const itemLots = s.items.map(i => i.lotNumber).join(' ');
+    // For sales, we need to find the origin warehouse. Assuming it's Mumbai for now as per logic in AddSaleForm.
+    const saleLocation = 'MUMBAI'; 
     searchableItems.push({
       id: s.id,
       type: 'SALE',
       title: `SALE: ${s.billNumber || s.id} TO ${s.customerName || s.customerId}`,
-      searchableText: `SALE SALES BILL ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${itemLots} ${s.billedAmount} ${s.date} ${s.notes || ''} ${s.items.map(i => i.rate).join(' ')}`,
+      searchableText: `SALE SALES BILL ${s.billNumber || ''} ${s.customerName || s.customerId} ${s.brokerName || ''} ${itemLots} ${s.billedAmount} ${s.date} ${s.notes || ''} ${s.items.map(i => i.rate).join(' ')} ${saleLocation}`,
       href: `/sales#${s.id}`, 
       date: s.date,
     });
@@ -59,7 +61,7 @@ export const buildSearchData = ({
       id: pm.id,
       type: 'PAYMENT',
       title: `PAYMENT: TO ${pm.partyName || pm.partyId} (₹${pm.amount})`,
-      searchableText: `PAYMENT PAYMENTS ${pm.partyName || pm.partyId} ${pm.partyType} ${pm.amount} ${pm.paymentMethod} ${pm.date} ${pm.notes || ''}`,
+      searchableText: `PAYMENT PAYMENTS ${pm.partyName || pm.partyId} ${pm.partyType} ${pm.amount} ${pm.paymentMethod || ''} ${pm.date} ${pm.notes || ''}`,
       href: `/payments#${pm.id}`,
       date: pm.date,
     });
@@ -81,8 +83,8 @@ export const buildSearchData = ({
       id: m.id,
       type: m.type.toUpperCase(), // e.g., 'CUSTOMER', 'SUPPLIER'
       title: `${m.type}: ${m.name}`,
-      searchableText: `MASTER PARTY ${m.type} ${m.name} ${m.id} ${m.commission || ''} ${m.openingBalance || ''}`,
-      href: `/ledger?partyId=${m.id}`, // Updated href to point to ledger
+      searchableText: `MASTER PARTY ${m.type} ${m.name} ${m.marka || ''} ${m.id} ${m.commission || ''} ${m.openingBalance || ''}`,
+      href: `/accounts-ledger?partyId=${m.id}`,
     });
   });
 

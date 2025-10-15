@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import type { FuseResult } from 'fuse.js';
 
-const HighlightedText: React.FC<{ text: string; indices: readonly [number, number][] }> = ({ text, indices }) => {
+const HighlightedText: React.FC<{ text: string; indices: readonly [number, number][] | undefined }> = ({ text, indices }) => {
   if (!indices || indices.length === 0) {
     return <>{text}</>;
   }
@@ -62,7 +62,7 @@ const SearchBar = () => {
 
   // Handle search query changes
   useEffect(() => {
-    if (query.trim().length > 1) {
+    if (query.trim().length > 0) {
       const res = searchData(query);
       setResults(res.slice(0, 10)); // Limit to top 10 results
     } else {
@@ -83,17 +83,12 @@ const SearchBar = () => {
     }
   };
 
-  const getBestMatch = (item: FuseResult<SearchableItem>): { text: string; indices: readonly [number, number][] } => {
+  const getBestMatch = (item: FuseResult<SearchableItem>): { text: string; indices: readonly [number, number][] | undefined } => {
       const titleMatch = item.matches?.find(m => m.key === 'title');
-      if (titleMatch) {
-          return { text: titleMatch.value!, indices: titleMatch.indices };
+      if (titleMatch && titleMatch.value) {
+          return { text: titleMatch.value, indices: titleMatch.indices };
       }
-      const searchableTextMatch = item.matches?.find(m => m.key === 'searchableText');
-      if (searchableTextMatch) {
-           // As searchableText is not for display, we return the title but highlight based on where match was found
-           return { text: item.item.title, indices: [] }; // Cannot highlight if match is not in title
-      }
-      return { text: item.item.title, indices: [] };
+      return { text: item.item.title, indices: undefined };
   };
 
 
@@ -112,7 +107,7 @@ const SearchBar = () => {
           />
         </div>
         
-        {open && query.length > 1 && (
+        {open && query.length > 0 && (
           <div className="absolute top-full mt-1.5 bg-background border border-border shadow-lg rounded-md z-50 w-full">
             <CommandList>
               {results.length > 0 ? (

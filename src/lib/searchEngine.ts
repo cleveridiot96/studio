@@ -8,22 +8,21 @@ let fuse: Fuse<SearchableItem>;
 
 const fuseOptions: Fuse.IFuseOptions<SearchableItem> = {
   keys: [
-      { name: 'title', weight: 0.4 },
+      { name: 'title', weight: 0.5 },
       { name: 'searchableText', weight: 0.3 },
-      { name: 'type', weight: 0.2 },
+      { name: 'type', weight: 0.1 },
       { name: 'id', weight: 0.1 },
   ],
-  threshold: 0.4, // Adjusted for better fuzzy matching
-  includeScore: true, // Required for sorting by relevance, but we can ignore the score value if we want
-  includeMatches: true, // This is the key to get highlighting info
+  threshold: 0.5, // Loosened for more "fuzzy" results
+  includeScore: true,
+  includeMatches: true,
   useExtendedSearch: true,
   ignoreLocation: true,
-  minMatchCharLength: 2,
 };
 
 export const initSearchEngine = (data: SearchableItem[]) => {
   fuse = new Fuse(data, fuseOptions);
-  console.log("SEARCH ENGINE INITIALIZED/UPDATED WITH", data.length, "ITEMS.");
+  console.info("SEARCH ENGINE INITIALIZED/UPDATED WITH", data.length, "ITEMS.");
 };
 
 export const searchData = (query: string): FuseResult<SearchableItem>[] => {
@@ -31,7 +30,6 @@ export const searchData = (query: string): FuseResult<SearchableItem>[] => {
     return [];
   }
   // Normalize query to handle variations like G.G, G G etc.
-  // This simple normalization helps a lot, more complex logic can be added.
   const normalizedQuery = query.replace(/[\s.]+/g, '').toUpperCase();
 
   const results = fuse.search(normalizedQuery);
