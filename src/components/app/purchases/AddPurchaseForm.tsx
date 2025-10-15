@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -54,7 +55,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { data: masterData, setData: setMasterData, getAllMasters } = useMasterData();
-  const { suppliers, agents, warehouses, transporters, expenses } = masterData;
+  const { Supplier: suppliers, Agent: agents, Warehouse: warehouses, Transporter: transporters, Expense: expenses } = masterData || {};
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);

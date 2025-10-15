@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -67,7 +68,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { data: masterData, setMasterData } = useMasterData();
-  const { customers, transporters, brokers, expenses } = masterData;
+  const { Customer: customers, Transporter: transporters, Broker: brokers, Expense: expenses } = masterData || {};
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
@@ -112,7 +113,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   }, [saleToEdit]);
 
   const memoizedSaleSchema = React.useMemo(() =>
-    saleSchema(customers, transporters, brokers, availableStock, existingSales, saleToEdit?.id)
+    saleSchema(customers || [], transporters || [], brokers || [], availableStock, existingSales, saleToEdit?.id)
   , [customers, transporters, brokers, availableStock, existingSales, saleToEdit]);
 
   const methods = useForm<SaleFormValues>({
@@ -207,6 +208,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   const brokerId = watch('brokerId');
   
   React.useEffect(() => {
+    if(!brokers) return;
     const broker = brokers.find(b => b.id === brokerId);
     const commissionIndex = watchedFormValues.expenses?.findIndex(exp => exp.account === 'Broker Commission');
     
@@ -254,9 +256,9 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   
   const handleEditMasterItem = (type: MasterItemType, id: string) => {
     let itemToEdit: MasterItem | null = null;
-    if (type === 'Customer') itemToEdit = customers.find(i => i.id === id) || null;
-    else if (type === 'Broker') itemToEdit = brokers.find(i => i.id === id) || null;
-    else if (type === 'Transporter') itemToEdit = transporters.find(i => i.id === id) || null;
+    if (type === 'Customer' && customers) itemToEdit = customers.find(i => i.id === id) || null;
+    else if (type === 'Broker' && brokers) itemToEdit = brokers.find(i => i.id === id) || null;
+    else if (type === 'Transporter' && transporters) itemToEdit = transporters.find(i => i.id === id) || null;
 
     if (itemToEdit) {
         setMasterItemToEdit(itemToEdit);
@@ -275,7 +277,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   };
   
   const stockOptionsForSale = React.useMemo(() => {
-    const mumbaiWarehouseId = FIXED_WAREHOUSES.find(wh => wh.name.toUpperCase() === 'MUMBAI')?.id;
+    const mumbaiWarehouseId = (masterData.Warehouse || []).find(wh => wh.name.toUpperCase() === 'MUMBAI')?.id;
     return availableStock
       .filter(s => s.locationId === mumbaiWarehouseId)
       .map(s => ({
@@ -288,14 +290,14 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
           </div>
         )
       }));
-  }, [availableStock]);
+  }, [availableStock, masterData.Warehouse]);
 
 
   const processSubmit = (values: SaleFormValues) => {
     setIsSubmitting(true);
-    const selectedCustomer = customers.find(c => c.id === values.customerId);
-    const selectedBroker = brokers.find(b => b.id === values.brokerId);
-    const selectedTransporter = transporters.find(t => t.id === values.transporterId);
+    const selectedCustomer = (customers || []).find(c => c.id === values.customerId);
+    const selectedBroker = (brokers || []).find(b => b.id === values.brokerId);
+    const selectedTransporter = (transporters || []).find(t => t.id === values.transporterId);
 
     const saleData: Sale = {
       id: saleToEdit?.id || `sale-${Date.now()}`,

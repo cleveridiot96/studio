@@ -42,9 +42,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   transferToEdit,
 }) => {
   const { toast } = useToast();
-  const { data: masterData, setData: setMasterData } = useMasterData();
-  const { warehouses, transporters, expenses, Customer, Supplier, Agent, Broker } = masterData;
-  const allExpenseParties = [...warehouses, ...transporters, ...expenses, ...Customer, ...Supplier, ...Agent, ...Broker];
+  const { data: masterData, setData: setMasterData, getAllMasters } = useMasterData();
+  const { Warehouse: warehouses, Transporter: transporters, Expense: expenses, Customer, Supplier, Agent, Broker } = masterData || {};
+  const allExpenseParties = React.useMemo(() => [...(warehouses||[]), ...(transporters||[]), ...(expenses||[]), ...(Customer||[]), ...(Supplier||[]), ...(Agent||[]), ...(Broker||[])], [warehouses, transporters, expenses, Customer, Supplier, Agent, Broker]);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
@@ -52,7 +52,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   
-  const formSchema = React.useMemo(() => locationTransferSchema(warehouses, transporters, availableStock, transferToEdit), [warehouses, transporters, availableStock, transferToEdit]);
+  const formSchema = React.useMemo(() => locationTransferSchema(warehouses || [], transporters || [], availableStock, transferToEdit), [warehouses, transporters, availableStock, transferToEdit]);
 
   const getDefaultValues = React.useCallback((): LocationTransferFormValues => {
     if (transferToEdit) {
@@ -134,7 +134,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
   }, [availableStock, watch]);
 
   const availableLotsOptions = getAvailableLotsForSelectedWarehouse();
-  const expenseOptions = expenses.map(e => ({ value: e.id, label: e.name })).filter(e => e.value);
+  const expenseOptions = (expenses || []).map(e => ({ value: e.id, label: e.name })).filter(e => e.value);
 
 
   const handleOpenMasterForm = (type: MasterItemType) => {
@@ -164,9 +164,9 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
 
   const processSubmit = (values: LocationTransferFormValues) => {
     setIsSubmitting(true);
-    const fromWarehouse = warehouses.find(w => w.id === values.fromWarehouseId);
-    const toWarehouse = warehouses.find(w => w.id === values.toWarehouseId);
-    const transporter = transporters.find(t => t.id === values.transporterId);
+    const fromWarehouse = (warehouses || []).find(w => w.id === values.fromWarehouseId);
+    const toWarehouse = (warehouses || []).find(w => w.id === values.toWarehouseId);
+    const transporter = (transporters || []).find(t => t.id === values.transporterId);
 
     const totalNetWeightForTransfer = values.items.reduce((sum, item) => sum + (item.netWeightToTransfer || 0), 0);
 
@@ -254,7 +254,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
-                          options={warehouses.map(w => ({ value: w.id, label: w.name }))}
+                          options={(warehouses || []).map(w => ({ value: w.id, label: w.name }))}
                           placeholder="SELECT SOURCE"
                           onAddNew={() => handleOpenMasterForm("Warehouse")}
                           onEdit={(id) => handleEditMasterItem("Warehouse", id)}
@@ -267,7 +267,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                         <MasterDataCombobox
                           value={field.value}
                           onChange={field.onChange}
-                          options={warehouses.map(w => ({ value: w.id, label: w.name }))}
+                          options={(warehouses || []).map(w => ({ value: w.id, label: w.name }))}
                           placeholder="SELECT DESTINATION"
                           onAddNew={() => handleOpenMasterForm("Warehouse")}
                           onEdit={(id) => handleEditMasterItem("Warehouse", id)}
@@ -377,7 +377,7 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                       
                       let partyOptions;
                       if (selectedAccount === 'Transport Charges') {
-                          partyOptions = transporters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
+                          partyOptions = (transporters || []).map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
                       } else {
                           partyOptions = allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
                       }
@@ -390,14 +390,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                                   itemField.onChange(value);
                                   if (value !== 'Transport Charges') {
                                       const currentPartyId = getValues(`expenses.${index}.partyId`);
-                                      if (currentPartyId && transporters.some(t => t.id === currentPartyId)) {
+                                      if (currentPartyId && (transporters || []).some(t => t.id === currentPartyId)) {
                                           setValue(`expenses.${index}.partyId`, undefined);
                                       }
                                   }
                               }} value={itemField.value}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="SELECT ACCOUNT" /></SelectTrigger></FormControl>
                                 <SelectContent>
-                                  {expenses.map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
+                                  {(expenses || []).map(opt => <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                               <FormMessage />
