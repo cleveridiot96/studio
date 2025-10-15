@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -8,7 +9,7 @@ import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, subYears, isBefore } from "date-fns";
-import { BookUser, Printer } from "lucide-react";
+import { BookUser, Printer, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -17,14 +18,9 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
+import { useMasterData } from "@/contexts/MasterDataContext";
+import { Input } from "@/components/ui/input";
 
-
-const MASTERS_KEYS = {
-  customers: 'masterCustomers',
-  suppliers: 'masterSuppliers',
-  agents: 'masterAgents',
-  brokers: 'masterBrokers',
-};
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
   sales: 'salesData',
@@ -64,20 +60,12 @@ const initialLedgerData = {
 export function LedgerClient() {
   const { isAppHydrating } = useSettings();
   const { toast } = useToast();
-  
-  const memoizedEmptyArray = React.useMemo(() => [], []);
-  
-  // Master data states
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.customers, memoizedEmptyArray);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.suppliers, memoizedEmptyArray);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.agents, memoizedEmptyArray);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(MASTERS_KEYS.brokers, memoizedEmptyArray);
+  const { data: masterData, setData: setMasterData, getAllMasters } = useMasterData();
 
-  // Transaction states
-  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, memoizedEmptyArray, purchaseMigrator);
-  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, memoizedEmptyArray, salesMigrator);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, memoizedEmptyArray);
-  const [saleReturns] = useLocalStorageState<SaleReturn[]>(TRANSACTIONS_KEYS.saleReturns, memoizedEmptyArray);
+  const [purchases] = useLocalStorageState<Purchase[]>(TRANSACTIONS_KEYS.purchases, [], purchaseMigrator);
+  const [sales] = useLocalStorageState<Sale[]>(TRANSACTIONS_KEYS.sales, [], salesMigrator);
+  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(TRANSACTIONS_KEYS.purchaseReturns, []);
+  const [saleReturns] = useLocalStorageState<SaleReturn[]>(TRANSACTIONS_KEYS.saleReturns, []);
 
   const [selectedPartyId, setSelectedPartyId] = React.useState<string>("");
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
@@ -86,17 +74,18 @@ export function LedgerClient() {
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
 
+  const [debitSearch, setDebitSearch] = React.useState('');
+  const [creditSearch, setCreditSearch] = React.useState('');
+
   const searchParams = useSearchParams();
   const router = useRouter();
   const partyIdFromQuery = searchParams.get('partyId');
   
-  const allMasters = React.useMemo(() => {
-    return [...customers, ...suppliers, ...agents, ...brokers]
-      .filter(m => m && m.id && m.name && m.type) // Basic validation
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [customers, suppliers, agents, brokers]);
+  const allMasters = React.useMemo(() => getAllMasters(), [getAllMasters]);
 
   React.useEffect(() => {
+    if (isAppHydrating) return;
+
     if (!dateRange) {
       const [startYearStr] = currentFinancialYearString.split('-');
       const startYear = parseInt(startYearStr, 10);
@@ -110,7 +99,7 @@ export function LedgerClient() {
     if (partyIdFromQuery && allMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
       setSelectedPartyId(partyIdFromQuery);
     }
-  }, [currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
+  }, [isAppHydrating, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
@@ -121,7 +110,6 @@ export function LedgerClient() {
 
     let openingStock = { bags: 0, kg: 0 };
     
-    // Calculate Opening Balance from all transactions before the start date
     const allTransactions = [
         ...purchases.map(p => ({ ...p, type: 'Purchase' as const })),
         ...sales.map(s => ({ ...s, type: 'Sale' as const })),
@@ -222,6 +210,29 @@ export function LedgerClient() {
     };
   }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, isAppHydrating]);
 
+   const filteredDebitTransactions = React.useMemo(() => {
+    if (!debitSearch) return ledgerData.debitTransactions;
+    const lowerCaseSearch = debitSearch.toLowerCase();
+    return ledgerData.debitTransactions.filter(tx => 
+        tx.vakkal.toLowerCase().includes(lowerCaseSearch) ||
+        tx.party.toLowerCase().includes(lowerCaseSearch)
+    );
+  }, [ledgerData.debitTransactions, debitSearch]);
+
+  const filteredCreditTransactions = React.useMemo(() => {
+    if (!creditSearch) return ledgerData.creditTransactions;
+    const lowerCaseSearch = creditSearch.toLowerCase();
+    return ledgerData.creditTransactions.filter(tx => 
+        tx.vakkal.toLowerCase().includes(lowerCaseSearch) ||
+        tx.party.toLowerCase().includes(lowerCaseSearch)
+    );
+  }, [ledgerData.creditTransactions, creditSearch]);
+
+  const totalFilteredDebitBags = React.useMemo(() => filteredDebitTransactions.reduce((sum, tx) => sum + tx.bags, 0), [filteredDebitTransactions]);
+  const totalFilteredDebitKg = React.useMemo(() => filteredDebitTransactions.reduce((sum, tx) => sum + tx.kg, 0), [filteredDebitTransactions]);
+  const totalFilteredCreditBags = React.useMemo(() => filteredCreditTransactions.reduce((sum, tx) => sum + tx.bags, 0), [filteredCreditTransactions]);
+  const totalFilteredCreditKg = React.useMemo(() => filteredCreditTransactions.reduce((sum, tx) => sum + tx.kg, 0), [filteredCreditTransactions]);
+
   const handlePartySelect = React.useCallback((value: string | undefined) => {
     setSelectedPartyId(value || "");
     const newPath = value ? `/ledger?partyId=${value}` : '/ledger';
@@ -254,17 +265,8 @@ export function LedgerClient() {
   };
 
   const handleMasterFormSubmit = (updatedItem: MasterItem) => {
-    const setters: Record<string, React.Dispatch<React.SetStateAction<MasterItem[]>>> = {
-        'Customer': setCustomers,
-        'Supplier': setSuppliers,
-        'Agent': setAgents,
-        'Broker': setBrokers,
-    };
-    const setter = setters[updatedItem.type];
-    if (setter) {
-        setter(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a,b) => a.name.localeCompare(b.name)));
-        toast({ title: `${updatedItem.type} updated`, description: `Details for ${updatedItem.name} saved.` });
-    }
+    setMasterData(updatedItem.type, prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a,b) => a.name.localeCompare(b.name)));
+    toast({ title: `${updatedItem.type} updated`, description: `Details for ${updatedItem.name} saved.` });
     setIsMasterFormOpen(false);
     setMasterItemToEdit(null);
   };
@@ -275,8 +277,8 @@ export function LedgerClient() {
   }
 
   return (
-    <div className="space-y-4 print-area flex flex-col flex-1">
-      <Card className="shadow-md no-print">
+    <div className="space-y-4 print-area flex flex-col h-[calc(100vh-8rem)]">
+      <Card className="shadow-md no-print flex-shrink-0">
         <CardHeader>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                 <h1 className="text-2xl font-bold text-foreground">STOCK LEDGER</h1>
@@ -304,129 +306,122 @@ export function LedgerClient() {
       </Card>
 
       {selectedPartyId && selectedPartyDetails ? (
-        <Card id="ledger-t-account" className="shadow-lg p-2 flex flex-col flex-1 print-area">
-          <CardHeader className="text-center p-2">
-            <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
-            <CardTitle className="text-xl text-primary flex items-center justify-center uppercase">
-              <BookUser className="mr-3 h-6 w-6 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type})
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Period: {dateRange?.from ? format(dateRange.from, "dd/MM/yy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd/MM/yy") : 'End'}
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-col flex-grow min-h-0 p-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-grow min-h-0">
-                {/* Debit Side */}
-                <div className="md:col-span-1 flex flex-col">
-                  <Card className="shadow-inner border-orange-300 flex flex-col flex-1">
-                    <CardHeader className="p-0">
-                      <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold text-base">DEBIT (INWARD)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
-                            <Table size="sm" className="whitespace-nowrap">
-                              <TableHeader>
+        <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
+            {/* Debit Side */}
+            <Card className="shadow-lg flex flex-col">
+                <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-xl text-orange-800">DEBIT (INWARD)</CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search debits..." value={debitSearch} onChange={e => setDebitSearch(e.target.value)} className="pl-9 h-9" />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow min-h-0">
+                    <ScrollArea className="h-full">
+                        <Table size="sm">
+                            <TableHeader>
                                 <TableRow>
-                                  <TableHead>DATE</TableHead>
-                                  <TableHead>VAKKAL</TableHead>
-                                  <TableHead>PARTY</TableHead>
-                                  <TableHead className="text-right">BAGS</TableHead>
-                                  <TableHead className="text-right">KG</TableHead>
+                                    <TableHead>DATE</TableHead>
+                                    <TableHead>VAKKAL</TableHead>
+                                    <TableHead className="text-right">BAGS</TableHead>
+                                    <TableHead className="text-right">KG</TableHead>
                                 </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                <TableRow><TableCell colSpan={3}>OPENING BALANCE</TableCell><TableCell className="text-right font-semibold">{ledgerData.openingStock.bags.toLocaleString()}</TableCell><TableCell className="text-right font-semibold">{ledgerData.openingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow>
-                                {ledgerData.debitTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">NO INWARD STOCK IN THIS PERIOD.</TableCell></TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                <TableRow className="font-semibold bg-muted/30"><TableCell colSpan={2}>OPENING BALANCE</TableCell><TableCell className="text-right">{ledgerData.openingStock.bags.toLocaleString()}</TableCell><TableCell className="text-right">{ledgerData.openingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell></TableRow>
+                                {filteredDebitTransactions.length === 0 ? (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">No inward stock in this period.</TableCell></TableRow>
                                 ) : (
-                                  ledgerData.debitTransactions.map(tx => (
-                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className="uppercase cursor-pointer hover:bg-orange-100">
-                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
-                                      <TableCell>{tx.vakkal}</TableCell>
-                                      <TableCell>{tx.party}</TableCell>
-                                      <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
-                                      <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
+                                filteredDebitTransactions.map(tx => (
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className="uppercase cursor-pointer hover:bg-orange-50">
+                                    <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
+                                    <TableCell>{tx.vakkal}</TableCell>
+                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
                                     </TableRow>
-                                  ))
+                                ))
                                 )}
-                              </TableBody>
-                              <TableFooter>
+                            </TableBody>
+                            <TableFooter>
                                 <TableRow className="font-bold bg-orange-50">
-                                  <TableCell colSpan={3}>TOTAL</TableCell>
-                                  <TableCell className="text-right">{(ledgerData.totals.debitBags + ledgerData.openingStock.bags).toLocaleString()}</TableCell>
-                                  <TableCell className="text-right">{(ledgerData.totals.debitKg + ledgerData.openingStock.kg).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell colSpan={2}>Total Debits</TableCell>
+                                <TableCell className="text-right">{(totalFilteredDebitBags + ledgerData.openingStock.bags).toLocaleString()}</TableCell>
+                                <TableCell className="text-right">{(totalFilteredDebitKg + ledgerData.openingStock.kg).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
-                              </TableFooter>
-                            </Table>
-                           <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                    </CardContent>
-                  </Card>
-                </div>
-                {/* Credit Side */}
-                <div className="md:col-span-1 flex flex-col">
-                  <Card className="shadow-inner border-green-300 flex flex-col flex-1">
-                    <CardHeader className="p-0">
-                      <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold text-base">CREDIT (OUTWARD)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
-                            <Table size="sm" className="whitespace-nowrap">
-                              <TableHeader>
+                            </TableFooter>
+                        </Table>
+                         <ScrollBar orientation="vertical" />
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+            {/* Credit Side */}
+            <Card className="shadow-lg flex flex-col">
+                <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-xl text-green-800">CREDIT (OUTWARD)</CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search credits..." value={creditSearch} onChange={e => setCreditSearch(e.target.value)} className="pl-9 h-9" />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow min-h-0">
+                    <ScrollArea className="h-full">
+                        <Table size="sm">
+                            <TableHeader>
                                 <TableRow>
-                                  <TableHead>DATE</TableHead>
-                                  <TableHead>VAKKAL</TableHead>
-                                  <TableHead>PARTY</TableHead>
-                                  <TableHead className="text-right">BAGS</TableHead>
-                                  <TableHead className="text-right">KG</TableHead>
+                                <TableHead>DATE</TableHead>
+                                <TableHead>VAKKAL</TableHead>
+                                <TableHead className="text-right">BAGS</TableHead>
+                                <TableHead className="text-right">KG</TableHead>
                                 </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {ledgerData.creditTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">NO OUTWARD STOCK RECORDED.</TableCell></TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredCreditTransactions.length === 0 ? (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">No outward stock in this period.</TableCell></TableRow>
                                 ) : (
-                                  ledgerData.creditTransactions.map(tx => (
-                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className="uppercase cursor-pointer hover:bg-green-100">
-                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
-                                      <TableCell>{tx.vakkal}</TableCell>
-                                      <TableCell>{tx.party}</TableCell>
-                                      <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
-                                      <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
+                                filteredCreditTransactions.map(tx => (
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className="uppercase cursor-pointer hover:bg-green-50">
+                                    <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
+                                    <TableCell>{tx.vakkal}</TableCell>
+                                    <TableCell className="text-right">{tx.bags.toLocaleString()}</TableCell>
+                                    <TableCell className="text-right">{tx.kg.toLocaleString()}</TableCell>
                                     </TableRow>
-                                  ))
+                                ))
                                 )}
-                              </TableBody>
-                              <TableFooter>
+                            </TableBody>
+                            <TableFooter>
                                 <TableRow className="font-bold bg-green-50">
-                                  <TableCell colSpan={3}>TOTAL</TableCell>
-                                  <TableCell className="text-right">{ledgerData.totals.creditBags.toLocaleString()}</TableCell>
-                                  <TableCell className="text-right">{ledgerData.totals.creditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell colSpan={2}>Total Credits</TableCell>
+                                <TableCell className="text-right">{totalFilteredCreditBags.toLocaleString()}</TableCell>
+                                <TableCell className="text-right">{totalFilteredCreditKg.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
-                              </TableFooter>
-                            </Table>
-                            <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                    </CardContent>
-                  </Card>
+                            </TableFooter>
+                        </Table>
+                         <ScrollBar orientation="vertical" />
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2 mt-2 p-4 flex justify-between items-center bg-primary/5">
+                <div className="text-left">
+                    <p className="text-sm text-muted-foreground uppercase">PARTY</p>
+                    <p className="text-lg font-bold">{selectedPartyDetails.name} ({selectedPartyDetails.type})</p>
                 </div>
-            </div>
-          </CardContent>
-          <CardFooter className="mt-2 p-2 border-t-2 border-primary/50 flex justify-end">
-              <div className="text-right font-bold">
-                  <span className="text-base">CLOSING STOCK BALANCE: </span>
-                  <span className={`uppercase text-base ${ledgerData.closingStock.kg >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <div className="text-right">
+                    <p className="text-sm text-muted-foreground uppercase">Closing Stock Balance</p>
+                    <p className={`text-2xl font-bold ${ledgerData.closingStock.kg >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                       {ledgerData.closingStock.bags.toLocaleString()} BAGS / {ledgerData.closingStock.kg.toLocaleString('en-IN', {minimumFractionDigits: 2})} KG
-                  </span>
-                  <p className="text-xs text-muted-foreground font-normal uppercase">(OPENING + DEBIT - CREDIT FOR THE SELECTED PERIOD)</p>
-              </div>
-          </CardFooter>
-        </Card>
+                    </p>
+                </div>
+            </Card>
+        </div>
       ) : (
-        <Card className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors flex-1"
+        <Card
+          className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 flex-grow flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors flex-1"
           onClick={() => { document.getElementById('ledger-party-selector-trigger')?.click(); }}>
           <div className="text-center">
             <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />
-            <p className="text-xl text-muted-foreground uppercase">{allMasters.length === 0 && "NO PARTIES FOUND." || "PLEASE SELECT A PARTY TO VIEW THEIR STOCK LEDGER."}</p>
+            <p className="text-xl text-muted-foreground uppercase">{allMasters.length === 0 ? "NO PARTIES FOUND." : "PLEASE SELECT A PARTY TO VIEW THEIR STOCK LEDGER."}</p>
             <p className="text-sm text-muted-foreground mt-2 uppercase">(CLICK HERE TO SELECT)</p>
           </div>
         </Card>
@@ -438,8 +433,10 @@ export function LedgerClient() {
             onSubmit={handleMasterFormSubmit}
             initialData={masterItemToEdit}
             itemTypeFromButton={masterItemToEdit?.type || 'Supplier'}
+            fixedIds={[]}
         />
       )}
     </div>
   );
 }
+
