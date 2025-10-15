@@ -94,6 +94,15 @@
   }
 }
 
+[cmdk-item] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+[cmdk-item]:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
 .MuiPopover-root {
   z-index: 9999 !important;
 }

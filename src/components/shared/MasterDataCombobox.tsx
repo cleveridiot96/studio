@@ -35,7 +35,7 @@ interface MasterDataComboboxProps {
 export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   value,
   onChange,
-  options = [], // Ensure default empty array
+  options = [],
   placeholder = "SELECT AN OPTION",
   searchPlaceholder = "SEARCH...",
   notFoundMessage = "NO MATCH FOUND.",
@@ -48,17 +48,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
-
-  // Debug: Log options and props when they change
-  React.useEffect(() => {
-    if (options.length === 0) {
-      console.warn('⚠️ MasterDataCombobox received EMPTY options array!', {
-        placeholder,
-        value,
-        hasOnAddNew: !!onAddNew
-      });
-    }
-  }, [options, placeholder, value, onAddNew]);
 
   const fuse = React.useMemo(() => {
     if (!options || options.length === 0) {
@@ -93,8 +82,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     return options.find((opt) => opt.value === value)?.label;
   }, [options, value]);
 
-  const handleSelect = React.useCallback((selectedValue: string | undefined) => {
-    // CommandItem passes the value directly from the value prop
+  const handleSelectOption = React.useCallback((selectedValue: string | undefined) => {
     onChange(selectedValue);
     setOpen(false);
     setSearch("");
@@ -153,8 +141,9 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           <TooltipProvider>
             <CommandList>
               <CommandItem 
-                onSelect={() => handleSelect(undefined)}
-                className="cursor-pointer aria-selected:bg-accent"
+                value="__clear__"
+                onSelect={() => handleSelectOption(undefined)}
+                className="cursor-pointer"
               >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
                   <span className="italic">CLEAR SELECTION</span>
@@ -166,12 +155,8 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                   <CommandItem
                     key={option.value}
                     value={option.value}
-                    keywords={[option.label]}
-                    onSelect={(selectedValue) => {
-                      // selectedValue is the value prop of the CommandItem that was selected
-                      handleSelect(selectedValue);
-                    }}
-                    className="group uppercase flex justify-between items-center w-full cursor-pointer aria-selected:bg-accent hover:bg-accent/50"
+                    onSelect={() => handleSelectOption(option.value)}
+                    className="group uppercase flex justify-between items-center w-full"
                   >
                     <div className="flex items-center flex-grow truncate mr-2">
                       <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
@@ -210,6 +195,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                 
               {onAddNew && (
                 <CommandItem 
+                  value="__add_new__"
                   onSelect={handleAddNew}
                   className="cursor-pointer mt-1 border-t"
                 >
