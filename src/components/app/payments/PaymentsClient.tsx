@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -27,8 +28,6 @@ import { useTransactions } from '@/hooks/useTransactions';
 export function PaymentsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
-
   const { payments, setPayments, purchases } = useTransactions();
   
   const { payableParties } = useOutstandingBalances();
@@ -39,15 +38,11 @@ export function PaymentsClient() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [paymentToDeleteId, setPaymentToDeleteId] = React.useState<string | null>(null);
-  
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   const filteredPayments = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating) return [];
     return payments.filter(payment => payment && payment.date && isDateInFinancialYear(payment.date, financialYear));
-  }, [payments, financialYear, isAppHydrating, hydrated]);
+  }, [payments, financialYear, isAppHydrating]);
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
     const isEditing = payments.some(p => p.id === payment.id);
@@ -61,7 +56,8 @@ export function PaymentsClient() {
 
     setPaymentToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
-  }, [setPayments, toast, payments]);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+  }, [payments, setPayments, toast]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -79,6 +75,7 @@ export function PaymentsClient() {
       toast({ title: "Success!", description: "Payment deleted successfully.", variant: "destructive" });
       setPaymentToDeleteId(null);
       setShowDeleteConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
   }, [paymentToDeleteId, setPayments, toast]);
   
@@ -99,7 +96,7 @@ export function PaymentsClient() {
     setPaymentToEdit(null);
   }, []);
 
-  if (isAppHydrating || !hydrated) {
+  if (isAppHydrating) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading payments data...</p>

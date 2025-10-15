@@ -23,10 +23,8 @@ const keys = {
 };
 
 export const BalanceSheetClient = () => {
-    const [hydrated, setHydrated] = React.useState(false);
     const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
     const { receivableParties, payableParties, isBalancesLoading } = useOutstandingBalances();
-    React.useEffect(() => { setHydrated(true) }, []);
 
     // Load all data from all time
     const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
@@ -37,7 +35,7 @@ export const BalanceSheetClient = () => {
     
     // --- 1. Stock Valuation Logic ---
     const { totalStockValue, totalStockBags } = useMemo(() => {
-        if (isAppHydrating || !hydrated) return { totalStockValue: 0, totalStockBags: 0 };
+        if (isAppHydrating) return { totalStockValue: 0, totalStockBags: 0 };
     
         const inventoryMap = new Map<string, { currentWeight: number; cogs: number; currentBags: number }>();
     
@@ -134,7 +132,7 @@ export const BalanceSheetClient = () => {
         });
 
         return { totalStockValue: totalValue, totalStockBags: totalBags };
-    }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, hydrated, isAppHydrating, currentFinancialYearString]);
+    }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, currentFinancialYearString]);
 
 
     // --- 2. Receivables & Payables Logic ---
@@ -153,16 +151,16 @@ export const BalanceSheetClient = () => {
 
     // --- 3. Profit Logic ---
     const { totalNetProfit, totalKgSold } = useMemo(() => {
-        if (!hydrated) return { totalNetProfit: 0, totalGrossProfit: 0, totalKgSold: 0 };
+        if (isAppHydrating) return { totalNetProfit: 0, totalGrossProfit: 0, totalKgSold: 0 };
         const fySales = sales.filter(sale => sale && isDateInFinancialYear(sale.date, currentFinancialYearString));
         const totalNetProfit = fySales.reduce((sum, sale) => sum + (sale.totalCalculatedProfit || 0), 0);
         const totalGrossProfit = fySales.reduce((sum, sale) => sum + (sale.totalGrossProfit || 0), 0);
         const totalKgSold = fySales.reduce((sum, sale) => sum + (sale.totalNetWeight || 0), 0);
         return { totalNetProfit, totalGrossProfit, totalKgSold };
-    }, [sales, hydrated, currentFinancialYearString]);
+    }, [sales, isAppHydrating, currentFinancialYearString]);
 
 
-    if (isAppHydrating || !hydrated || isBalancesLoading) {
+    if (isAppHydrating || isBalancesLoading) {
         return (
             <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
                 <p className="text-lg text-muted-foreground">Calculating financial summary...</p>

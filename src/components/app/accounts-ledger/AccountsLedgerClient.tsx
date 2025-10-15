@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -58,7 +59,7 @@ const initialFinancialLedgerData = {
 
 export function AccountsLedgerClient() {
   const { toast } = useToast();
-  const [hydrated, setHydrated] = React.useState(false);
+  const { isAppHydrating } = useSettings();
   const { getAllMasters, setData: setMasterData } = useMasterData();
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
@@ -85,37 +86,32 @@ export function AccountsLedgerClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const partyIdFromQuery = searchParams.get('partyId');
-
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
   
   const allMasters = React.useMemo(() => getAllMasters(), [getAllMasters]);
 
   React.useEffect(() => {
-    if (hydrated) {
-      if (!dateRange) {
-        const [startYearStr] = currentFinancialYearString.split('-');
-        const startYear = parseInt(startYearStr, 10);
-        if (!isNaN(startYear)) {
-          setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
-        } else {
-          setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
-        }
-      }
-      
-      if (partyIdFromQuery && allMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
-        setSelectedPartyId(partyIdFromQuery);
+    if (isAppHydrating) return;
+    if (!dateRange) {
+      const [startYearStr] = currentFinancialYearString.split('-');
+      const startYear = parseInt(startYearStr, 10);
+      if (!isNaN(startYear)) {
+        setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
+      } else {
+        setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
       }
     }
-  }, [hydrated, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
+    
+    if (partyIdFromQuery && allMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
+      setSelectedPartyId(partyIdFromQuery);
+    }
+  }, [isAppHydrating, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
   }, [allMasters]);
   
   const financialLedgerData = React.useMemo(() => {
-    if (!selectedPartyId || !dateRange?.from || !hydrated) return initialFinancialLedgerData;
+    if (!selectedPartyId || !dateRange?.from || isAppHydrating) return initialFinancialLedgerData;
 
     const party = allMasters.find(p => p.id === selectedPartyId);
     if (!party) return initialFinancialLedgerData;
@@ -258,7 +254,7 @@ export function AccountsLedgerClient() {
       totalCredit,
       balanceType: closingBalance >= 0 ? 'Dr' : 'Cr',
     };
-  }, [selectedPartyId, dateRange, hydrated, allMasters, purchases, sales, payments, receipts, purchaseReturns, saleReturns, ledgerData]);
+  }, [selectedPartyId, dateRange, isAppHydrating, allMasters, purchases, sales, payments, receipts, purchaseReturns, saleReturns, ledgerData]);
   
   const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
 
@@ -354,6 +350,10 @@ export function AccountsLedgerClient() {
     }
   }, [pdfData, toast]);
 
+  if (isAppHydrating) {
+      return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading accounts ledger...</p></div>
+  }
+
   return (
     <TooltipProvider>
     <div className="space-y-4 print-area flex flex-col flex-1">
@@ -388,7 +388,7 @@ export function AccountsLedgerClient() {
         </CardHeader>
       </Card>
 
-      {selectedPartyId && selectedPartyDetails && hydrated ? (
+      {selectedPartyId && selectedPartyDetails ? (
         <Card id="ledger-t-account" className="shadow-lg p-4 flex flex-col flex-1">
           <CardHeader className="text-center">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
@@ -538,7 +538,7 @@ export function AccountsLedgerClient() {
           <div className="text-center">
             <BookCopy className="h-16 w-16 text-accent mb-4 mx-auto" />
             <p className="text-xl text-muted-foreground uppercase">
-              {allMasters.length === 0 && hydrated ? "No parties found." : "Please select a party to view their accounts ledger."}
+              {allMasters.length === 0 && isAppHydrating ? "No parties found." : "Please select a party to view their accounts ledger."}
             </p>
             <p className="text-sm text-muted-foreground mt-2 uppercase">(Click here to select)</p>
           </div>

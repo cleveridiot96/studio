@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -27,8 +28,6 @@ import { useTransactions } from "@/hooks/useTransactions";
 export function ReceiptsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
-
   const { receipts, setReceipts, sales, addLedgerEntry, removeLedgerEntries } = useTransactions();
 
   const { receivableParties } = useOutstandingBalances();
@@ -40,14 +39,10 @@ export function ReceiptsClient() {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [receiptToDeleteId, setReceiptToDeleteId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
-
   const filteredReceipts = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating) return [];
     return receipts.filter(receipt => isDateInFinancialYear(receipt.date, financialYear));
-  }, [receipts, financialYear, isAppHydrating, hydrated]);
+  }, [receipts, financialYear, isAppHydrating]);
 
   const handleAddOrUpdateReceipt = React.useCallback((receipt: Receipt) => {
     const isEditing = receipts.some(r => r.id === receipt.id);
@@ -121,7 +116,7 @@ export function ReceiptsClient() {
     setReceiptToEdit(null);
   }, []);
 
-  if (isAppHydrating || !hydrated) {
+  if (isAppHydrating) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
             <p className="text-lg text-muted-foreground">Loading receipts data...</p>

@@ -28,6 +28,7 @@ import {
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { salesMigrator } from '@/lib/dataMigrators';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface OutstandingParty {
   partyId: string;
@@ -51,6 +52,7 @@ interface OutstandingBill {
 
 const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
   const [openBucket, setOpenBucket] = useState<string | null>(null);
+  const { isAppHydrating } = useSettings();
 
   const agingBuckets = useMemo(() => {
     const buckets = {
@@ -59,6 +61,8 @@ const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
       '61-90': { label: '61-90 Days', total: 0, count: 0, bills: [] as OutstandingBill[] },
       '90+': { label: '90+ Days', total: 0, count: 0, bills: [] as OutstandingBill[] },
     };
+
+    if (isAppHydrating) return buckets;
 
     data.forEach(party => {
       party.bills.forEach(bill => {
@@ -85,7 +89,7 @@ const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
       });
     });
     return buckets;
-  }, [data]);
+  }, [data, isAppHydrating]);
 
   return (
     <Card>
@@ -163,11 +167,9 @@ const AgingReport = ({ data }: { data: OutstandingParty[] }) => {
 
 
 export function OutstandingClient() {
-  const [hydrated, setHydrated] = useState(false);
   const [selectedPartyId, setSelectedPartyId] = useState<string | undefined>();
   const router = useRouter();
-
-  useEffect(() => { setHydrated(true) }, []);
+  const { isAppHydrating } = useSettings();
 
   const [sales] = useLocalStorageState<Sale[]>('salesData', [], salesMigrator);
   const [receipts] = useLocalStorageState<Receipt[]>('receiptsData', []);
@@ -225,7 +227,7 @@ export function OutstandingClient() {
   const totalPayable = useMemo(() => filteredData.filter(p => p.balance < 0).reduce((sum, p) => sum + p.balance, 0), [filteredData]);
 
 
-  if(!hydrated || isBalancesLoading) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
+  if(isAppHydrating || isBalancesLoading) return <div className="flex justify-center items-center h-full"><Card><CardHeader><CardTitle>Loading Outstanding Balances...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card></div>;
 
   return (
     <div className="space-y-4 print-area p-4 flex flex-col h-full">

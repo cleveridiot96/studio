@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -82,7 +83,7 @@ const DeductionRow: React.FC<{ label: string; value: number; isSub?: boolean; is
 
 
 export function ProfitAnalysisClient() {
-  const [hydrated, setHydrated] = React.useState(false);
+  const { isAppHydrating } = useSettings();
   const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
   const { financialYear: currentFinancialYearString } = useSettings();
   const [saleIdForCalc, setSaleIdForCalc] = React.useState<string | undefined>();
@@ -92,10 +93,8 @@ export function ProfitAnalysisClient() {
     return { from: startOfMonth(today), to: endOfDay(today) };
   });
 
-  React.useEffect(() => { setHydrated(true); }, []);
-
   const allProfitTransactionsInFY = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return [];
     const fySales = sales.filter(sale => sale && isDateInFinancialYear(sale.date, currentFinancialYearString));
     
     const flattenedTransactions: TransactionalProfitInfo[] = [];
@@ -132,7 +131,7 @@ export function ProfitAnalysisClient() {
       });
     });
     return flattenedTransactions.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [sales, hydrated, currentFinancialYearString]);
+  }, [sales, isAppHydrating, currentFinancialYearString]);
 
   const monthlySummaryForFY = React.useMemo(() => {
     const monthlyAgg: Record<string, { transactionCount: number; netProfit: number; }> = {};
@@ -242,7 +241,7 @@ export function ProfitAnalysisClient() {
     return allProfitTransactionsInFY.filter(tx => tx.saleId === saleIdForCalc);
   }, [saleIdForCalc, allProfitTransactionsInFY]);
 
-  if (!hydrated) {
+  if (isAppHydrating) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading profit analysis...</p></div>;
   }
 

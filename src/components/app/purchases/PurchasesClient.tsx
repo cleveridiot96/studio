@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -22,18 +23,23 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
+import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { format as formatDateFn } from 'date-fns';
+import { format as formatDateFn, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { purchaseMigrator } from '@/lib/dataMigrators';
+import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { useTransactions } from "@/hooks/useTransactions";
+
+const SALES_STORAGE_KEY = 'salesData';
+const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
 
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
 
   const {
     purchases,
@@ -61,19 +67,15 @@ export function PurchasesClient() {
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState('purchases');
 
-   React.useEffect(() => {
-    setHydrated(true);
-  }, []);
-
   const filteredPurchases = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating) return [];
     return purchases.filter(purchase => purchase && purchase.date && isDateInFinancialYear(purchase.date, financialYear));
-  }, [purchases, financialYear, isAppHydrating, hydrated]);
+  }, [purchases, financialYear, isAppHydrating]);
 
   const filteredPurchaseReturns = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating) return [];
     return purchaseReturns.filter(pr => pr && pr.date && isDateInFinancialYear(pr.date, financialYear));
-  }, [purchaseReturns, financialYear, isAppHydrating, hydrated]);
+  }, [purchaseReturns, financialYear, isAppHydrating]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     const isEditing = purchases.some(p => p.id === purchase.id);
@@ -81,8 +83,7 @@ export function PurchasesClient() {
       return isEditing ? prevPurchases.map(p => p.id === purchase.id ? purchase : p) : [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
     });
     
-    // Manage ledger entries for expenses
-    removeLedgerEntries(purchase.id); // Clear old entries for this voucher
+    removeLedgerEntries(purchase.id); // Clear old entries
     if (purchase.expenses && purchase.expenses.length > 0) {
         const newLedgerEntries = purchase.expenses.filter(exp => exp.amount > 0).map(exp => ({
             id: `ledger-${purchase.id}-${exp.account.replace(/\s/g, '')}`,
@@ -230,7 +231,7 @@ export function PurchasesClient() {
     }
   }, [purchaseForPdf, toast]);
 
-  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
+  if (isAppHydrating) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
 
   return (
     <div className="space-y-2 print-area">

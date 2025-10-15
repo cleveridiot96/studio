@@ -19,15 +19,9 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useMasterData } from "@/contexts/MasterDataContext";
 
-const PAYMENTS_STORAGE_KEY = 'paymentsData';
-const RECEIPTS_STORAGE_KEY = 'receiptsData';
-const CUSTOMERS_STORAGE_KEY = 'masterCustomers';
-const SUPPLIERS_STORAGE_KEY = 'masterSuppliers';
-const AGENTS_STORAGE_KEY = 'masterAgents';
-const TRANSPORTERS_STORAGE_KEY = 'masterTransporters';
-const BROKERS_STORAGE_KEY = 'masterBrokers';
-const EXPENSES_STORAGE_KEY = 'masterExpenses';
 const CASH_OPENING_BALANCE_KEY = 'cashbookBaseOpeningBalance';
 
 interface CashLedgerTransaction {
@@ -42,19 +36,9 @@ interface CashLedgerTransaction {
 
 export function CashbookClient() {
   const { toast } = useToast();
-  const memoizedInitialPayments = React.useMemo(() => [], []);
-  const memoizedInitialReceipts = React.useMemo(() => [], []);
-  const memoizedEmptyMasters = React.useMemo(() => [], []);
-
-  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, memoizedInitialPayments);
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, memoizedInitialReceipts);
-  
-  const [customers, setCustomers] = useLocalStorageState<Customer[]>(CUSTOMERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [suppliers, setSuppliers] = useLocalStorageState<Supplier[]>(SUPPLIERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [agents, setAgents] = useLocalStorageState<Agent[]>(AGENTS_STORAGE_KEY, memoizedEmptyMasters);
-  const [transporters, setTransporters] = useLocalStorageState<Transporter[]>(TRANSPORTERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [brokers, setBrokers] = useLocalStorageState<Broker[]>(BROKERS_STORAGE_KEY, memoizedEmptyMasters);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(EXPENSES_STORAGE_KEY, memoizedEmptyMasters);
+  const { payments, setPayments, receipts, setReceipts } = useTransactions();
+  const { data: masterData } = useMasterData();
+  const { Customer: customers, Supplier: suppliers, Agent: agents, Transporter: transporters, Broker: brokers, Expense: expenses } = masterData;
 
   const [baseOpeningBalance, setBaseOpeningBalance] = useLocalStorageState<number>(CASH_OPENING_BALANCE_KEY, 0);
   const [tempOpeningBalance, setTempOpeningBalance] = React.useState('0');
@@ -171,16 +155,20 @@ export function CashbookClient() {
   }, [setReceipts, toast]);
 
   const handleMasterDataUpdateFromCashbook = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    switch (type) {
-      case "Supplier":    setSuppliers(prev => [newItem as Supplier, ...prev.filter(i => i.id !== newItem.id)]); break;
-      case "Agent":       setAgents(prev => [newItem as Agent, ...prev.filter(i => i.id !== newItem.id)]); break;
-      case "Transporter": setTransporters(prev => [newItem as Transporter, ...prev.filter(i => i.id !== newItem.id)]); break;
-      case "Customer":    setCustomers(prev => [newItem as Customer, ...prev.filter(i => i.id !== newItem.id)]); break;
-      case "Broker":      setBrokers(prev => [newItem as Broker, ...prev.filter(i => i.id !== newItem.id)]); break;
-      case "Expense":     setExpenses(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]); break;
-      default: toast({title: "Info", description: `Master type ${type} not directly handled here.`}); break;
+    const setters = {
+        'Supplier': setMasterData,
+        'Agent': setMasterData,
+        'Transporter': setMasterData,
+        'Customer': setMasterData,
+        'Broker': setMasterData,
+        'Expense': setMasterData
+    };
+    const setter = setters[type as keyof typeof setters];
+    if(setter) {
+        setter(type, (prev: any) => [newItem, ...prev.filter((i: any) => i.id !== newItem.id)]);
     }
-  }, [setSuppliers, setAgents, setTransporters, setCustomers, setBrokers, setExpenses, toast]);
+    toast({title: "Info", description: `Master type ${type} updated.`});
+  }, [setMasterData, toast]);
 
   const setDateQuickFilter = (preset: 'today' | 'yesterday' | 'dayBeforeYesterday') => {
     const today = new Date();

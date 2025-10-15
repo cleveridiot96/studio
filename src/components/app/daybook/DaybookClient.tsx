@@ -48,9 +48,8 @@ const typeToColorMap: Record<DaybookEntry['type'], string> = {
 
 
 export function DaybookClient() {
-  const [hydrated, setHydrated] = useState(false);
+  const { isAppHydrating } = useSettings();
   const router = useRouter();
-  const { financialYear, isAppHydrating } = useSettings();
 
   // Data states
   const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
@@ -64,7 +63,6 @@ export function DaybookClient() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   useEffect(() => {
-    setHydrated(true);
     if (!dateRange) {
         const today = new Date();
         setDateRange({ from: startOfMonth(today), to: endOfMonth(today) });
@@ -72,7 +70,7 @@ export function DaybookClient() {
   }, [dateRange]);
 
   const allDaybookEntries = useMemo((): DaybookEntry[] => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return [];
     
     const entries: DaybookEntry[] = [];
 
@@ -128,7 +126,7 @@ export function DaybookClient() {
     });
 
     return entries.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [hydrated, purchases, sales, payments, receipts, locationTransfers, ledgerData]);
+  }, [isAppHydrating, purchases, sales, payments, receipts, locationTransfers, ledgerData]);
 
   const filteredEntries = useMemo(() => {
     let filtered = allDaybookEntries;
@@ -213,7 +211,7 @@ export function DaybookClient() {
     }
   ], []);
 
-  if (!hydrated || isAppHydrating) {
+  if (isAppHydrating) {
       return <div>Loading Daybook...</div>;
   }
 

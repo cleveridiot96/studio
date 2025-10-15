@@ -9,23 +9,21 @@ import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 
 
 export const OutstandingSummary = () => {
-  const [hydrated, setHydrated] = React.useState(false);
-  const { financialYear: currentFinancialYearString } = useSettings();
-  React.useEffect(() => { setHydrated(true) }, []);
+  const { financialYear: currentFinancialYearString, isAppHydrating } = useSettings();
 
   const { receivableParties, payableParties, isBalancesLoading } = useOutstandingBalances();
 
   const { totalReceivable, totalPayable } = useMemo(() => {
-    if (isBalancesLoading || !hydrated) return { totalReceivable: 0, totalPayable: 0 };
+    if (isBalancesLoading || isAppHydrating) return { totalReceivable: 0, totalPayable: 0 };
     
     const totalReceivable = receivableParties.reduce((sum, p) => sum + (p.balance || 0), 0);
     const totalPayable = payableParties.reduce((sum, p) => sum + Math.abs(p.balance || 0), 0);
     
     return { totalReceivable, totalPayable };
 
-  }, [hydrated, isBalancesLoading, receivableParties, payableParties]);
+  }, [isAppHydrating, isBalancesLoading, receivableParties, payableParties]);
   
-  if(!hydrated || isBalancesLoading) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
+  if(isAppHydrating || isBalancesLoading) return <Card><CardHeader><CardTitle>LOADING OUTSTANDING BALANCES...</CardTitle></CardHeader><CardContent><div className="space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-4 bg-muted rounded w-1/2"></div></div></CardContent></Card>
 
   return (
     <Card className="col-span-1 lg:col-span-2">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useCallback } from "react";
@@ -19,6 +18,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
 import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions.tsx';
 import { AppHeaderContentInternal } from "@/components/layout/AppHeaderContentInternal";
+import { useHydrated } from "@/hooks/useHydrated";
 
 const AUTH_KEYS = {
     IS_SETUP_COMPLETE: 'kisan_khata_is_setup_complete',
@@ -162,18 +162,17 @@ function AppLayoutInternal({ children }: { children: React.ReactNode }) {
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-    const [isAppLayoutMounted, setIsAppLayoutMounted] = React.useState(false);
+    const isHydrated = useHydrated();
     const router = useRouter();
     const [isSetupComplete] = useLocalStorageState(AUTH_KEYS.IS_SETUP_COMPLETE, false);
     
     useEffect(() => {
-        setIsAppLayoutMounted(true);
-        if (!isSetupComplete) {
+        if (isHydrated && !isSetupComplete) {
             router.replace('/setup');
         }
-    }, [isSetupComplete, router]);
+    }, [isSetupComplete, router, isHydrated]);
 
-    if (!isAppLayoutMounted || !isSetupComplete) {
+    if (!isHydrated || !isSetupComplete) {
         return (
              <div className="flex h-screen w-screen items-center justify-center bg-background">
                 <p className="text-muted-foreground">Checking application setup...</p>

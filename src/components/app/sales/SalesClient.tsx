@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -22,12 +23,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
+import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format as formatDateFn, parseISO } from 'date-fns';
 import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
+import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { useMasterData } from "@/contexts/MasterDataContext";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useInventory } from "@/hooks/useInventory";
@@ -35,18 +39,8 @@ import { useInventory } from "@/hooks/useInventory";
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const [hydrated, setHydrated] = React.useState(false);
   const { setMasterData } = useMasterData();
-  const {
-    sales,
-    setSales,
-    saleReturns,
-    setSaleReturns,
-    receipts,
-    addLedgerEntry,
-    removeLedgerEntries
-  } = useTransactions();
-
+  const { sales, setSales, saleReturns, setSaleReturns, receipts, addLedgerEntry, removeLedgerEntries } = useTransactions();
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
@@ -64,12 +58,8 @@ export function SalesClient() {
   
   const { availableStock, isLoading: isInventoryLoading } = useInventory(saleToEdit?.id);
 
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
-
   const filteredSales = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating) return [];
     const fySales = sales.filter(sale => sale && sale.date && isDateInFinancialYear(sale.date, financialYear));
 
     const enrichedSales = fySales.map(sale => {
@@ -96,7 +86,7 @@ export function SalesClient() {
     }).filter(Boolean) as Sale[];
 
     return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [sales, receipts, financialYear, isAppHydrating, hydrated]);
+  }, [sales, receipts, financialYear, isAppHydrating]);
 
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
@@ -242,7 +232,7 @@ export function SalesClient() {
     }
   }, [saleForPdf, toast]);
 
-  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading sales data...</p></div>;
+  if (isAppHydrating || isInventoryLoading) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading sales data...</p></div>;
 
   return (
     <div className="space-y-2 print-area">

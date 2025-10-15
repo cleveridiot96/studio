@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -81,8 +82,6 @@ export function InventoryClient() {
   const { warehouses, suppliers } = masterData;
   const { sales, purchases, locationTransfers, setLocationTransfers, purchaseReturns, saleReturns, adjustments, setAdjustments } = useTransactions();
   
-  const [hydrated, setHydrated] = React.useState(false);
-
   const [archivedLotKeys, setArchivedLotKeys] = useLocalStorageState<string[]>(ARCHIVED_LOTS_STORAGE_KEY, []);
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
@@ -94,12 +93,8 @@ export function InventoryClient() {
   const [isAdjustmentFormOpen, setIsAdjustmentFormOpen] = React.useState(false);
   const [itemToReverse, setItemToReverse] = React.useState<StockAdjustment | null>(null);
 
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
-
   const allAggregatedInventory = React.useMemo(() => {
-    if (isAppHydrating || !hydrated) return [];
+    if (isAppHydrating) return [];
 
     const inventoryMap = new Map<string, AggregatedInventoryItem>();
 
@@ -218,7 +213,7 @@ export function InventoryClient() {
     });
 
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [sales, purchases, locationTransfers, purchaseReturns, saleReturns, adjustments, financialYear, isAppHydrating, hydrated]);
+  }, [sales, purchases, locationTransfers, purchaseReturns, saleReturns, adjustments, financialYear, isAppHydrating]);
   
   const activeInventory = React.useMemo(() => {
     return allAggregatedInventory.filter(item => !archivedLotKeys.includes(item.key));
@@ -264,11 +259,11 @@ export function InventoryClient() {
   }, [purchases, locationTransfers]);
 
   const filteredAdjustments = React.useMemo(() => {
-    if (!hydrated) return [];
+    if (isAppHydrating) return [];
     return adjustments
       .filter(adj => isDateInFinancialYear(adj.date, financialYear))
       .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [adjustments, financialYear, hydrated]);
+  }, [adjustments, financialYear, isAppHydrating]);
 
   const handleArchiveAttempt = (item: AggregatedInventoryItem) => {
     if (item.currentBags <= 0.001) { setItemToArchive(item); setShowArchiveConfirm(true); }
@@ -325,11 +320,13 @@ export function InventoryClient() {
     setLocationTransfers(prev => [newTransfer, ...prev]);
     toast({ title: "Lots Merged", description: `Successfully merged lots into ${mergeData.items[0].newLotNumber}.` });
     setIsMergeFormOpen(false);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
   };
   
   const handleAddAdjustment = useCallback((newAdjustment: Omit<StockAdjustment, 'id'>) => {
     setAdjustments(prev => [{ ...newAdjustment, id: `adj-${Date.now()}` }, ...prev]);
     toast({ title: 'Adjustment Recorded', description: 'The stock adjustment has been successfully saved.' });
+    window.dispatchEvent(new CustomEvent('reindex-search'));
   }, [setAdjustments, toast]);
 
   const handleReverseAttempt = (adjustment: StockAdjustment) => {
@@ -375,7 +372,7 @@ export function InventoryClient() {
   const archivedSelectionCount = Object.keys(archivedRowSelection).length;
 
 
-  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
+  if (isAppHydrating) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
   return (
     <div className="space-y-6 print-area">

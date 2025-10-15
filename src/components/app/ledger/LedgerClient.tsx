@@ -63,7 +63,7 @@ const initialLedgerData = {
 };
 
 export function LedgerClient() {
-  const [hydrated, setHydrated] = React.useState(false);
+  const { isAppHydrating } = useSettings();
   const { toast } = useToast();
   
   const memoizedEmptyArray = React.useMemo(() => [], []);
@@ -92,40 +92,33 @@ export function LedgerClient() {
   const partyIdFromQuery = searchParams.get('partyId');
 
   React.useEffect(() => {
-    setHydrated(true);
-  }, []);
+    if (!dateRange) {
+      const [startYearStr] = currentFinancialYearString.split('-');
+      const startYear = parseInt(startYearStr, 10);
+      if (!isNaN(startYear)) {
+        setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
+      } else {
+        setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
+      }
+    }
+    
+    if (partyIdFromQuery && allMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
+      setSelectedPartyId(partyIdFromQuery);
+    }
+  }, [currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
 
   const allMasters = React.useMemo(() => {
-    if (!hydrated) return [];
     return [...customers, ...suppliers, ...agents, ...brokers]
       .filter(m => m && m.id && m.name && m.type) // Basic validation
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [hydrated, customers, suppliers, agents, brokers]);
-
-  React.useEffect(() => {
-    if (hydrated) {
-      if (!dateRange) {
-        const [startYearStr] = currentFinancialYearString.split('-');
-        const startYear = parseInt(startYearStr, 10);
-        if (!isNaN(startYear)) {
-          setDateRange({ from: new Date(startYear, 3, 1), to: endOfDay(new Date(startYear + 1, 2, 31)) });
-        } else {
-          setDateRange({ from: startOfDay(subMonths(new Date(), 1)), to: endOfDay(new Date()) });
-        }
-      }
-      
-      if (partyIdFromQuery && allMasters.some(m => m.id === partyIdFromQuery) && selectedPartyId !== partyIdFromQuery) {
-        setSelectedPartyId(partyIdFromQuery);
-      }
-    }
-  }, [hydrated, currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
+  }, [customers, suppliers, agents, brokers]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
   }, [allMasters]);
 
   const ledgerData = React.useMemo(() => {
-    if (!selectedPartyId || !dateRange?.from || !hydrated) return initialLedgerData;
+    if (!selectedPartyId || !dateRange?.from || isAppHydrating) return initialLedgerData;
 
     let openingStock = { bags: 0, kg: 0 };
     
@@ -228,7 +221,7 @@ export function LedgerClient() {
         kg: openingStock.kg + totals.debitKg - totals.creditKg
       }
     };
-  }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, hydrated]);
+  }, [selectedPartyId, dateRange, purchases, sales, purchaseReturns, saleReturns, isAppHydrating]);
 
   const handlePartySelect = React.useCallback((value: string | undefined) => {
     setSelectedPartyId(value || "");
@@ -278,7 +271,7 @@ export function LedgerClient() {
   };
 
 
-  if (!hydrated) {
+  if (isAppHydrating) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">LOADING LEDGER DATA...</p></div>;
   }
 
@@ -311,7 +304,7 @@ export function LedgerClient() {
         </CardHeader>
       </Card>
 
-      {selectedPartyId && selectedPartyDetails && hydrated ? (
+      {selectedPartyId && selectedPartyDetails ? (
         <Card id="ledger-t-account" className="shadow-lg p-2 flex flex-col flex-1">
           <CardHeader className="text-center p-2">
             <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
@@ -434,7 +427,7 @@ export function LedgerClient() {
           onClick={() => { document.getElementById('ledger-party-selector-trigger')?.click(); }}>
           <div className="text-center">
             <BookUser className="h-16 w-16 text-accent mb-4 mx-auto" />
-            <p className="text-xl text-muted-foreground uppercase">{allMasters.length === 0 && hydrated ? "NO PARTIES FOUND." : "PLEASE SELECT A PARTY TO VIEW THEIR STOCK LEDGER."}</p>
+            <p className="text-xl text-muted-foreground uppercase">{allMasters.length === 0 && "NO PARTIES FOUND." || "PLEASE SELECT A PARTY TO VIEW THEIR STOCK LEDGER."}</p>
             <p className="text-sm text-muted-foreground mt-2 uppercase">(CLICK HERE TO SELECT)</p>
           </div>
         </Card>

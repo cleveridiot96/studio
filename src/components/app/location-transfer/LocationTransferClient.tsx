@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -101,6 +102,7 @@ export function LocationTransferClient() {
 
     toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
     setTransferToEdit(null);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
   };
 
   const handleEditTransfer = (transfer: LocationTransfer) => { setTransferToEdit(transfer); setIsAddFormOpen(true); };
@@ -112,6 +114,7 @@ export function LocationTransferClient() {
       removeLedgerEntries(itemToDelete.id);
       toast({ title: "Transfer Deleted", description: "Record removed.", variant: "destructive" });
       setItemToDelete(null); setShowDeleteConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
   };
 
