@@ -22,7 +22,6 @@ import { doesNameExist } from '@/lib/masterUtils';
 import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { cn } from "@/lib/utils";
 import Fuse from 'fuse.js';
-import didYouMean from 'didyoumean2';
 import { Input } from '@/components/ui/input';
 import { useMasterData } from '@/contexts/MasterDataContext';
 import {
@@ -275,16 +274,6 @@ export default function MastersPage() {
     return `${bgClass} ${textClass} ${hoverBgClass}`.trim();
   }, [activeTab]);
   
-  const searchDidYouMean = useMemo(() => {
-    if (!searchQuery) return null;
-    const names = getMasterDataState(activeTab).data.map(item => item.name);
-    const suggestion = didYouMean(searchQuery, names, {
-        threshold: 0.6,
-        caseSensitive: false,
-    });
-    return Array.isArray(suggestion) ? suggestion[0] : suggestion;
-  }, [searchQuery, activeTab, getMasterDataState]);
-  
   const getFilteredDataForTab = (tabValue: MasterPageTabKey) => {
     const { data } = getMasterDataState(tabValue);
     if (!searchQuery) {
@@ -374,9 +363,6 @@ export default function MastersPage() {
                             </div>
                         </div>
                     </div>
-                     {searchQuery && searchDidYouMean && (
-                        <p className="text-sm text-muted-foreground mt-1">DID YOU MEAN: <button className="font-semibold text-primary" onClick={() => setSearchQuery(searchDidYouMean)}>{searchDidYouMean}</button>?</p>
-                    )}
                   </CardHeader>
                   <CardContent className="p-0">
                     <MasterList
