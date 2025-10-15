@@ -41,7 +41,7 @@ import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { useMasterData } from "@/contexts/MasterDataContext";
 import { useTransactions } from "@/hooks/useTransactions";
-import { useInventory } from "@/hooks/useInventory";
+import { useInventory } from '@/hooks/useInventory';
 
 const KEY_SEPARATOR = '_$_';
 

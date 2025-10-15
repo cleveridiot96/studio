@@ -21,23 +21,20 @@ import {
 import { MoreVertical, Pencil, Trash2, Download } from "lucide-react";
 import type { Sale } from "@/lib/types";
 import { format, parseISO } from 'date-fns';
-import { DataTableColumnHeader } from "@/components/shared/DataTableColumnHeader";
-import type { ColumnDef } from "@tanstack/react-table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { DataTable } from "@/components/shared/DataTable";
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTableColumnHeader } from "@/components/shared/DataTableColumnHeader";
 
 interface SaleTableProps {
   data: Sale[];
   onEdit: (sale: Sale) => void;
   onDelete: (saleId: string) => void;
   onDownloadPdf?: (sale: Sale) => void;
-  currentPage: number;
-  totalPages: number;
-  goToPage: (page: number) => void;
-  nextPage: () => void;
-  prevPage: () => void;
 }
 
-const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf, currentPage, totalPages, goToPage, nextPage, prevPage }) => {
+const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, onDownloadPdf }) => {
+
   const columns = React.useMemo<ColumnDef<Sale>[]>(() => [
     {
       accessorKey: 'date',
@@ -118,13 +115,8 @@ const SaleTableComponent: React.FC<SaleTableProps> = ({ data, onEdit, onDelete, 
       columns={columns}
       data={data}
       getRowId={(row) => row.id}
-      showPagination={true}
-      currentPage={currentPage}
-      totalPages={totalPages}
-      goToPage={goToPage}
-      nextPage={nextPage}
-      prevPage={prevPage}
     />
   );
 }
+
 export const SaleTable = React.memo(SaleTableComponent);

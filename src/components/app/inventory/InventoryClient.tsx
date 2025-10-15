@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { LocationTransfer, MasterItem, StockAdjustment } from "@/lib/types";
+import type { Purchase, Sale, LocationTransfer, MasterItem, PurchaseReturn, SaleReturn, StockAdjustment } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo, SlidersHorizontal, Undo2 } from "lucide-react";
@@ -22,20 +22,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useSettings } from "@/contexts/SettingsContext";
+import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
 import { cn } from "@/lib/utils";
+import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
 import { MergeLotsForm } from "./MergeLotsForm";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LowStockWarning } from "@/components/app/dashboard/LowStockWarning";
 import { useMasterData } from '@/contexts/MasterDataContext';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useInventory } from '@/hooks/useInventory';
 import { AddAdjustmentForm } from "../stock-adjustments/AddAdjustmentForm";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import { isDateInFinancialYear } from "@/lib/utils";
 
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
 const KEY_SEPARATOR = '_$_';
@@ -80,8 +80,7 @@ export function InventoryClient() {
   const { toast } = useToast();
   const { data: masterData } = useMasterData();
   const { warehouses, suppliers } = masterData;
-  const { locationTransfers, setLocationTransfers, purchases, adjustments, setAdjustments } = useTransactions();
-  const { availableStock, isLoading: isInventoryLoading } = useInventory();
+  const { sales, purchases, locationTransfers, setLocationTransfers, purchaseReturns, saleReturns, adjustments, setAdjustments } = useTransactions();
   
   const [hydrated, setHydrated] = React.useState(false);
 
@@ -101,48 +100,126 @@ export function InventoryClient() {
   }, []);
 
   const allAggregatedInventory = React.useMemo(() => {
-    if (isInventoryLoading || !hydrated) return [];
+    if (isAppHydrating || !hydrated) return [];
 
     const inventoryMap = new Map<string, AggregatedInventoryItem>();
 
-    availableStock.forEach(item => {
-        const key = `${item.lotNumber}${KEY_SEPARATOR}${item.locationId}`;
-        
-        let existing = inventoryMap.get(key);
-        if(!existing) {
-            existing = {
-                key: key, lotNumber: item.lotNumber, locationId: item.locationId,
-                locationName: item.locationName || 'Unknown', sourceType: 'Purchase',
-                totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
-                totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0,
-                totalSaleReturnedWeight: 0, totalTransferredOutBags: 0, totalTransferredOutWeight: 0,
-                totalTransferredInBags: 0, totalTransferredInWeight: 0, totalAdjustedBags: 0, totalAdjustedWeight: 0,
-                currentBags: item.currentBags, currentWeight: 0, // This will be recalculated
-                purchaseRate: item.purchaseRate, effectiveRate: item.effectiveRate, cogs: 0,
-            };
-            inventoryMap.set(key, existing);
-        } else {
-            existing.currentBags += item.currentBags;
+    const transactions = [
+        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
+        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
+        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
+        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
+        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const })),
+        ...(adjustments || []).map(adj => ({ ...adj, txType: 'adjustment' as const }))
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    for (const tx of transactions) {
+        if (!isDateInFinancialYear(tx.date, financialYear)) continue;
+
+        if (tx.txType === 'purchase') {
+            tx.items.forEach(item => {
+                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
+                let entry = inventoryMap.get(key);
+                if (!entry) {
+                    entry = {
+                        key, lotNumber: item.lotNumber, locationId: tx.locationId, locationName: tx.locationName || 'Unknown',
+                        supplierId: tx.supplierId, supplierName: tx.supplierName, sourceType: 'Purchase',
+                        purchaseDate: tx.date, purchaseRate: item.rate, effectiveRate: item.landedCostPerKg,
+                        totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
+                        totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
+                        totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
+                        totalAdjustedBags: 0, totalAdjustedWeight: 0,
+                        currentBags: 0, currentWeight: 0, cogs: 0
+                    };
+                    inventoryMap.set(key, entry);
+                }
+                entry.totalPurchasedBags += item.quantity;
+                entry.totalPurchasedWeight += item.netWeight;
+            });
+        } else if (tx.txType === 'locationTransfer') {
+            tx.items.forEach(item => {
+                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
+                const fromEntry = inventoryMap.get(fromKey);
+                if (fromEntry) {
+                    fromEntry.totalTransferredOutBags += item.bagsToTransfer;
+                    fromEntry.totalTransferredOutWeight += item.netWeightToTransfer;
+                }
+
+                const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
+                let toEntry = inventoryMap.get(toKey);
+                if (!toEntry) {
+                    const originalPurchase = purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
+                    const perKgExpense = (tx.totalExpenses && tx.totalGrossWeight && tx.totalGrossWeight > 0) ? tx.totalExpenses / tx.totalGrossWeight : (tx.perKgExpense || 0);
+
+                    toEntry = {
+                        key: toKey, lotNumber: item.newLotNumber, locationId: tx.toWarehouseId, locationName: tx.toWarehouseName || 'Unknown',
+                        supplierId: fromEntry?.supplierId || originalPurchase?.supplierId, supplierName: fromEntry?.supplierName || originalPurchase?.supplierName,
+                        sourceType: 'Transfer', sourceDetails: `From ${tx.fromWarehouseName}`,
+                        purchaseDate: fromEntry?.purchaseDate || tx.date,
+                        purchaseRate: fromEntry?.purchaseRate || item.preTransferLandedCost || 0,
+                        effectiveRate: (fromEntry?.effectiveRate || item.preTransferLandedCost || 0) + perKgExpense,
+                        totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
+                        totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
+                        totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
+                        totalAdjustedBags: 0, totalAdjustedWeight: 0,
+                        currentBags: 0, currentWeight: 0, cogs: 0
+                    };
+                    inventoryMap.set(toKey, toEntry);
+                }
+                toEntry.totalTransferredInBags += item.bagsToTransfer;
+                toEntry.totalTransferredInWeight += item.netWeightToTransfer;
+            });
+        } else if (tx.txType === 'sale') {
+            tx.items.forEach(item => {
+                const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
+                const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
+                if (entry) {
+                    entry.totalSoldBags += item.quantity;
+                    entry.totalSoldWeight += item.netWeight;
+                }
+            });
+        } else if (tx.txType === 'purchaseReturn') {
+            const prLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(tx.originalLotNumber + KEY_SEPARATOR));
+            const entry = prLotKey ? inventoryMap.get(prLotKey) : undefined;
+            if (entry) {
+                entry.totalPurchaseReturnedBags += tx.quantityReturned;
+                entry.totalPurchaseReturnedWeight += tx.netWeightReturned;
+            }
+        } else if (tx.txType === 'saleReturn') {
+            const srLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(tx.originalLotNumber + KEY_SEPARATOR));
+            const entry = srLotKey ? inventoryMap.get(srLotKey) : undefined;
+            if (entry) {
+                entry.totalSaleReturnedBags += tx.quantityReturned;
+                entry.totalSaleReturnedWeight += tx.netWeightReturned;
+            }
+        } else if (tx.txType === 'adjustment') {
+          const adjKey = `${tx.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
+          const entry = inventoryMap.get(adjKey);
+          if (entry) {
+            entry.totalAdjustedBags += tx.bags;
+            entry.totalAdjustedWeight += tx.weight;
+          }
         }
-    });
+    }
 
     const result: AggregatedInventoryItem[] = [];
     inventoryMap.forEach(item => {
-      item.currentWeight = item.currentBags * (availableStock.find(s => s.lotNumber === item.lotNumber)?.averageWeightPerBag || 50);
-      item.cogs = item.currentWeight * item.effectiveRate;
+        item.currentBags = item.totalPurchasedBags + item.totalTransferredInBags + item.totalSaleReturnedBags + item.totalAdjustedBags - (item.totalSoldBags + item.totalTransferredOutBags + item.totalPurchaseReturnedBags);
+        item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight + item.totalAdjustedWeight - (item.totalSoldWeight + item.totalTransferredOutWeight + item.totalPurchaseReturnedWeight);
+        item.cogs = item.currentWeight * item.effectiveRate;
 
-      if (item.purchaseDate) {
-        item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
-      }
-      const totalInitialBagsForTurnover = item.totalPurchasedBags + item.totalTransferredInBags;
-      item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
-      item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
-      
-      result.push(item);
+        if (item.purchaseDate) {
+          item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
+        }
+        const totalInitialBagsForTurnover = item.totalPurchasedBags + item.totalTransferredInBags;
+        item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
+        item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
+        
+        result.push(item);
     });
 
     return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [availableStock, isInventoryLoading, hydrated]);
+  }, [sales, purchases, locationTransfers, purchaseReturns, saleReturns, adjustments, financialYear, isAppHydrating, hydrated]);
   
   const activeInventory = React.useMemo(() => {
     return allAggregatedInventory.filter(item => !archivedLotKeys.includes(item.key));
@@ -299,7 +376,7 @@ export function InventoryClient() {
   const archivedSelectionCount = Object.keys(archivedRowSelection).length;
 
 
-  if (isAppHydrating || !hydrated || isInventoryLoading) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
+  if (isAppHydrating || !hydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
   return (
     <div className="space-y-6 print-area">
