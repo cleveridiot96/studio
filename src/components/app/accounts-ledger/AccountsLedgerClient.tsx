@@ -9,7 +9,7 @@ import { MasterDataCombobox } from "@/components/shared/MasterDataCombobox";
 import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
 import type { DateRange } from "react-day-picker";
 import { format, parseISO, startOfDay, endOfDay, isWithinInterval, subMonths, isBefore, subYears } from "date-fns";
-import { BookCopy, Printer, Download } from "lucide-react";
+import { BookCopy, Printer, Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/contexts/SettingsContext";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -20,11 +20,12 @@ import { purchaseMigrator, salesMigrator } from '@/lib/dataMigrators';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { MasterForm } from "@/components/app/masters/MasterForm";
-import { FIXED_EXPENSES, FIXED_WAREHOUSES } from "@/lib/constants";
+import { FIXED_EXPENSES, FIXED_WAREHOUSES } from '@/lib/constants';
 import { useMasterData } from '@/contexts/MasterDataContext';
 import { AccountStatementPrint } from "./AccountStatementPrint";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Input } from "@/components/ui/input";
 
 const TRANSACTIONS_KEYS = {
   purchases: 'purchasesData',
@@ -82,6 +83,9 @@ export function AccountsLedgerClient() {
 
   const [pdfData, setPdfData] = React.useState<any>(null);
   const printRef = React.useRef<HTMLDivElement>(null);
+
+  const [debitSearch, setDebitSearch] = React.useState('');
+  const [creditSearch, setCreditSearch] = React.useState('');
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -255,6 +259,30 @@ export function AccountsLedgerClient() {
       balanceType: closingBalance >= 0 ? 'Dr' : 'Cr',
     };
   }, [selectedPartyId, dateRange, isAppHydrating, allMasters, purchases, sales, payments, receipts, purchaseReturns, saleReturns, ledgerData]);
+
+  const filteredDebitTransactions = React.useMemo(() => {
+    if (!debitSearch) return financialLedgerData.debitTransactions;
+    const lowerCaseSearch = debitSearch.toLowerCase();
+    return financialLedgerData.debitTransactions.filter(tx => 
+        tx.particulars.toLowerCase().includes(lowerCaseSearch) ||
+        tx.type.toLowerCase().includes(lowerCaseSearch) ||
+        tx.debit.toString().includes(lowerCaseSearch)
+    );
+  }, [financialLedgerData.debitTransactions, debitSearch]);
+
+  const filteredCreditTransactions = React.useMemo(() => {
+    if (!creditSearch) return financialLedgerData.creditTransactions;
+    const lowerCaseSearch = creditSearch.toLowerCase();
+    return financialLedgerData.creditTransactions.filter(tx => 
+        tx.particulars.toLowerCase().includes(lowerCaseSearch) ||
+        tx.type.toLowerCase().includes(lowerCaseSearch) ||
+        tx.credit.toString().includes(lowerCaseSearch)
+    );
+  }, [financialLedgerData.creditTransactions, creditSearch]);
+
+  const totalFilteredDebit = React.useMemo(() => filteredDebitTransactions.reduce((sum, tx) => sum + tx.debit, 0), [filteredDebitTransactions]);
+  const totalFilteredCredit = React.useMemo(() => filteredCreditTransactions.reduce((sum, tx) => sum + tx.credit, 0), [filteredCreditTransactions]);
+
   
   const selectedPartyDetails = allMasters.find(p => p.id === selectedPartyId);
 
@@ -284,9 +312,8 @@ export function AccountsLedgerClient() {
   };
 
   const handleMasterFormSubmit = (updatedItem: MasterItem) => {
-    const itemType = updatedItem.type;
-    setMasterData(itemType, prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a, b) => a.name.localeCompare(b.name)));
-    toast({ title: `${itemType} updated`, description: `Details for ${updatedItem.name} saved.` });
+    setMasterData(updatedItem.type, prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i).sort((a, b) => a.name.localeCompare(b.name)));
+    toast({ title: `${updatedItem.type} updated`, description: `Details for ${updatedItem.name} saved.` });
     setIsMasterFormOpen(false);
     setMasterItemToEdit(null);
   };
@@ -356,8 +383,8 @@ export function AccountsLedgerClient() {
 
   return (
     <TooltipProvider>
-    <div className="space-y-4 print-area flex flex-col flex-1">
-      <Card className="shadow-md no-print">
+    <div className="space-y-4 print-area flex flex-col h-[calc(100vh-8rem)]">
+      <Card className="shadow-md no-print flex-shrink-0">
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h1 className="text-3xl font-bold text-foreground">Accounts Ledger</h1>
@@ -389,147 +416,121 @@ export function AccountsLedgerClient() {
       </Card>
 
       {selectedPartyId && selectedPartyDetails ? (
-        <Card id="ledger-t-account" className="shadow-lg p-4 flex flex-col flex-1">
-          <CardHeader className="text-center">
-            <PrintHeaderSymbol className="hidden print:block text-sm font-semibold mb-1" />
-            <CardTitle className="text-2xl text-primary flex items-center justify-center uppercase">
-              <BookCopy className="mr-3 h-7 w-7 no-print" /> {selectedPartyDetails.name} ({selectedPartyDetails.type})
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Period: {dateRange?.from ? format(dateRange.from, "dd/MM/yy") : 'Start'} to {dateRange?.to ? format(dateRange.to, "dd/MM/yy") : 'End'}
-            </p>
-          </CardHeader>
-
-          <CardContent className="flex flex-col flex-grow min-h-0">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow min-h-0">
-                <div className="md:col-span-1 flex flex-col">
-                  <Card className="shadow-inner border-orange-300 flex flex-col flex-1">
-                    <CardHeader className="p-0">
-                      <CardTitle className="bg-orange-200 text-orange-800 text-center p-2 font-bold">DEBIT (Receivable / Paid)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
-                            <Table size="sm" className="whitespace-nowrap">
-                              <TableHeader>
+        <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
+            {/* Debit Side */}
+            <Card className="shadow-lg flex flex-col">
+                <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-xl text-orange-800">DEBIT (Receivable / Paid)</CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search debits..." value={debitSearch} onChange={e => setDebitSearch(e.target.value)} className="pl-9 h-9" />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow min-h-0">
+                    <ScrollArea className="h-full">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                  <TableHead>Date</TableHead>
-                                  <TableHead>Particulars</TableHead>
-                                  <TableHead className="text-right">Amount (₹)</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Particulars</TableHead>
+                                    <TableHead className="text-right">Amount (₹)</TableHead>
                                 </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {financialLedgerData.debitTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredDebitTransactions.length === 0 ? (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No debit entries.</TableCell></TableRow>
                                 ) : (
-                                  financialLedgerData.debitTransactions.map(tx => (
-                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className={tx.href ? 'cursor-pointer hover:bg-orange-100' : ''}>
-                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
-                                      <TableCell>
+                                filteredDebitTransactions.map(tx => (
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className={tx.href ? 'cursor-pointer hover:bg-orange-50' : ''}>
+                                    <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
+                                    <TableCell>
                                         <div className="flex items-center gap-2 uppercase">
-                                          <Badge variant="outline" className="uppercase">{tx.type}</Badge>
-                                          {tx.transactionDetails ? (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <span className="truncate max-w-xs cursor-help underline decoration-dashed">{tx.particulars}</span>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    {tx.transactionDetails}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                          ) : (
-                                            <span>{tx.particulars}</span>
-                                          )}
+                                        <Badge variant="outline" className="uppercase">{tx.type}</Badge>
+                                        <span>{tx.particulars}</span>
                                         </div>
-                                      </TableCell>
-                                      <TableCell className="text-right font-medium">{tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">{tx.debit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
                                     </TableRow>
-                                  ))
+                                ))
                                 )}
-                              </TableBody>
-                              <TableFooter>
+                            </TableBody>
+                            <TableFooter>
                                 <TableRow className="font-bold bg-orange-50">
-                                  <TableCell colSpan={2}>Total</TableCell>
-                                  <TableCell className="text-right">{financialLedgerData.totalDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                <TableCell colSpan={2}>Total Debits</TableCell>
+                                <TableCell className="text-right">{totalFilteredDebit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
                                 </TableRow>
-                              </TableFooter>
-                            </Table>
-                           <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                    </CardContent>
-                  </Card>
-                </div>
-                <div className="md:col-span-1 flex flex-col">
-                  <Card className="shadow-inner border-green-300 flex flex-col flex-1">
-                    <CardHeader className="p-0">
-                      <CardTitle className="bg-green-200 text-green-800 text-center p-2 font-bold">CREDIT (Payable / Received)</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 flex-grow">
-                        <ScrollArea className="h-full">
-                            <Table size="sm" className="whitespace-nowrap">
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Date</TableHead>
-                                  <TableHead>Particulars</TableHead>
-                                  <TableHead className="text-right">Amount (₹)</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {financialLedgerData.creditTransactions.length === 0 ? (
-                                  <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>
-                                ) : (
-                                  financialLedgerData.creditTransactions.map(tx => (
-                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className={tx.href ? 'cursor-pointer hover:bg-green-100' : ''}>
-                                      <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-2 uppercase">
-                                            <Badge variant="secondary" className="uppercase">{tx.type}</Badge>
-                                            {tx.transactionDetails ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <span className="truncate max-w-xs cursor-help underline decoration-dashed">{tx.particulars}</span>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        {tx.transactionDetails}
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            ) : (
-                                                <span>{tx.particulars}</span>
-                                            )}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-right font-medium">{tx.credit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
-                                    </TableRow>
-                                  ))
-                                )}
-                              </TableBody>
-                              <TableFooter>
-                                <TableRow className="font-bold bg-green-50">
-                                  <TableCell colSpan={2}>Total</TableCell>
-                                  <TableCell className="text-right">{financialLedgerData.totalCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
-                                </TableRow>
-                              </TableFooter>
-                            </Table>
-                            <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                    </CardContent>
-                  </Card>
-                </div>
-            </div>
-          </CardContent>
+                            </TableFooter>
+                        </Table>
+                        <ScrollBar orientation="vertical" />
+                    </ScrollArea>
+                </CardContent>
+            </Card>
 
-          <CardFooter className="mt-4 pt-4 border-t-2 border-primary/50 flex justify-end">
-              <div className="text-right font-bold text-lg">
-                  <span>Closing Balance: </span>
-                  <span className={financialLedgerData.balanceType === 'Dr' ? 'text-green-700' : 'text-red-700'}>
-                      ₹{Math.abs(financialLedgerData.closingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {financialLedgerData.balanceType}
-                  </span>
-                  <p className="text-xs text-muted-foreground font-normal uppercase">({financialLedgerData.balanceType === 'Dr' ? 'Receivable from party' : 'Payable to party'})</p>
-              </div>
-          </CardFooter>
-        </Card>
+            {/* Credit Side */}
+            <Card className="shadow-lg flex flex-col">
+                <CardHeader className="p-4 border-b">
+                    <CardTitle className="text-xl text-green-800">CREDIT (Payable / Received)</CardTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Search credits..." value={creditSearch} onChange={e => setCreditSearch(e.target.value)} className="pl-9 h-9" />
+                    </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-grow min-h-0">
+                    <ScrollArea className="h-full">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Particulars</TableHead>
+                                <TableHead className="text-right">Amount (₹)</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredCreditTransactions.length === 0 ? (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center">No credit entries.</TableCell></TableRow>
+                                ) : (
+                                filteredCreditTransactions.map(tx => (
+                                    <TableRow key={tx.id} onClick={() => tx.href && router.push(tx.href)} className={tx.href ? 'cursor-pointer hover:bg-green-50' : ''}>
+                                    <TableCell>{format(parseISO(tx.date), "dd/MM/yy")}</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2 uppercase">
+                                        <Badge variant="secondary" className="uppercase">{tx.type}</Badge>
+                                        <span>{tx.particulars}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">{tx.credit.toLocaleString('en-IN', {minimumFractionDigits: 2})}</TableCell>
+                                    </TableRow>
+                                ))
+                                )}
+                            </TableBody>
+                            <TableFooter>
+                                <TableRow className="font-bold bg-green-50">
+                                <TableCell colSpan={2}>Total Credits</TableCell>
+                                <TableCell className="text-right">{totalFilteredCredit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</TableCell>
+                                </TableRow>
+                            </TableFooter>
+                        </Table>
+                        <ScrollBar orientation="vertical" />
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2 mt-4 p-4 flex justify-between items-center bg-primary/5">
+                <div className="text-left">
+                    <p className="text-sm text-muted-foreground uppercase">Opening Balance</p>
+                    <p className="text-lg font-bold">₹{Math.abs(financialLedgerData.openingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {financialLedgerData.openingBalance >= 0 ? 'Dr' : 'Cr'}</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-sm text-muted-foreground uppercase">Closing Balance ({financialLedgerData.balanceType === 'Dr' ? 'Receivable' : 'Payable'})</p>
+                    <p className={`text-2xl font-bold ${financialLedgerData.balanceType === 'Dr' ? 'text-green-700' : 'text-red-700'}`}>
+                        ₹{Math.abs(financialLedgerData.closingBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})} {financialLedgerData.balanceType}
+                    </p>
+                </div>
+            </Card>
+        </div>
       ) : (
         <Card
-          className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 min-h-[300px] flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors flex-1"
+          className="shadow-lg border-dashed border-2 border-muted-foreground/30 bg-muted/20 flex-grow flex items-center justify-center no-print cursor-pointer hover:bg-muted/30 transition-colors"
           onClick={() => {
             const trigger = document.getElementById('accounts-ledger-party-selector-trigger');
             trigger?.click();
