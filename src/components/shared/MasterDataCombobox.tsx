@@ -49,6 +49,17 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
 
+  // Debug: Log options and props when they change
+  React.useEffect(() => {
+    if (options.length === 0) {
+      console.warn('⚠️ MasterDataCombobox received EMPTY options array!', {
+        placeholder,
+        value,
+        hasOnAddNew: !!onAddNew
+      });
+    }
+  }, [options, placeholder, value, onAddNew]);
+
   const fuse = React.useMemo(() => {
     if (!options || options.length === 0) {
       return new Fuse([], { keys: ['label'], threshold: 0.3, includeScore: true });
@@ -83,6 +94,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   }, [options, value]);
 
   const handleSelect = React.useCallback((selectedValue: string | undefined) => {
+    // CommandItem passes the value directly from the value prop
     onChange(selectedValue);
     setOpen(false);
     setSearch("");
@@ -142,7 +154,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList>
               <CommandItem 
                 onSelect={() => handleSelect(undefined)}
-                className="cursor-pointer"
+                className="cursor-pointer aria-selected:bg-accent"
               >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
                   <span className="italic">CLEAR SELECTION</span>
@@ -154,8 +166,12 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                   <CommandItem
                     key={option.value}
                     value={option.value}
-                    onSelect={() => handleSelect(option.value)}
-                    className="group uppercase flex justify-between items-center w-full cursor-pointer"
+                    keywords={[option.label]}
+                    onSelect={(selectedValue) => {
+                      // selectedValue is the value prop of the CommandItem that was selected
+                      handleSelect(selectedValue);
+                    }}
+                    className="group uppercase flex justify-between items-center w-full cursor-pointer aria-selected:bg-accent hover:bg-accent/50"
                   >
                     <div className="flex items-center flex-grow truncate mr-2">
                       <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
