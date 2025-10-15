@@ -8,10 +8,10 @@ export const FIXED_WAREHOUSES: Readonly<MasterItem[]> = [
 ];
 
 export const FIXED_EXPENSES: Readonly<MasterItem[]> = [
-    { id: 'fixed-exp-packing', name: 'Packing Charges', type: 'Expense' },
-    { id: 'fixed-exp-labour', name: 'Labour Charges', type: 'Expense' },
-    { id: 'fixed-exp-misc', name: 'Misc Expenses', type: 'Expense' },
-    { id: 'fixed-exp-transport', name: 'Transport Charges', type: 'Expense' },
+    { id: 'exp-packing-charges', name: 'Packing Charges', type: 'Expense' },
+    { id: 'exp-labour-charges', name: 'Labour Charges', type: 'Expense' },
+    { id: 'exp-misc-expenses', name: 'Misc Expenses', type: 'Expense' },
+    { id: 'exp-transport-charges', name: 'Transport Charges', type: 'Expense' },
 ];
 
   

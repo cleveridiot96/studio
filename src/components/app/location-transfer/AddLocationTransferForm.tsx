@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -24,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AggregatedStockItemForForm } from './LocationTransferClient';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMasterData } from "@/contexts/MasterDataContext";
+import { FIXED_EXPENSES } from "@/lib/constants";
 
 
 interface AddLocationTransferFormProps {
@@ -204,6 +204,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
     setIsSubmitting(false);
     onClose();
   };
+  
+  const isFixedInternalExpense = (accountName: string) => {
+    const fixedNames = ['Packing Charges', 'Labour Charges', 'Misc Expenses'];
+    return fixedNames.includes(accountName);
+  }
 
   if (!isOpen) return null;
 
@@ -374,12 +379,11 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                   <h3 className="text-lg font-medium mb-3 text-primary">ADDITIONAL TRANSFER EXPENSES</h3>
                    {expenseFields.map((field, index) => {
                       const selectedAccount = watch(`expenses.${index}.account`);
+                      const isInternal = isFixedInternalExpense(selectedAccount || "");
                       
-                      let partyOptions;
+                      let partyOptions = allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
                       if (selectedAccount === 'Transport Charges') {
                           partyOptions = (transporters || []).map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
-                      } else {
-                          partyOptions = allExpenseParties.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
                       }
 
                       return (
@@ -388,9 +392,12 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                             <FormItem className="md:col-span-3"><FormLabel>ACCOUNT</FormLabel>
                               <Select onValueChange={(value) => {
                                   itemField.onChange(value);
-                                  if (value !== 'Transport Charges') {
+                                  const isInternalNow = isFixedInternalExpense(value);
+                                  if (isInternalNow) {
+                                      setValue(`expenses.${index}.partyId`, undefined);
+                                  } else if (value === 'Transport Charges') {
                                       const currentPartyId = getValues(`expenses.${index}.partyId`);
-                                      if (currentPartyId && (transporters || []).some(t => t.id === currentPartyId)) {
+                                      if (currentPartyId && !(transporters || []).some(t => t.id === currentPartyId)) {
                                           setValue(`expenses.${index}.partyId`, undefined);
                                       }
                                   }
@@ -410,13 +417,14 @@ export const AddLocationTransferForm: React.FC<AddLocationTransferFormProps> = (
                           <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
                             <FormItem className="md:col-span-3"><FormLabel>PARTY (OPT.)</FormLabel>
                               <MasterDataCombobox
-                                value={itemField.value}
+                                value={isInternal ? "" : itemField.value}
                                 onChange={itemField.onChange}
                                 options={partyOptions}
-                                placeholder="SELECT PARTY"
+                                placeholder={isInternal ? "SELF (INTERNAL)" : "SELECT PARTY"}
                                 addNewLabel="ADD NEW PARTY"
                                 onAddNew={() => handleOpenMasterForm("Transporter")}
                                 onEdit={(id) => handleEditMasterItem("Expense", id)}
+                                disabled={isInternal}
                               />
                               <FormMessage />
                             </FormItem>)} />
