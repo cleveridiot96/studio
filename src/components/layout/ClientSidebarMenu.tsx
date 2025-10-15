@@ -31,6 +31,7 @@ import {
   Landmark,
   Search, // Added for Lot Ledger
   SlidersHorizontal,
+  Sitemap,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -55,6 +56,7 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   Landmark,
   Search,
   SlidersHorizontal,
+  Sitemap,
 };
 
 interface ClientSidebarMenuProps {
