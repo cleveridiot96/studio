@@ -11,7 +11,7 @@ import { LocationTransferSlipPrint } from "./LocationTransferSlipPrint";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, parseISO, subDays, startOfDay, endOfDay } from "date-fns";
+import { format as formatDateFn, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -37,10 +37,11 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { PrintHeaderSymbol } from "@/components/shared/PrintHeaderSymbol";
 import { cn } from "@/lib/utils";
-import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
-import type { DateRange } from "react-day-picker";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useInventory } from '@/hooks/useInventory';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { DatePickerWithRange } from "@/components/shared/DatePickerWithRange";
+import type { DateRange } from "react-day-picker";
 
 const KEY_SEPARATOR = '_$_';
 
@@ -298,7 +299,7 @@ export function LocationTransferClient() {
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('today')}>Today</Button>
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('yesterday')}>Yesterday</Button>
                     <Button variant="outline" size="sm" onClick={() => setDateQuickFilter('dayBeforeYesterday')}>
-                        {format(subDays(new Date(), 2), 'EEEE')}
+                        {formatDateFn(subDays(new Date(), 2), 'EEEE')}
                     </Button>
                 </div>
               </div>
@@ -324,7 +325,7 @@ export function LocationTransferClient() {
                        const totalValue = finalLandedCost * transfer.item.netWeightToTransfer;
                        return (
                       <TableRow key={`${transfer.id}${KEY_SEPARATOR}${transfer.item.originalLotNumber}`} className="uppercase">
-                        <TableCell>{format(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
+                        <TableCell>{formatDateFn(parseISO(transfer.date), "dd/MM/yy")}</TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.fromWarehouseName || transfer.fromWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.fromWarehouseName || transfer.fromWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell><Tooltip><TooltipTrigger asChild><span className="truncate max-w-[150px] inline-block">{transfer.toWarehouseName || transfer.toWarehouseId}</span></TooltipTrigger><TooltipContent><p>{transfer.toWarehouseName || transfer.toWarehouseId}</p></TooltipContent></Tooltip></TableCell>
                         <TableCell>

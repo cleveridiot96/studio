@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import type { CostBreakdown, LocationTransferItem, PurchaseItem, SaleItem, StockAdjustment } from '@/lib/types';
 import { isDateInFinancialYear } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
