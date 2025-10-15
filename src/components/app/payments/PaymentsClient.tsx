@@ -115,6 +115,7 @@ export function PaymentsClient() {
         account: payment.partyType,
         debit: payment.amount, // Payment debits the party's account (reduces liability)
         credit: 0,
+        paymentMode: payment.paymentMethod,
         party: payment.partyName,
         partyId: payment.partyId,
         relatedVoucher: payment.id,
@@ -160,7 +161,6 @@ export function PaymentsClient() {
      toast({ title: `Master list updated for ${type}.`});
      window.dispatchEvent(new Event('storage'));
   }, [toast, setMasterData]);
-
 
   const openAddPaymentForm = React.useCallback(() => {
     setPaymentToEdit(null);

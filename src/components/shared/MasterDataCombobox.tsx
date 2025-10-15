@@ -52,12 +52,11 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
 
   const fuse = React.useMemo(() => {
     if (!options || options.length === 0) {
-      return new Fuse([], { keys: ['label'], threshold: 0.3, includeScore: true });
+      return new Fuse([], { keys: ['label'], threshold: 0.3 });
     }
     return new Fuse(options, {
       keys: ['label'],
       threshold: 0.3,
-      includeScore: true,
     });
   }, [options]);
 
@@ -75,8 +74,16 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     if (!search) {
       return options;
     }
-    return fuse.search(search).map(result => result.item);
-  }, [options, search, fuse]);
+    const fuseResults = fuse.search(search).map(result => result.item);
+    // This logic ensures the "did you mean" suggestion doesn't cause duplicates
+    if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
+        const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
+        if (suggestionOption) {
+            return [suggestionOption, ...fuseResults];
+        }
+    }
+    return fuseResults;
+  }, [options, search, fuse, didYouMeanSuggest]);
 
   const selectedLabel = React.useMemo(() => {
     if (!options || !value) return undefined;
@@ -108,7 +115,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   }, [onEdit]);
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter" && filteredOptions.length === 0 && onAddNew) {
+    if (e.key === "Enter" && filteredOptions.length === 0 && onAddNew && search) {
         handleAddNew();
     }
   };
@@ -208,7 +215,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               )}
                 
               
-              {onAddNew && (
+              {onAddNew && (search.length > 0) && (
                 <CommandItem 
                   value="__add_new__"
                   onSelect={handleAddNew}

@@ -106,10 +106,10 @@ export function PurchasesClient() {
     window.dispatchEvent(new CustomEvent('reindex-search'));
   }, [purchases, setPurchases, addLedgerEntry, removeLedgerEntries, toast]);
 
-  const handleEditPurchase = (purchase: Purchase) => {
+  const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);
     setIsAddPurchaseFormOpen(true);
-  };
+  }, []);
 
   const handleDeletePurchaseAttempt = React.useCallback((purchaseId: string) => {
     const purchaseToDelete = purchases.find(p => p.id === purchaseId);
