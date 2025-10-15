@@ -94,9 +94,20 @@
   }
 }
 
+/* FORCES COMMAND ITEMS TO BE CLICKABLE AND VISIBLE */
 [cmdk-item] {
-  pointer-events: auto !important;
+  /* Forces clicks to register */
+  pointer-events: auto !important; 
+  /* Ensures the items are visible and not greyed out */
+  opacity: 1 !important; 
   cursor: pointer !important;
+}
+
+/* Enhances the hover/selected visual state */
+[cmdk-item]:hover,
+[cmdk-item][aria-selected="true"] {
+  background-color: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
 }
 
 .MuiPopover-root {
