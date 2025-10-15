@@ -18,12 +18,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, Printer } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, Printer, Package } from "lucide-react";
 import type { Payment } from "@/lib/types";
 import { format, parseISO } from 'date-fns';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface PaymentTableProps {
   data: Payment[];
@@ -57,7 +58,12 @@ const PaymentTableComponent: React.FC<PaymentTableProps> = ({ data, onEdit, onDe
                 <TableCell>{format(parseISO(payment.date), "dd/MM/yy")}</TableCell>
                 <TableCell>{payment.partyName || payment.partyId}</TableCell>
                 <TableCell><Badge variant="secondary" className="uppercase">{payment.partyType}</Badge></TableCell>
-                <TableCell>{payment.paymentMethod}</TableCell>
+                <TableCell>
+                    <div className="flex items-center gap-2">
+                        {payment.paymentType === 'Stock' ? <Package className="h-4 w-4 text-muted-foreground"/> : null}
+                        <span>{payment.paymentType === 'Stock' ? 'STOCK' : payment.paymentMethod}</span>
+                    </div>
+                </TableCell>
                 <TableCell>
                   {payment.notes ? (
                     <Tooltip>

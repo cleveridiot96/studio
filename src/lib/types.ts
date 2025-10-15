@@ -24,6 +24,7 @@ export interface MasterItem {
   type: MasterItemType;
   openingBalance?: number;
   openingBalanceType?: 'Dr' | 'Cr'; // Dr: To Receive (Asset), Cr: To Pay (Liability)
+  balance?: number; // Runtime calculated field
   [key: string]: any; // For additional fields
 }
 
@@ -171,6 +172,15 @@ export interface AllocatedBill {
   billTotal?: number;
   billVakkal?: string;
 }
+
+export interface StockPaymentItem {
+  lotNumber: string;
+  quantity: number;
+  netWeight: number;
+  rate: number; // The rate at which this stock is valued for the payment
+  value: number; // quantity * rate
+}
+
 export interface Payment {
   id: string;
   date: string; // ISO string date
@@ -178,11 +188,13 @@ export interface Payment {
   partyName?: string; // For display in table
   partyType: MasterItemType; // Supplier, Agent, Transporter
   amount: number;
-  paymentMethod: 'Cash' | 'Bank' | 'UPI';
+  paymentType: 'Cash' | 'Stock'; // NEW: To differentiate payment types
+  paymentMethod?: 'Cash' | 'Bank' | 'UPI'; // Optional for stock payments
   notes?: string;
   source?: string;
   transactionType: 'Against Bill' | 'On Account';
   againstBills?: AllocatedBill[];
+  stockItems?: StockPaymentItem[]; // NEW: Details if it's a stock payment
 }
 
 export interface Receipt {
@@ -220,7 +232,7 @@ export interface ExpenseItem {
 export interface LedgerEntry {
   id: string; // uuid
   date: string; // ISO string
-  type: 'Expense' | 'Payment' | 'Receipt' | 'Purchase' | 'Sale' | 'Opening Balance';
+  type: 'Expense' | 'Payment' | 'Receipt' | 'Purchase' | 'Sale' | 'Opening Balance' | 'Stock Payment';
   account: string; // e.g., "Transport Charges", "Broker Commission", "Sales"
   debit: number;
   credit: number;

@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select as ShadSelect, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
+import { CalendarIcon, PlusCircle, Trash2, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { paymentSchema, type PaymentFormValues } from "@/lib/schemas/paymentSchema";
@@ -37,6 +37,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { MasterForm } from "@/components/app/masters/MasterForm";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandItem } from "@/components/ui/command";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useInventory } from "@/hooks/useInventory";
+
 
 interface AddPaymentFormProps {
   isOpen: boolean;
@@ -60,46 +63,58 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   paymentToEdit,
 }) => {
   const { toast } = useToast();
+  const { availableStock } = useInventory(paymentToEdit?.id); // Exclude current payment's stock usage if editing
+
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
   const [isMasterFormOpen, setIsMasterFormOpen] = React.useState(false);
   const [masterFormItemType, setMasterFormItemType] = React.useState<MasterItemType | null>(null);
   const [masterItemToEdit, setMasterItemToEdit] = React.useState<MasterItem | null>(null);
   const [isBillPopoverOpen, setIsBillPopoverOpen] = React.useState(false);
+  
+  const formSchema = paymentSchema(parties, availableStock, paymentToEdit?.id);
 
   const getDefaultValues = React.useCallback((): PaymentFormValues => {
     if (paymentToEdit) {
       return {
         date: new Date(paymentToEdit.date),
         partyId: paymentToEdit.partyId,
-        amount: paymentToEdit.amount,
-        paymentMethod: paymentToEdit.paymentMethod,
+        paymentType: paymentToEdit.paymentType || 'Cash',
+        amount: paymentToEdit.paymentType === 'Cash' ? paymentToEdit.amount : undefined,
+        paymentMethod: paymentToEdit.paymentMethod || 'Cash',
         transactionType: paymentToEdit.transactionType || 'On Account',
         source: paymentToEdit.source || "",
         notes: paymentToEdit.notes || "",
         againstBills: paymentToEdit.againstBills || [],
+        stockItems: paymentToEdit.stockItems || [],
       };
     }
     return {
       date: new Date(),
       partyId: undefined, 
+      paymentType: 'Cash',
       amount: undefined,
       paymentMethod: 'Cash',
       transactionType: 'On Account',
       source: "",
       notes: "",
       againstBills: [],
+      stockItems: [],
     };
   }, [paymentToEdit]);
 
   const methods = useForm<PaymentFormValues>({
-    resolver: zodResolver(paymentSchema(parties)),
+    resolver: zodResolver(formSchema),
     defaultValues: getDefaultValues(),
   });
   const { control, handleSubmit, reset, getValues, setValue, watch, formState: { errors } } = methods;
-  const { fields, append, remove } = useFieldArray({ control, name: "againstBills" });
+  
+  const { fields: billFields, append: appendBill, remove: removeBill } = useFieldArray({ control, name: "againstBills" });
+  const { fields: stockItemFields, append: appendStockItem, remove: removeStockItem } = useFieldArray({ control, name: "stockItems" });
 
   const watchedPartyId = watch('partyId');
+  const watchedPaymentType = watch('paymentType');
+  const watchedStockItems = watch('stockItems');
   const watchedAmount = watch('amount');
   const watchedTransactionType = watch('transactionType');
   const watchedAllocatedBills = watch('againstBills');
@@ -127,6 +142,10 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   const totalAllocated = React.useMemo(() => {
     return (watchedAllocatedBills || []).reduce((sum, bill) => sum + (bill.amount || 0), 0);
   }, [watchedAllocatedBills]);
+  
+  const stockPaymentTotal = React.useMemo(() => {
+    return (watchedStockItems || []).reduce((sum, item) => sum + (item.value || 0), 0);
+  }, [watchedStockItems]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -158,11 +177,26 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   };
   
   const processSubmit = (values: PaymentFormValues) => {
-    if (!values.partyId || !values.amount || values.amount <= 0) {
-        toast({ title: "Missing Info", description: "Please select a party and enter a valid amount.", variant: "destructive" });
-        setIsSubmitting(false); 
+    if (!values.partyId) {
+        toast({ title: "Missing Party", description: "Please select a party.", variant: "destructive" });
         return;
     }
+    
+    let totalPaymentAmount = 0;
+    if (values.paymentType === 'Cash') {
+        if (!values.amount || values.amount <= 0) {
+            toast({ title: "Invalid Amount", description: "Please enter a valid amount for cash payment.", variant: "destructive" });
+            return;
+        }
+        totalPaymentAmount = values.amount;
+    } else if (values.paymentType === 'Stock') {
+        if (!values.stockItems || values.stockItems.length === 0) {
+            toast({ title: "No Stock Items", description: "Please add at least one stock item for a stock payment.", variant: "destructive" });
+            return;
+        }
+        totalPaymentAmount = values.stockItems.reduce((sum, item) => sum + item.value, 0);
+    }
+
     setIsSubmitting(true);
     const selectedParty = parties.find(p => p.id === values.partyId);
     if (!selectedParty) {
@@ -177,10 +211,12 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
       partyId: values.partyId as string,
       partyName: selectedParty.name,
       partyType: selectedParty.type as MasterItemType,
-      amount: values.amount,
-      paymentMethod: values.paymentMethod,
+      amount: totalPaymentAmount,
+      paymentType: values.paymentType,
+      paymentMethod: values.paymentType === 'Cash' ? values.paymentMethod : undefined,
       transactionType: values.transactionType,
       againstBills: values.transactionType === 'Against Bill' ? values.againstBills : [],
+      stockItems: values.paymentType === 'Stock' ? values.stockItems : [],
       source: values.source,
       notes: values.notes,
     };
@@ -190,7 +226,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   };
 
   const addBillToAllocate = (bill: Purchase & { due: number }) => {
-    append({
+    appendBill({
         billId: bill.id,
         amount: 0,
         billDate: bill.date,
@@ -200,7 +236,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   };
 
   const autoAllocate = () => {
-    const totalPayableAmount = getValues('amount') || 0;
+    const totalPayableAmount = getValues('paymentType') === 'Cash' ? (getValues('amount') || 0) : stockPaymentTotal;
     if (totalPayableAmount <= 0) {
         toast({ title: "Enter Amount", description: "Please enter a payment amount before auto-allocating." });
         return;
@@ -237,16 +273,44 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
   return (
     <>
       <Dialog open={isOpen && !isMasterFormOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle>
             <DialogDescription>
-              Enter the details for the payment. Click save when you&apos;re done.
+              Record a payment made to a supplier, agent, or other party.
             </DialogDescription>
           </DialogHeader>
           <FormProvider {...methods}>
             <Form {...methods}>
               <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto p-1 pr-3">
+                
+                <FormField
+                  control={control}
+                  name="paymentType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Payment Type</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex space-x-4"
+                        >
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl><RadioGroupItem value="Cash" /></FormControl>
+                            <FormLabel className="font-normal">Cash Payment</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl><RadioGroupItem value="Stock" /></FormControl>
+                            <FormLabel className="font-normal">Payment with Stock</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={control} name="date" render={({ field }) => (
                     <FormItem className="flex flex-col">
@@ -282,27 +346,80 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                       /> <FormMessage />
                     </FormItem>)}
                   />
-                   <FormField control={control} name="amount" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount (₹)</FormLabel>
-                      <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
-                      <FormMessage />
-                    </FormItem>)}
-                  />
-                   <FormField control={control} name="paymentMethod" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Payment Method</FormLabel>
-                      <ShadSelect onValueChange={field.onChange} value={field.value || 'Cash'}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Select payment method" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="UPI">UPI</SelectItem>
-                        </SelectContent>
-                      </ShadSelect><FormMessage />
-                    </FormItem>)}
-                  />
+                </div>
+
+                {watchedPaymentType === 'Cash' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-md bg-muted/20">
+                     <FormField control={control} name="amount" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Amount (₹)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="Enter amount" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || undefined)} /></FormControl>
+                        <FormMessage />
+                      </FormItem>)}
+                    />
+                     <FormField control={control} name="paymentMethod" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Method</FormLabel>
+                        <ShadSelect onValueChange={field.onChange} value={field.value || 'Cash'}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select payment method" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="Cash">Cash</SelectItem><SelectItem value="Bank">Bank</SelectItem><SelectItem value="UPI">UPI</SelectItem>
+                          </SelectContent>
+                        </ShadSelect><FormMessage />
+                      </FormItem>)}
+                    />
+                  </div>
+                ) : (
+                  <Card className="p-4">
+                    <CardHeader className="p-0 mb-3"><CardTitle className="text-md flex items-center gap-2"><Package className="h-5 w-5"/>Stock Items for Payment</CardTitle></CardHeader>
+                    <CardContent className="p-0 space-y-2">
+                       {stockItemFields.map((item, index) => (
+                          <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-2 border-b last:border-b-0">
+                             <FormField control={control} name={`stockItems.${index}.lotNumber`} render={({ field }) => (
+                              <FormItem className="md:col-span-3"><FormLabel>Lot</FormLabel>
+                                <MasterDataCombobox options={availableStock.map(s => ({value: s.lotNumber, label: s.lotNumber}))} placeholder="Select Lot" {...field} />
+                                <FormMessage />
+                              </FormItem>)} />
+                             <FormField control={control} name={`stockItems.${index}.quantity`} render={({ field }) => (
+                              <FormItem className="md:col-span-2"><FormLabel>Bags</FormLabel><FormControl><Input type="number" placeholder="Qty" {...field} value={field.value ?? ''} 
+                                onChange={e => {
+                                  const qty = parseFloat(e.target.value) || 0;
+                                  field.onChange(qty);
+                                  const lotNum = getValues(`stockItems.${index}.lotNumber`);
+                                  const stockInfo = availableStock.find(s => s.lotNumber === lotNum);
+                                  if (stockInfo) {
+                                    setValue(`stockItems.${index}.netWeight`, qty * stockInfo.averageWeightPerBag);
+                                    const rate = getValues(`stockItems.${index}.rate`) || 0;
+                                    setValue(`stockItems.${index}.value`, (qty * stockInfo.averageWeightPerBag) * rate);
+                                  }
+                                }}
+                              /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={control} name={`stockItems.${index}.rate`} render={({ field }) => (
+                              <FormItem className="md:col-span-2"><FormLabel>Rate (₹)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="Rate" {...field} value={field.value ?? ''}
+                                  onChange={e => {
+                                      const rate = parseFloat(e.target.value) || 0;
+                                      field.onChange(rate);
+                                      const netWeight = getValues(`stockItems.${index}.netWeight`) || 0;
+                                      setValue(`stockItems.${index}.value`, netWeight * rate);
+                                  }}
+                              /></FormControl><FormMessage /></FormItem>)} />
+                               <FormField control={control} name={`stockItems.${index}.netWeight`} render={({ field }) => (
+                                <FormItem className="md:col-span-2"><FormLabel>Weight (Kg)</FormLabel><FormControl><Input readOnly className="bg-muted/50" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                               <FormField control={control} name={`stockItems.${index}.value`} render={({ field }) => (
+                                <FormItem className="md:col-span-2"><FormLabel>Value (₹)</FormLabel><FormControl><Input readOnly className="bg-muted/50" {...field} value={field.value ?? ''}/></FormControl></FormItem>)} />
+                               <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive self-center" onClick={() => removeStockItem(index)}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                       ))}
+                       <Button type="button" variant="outline" size="sm" onClick={() => appendStockItem({ lotNumber: "", quantity: 0, netWeight: 0, rate: 0, value: 0})}><PlusCircle className="mr-2 h-4 w-4"/>Add Stock Item</Button>
+                       <div className="text-right font-bold text-lg mt-2">Total Stock Value: ₹{stockPaymentTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                    </CardContent>
+                  </Card>
+                )}
+                 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={control} name="transactionType" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Type</FormLabel>
+                      <FormLabel>Payment Allocation</FormLabel>
                       <ShadSelect onValueChange={field.onChange} value={field.value || 'On Account'}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select payment type" /></SelectTrigger></FormControl>
                         <SelectContent>
@@ -325,7 +442,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                     <CardHeader className="p-0 mb-2"><CardTitle className="text-md">Bill Allocation</CardTitle></CardHeader>
                     <CardContent className="p-0">
                       <div className="space-y-2">
-                        {fields.map((item, index) => (
+                        {billFields.map((item, index) => (
                           <div key={item.id} className="flex items-center gap-2 p-2 border rounded-md">
                             <div className="flex-grow">
                                 <p className="font-semibold">{item.billVakkal}</p>
@@ -336,7 +453,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                                     <Input type="number" step="0.01" className="w-32" placeholder="Allocate" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                                 )}
                             />
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeBill(index)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
                         ))}
                       </div>
@@ -351,7 +468,7 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                                     <CommandInput placeholder="Search bills..."/>
                                     <CommandList className="max-h-48">
                                         <CommandEmpty>No pending bills found.</CommandEmpty>
-                                        {pendingBills.filter(pb => !fields.some(f => f.billId === pb.id)).map(bill => (
+                                        {pendingBills.filter(pb => !billFields.some(f => f.billId === pb.id)).map(bill => (
                                             <CommandItem key={bill.id} onSelect={() => { addBillToAllocate(bill); setIsBillPopoverOpen(false); }}>
                                                 <div className="flex justify-between w-full">
                                                     <span>{bill.items.map(i=>i.lotNumber).join(', ')} ({format(parseISO(bill.date), 'dd/MM/yy')})</span>
@@ -363,19 +480,18 @@ export const AddPaymentForm: React.FC<AddPaymentFormProps> = ({
                                 </Command>
                             </PopoverContent>
                         </Popover>
-                        <Button type="button" variant="secondary" size="sm" onClick={autoAllocate} disabled={!watchedAmount || !pendingBills.length}>Auto-Allocate</Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={autoAllocate} disabled={!(watchedAmount || stockPaymentTotal > 0) || !pendingBills.length}>Auto-Allocate</Button>
                       </div>
 
                       <div className="text-right text-sm font-semibold mt-4">
                         <p>Total Allocated: ₹{totalAllocated.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
-                        <p className={totalAllocated > (watchedAmount || 0) ? "text-destructive" : "text-muted-foreground"}>
-                            Remaining: ₹{((watchedAmount || 0) - totalAllocated).toLocaleString('en-IN', {minimumFractionDigits: 2})}
+                        <p className={totalAllocated > (watchedPaymentType === 'Cash' ? (watchedAmount || 0) : stockPaymentTotal) ? "text-destructive" : "text-muted-foreground"}>
+                            Remaining: ₹{(((watchedPaymentType === 'Cash' ? (watchedAmount || 0) : stockPaymentTotal)) - totalAllocated).toLocaleString('en-IN', {minimumFractionDigits: 2})}
                         </p>
                       </div>
                     </CardContent>
                   </Card>
                 )}
-
 
                 <FormField control={control} name="notes" render={({ field }) => (
                   <FormItem>

@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Printer } from "lucide-react";
-import type { Payment, MasterItemType, Purchase } from "@/lib/types";
+import type { Payment, MasterItemType, Purchase, StockPaymentItem } from "@/lib/types";
 import { PaymentTable } from "./PaymentTable";
 import { AddPaymentForm } from "./AddPaymentForm";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +28,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 export function PaymentsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
-  const { payments, setPayments, purchases } = useTransactions();
+  const { payments, setPayments, purchases, addLedgerEntry, removeLedgerEntries, setSales } = useTransactions();
   
   const { payableParties } = useOutstandingBalances();
   const { setMasterData } = useMasterData();
@@ -45,6 +46,58 @@ export function PaymentsClient() {
 
   const handleAddOrUpdatePayment = React.useCallback((payment: Payment) => {
     const isEditing = payments.some(p => p.id === payment.id);
+    
+    // If it's a stock payment, create a corresponding "sale" transaction
+    if (payment.paymentType === 'Stock' && payment.stockItems) {
+      const stockValue = payment.stockItems.reduce((sum, item) => sum + item.value, 0);
+      
+      // Update the payment amount to reflect the stock value
+      payment.amount = stockValue;
+
+      // This "sale" is for internal accounting to reduce stock correctly.
+      // It won't appear on the main sales screen but will be processed by the inventory system.
+      const internalSale: any = {
+        id: `sale-for-payment-${payment.id}`,
+        date: payment.date,
+        billNumber: `PAYMENT-KIND-${payment.partyName}`,
+        customerId: payment.partyId, // The supplier is the 'customer' in this context
+        customerName: payment.partyName,
+        items: payment.stockItems.map(si => ({
+          lotNumber: si.lotNumber,
+          quantity: si.quantity,
+          netWeight: si.netWeight,
+          rate: si.rate,
+          goodsValue: si.value,
+          // Profit-related fields are zeroed out as this isn't a real sale for profit
+          purchaseRate: 0,
+          costOfGoodsSold: 0,
+          itemGrossProfit: 0,
+          itemNetProfit: 0,
+          costBreakdown: { baseRate: 0, purchaseExpenses: 0, transferExpenses: 0 },
+        })),
+        totalGoodsValue: stockValue,
+        billedAmount: stockValue,
+        totalQuantity: payment.stockItems.reduce((sum, item) => sum + item.quantity, 0),
+        totalNetWeight: payment.stockItems.reduce((sum, item) => sum + item.netWeight, 0),
+        totalCostOfGoodsSold: 0,
+        totalGrossProfit: 0,
+        totalCalculatedProfit: 0,
+        notes: `Stock payment to settle balance. Ref Payment ID: ${payment.id}`,
+        isStockPaymentSale: true, // Flag to identify this special type of sale
+      };
+      // Add or update this internal sale
+      setSales(prevSales => {
+        const existingIndex = prevSales.findIndex(s => s.id === internalSale.id);
+        if (existingIndex > -1) {
+            const updatedSales = [...prevSales];
+            updatedSales[existingIndex] = internalSale;
+            return updatedSales;
+        }
+        return [...prevSales, internalSale];
+      });
+    }
+
+
     setPayments(prevPayments => {
       if (isEditing) {
         return prevPayments.map(p => p.id === payment.id ? payment : p);
@@ -53,10 +106,26 @@ export function PaymentsClient() {
       }
     });
 
+    removeLedgerEntries(payment.id); // Clear old entries
+    if (payment.amount > 0) {
+      addLedgerEntry({
+        id: `ledger-${payment.id}`,
+        date: payment.date,
+        type: payment.paymentType === 'Stock' ? 'Stock Payment' : 'Payment',
+        account: payment.partyType,
+        debit: payment.amount, // Payment debits the party's account (reduces liability)
+        credit: 0,
+        party: payment.partyName,
+        partyId: payment.partyId,
+        relatedVoucher: payment.id,
+        remarks: `Payment to ${payment.partyName}`
+      });
+    }
+
     setPaymentToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Payment updated successfully." : "Payment added successfully." });
     window.dispatchEvent(new CustomEvent('reindex-search'));
-  }, [payments, setPayments, toast]);
+  }, [payments, setPayments, setSales, addLedgerEntry, removeLedgerEntries, toast]);
 
   const handleEditPayment = React.useCallback((payment: Payment) => {
     setPaymentToEdit(payment);
@@ -70,13 +139,21 @@ export function PaymentsClient() {
 
   const confirmDeletePayment = React.useCallback(() => {
     if (paymentToDeleteId) {
+      // Also remove the associated internal sale if it was a stock payment
+      const paymentToDelete = payments.find(p => p.id === paymentToDeleteId);
+      if (paymentToDelete?.paymentType === 'Stock') {
+        const internalSaleId = `sale-for-payment-${paymentToDelete.id}`;
+        setSales(prevSales => prevSales.filter(s => s.id !== internalSaleId));
+      }
+
       setPayments(prev => prev.filter(p => p.id !== paymentToDeleteId));
+      removeLedgerEntries(paymentToDeleteId);
       toast({ title: "Success!", description: "Payment deleted successfully.", variant: "destructive" });
       setPaymentToDeleteId(null);
       setShowDeleteConfirm(false);
       window.dispatchEvent(new CustomEvent('reindex-search'));
     }
-  }, [paymentToDeleteId, setPayments, toast]);
+  }, [paymentToDeleteId, payments, setPayments, setSales, removeLedgerEntries, toast]);
   
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: any) => {
      setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
@@ -139,7 +216,7 @@ export function PaymentsClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the payment record.
+              This action cannot be undone. This will permanently delete the payment record. If this was a stock payment, the related stock deduction will also be reversed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
