@@ -23,7 +23,7 @@
     --muted: 225 47% 88%; /* Muted version */
     --muted-foreground: 225 47% 40%; /* Darker muted text */
 
-    --accent: 45 100% 50%; /* Saffron / turmeric yellow */
+    --accent: 45 95% 55%; /* Richer, slightly darker Saffron / turmeric yellow */
     --accent-foreground: 225 47% 10%; /* Almost black (contrast with yellow) */
 
     --destructive: 0 65% 38%; /* Maroon red */
