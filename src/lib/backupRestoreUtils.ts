@@ -1,4 +1,3 @@
-
 "use client";
 
 import { format } from 'date-fns';
@@ -34,16 +33,23 @@ interface ToastFn {
   (options: { title: string; description?: string; variant?: 'default' | 'destructive'; duration?: number }): void;
 }
 
-interface BackupRestoreParams {
+interface BackupParams {
   toast: ToastFn;
   setLastBackupTimestamp: (timestamp: number | null | ((prev: number | null) => number | null)) => void;
-  lastBackupTimestampFromState?: number | null; // Made optional for restore-only case
 }
 
-export const exportDataToPortableFile = ({ toast, setLastBackupTimestamp, lastBackupTimestampFromState }: Omit<BackupRestoreParams, 'lastBackupTimestampFromState'> & { lastBackupTimestampFromState: number | null }) => {
+interface RestoreParams {
+  toast: ToastFn;
+  setLastBackupTimestamp: (timestamp: number | null | ((prev: number | null) => number | null)) => void;
+}
+
+export const exportDataToPortableFile = (params: BackupParams, options?: { silent?: boolean }) => {
   if (typeof window === 'undefined') return;
+  const { toast, setLastBackupTimestamp } = params;
   try {
     const backupData: Record<string, any> = {};
+    const lastBackupTimestamp = localStorage.getItem(LAST_BACKUP_TIMESTAMP_KEY);
+
     // Gather all specified LOCAL_STORAGE_KEYS values
     Object.values(LOCAL_STORAGE_KEYS).forEach(key => {
       const item = localStorage.getItem(key);
@@ -56,9 +62,8 @@ export const exportDataToPortableFile = ({ toast, setLastBackupTimestamp, lastBa
       }
     });
 
-    // Also include lastBackupTimestamp itself if it exists from state
-    if (lastBackupTimestampFromState !== null) {
-        backupData[LAST_BACKUP_TIMESTAMP_KEY] = lastBackupTimestampFromState;
+    if (lastBackupTimestamp !== null) {
+        backupData[LAST_BACKUP_TIMESTAMP_KEY] = JSON.parse(lastBackupTimestamp);
     }
 
 
@@ -79,24 +84,30 @@ export const exportDataToPortableFile = ({ toast, setLastBackupTimestamp, lastBa
 
     const currentTimestamp = Date.now();
     setLastBackupTimestamp(currentTimestamp);
+    localStorage.setItem(LAST_BACKUP_TIMESTAMP_KEY, JSON.stringify(currentTimestamp));
 
-    toast({
-      title: "Portable Export Successful",
-      description: "Your data has been exported to a portable JSON file.",
-    });
+
+    if (!options?.silent) {
+      toast({
+        title: "Portable Export Successful",
+        description: "Your data has been exported to a portable JSON file.",
+      });
+    }
   } catch (error) {
     console.error("Portable Export failed:", error);
-    toast({
-      title: "Portable Export Failed",
-      description: "An error occurred while creating the portable JSON backup.",
-      variant: "destructive",
-    });
+    if (!options?.silent) {
+      toast({
+        title: "Portable Export Failed",
+        description: "An error occurred while creating the portable JSON backup.",
+        variant: "destructive",
+      });
+    }
   }
 };
 
 export const restoreDataFromFile = (
   event: ChangeEvent<HTMLInputElement>,
-  { toast, setLastBackupTimestamp }: Omit<BackupRestoreParams, 'lastBackupTimestampFromState'>
+  { toast, setLastBackupTimestamp }: RestoreParams
 ) => {
   if (typeof window === 'undefined') return;
   const file = event.target.files?.[0];
@@ -156,5 +167,3 @@ export const restoreDataFromFile = (
   };
   reader.readAsText(file);
 };
-
-    
