@@ -258,7 +258,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
     let itemToEdit: MasterItem | null = null;
     if (type === 'Customer' && customers) itemToEdit = customers.find(i => i.id === id) || null;
     else if (type === 'Broker' && brokers) itemToEdit = brokers.find(i => i.id === id) || null;
-    else if (type === 'Transporter' && transporters) itemToEdit = transporters.find(i => i.id === id) || null;
+    else if (type === 'Transporter' && transporters) itemToEdit = transporters.find(i => i.id === t.id) || null;
 
     if (itemToEdit) {
         setMasterItemToEdit(itemToEdit);
