@@ -142,11 +142,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             <CommandList>
               <CommandItem 
                 onSelect={() => handleSelect(undefined)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onClick={() => handleSelect(undefined)}
                 className="cursor-pointer"
               >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
@@ -160,11 +155,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     key={option.value}
                     value={option.value}
                     onSelect={() => handleSelect(option.value)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onClick={() => handleSelect(option.value)}
                     className="group uppercase flex justify-between items-center w-full cursor-pointer"
                   >
                     <div className="flex items-center flex-grow truncate mr-2">
@@ -179,10 +169,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                             size="icon"
                             className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
                             onClick={(e) => handleEdit(e, option.value)}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
                             aria-label={`EDIT ${option.label}`}
                           >
                             <Pencil className="h-3 w-3" />
@@ -209,11 +195,6 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               {onAddNew && (
                 <CommandItem 
                   onSelect={handleAddNew}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={handleAddNew}
                   className="cursor-pointer mt-1 border-t"
                 >
                   <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
