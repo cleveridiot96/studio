@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -272,17 +271,15 @@ const Sidebar = React.forwardRef<
         data-variant={variant}
         data-side={side}
         className={cn(
-            "peer hidden md:block text-sidebar-foreground",
+            "fixed z-50 h-svh transition-[width] duration-300 ease-in-out md:block text-sidebar-foreground",
+            side === "left" ? "left-0" : "right-0",
             state === 'expanded' && "w-[--sidebar-width]",
             state === 'collapsed' && "w-[--sidebar-width-icon]",
         )}
       >
         <div
           className={cn(
-            "fixed inset-y-0 h-svh transition-[width] duration-300 ease-in-out",
-            side === "left" ? "left-0" : "right-0",
-            state === 'expanded' && "w-[--sidebar-width]",
-            state === 'collapsed' && "w-[--sidebar-width-icon]",
+            "h-full w-full",
             variant === 'floating' && 'p-2',
             variant === 'inset' && 'p-2'
           )}
@@ -368,20 +365,13 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"main">
 >(({ className, ...props }, ref) => {
-  const { state, isMobile } = useSidebar();
-  
-  const marginLeft = isMobile 
-    ? '0px'
-    : (state === 'expanded' ? 'var(--sidebar-width)' : 'var(--sidebar-width-icon)');
-
   return (
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-svh flex-1 flex-col bg-background transition-[margin-left] duration-300 ease-in-out",
+        "relative flex min-h-svh flex-1 flex-col bg-background",
         className
       )}
-      style={{ marginLeft }}
       {...props}
     />
   )
