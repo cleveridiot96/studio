@@ -122,7 +122,6 @@ export function SalesClient() {
       });
        if (newLedgerEntries.length > 0) {
             addLedgerEntry(newLedgerEntries);
-            toast({ title: "Sale Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
 
@@ -294,5 +293,3 @@ export function SalesClient() {
     </div>
   );
 }
-
-    

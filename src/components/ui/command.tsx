@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -73,14 +72,15 @@ CommandList.displayName = CommandPrimitive.List.displayName
 
 const CommandEmpty = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.Empty>,
-  React.HTMLAttributes<HTMLDivElement> 
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
 >((props, ref) => (
-  <div
+  <CommandPrimitive.Empty
     ref={ref}
     className="py-6 text-center text-sm"
     {...props}
   />
 ))
+
 
 CommandEmpty.displayName = CommandPrimitive.Empty.displayName
 

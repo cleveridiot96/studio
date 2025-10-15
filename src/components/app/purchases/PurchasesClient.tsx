@@ -96,7 +96,6 @@ export function PurchasesClient() {
 
         if (newLedgerEntries.length > 0) {
             addLedgerEntry(newLedgerEntries);
-            toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
 
@@ -307,5 +306,3 @@ export function PurchasesClient() {
     </div>
   );
 }
-
-    
