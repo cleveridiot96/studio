@@ -129,18 +129,7 @@ export const locationTransferMigrator = (storedValue: any): LocationTransfer[] =
         return storedValue.map(lt => {
             if (!lt) return null;
 
-            let wasUpdated = false;
-
-            // Migration 1: Add newLotNumber if it doesn't exist
-            if (lt.items && lt.items.length > 0 && lt.items.some((item: any) => !item.newLotNumber)) {
-                lt.items = lt.items.map((item: any) => ({
-                    ...item,
-                    newLotNumber: item.newLotNumber || `${item.originalLotNumber}/${Math.round(item.bagsToTransfer)}`
-                }));
-                wasUpdated = true;
-            }
-            
-            // Migration 2: Convert old expense fields to expenses array
+            // Migration: Convert old expense fields to expenses array
             if (!lt.expenses) {
                 const newExpenses: ExpenseItem[] = [];
                 if (lt.transportCharges && lt.transportCharges > 0) {
@@ -159,7 +148,6 @@ export const locationTransferMigrator = (storedValue: any): LocationTransfer[] =
                 delete lt.labourCharges;
                 delete lt.miscExpenses;
                 delete lt.transportRate;
-                wasUpdated = true;
             }
 
             return lt;
@@ -168,5 +156,3 @@ export const locationTransferMigrator = (storedValue: any): LocationTransfer[] =
     }
     return [];
 };
-
-    
