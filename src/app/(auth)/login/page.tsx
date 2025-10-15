@@ -49,38 +49,11 @@ export default function LoginPage() {
     }
     return false;
   };
-
-  const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const { value } = e.target;
-    if (/^[0-9]$/.test(value) || value === '') {
-      const newPin = pin.split('');
-      newPin[index] = value;
-      setPin(newPin.join(''));
-
-      // Move focus to the next input if a digit is entered
-      if (value !== '' && index < 3) {
-        inputRefs.current[index + 1]?.focus();
-      }
-    }
-  };
   
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (e.key === 'Backspace' && !pin[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const validatePin = (currentPin: string) => {
     if (isLockedOut()) return;
-
-    if (pin.length !== 4) {
-      setError('Please enter the complete 4-digit PIN.');
-      return;
-    }
-
-    const inputHash = createPasswordHash(pin);
+    
+    const inputHash = createPasswordHash(currentPin);
 
     if (inputHash === storedPasswordHash) {
       toast({ title: "Login Successful", description: "Welcome back!" });
@@ -105,12 +78,45 @@ export default function LoginPage() {
         });
       }
     }
+  }
+
+  const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const { value } = e.target;
+    // Allow only single digits or empty string (for backspace)
+    if (!/^[0-9]$/.test(value) && value !== '') {
+        return;
+    }
+    
+    const newPinArray = pin.split('');
+    newPinArray[index] = value;
+    const newPin = newPinArray.join('');
+    setPin(newPin);
+    setError('');
+
+    // Move focus to the next input if a digit is entered
+    if (value !== '' && index < 3) {
+        inputRefs.current[index + 1]?.focus();
+    }
+    
+    // If the 4th digit is entered, validate
+    if (newPin.length === 4) {
+      // Use a short timeout to allow the state to update before validating
+      setTimeout(() => validatePin(newPin), 100);
+    }
   };
   
-  // Navigate to dashboard if already "logged in" conceptually (e.g., via back button)
-  // This is a simple check; a robust session management would be needed in a real app.
-  // For this offline app, we assume if they can get here, they should log in.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace' && !pin[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    validatePin(pin);
+  };
+  
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-md shadow-2xl">
