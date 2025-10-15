@@ -56,7 +56,8 @@ interface MonthlySummaryInfo {
 
 
 interface ProfitKPIs {
-  totalNetProfit: number;
+  totalNetProfitForPeriod: number;
+  totalNetProfitForFY: number;
   totalSalesValue: number;
   avgProfitPerSale: number;
   highestProfitSale: { id: string; profit: number, billNumber?: string };
@@ -155,7 +156,9 @@ export function ProfitAnalysisClient() {
   }, [allProfitTransactionsInFY, dateRange]);
 
   const kpiData = React.useMemo<ProfitKPIs>(() => {
-    const totalNetProfit = filteredTransactionsForPeriod.reduce((sum, tx) => sum + (tx.netProfit || 0), 0);
+    const totalNetProfitForPeriod = filteredTransactionsForPeriod.reduce((sum, tx) => sum + (tx.netProfit || 0), 0);
+    const totalNetProfitForFY = allProfitTransactionsInFY.reduce((sum, tx) => sum + (tx.netProfit || 0), 0);
+
     const uniqueSales = new Set(filteredTransactionsForPeriod.map(tx => tx.saleId));
     let highestProfitSale = { id: 'N/A', profit: 0, billNumber: 'N/A' };
     
@@ -176,12 +179,13 @@ export function ProfitAnalysisClient() {
     const relevantSales = sales.filter(s => s && s.items && isDateInFinancialYear(s.date, currentFinancialYearString) && dateRange?.from && isWithinInterval(parseISO(s.date), { start: dateRange.from, end: endOfDay(dateRange.to || dateRange.from)}))
     
     return {
-        totalNetProfit,
+        totalNetProfitForPeriod,
+        totalNetProfitForFY,
         totalSalesValue: relevantSales.reduce((sum, s) => sum + (s.billedAmount || 0), 0),
-        avgProfitPerSale: uniqueSales.size > 0 ? totalNetProfit / uniqueSales.size : 0,
+        avgProfitPerSale: uniqueSales.size > 0 ? totalNetProfitForPeriod / uniqueSales.size : 0,
         highestProfitSale,
     };
-  }, [filteredTransactionsForPeriod, sales, currentFinancialYearString, dateRange]);
+  }, [filteredTransactionsForPeriod, allProfitTransactionsInFY, sales, currentFinancialYearString, dateRange]);
 
   const setDateFilter = (type: "today" | "yesterday" | "dayBeforeYesterday" | "currentFY" | "ytd") => {
     let today = new Date();
@@ -264,10 +268,10 @@ export function ProfitAnalysisClient() {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">NET PROFIT (SELECTED PERIOD)</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className={`text-2xl font-bold ${Math.round(kpiData.totalNetProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{Math.round(kpiData.totalNetProfit || 0).toLocaleString('en-IN')}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">TOTAL SALES VALUE</CardTitle><BarChart3 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{Math.round(kpiData.totalSalesValue || 0).toLocaleString('en-IN')}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">AVG. PROFIT / SALE</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{Math.round(kpiData.avgProfitPerSale || 0).toLocaleString('en-IN')}</div></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">TOP SALE</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate uppercase">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground uppercase">PROFIT: ₹{Math.round(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN')}</p></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">NET PROFIT (FY {currentFinancialYearString})</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className={`text-2xl font-bold ${Math.round(kpiData.totalNetProfitForFY || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>₹{Math.round(kpiData.totalNetProfitForFY || 0).toLocaleString('en-IN')}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">TOTAL SALES VALUE (PERIOD)</CardTitle><BarChart3 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{Math.round(kpiData.totalSalesValue || 0).toLocaleString('en-IN')}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">AVG. PROFIT / SALE (PERIOD)</CardTitle><TrendingUp className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">₹{Math.round(kpiData.avgProfitPerSale || 0).toLocaleString('en-IN')}</div></CardContent></Card>
+            <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium uppercase">TOP SALE (PERIOD)</CardTitle><Trophy className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-xl font-bold truncate uppercase">{kpiData.highestProfitSale.billNumber || kpiData.highestProfitSale.id}</div><p className="text-xs text-muted-foreground uppercase">PROFIT: ₹{Math.round(kpiData.highestProfitSale.profit || 0).toLocaleString('en-IN')}</p></CardContent></Card>
         </div>
 
         <Tabs defaultValue="transactional" className="w-full">
