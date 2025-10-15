@@ -79,10 +79,12 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
       accessorKey: 'supplierName',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Supplier" />,
       cell: ({ row }) => row.original.supplierName || 'N/A',
+      filterFn: (row, id, value) => value.includes(row.getValue(id)),
     },
      {
       accessorKey: 'locationName',
       header: ({ column }) => <DataTableColumnHeader column={column} title="Location" />,
+      filterFn: (row, id, value) => value.includes(row.getValue(id)),
     },
     {
       accessorKey: 'currentBags',
@@ -114,17 +116,43 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
       header: 'Status',
       cell: ({ row }) => {
         const item = row.original;
+        const statusText = isArchivedView ? 'ARCHIVED' :
+          item.isDeadStock ? 'DEAD STOCK' :
+          item.currentBags <= 0 ? 'ZERO STOCK' :
+          item.currentBags <= lowStockThreshold ? 'LOW STOCK' :
+          (item.turnoverRate || 0) >= 75 ? 'FAST MOVING' :
+          (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? 'SLOW MOVING' :
+          'IN STOCK';
+
         return (
           <div className="text-center">
-            {isArchivedView ? (<Badge variant="outline" className="uppercase">ARCHIVED</Badge>) :
-            item.isDeadStock ? (<Badge variant="destructive" className="bg-destructive text-destructive-foreground uppercase">DEAD STOCK</Badge>) :
-            item.currentBags <= 0 ? (<Badge variant="destructive" className="uppercase animate-pulse-destructive">ZERO STOCK</Badge>) :
-            item.currentBags <= lowStockThreshold ? (<Badge className="bg-yellow-500 hover:bg-yellow-600 text-yellow-900 dark:bg-yellow-700 dark:text-yellow-100 uppercase">LOW STOCK</Badge>) :
-            (item.turnoverRate || 0) >= 75 ? (<Badge className="bg-green-500 hover:bg-green-600 text-white uppercase"><TrendingUp className="h-3 w-3 mr-1" /> FAST</Badge>) :
-            (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? (<Badge className="bg-orange-500 hover:bg-orange-600 text-white uppercase"><TrendingDown className="h-3 w-3 mr-1" /> SLOW</Badge>) :
-            (<Badge variant="secondary" className="uppercase">IN STOCK</Badge>)}
+            <Badge variant={
+              isArchivedView ? 'outline' :
+              item.isDeadStock ? 'destructive' :
+              item.currentBags <= 0 ? 'destructive' :
+              item.currentBags <= lowStockThreshold ? 'default' : // Or some other variant
+              'secondary'
+            } className={cn(
+              'uppercase',
+              item.currentBags <= lowStockThreshold && item.currentBags > 0 && 'bg-yellow-500 text-yellow-900',
+              (item.turnoverRate || 0) >= 75 && 'bg-green-500 text-white',
+               (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 && 'bg-orange-500 text-white'
+            )}>
+              {statusText}
+            </Badge>
           </div>
         )
+      },
+      filterFn: (row, id, value) => {
+        const item = row.original;
+        const statusText = isArchivedView ? 'ARCHIVED' :
+          item.isDeadStock ? 'DEAD STOCK' :
+          item.currentBags <= 0 ? 'ZERO STOCK' :
+          item.currentBags <= lowStockThreshold ? 'LOW STOCK' :
+          (item.turnoverRate || 0) >= 75 ? 'FAST MOVING' :
+          (item.daysInStock || 0) > 90 && (item.turnoverRate || 0) < 25 ? 'SLOW MOVING' :
+          'IN STOCK';
+        return value.includes(statusText);
       }
     },
     {
