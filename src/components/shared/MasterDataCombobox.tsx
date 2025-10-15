@@ -134,7 +134,11 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
           />
           <TooltipProvider>
             <CommandList>
-              <CommandItem onSelect={() => handleSelect(undefined)}>
+              <CommandItem 
+                onSelect={() => handleSelect(undefined)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(undefined)}
+              >
                   <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
                   <span className="italic">CLEAR SELECTION</span>
               </CommandItem>
@@ -146,6 +150,8 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                     key={option.value}
                     value={option.value}
                     onSelect={() => handleSelect(option.value)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleSelect(option.value)}
                     className="group uppercase flex justify-between items-center w-full"
                   >
                     <div className="flex items-center flex-grow truncate mr-2">
@@ -173,15 +179,20 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
               )}
                 
               {onAddNew && (
-                <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
+                <CommandItem
+                    onSelect={handleAddNew}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleAddNew}
+                    className="cursor-pointer mt-1 border-t"
+                >
                   <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
                 </CommandItem>
               )}
 
-              {filteredOptions.length === 0 && !onAddNew && (
+              {filteredOptions.length === 0 && (
                   <CommandEmpty>
                       {notFoundMessage}
-                       {didYouMeanSuggest && (
+                      {didYouMeanSuggest && (
                         <div className="py-2 px-2 text-center text-xs text-muted-foreground">
                           Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
                         </div>
