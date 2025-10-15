@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -385,7 +384,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                           <MasterDataCombobox 
                             value={field.value} 
                             onChange={field.onChange} 
-                            options={customers.map(c => ({ value: c.id, label: c.name }))} 
+                            options={(customers || []).map(c => ({ value: c.id, label: c.name }))} 
                             placeholder="Select Customer" 
                             onAddNew={() => handleOpenMasterForm("Customer")}
                             onEdit={(id) => handleEditMasterItem("Customer", id)}
@@ -396,7 +395,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                            <MasterDataCombobox 
                             value={field.value} 
                             onChange={field.onChange} 
-                            options={brokers.map(b => ({ value: b.id, label: b.name }))} 
+                            options={(brokers || []).map(b => ({ value: b.id, label: b.name }))} 
                             placeholder="Select Broker" 
                             onAddNew={() => handleOpenMasterForm("Broker")}
                             onEdit={(id) => handleEditMasterItem("Broker", id)}
@@ -510,7 +509,7 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
                               <FormField control={control} name={`expenses.${index}.partyId`} render={({ field: itemField }) => (
                                 <FormItem className="md:col-span-3"><FormLabel>Party (Opt.)</FormLabel>
                                   <MasterDataCombobox value={itemField.value} onChange={itemField.onChange}
-                                    options={brokers.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
+                                    options={(brokers || []).map(p => ({ value: p.id, label: `${p.name} (${p.type})` }))}
                                     placeholder="Select Party" addNewLabel="Add New Broker"
                                     onAddNew={() => handleOpenMasterForm("Broker")} onEdit={(id) => handleEditMasterItem("Broker", id)}
                                     disabled={isCommission}

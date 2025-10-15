@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -66,8 +65,6 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
   const [manualNetWeight, setManualNetWeight] = React.useState<Record<number, boolean>>({});
 
   const formRef = React.useRef<HTMLDivElement>(null);
-  const [position, setPosition] = React.useState({ x: 0, y: 0 });
-
 
   const formSchema = React.useMemo(() => purchaseSchema(suppliers || [], agents || [], warehouses || [], transporters || [], expenses || []), [suppliers, agents, warehouses, transporters, expenses]);
 
@@ -317,7 +314,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                         <FormItem>
                                             <FormLabel>SUPPLIER</FormLabel>
                                             <MasterDataCombobox value={field.value} onChange={field.onChange}
-                                                options={(suppliers || []).filter(s => s.type === "Supplier").map(s => ({ value: s.id, label: s.name }))}
+                                                options={(suppliers || []).map(s => ({ value: s.id, label: s.name }))}
                                                 placeholder="SELECT SUPPLIER" searchPlaceholder="SEARCH SUPPLIERS..." notFoundMessage="NO SUPPLIER FOUND." 
                                                 addNewLabel="ADD NEW SUPPLIER" onAddNew={() => handleOpenMasterForm("Supplier")}
                                                 onEdit={(id) => handleEditMasterItem("Supplier", id)}
@@ -330,7 +327,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                             <MasterDataCombobox
                                             value={field.value}
                                             onChange={field.onChange}
-                                            options={(agents || []).filter(a => a.type === "Agent").map(a => ({ value: a.id, label: a.name }))}
+                                            options={(agents || []).map(a => ({ value: a.id, label: a.name }))}
                                             placeholder="SELECT AGENT"
                                             addNewLabel="ADD NEW AGENT"
                                             onAddNew={() => handleOpenMasterForm("Agent")}
@@ -342,7 +339,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                         <FormItem>
                                             <FormLabel>LOCATION (WAREHOUSE)</FormLabel>
                                             <MasterDataCombobox value={field.value} onChange={field.onChange}
-                                                options={(warehouses || []).filter(w => w.type === "Warehouse").map(w => ({ value: w.id, label: w.name }))}
+                                                options={(warehouses || []).map(w => ({ value: w.id, label: w.name }))}
                                                 placeholder="SELECT LOCATION" searchPlaceholder="SEARCH LOCATIONS..." notFoundMessage="NO LOCATION FOUND."
                                                 addNewLabel="ADD NEW LOCATION" onAddNew={() => handleOpenMasterForm("Warehouse")} 
                                                 onEdit={(id) => handleEditMasterItem("Warehouse", id)}
@@ -535,5 +532,3 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     </>
   );
 };
-
-    
