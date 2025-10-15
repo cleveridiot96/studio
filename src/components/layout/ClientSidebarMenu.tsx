@@ -20,7 +20,6 @@ import {
   BookOpen,
   BookUser,
   Users2,
-  DatabaseBackup,
   TrendingDown,
   HelpCircle as FallbackIcon,
   ArrowRightLeft,
@@ -33,6 +32,8 @@ import {
   SlidersHorizontal,
   Network,
   Layers,
+  FileJson,
+  UploadCloud,
 } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
 
@@ -47,7 +48,6 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   BookOpen,
   BookUser,
   Users2,
-  DatabaseBackup,
   TrendingDown,
   ArrowRightLeft,
   Rocket,
@@ -59,6 +59,8 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   SlidersHorizontal,
   Network,
   Layers,
+  FileJson,
+  UploadCloud,
 };
 
 interface ClientSidebarMenuProps {

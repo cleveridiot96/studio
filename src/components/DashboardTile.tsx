@@ -19,7 +19,6 @@ import {
   BookOpen,
   BookUser,
   Users2,
-  DatabaseBackup,
   LayoutGrid,
   Boxes,
   Receipt,
@@ -33,6 +32,7 @@ import {
   Landmark,
   Search, // Added for Lot Ledger
   SlidersHorizontal,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ComponentType } from 'react';
@@ -57,7 +57,6 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   BookOpen,
   BookUser,
   Users2,
-  DatabaseBackup,
   LayoutGrid,
   ArrowRightLeft,
   Rocket,
@@ -69,6 +68,7 @@ const iconMap: Record<string, ComponentType<LucideProps>> = {
   Landmark,
   Search,
   SlidersHorizontal,
+  Layers,
 };
 
 interface DashboardTileProps {
