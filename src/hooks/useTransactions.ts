@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
@@ -68,26 +69,16 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    purchases,
-    setPurchases,
-    sales,
-    setSales,
-    payments,
-    setPayments,
-    receipts,
-    setReceipts,
-    locationTransfers,
-    setLocationTransfers,
-    purchaseReturns,
-    setPurchaseReturns,
-    saleReturns,
-    setSaleReturns,
-    adjustments,
-    setAdjustments,
-    ledger,
-    setLedger,
-    addLedgerEntry,
-    removeLedgerEntries,
+    purchases, setPurchases,
+    sales, setSales,
+    payments, setPayments,
+    receipts, setReceipts,
+    locationTransfers, setLocationTransfers,
+    purchaseReturns, setPurchaseReturns,
+    saleReturns, setSaleReturns,
+    adjustments, setAdjustments,
+    ledger, setLedger,
+    addLedgerEntry, removeLedgerEntries,
   }), [
     purchases, setPurchases,
     sales, setSales,
