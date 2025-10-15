@@ -17,7 +17,7 @@ import { buildSearchData } from '@/lib/buildSearchData';
 import type { Purchase, Sale, Payment, Receipt, LocationTransfer } from '@/lib/types';
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { MasterDataProvider, useMasterData } from '@/contexts/MasterDataContext';
-import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions';
+import { TransactionsProvider, useTransactions } from '@/hooks/useTransactions.tsx';
 import { AppHeaderContentInternal } from "@/components/layout/AppHeaderContentInternal";
 
 const AUTH_KEYS = {

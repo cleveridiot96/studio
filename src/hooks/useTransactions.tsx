@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useCallback, type ReactNode, FC } from 'react';
 import { useLocalStorageState } from './useLocalStorageState';
 import type { Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry, PurchaseReturn, SaleReturn, StockAdjustment } from '@/lib/types';
 import { purchaseMigrator, salesMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
@@ -46,7 +46,7 @@ const STORAGE_KEYS = {
 } as const;
 
 // Create the provider component
-export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
+export const TransactionsProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(STORAGE_KEYS.purchases, [], purchaseMigrator);
   const [sales, setSales] = useLocalStorageState<Sale[]>(STORAGE_KEYS.sales, [], salesMigrator);
   const [payments, setPayments] = useLocalStorageState<Payment[]>(STORAGE_KEYS.payments, []);
@@ -68,26 +68,16 @@ export const TransactionsProvider = ({ children }: { children: ReactNode }) => {
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
-    purchases,
-    setPurchases,
-    sales,
-    setSales,
-    payments,
-    setPayments,
-    receipts,
-    setReceipts,
-    locationTransfers,
-    setLocationTransfers,
-    purchaseReturns,
-    setPurchaseReturns,
-    saleReturns,
-    setSaleReturns,
-    adjustments,
-    setAdjustments,
-    ledger,
-    setLedger,
-    addLedgerEntry,
-    removeLedgerEntries,
+    purchases, setPurchases,
+    sales, setSales,
+    payments, setPayments,
+    receipts, setReceipts,
+    locationTransfers, setLocationTransfers,
+    purchaseReturns, setPurchaseReturns,
+    saleReturns, setSaleReturns,
+    adjustments, setAdjustments,
+    ledger, setLedger,
+    addLedgerEntry, removeLedgerEntries,
   }), [
     purchases, setPurchases,
     sales, setSales,

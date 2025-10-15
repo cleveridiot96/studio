@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -31,7 +30,7 @@ import { MergeLotsForm } from "./MergeLotsForm";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LowStockWarning } from "@/components/app/dashboard/LowStockWarning";
 import { useMasterData } from '@/contexts/MasterDataContext';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useTransactions } from '@/hooks/useTransactions.tsx';
 import { AddAdjustmentForm } from "../stock-adjustments/AddAdjustmentForm";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
