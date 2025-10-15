@@ -70,7 +70,7 @@ export const navItems: StyledNavItem[] = [
   {
     title: 'Lot Ledger',
     href: '/lot-ledger',
-    iconName: 'Sitemap',
+    iconName: 'Layers',
     description: "Trace any vakkal",
     style: { backgroundImage: 'linear-gradient(to right top, #a855f7, #c47eed, #db9ff3, #efc0f9, #ffe2ff)', color: 'black' }
   },
@@ -146,5 +146,3 @@ export const navItems: StyledNavItem[] = [
     style: { backgroundImage: 'linear-gradient(to right top, #d946ef, #c832db, #b71ac8, #a500b5, #9300a2)', color: 'white' }
   }
 ];
-
-    
