@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -24,12 +25,13 @@ export const WarehouseSummary = () => {
     const warehouseSummary = React.useMemo(() => {
         if (isLoading || !allAggregatedInventory) return [];
 
-        const summary = new Map<string, { id: string; name: string; bags: number }>();
+        const summary = new Map<string, { id: string; name: string; bags: number; netWeight: number }>();
 
         allAggregatedInventory.forEach(item => {
             if (item.currentBags > 0) {
-                const existing = summary.get(item.locationId) || { id: item.locationId, name: item.locationName, bags: 0 };
+                const existing = summary.get(item.locationId) || { id: item.locationId, name: item.locationName, bags: 0, netWeight: 0 };
                 existing.bags += item.currentBags;
+                existing.netWeight += item.currentWeight;
                 summary.set(item.locationId, existing);
             }
         });
@@ -78,12 +80,13 @@ export const WarehouseSummary = () => {
                               className="h-full w-full"
                             >
                                 <Card
-                                  className="shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105 rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px]"
+                                  className="shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105 rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[140px]"
                                   style={{ background: style.background, color: style.color }}
                                 >
                                     <Layers3 className="h-7 w-7 mb-2" />
                                     <p className="text-base font-semibold mb-1 uppercase">{wh.name}</p>
                                     <p className="text-2xl font-bold">{Math.round(wh.bags).toLocaleString()} <span className="text-sm font-normal opacity-80">BAGS</span></p>
+                                    <p className="text-sm font-normal opacity-80">{wh.netWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })} KG</p>
                                 </Card>
                             </motion.div>
                         </Link>
