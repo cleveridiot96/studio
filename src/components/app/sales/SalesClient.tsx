@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -23,42 +22,31 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format as formatDateFn, parseISO } from 'date-fns';
 import { cn } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
 import { useMasterData } from "@/contexts/MasterDataContext";
-
-const SALES_STORAGE_KEY = 'salesData';
-const SALE_RETURNS_STORAGE_KEY = 'saleReturnsData';
-const PURCHASES_STORAGE_KEY = 'purchasesData';
-const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
-const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
-const RECEIPTS_STORAGE_KEY = 'receiptsData';
-const LEDGER_STORAGE_KEY = 'ledgerData';
-const KEY_SEPARATOR = '_$_';
-
-export interface AggregatedStockItemForForm {
-  lotNumber: string;
-  currentBags: number;
-  effectiveRate: number; 
-  purchaseRate: number;
-  averageWeightPerBag: number;
-  locationId: string;
-  locationName?: string;
-  costBreakdown: CostBreakdown;
-}
+import { useTransactions } from "@/hooks/useTransactions";
+import { useInventory } from "@/hooks/useInventory";
 
 export function SalesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
   const { setMasterData } = useMasterData();
+  const {
+    sales,
+    setSales,
+    saleReturns,
+    setSaleReturns,
+    receipts,
+    addLedgerEntry,
+    removeLedgerEntries
+  } = useTransactions();
+
 
   const [isAddSaleFormOpen, setIsAddSaleFormOpen] = React.useState(false);
   const [saleToEdit, setSaleToEdit] = React.useState<Sale | null>(null);
@@ -74,139 +62,11 @@ export function SalesClient() {
   const chittiContainerRef = React.useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = React.useState('sales');
   
-  const [sales, setSales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
-  const [saleReturns, setSaleReturns] = useLocalStorageState<SaleReturn[]>(SALE_RETURNS_STORAGE_KEY, []);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
-  const [purchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
-  const [receipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
-  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
-
+  const { availableStock, isLoading: isInventoryLoading } = useInventory(saleToEdit?.id);
 
   React.useEffect(() => {
     setHydrated(true);
   }, []);
-
-  const aggregatedStockForSalesForm = React.useMemo((): AggregatedStockItemForForm[] => {
-    if (isAppHydrating || !hydrated) return [];
-
-    const stockMap = new Map<string, {
-        currentBags: number;
-        currentWeight: number;
-        totalCost: number;
-        purchaseRate: number;
-        locationName?: string;
-        costBreakdown: CostBreakdown;
-    }>();
-
-    const transactions = [
-        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
-        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
-        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const }))
-    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    for (const tx of transactions) {
-        if (!isDateInFinancialYear(tx.date, financialYear)) continue;
-
-        if (tx.txType === 'purchase') {
-            (tx.items || []).forEach((item: PurchaseItem) => {
-                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
-                const landedCost = item.landedCostPerKg || 0;
-                const purchaseExpensesPerKg = landedCost - item.rate;
-                
-                stockMap.set(key, {
-                    currentBags: item.quantity,
-                    currentWeight: item.netWeight,
-                    totalCost: item.netWeight * landedCost,
-                    purchaseRate: item.rate,
-                    locationName: tx.locationName,
-                    costBreakdown: {
-                        baseRate: item.rate,
-                        purchaseExpenses: purchaseExpensesPerKg,
-                        transferExpenses: 0
-                    }
-                });
-            });
-        } else if (tx.txType === 'locationTransfer') {
-            (tx.items || []).forEach((item: LocationTransferItem) => {
-                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
-                const fromEntry = stockMap.get(fromKey);
-
-                if (fromEntry) {
-                    const costOfGoodsToTransfer = fromEntry.currentWeight > 0 ? (fromEntry.totalCost / fromEntry.currentWeight) * item.netWeightToTransfer : 0;
-                    
-                    fromEntry.currentBags -= item.bagsToTransfer;
-                    fromEntry.currentWeight -= item.netWeightToTransfer;
-                    fromEntry.totalCost -= costOfGoodsToTransfer;
-
-                    const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
-                    let toEntry = stockMap.get(toKey);
-
-                    if (!toEntry) {
-                        toEntry = {
-                            currentBags: 0,
-                            currentWeight: 0,
-                            totalCost: 0,
-                            purchaseRate: fromEntry.purchaseRate,
-                            locationName: tx.toWarehouseName,
-                            costBreakdown: { ...fromEntry.costBreakdown }
-                        };
-                    }
-                    
-                    const perKgExpense = (tx.perKgExpense || 0);
-                    const newTotalCostForThisChunk = costOfGoodsToTransfer + (perKgExpense * item.netWeightToTransfer);
-
-                    toEntry.currentBags += item.bagsToTransfer;
-                    toEntry.currentWeight += item.netWeightToTransfer;
-                    toEntry.totalCost += newTotalCostForThisChunk;
-                    toEntry.costBreakdown.transferExpenses += perKgExpense;
-
-                    stockMap.set(toKey, toEntry);
-                }
-            });
-        } else if (tx.txType === 'sale' && tx.id !== saleToEdit?.id) { 
-             (tx.items || []).forEach((item: SaleItem) => {
-                const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
-                if (saleLotKey) {
-                    const entry = stockMap.get(saleLotKey);
-                    if (entry && entry.currentWeight > 0) {
-                        const costOfGoodsSold = (entry.totalCost / entry.currentWeight) * item.netWeight;
-                        entry.currentBags -= item.quantity;
-                        entry.currentWeight -= item.netWeight;
-                        entry.totalCost -= costOfGoodsSold;
-                    }
-                }
-            });
-        }
-    }
-
-    const result: AggregatedStockItemForForm[] = [];
-    stockMap.forEach((value, key) => {
-        const separatorIndex = key.indexOf(KEY_SEPARATOR);
-        if (separatorIndex === -1) return;
-        const lotNumber = key.substring(0, separatorIndex);
-        const locationId = key.substring(separatorIndex + KEY_SEPARATOR.length);
-
-        if (value.currentBags > 0.001) {
-            const effectiveRate = value.currentWeight > 0 ? value.totalCost / value.currentWeight : 0;
-            result.push({
-                lotNumber,
-                locationId,
-                currentBags: value.currentBags,
-                averageWeightPerBag: value.currentBags > 0 ? value.currentWeight / value.currentBags : 50,
-                effectiveRate,
-                purchaseRate: value.purchaseRate,
-                locationName: value.locationName,
-                costBreakdown: value.costBreakdown,
-            });
-        }
-    });
-    
-    return result;
-  }, [purchases, purchaseReturns, sales, saleReturns, locationTransfers, isAppHydrating, hydrated, financialYear, saleToEdit]);
-
 
   const filteredSales = React.useMemo(() => {
     if (isAppHydrating || !hydrated) return [];
@@ -247,6 +107,7 @@ export function SalesClient() {
         : [{ ...sale, id: sale.id || `sale-${Date.now()}` }, ...prevSales];
     });
 
+    removeLedgerEntries(sale.id); // Clear old entries
     if (sale.expenses && sale.expenses.length > 0) {
       const newLedgerEntries: LedgerEntry[] = [];
       sale.expenses.forEach(exp => {
@@ -268,7 +129,7 @@ export function SalesClient() {
         }
       });
        if (newLedgerEntries.length > 0) {
-            setLedgerData(prevLedger => [...prevLedger.filter(l => l.relatedVoucher !== sale.id), ...newLedgerEntries]);
+            addLedgerEntry(newLedgerEntries);
             toast({ title: "Sale Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
@@ -279,18 +140,20 @@ export function SalesClient() {
     });
     setIsAddSaleFormOpen(false);
     setSaleToEdit(null);
-  }, [sales, setSales, setLedgerData, toast]);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+  }, [sales, setSales, addLedgerEntry, removeLedgerEntries, toast]);
 
   const handleEditSale = React.useCallback((sale: Sale) => { setSaleToEdit(sale); setIsAddSaleFormOpen(true); }, []);
   const handleDeleteSaleAttempt = React.useCallback((saleId: string) => { setSaleToDeleteId(saleId); setShowDeleteConfirm(true); }, []);
   const confirmDeleteSale = React.useCallback(() => {
     if (saleToDeleteId) {
       setSales(prev => prev.filter(s => s.id !== saleToDeleteId));
-      setLedgerData(prev => prev.filter(l => l.relatedVoucher !== saleToDeleteId));
+      removeLedgerEntries(saleToDeleteId);
       toast({ title: "Deleted!", description: "Sale record removed.", variant: "destructive" });
       setSaleToDeleteId(null); setShowDeleteConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
-  }, [saleToDeleteId, setSales, setLedgerData, toast]);
+  }, [saleToDeleteId, setSales, removeLedgerEntries, toast]);
 
   const handleAddOrUpdateSaleReturn = React.useCallback((srData: SaleReturn) => {
     setSaleReturns(prevReturns => {
@@ -299,6 +162,7 @@ export function SalesClient() {
     });
     toast({ title: "Success!", description: saleReturns.some(sr => sr.id === srData.id) ? "Sale return updated." : "Sale return added." });
     setIsAddSaleReturnFormOpen(false); setSaleReturnToEdit(null);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
   }, [setSaleReturns, toast, saleReturns]);
 
   const handleEditSaleReturn = React.useCallback((sr: SaleReturn) => { toast({title: "Info", description:"Editing sale returns is planned."})}, [toast]);
@@ -308,6 +172,7 @@ export function SalesClient() {
       setSaleReturns(prev => prev.filter(sr => sr.id !== saleReturnToDeleteId));
       toast({ title: "Deleted!", description: "Sale return record removed.", variant: "destructive" });
       setSaleReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
   }, [saleReturnToDeleteId, setSaleReturns, toast]);
 
@@ -419,7 +284,7 @@ export function SalesClient() {
       </Tabs>
       
       <div ref={chittiContainerRef} style={{ position: 'absolute', left: '-9999px', top: 0, zIndex: -10, backgroundColor: 'white' }}>{saleForPdf && <SaleChittiPrint sale={saleForPdf} />}</div>
-      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={aggregatedStockForSalesForm} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
+      {isAddSaleFormOpen && <AddSaleForm key={saleToEdit ? `edit-${saleToEdit.id}` : 'add-new-sale'} isOpen={isAddSaleFormOpen} onClose={closeAddSaleForm} onSubmit={handleAddOrUpdateSale} availableStock={availableStock} existingSales={sales} onMasterDataUpdate={handleMasterDataUpdate} saleToEdit={saleToEdit} />}
       {isAddSaleReturnFormOpen && <AddSaleReturnForm isOpen={isAddSaleReturnFormOpen} onClose={closeAddSaleReturnForm} onSubmit={handleAddOrUpdateSaleReturn} sales={filteredSales} existingSaleReturns={saleReturns} saleReturnToEdit={saleReturnToEdit} />}
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
@@ -437,5 +302,3 @@ export function SalesClient() {
     </div>
   );
 }
-
-    

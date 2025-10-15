@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -30,25 +29,24 @@ import html2canvas from 'html2canvas';
 import { format as formatDateFn } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { purchaseMigrator } from '@/lib/dataMigrators';
-import { FIXED_WAREHOUSES, FIXED_EXPENSES } from '@/lib/constants';
-
-const PURCHASES_STORAGE_KEY = 'purchasesData';
-const PURCHASE_RETURNS_STORAGE_KEY = 'purchaseReturnsData';
-const SALES_STORAGE_KEY = 'salesData';
-const LOCATION_TRANSFERS_STORAGE_KEY = 'locationTransfersData';
-const LEDGER_STORAGE_KEY = 'ledgerData';
+import { useTransactions } from "@/hooks/useTransactions";
 
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
 
-  const [purchases, setPurchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, [], purchaseMigrator);
-  const [purchaseReturns, setPurchaseReturns] = useLocalStorageState<PurchaseReturn[]>(PURCHASE_RETURNS_STORAGE_KEY, []);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(LOCATION_TRANSFERS_STORAGE_KEY, []);
-  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+  const {
+    purchases,
+    setPurchases,
+    purchaseReturns,
+    setPurchaseReturns,
+    sales,
+    locationTransfers,
+    addLedgerEntry,
+    removeLedgerEntries,
+  } = useTransactions();
+
 
   const [isAddPurchaseFormOpen, setIsAddPurchaseFormOpen] = React.useState(false);
   const [purchaseToEdit, setPurchaseToEdit] = React.useState<Purchase | null>(null);
@@ -84,39 +82,34 @@ export function PurchasesClient() {
       return isEditing ? prevPurchases.map(p => p.id === purchase.id ? purchase : p) : [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
     });
     
+    // Manage ledger entries for expenses
+    removeLedgerEntries(purchase.id); // Clear old entries for this voucher
     if (purchase.expenses && purchase.expenses.length > 0) {
-        const newLedgerEntries: LedgerEntry[] = [];
-        purchase.expenses.forEach(exp => {
-            if (exp.amount > 0) {
-                newLedgerEntries.push({
-                    id: `ledger-${purchase.id}-${exp.account.replace(/\s/g, '')}`,
-                    date: purchase.date,
-                    type: 'Expense',
-                    account: exp.account,
-                    debit: exp.amount,
-                    credit: 0,
-                    paymentMode: exp.paymentMode,
-                    party: exp.partyName || 'Self',
-                    partyId: exp.partyId,
-                    relatedVoucher: purchase.id,
-                    linkedTo: {
-                        voucherType: 'Purchase',
-                        voucherId: purchase.id,
-                    },
-                    remarks: `Expense for purchase from ${purchase.supplierName}`
-                });
-            }
-        });
+        const newLedgerEntries = purchase.expenses.filter(exp => exp.amount > 0).map(exp => ({
+            id: `ledger-${purchase.id}-${exp.account.replace(/\s/g, '')}`,
+            date: purchase.date,
+            type: 'Expense' as const,
+            account: exp.account,
+            debit: exp.amount,
+            credit: 0,
+            paymentMode: exp.paymentMode,
+            party: exp.partyName || 'Self',
+            partyId: exp.partyId,
+            relatedVoucher: purchase.id,
+            linkedTo: { voucherType: 'Purchase' as const, voucherId: purchase.id },
+            remarks: `Expense for purchase from ${purchase.supplierName}`
+        }));
 
         if (newLedgerEntries.length > 0) {
-            setLedgerData(prevLedger => [...prevLedger.filter(l => l.relatedVoucher !== purchase.id), ...newLedgerEntries]);
+            addLedgerEntry(newLedgerEntries);
             toast({ title: "Expenses Logged", description: `${newLedgerEntries.length} expense(s) have been recorded in the ledger.` });
         }
     }
 
     setPurchaseToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Purchase updated." : "Purchase added." });
-  }, [setPurchases, setLedgerData, toast, purchases]);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+  }, [purchases, setPurchases, addLedgerEntry, removeLedgerEntries, toast]);
 
   const handleEditPurchase = (purchase: Purchase) => {
     setPurchaseToEdit(purchase);
@@ -163,11 +156,12 @@ export function PurchasesClient() {
   const confirmDeletePurchase = React.useCallback(() => {
     if (purchaseToDeleteId) {
       setPurchases(prev => prev.filter(p => p.id !== purchaseToDeleteId));
-      setLedgerData(prev => prev.filter(l => l.relatedVoucher !== purchaseToDeleteId));
+      removeLedgerEntries(purchaseToDeleteId);
       toast({ title: "Deleted!", description: "Purchase record removed.", variant: "destructive" });
       setPurchaseToDeleteId(null); setShowDeleteConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
-  }, [purchaseToDeleteId, setPurchases, setLedgerData, toast]);
+  }, [purchaseToDeleteId, setPurchases, removeLedgerEntries, toast]);
 
   const handleAddOrUpdatePurchaseReturn = React.useCallback((prData: PurchaseReturn) => {
     setPurchaseReturns(prevReturns => {
@@ -176,7 +170,8 @@ export function PurchasesClient() {
     });
     setPurchaseReturnToEdit(null);
     toast({ title: "Success!", description: purchaseReturns.some(pr => pr.id === prData.id) ? "Purchase return updated." : "Purchase return added." });
-  }, [setPurchaseReturns, toast, purchaseReturns]);
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+  }, [purchaseReturns, setPurchaseReturns, toast]);
 
   const handleEditPurchaseReturn = React.useCallback((pr: PurchaseReturn) => {
     setPurchaseReturnToEdit(pr);
@@ -189,6 +184,7 @@ export function PurchasesClient() {
       setPurchaseReturns(prev => prev.filter(pr => pr.id !== purchaseReturnToDeleteId));
       toast({ title: "Deleted!", description: "Purchase return record removed.", variant: "destructive" });
       setPurchaseReturnToDeleteId(null); setShowDeleteReturnConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
   }, [purchaseReturnToDeleteId, setPurchaseReturns, toast]);
 
@@ -317,5 +313,3 @@ export function PurchasesClient() {
     </div>
   );
 }
-
-    

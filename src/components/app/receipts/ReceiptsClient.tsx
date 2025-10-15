@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -20,25 +19,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
-import { salesMigrator } from '@/lib/dataMigrators';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 import { useMasterData } from "@/contexts/MasterDataContext";
-
-const RECEIPTS_STORAGE_KEY = 'receiptsData';
-const SALES_STORAGE_KEY = 'salesData';
-const LEDGER_STORAGE_KEY = 'ledgerData';
-
+import { useTransactions } from "@/hooks/useTransactions";
 
 export function ReceiptsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
 
-  const [receipts, setReceipts] = useLocalStorageState<Receipt[]>(RECEIPTS_STORAGE_KEY, []);
-  const [sales] = useLocalStorageState<Sale[]>(SALES_STORAGE_KEY, [], salesMigrator);
-  const [ledgerData, setLedgerData] = useLocalStorageState<LedgerEntry[]>(LEDGER_STORAGE_KEY, []);
+  const { receipts, setReceipts, sales, addLedgerEntry, removeLedgerEntries } = useTransactions();
 
   const { receivableParties } = useOutstandingBalances();
   const { setMasterData } = useMasterData();
@@ -85,11 +76,12 @@ export function ReceiptsClient() {
         },
         remarks: `Receipt from ${receipt.partyName}: ${receipt.notes || ''}`
     };
-    setLedgerData(prev => [...prev.filter(l => l.id !== `ledger-${receipt.id}`), newLedgerEntry]);
+    addLedgerEntry(newLedgerEntry);
 
     setReceiptToEdit(null);
     toast({ title: "Success!", description: isEditing ? "Receipt updated successfully." : "Receipt added successfully." });
-  }, [setReceipts, setLedgerData, toast, receipts]); 
+    window.dispatchEvent(new CustomEvent('reindex-search'));
+  }, [receipts, setReceipts, addLedgerEntry, toast]); 
 
   const handleEditReceipt = React.useCallback((receipt: Receipt) => {
     setReceiptToEdit(receipt);
@@ -104,17 +96,18 @@ export function ReceiptsClient() {
   const confirmDeleteReceipt = React.useCallback(() => {
     if (receiptToDeleteId) {
       setReceipts(prev => prev.filter(r => r.id !== receiptToDeleteId));
-      setLedgerData(prev => prev.filter(l => l.id !== `ledger-${receiptToDeleteId}`));
+      removeLedgerEntries(receiptToDeleteId);
       toast({ title: "Success!", description: "Receipt deleted successfully.", variant: "destructive" });
       setReceiptToDeleteId(null);
       setShowDeleteConfirm(false);
+      window.dispatchEvent(new CustomEvent('reindex-search'));
     }
-  }, [receiptToDeleteId, setReceipts, setLedgerData, toast]);
+  }, [receiptToDeleteId, setReceipts, removeLedgerEntries, toast]);
   
   const handleMasterDataUpdate = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
     setMasterData(type, (prev: any[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     toast({ title: `Master list updated for ${type}.`});
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('reindex-search'));
   }, [toast, setMasterData]);
 
 
@@ -186,5 +179,3 @@ export function ReceiptsClient() {
     </div>
   );
 }
-
-    

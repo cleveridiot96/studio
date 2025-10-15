@@ -18,8 +18,6 @@ export function useLocalStorageState<T>(
     try {
       const item = window.localStorage.getItem(key);
       if (item === null) {
-        // If no value is in localStorage, set it to the default
-        window.localStorage.setItem(key, JSON.stringify(defaultValue));
         return defaultValue;
       }
       
@@ -33,17 +31,20 @@ export function useLocalStorageState<T>(
 
   const setStoredValue = useCallback<SetValue<T>>((newValue) => {
     try {
-      const valueToStore = newValue instanceof Function ? newValue(value) : newValue;
-      
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      }
-      
-      setValue(valueToStore);
+      // Use a functional update for setValue to ensure we have the latest state.
+      setValue((prev) => {
+        const valueToStore = newValue instanceof Function ? newValue(prev) : newValue;
+        
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        }
+        
+        return valueToStore;
+      });
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
     }
-  }, [key, value]);
+  }, [key]);
 
   // This effect synchronizes changes across tabs/windows.
   useEffect(() => {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -53,32 +52,29 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
   const fuse = React.useMemo(() => new Fuse(options, {
     keys: ['label'],
     threshold: 0.3,
+    includeScore: true,
   }), [options]);
 
   const didYouMeanSuggest = React.useMemo(() => {
-    if (!search) return null;
+    if (!search || options.length === 0) return null;
     const suggestions = didYouMean(search, options.map(opt => opt.label), {
       threshold: 0.6,
       caseSensitive: false,
     });
     return Array.isArray(suggestions) ? suggestions[0] : suggestions;
   }, [search, options]);
-
+  
   const filteredOptions = React.useMemo(() => {
     if (!search) {
       return options;
     }
-    const fuseResults = fuse.search(search).map(result => result.item);
-    if (typeof didYouMeanSuggest === 'string' && didYouMeanSuggest && !fuseResults.some(opt => opt.label === didYouMeanSuggest)) {
-        const suggestionOption = options.find(opt => opt.label === didYouMeanSuggest);
-        if (suggestionOption) {
-            // This logic can be simplified, but for now, we just ensure fuse results are primary.
-        }
-    }
-    return fuseResults;
-  }, [options, search, fuse, didYouMeanSuggest]);
+    return fuse.search(search).map(result => result.item);
+  }, [options, search, fuse]);
 
-  const selectedLabel = options.find((opt) => opt.value === value)?.label;
+
+  const selectedLabel = React.useMemo(() => {
+    return options.find((opt) => opt.value === value)?.label;
+  }, [options, value]);
 
   const handleSelect = (selectedValue: string | undefined) => {
     onChange(selectedValue);
@@ -94,16 +90,21 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
     }
   };
   
-  const handleEdit = (e: React.MouseEvent, value: string) => {
+  const handleEdit = (e: React.MouseEvent, val: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (onEdit) {
-      onEdit(value);
-      setOpen(false);
+      onEdit(val);
+      setOpen(false); // Close popover after edit is initiated
       setSearch("");
     }
   }
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" && filteredOptions.length === 0 && onAddNew) {
+        handleAddNew();
+    }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -124,7 +125,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
       </PopoverTrigger>
 
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0 z-[99999]">
-        <Command shouldFilter={false} className="max-h-[300px]">
+        <Command shouldFilter={false} onKeyDown={handleKeyDown}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={search}
@@ -132,81 +133,62 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
             autoFocus
           />
           <TooltipProvider>
-            <CommandList className="max-h-[calc(300px-theme(spacing.12)-theme(spacing.2))]">
-                <CommandItem
-                    onSelect={() => handleSelect(undefined)}
-                     className={cn(
-                        "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground text-muted-foreground",
-                        !value && "font-semibold bg-accent"
-                    )}
-                >
-                    <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
-                    <span className="italic">CLEAR SELECTION</span>
-                </CommandItem>
-                <Separator className="my-1" />
+            <CommandList>
+              <CommandItem onSelect={() => handleSelect(undefined)}>
+                  <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                  <span className="italic">CLEAR SELECTION</span>
+              </CommandItem>
+              <Separator className="my-1" />
 
-              {filteredOptions.length === 0 && search.length > 0 ? (
-                <CommandEmpty>
-                  {notFoundMessage}
-                  {didYouMeanSuggest && (
-                    <div className="py-2 px-2 text-center text-xs text-muted-foreground">
-                      Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+              {filteredOptions.length > 0 && (
+                filteredOptions.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={() => handleSelect(option.value)}
+                    className="group uppercase flex justify-between items-center w-full"
+                  >
+                    <div className="flex items-center flex-grow truncate mr-2">
+                      <Check className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")} />
+                      <span className="truncate">{option.label}</span>
                     </div>
-                  )}
-                  {onAddNew && (
-                    <CommandItem 
-                        onSelect={handleAddNew} 
-                        className="cursor-pointer mt-2 border-t"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </CommandItem>
-                  )}
-                </CommandEmpty>
-              ) : (
-                <>
-                  {filteredOptions.map((option) => (
-                      <CommandItem
-                        key={option.value}
-                        value={option.value}
-                        onSelect={() => handleSelect(option.value)}
-                        className="group uppercase flex justify-between items-center w-full"
-                      >
-                         <div className="flex items-center flex-grow truncate mr-2">
-                            <Check
-                                className={cn("mr-2 h-4 w-4 shrink-0", value === option.value ? "opacity-100" : "opacity-0")}
-                            />
-                            <span className="truncate">{option.label}</span>
-                        </div>
-                        {onEdit && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
-                                onMouseDown={(e) => handleEdit(e, option.value)}
-                                aria-label={`EDIT ${option.label}`}
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Edit {option.label}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </CommandItem>
-                  ))}
-                  {onAddNew && (
-                    <CommandItem 
-                        onSelect={handleAddNew} 
-                        className="cursor-pointer mt-1 border-t"
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
-                    </CommandItem>
-                  )}
-                </>
+                    {onEdit && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 shrink-0 p-1 opacity-0 group-hover:opacity-100"
+                            onClick={(e) => handleEdit(e, option.value)}
+                            aria-label={`EDIT ${option.label}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Edit {option.label}</p></TooltipContent>
+                      </Tooltip>
+                    )}
+                  </CommandItem>
+                ))
               )}
+                
+              {onAddNew && (
+                <CommandItem onSelect={handleAddNew} className="cursor-pointer mt-1 border-t">
+                  <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                </CommandItem>
+              )}
+
+              {filteredOptions.length === 0 && !onAddNew && (
+                  <CommandEmpty>
+                      {notFoundMessage}
+                       {didYouMeanSuggest && (
+                        <div className="py-2 px-2 text-center text-xs text-muted-foreground">
+                          Did you mean: <Button variant="link" size="sm" className="p-0 h-auto" onClick={() => setSearch(didYouMeanSuggest)}>{didYouMeanSuggest}</Button>?
+                        </div>
+                      )}
+                  </CommandEmpty>
+              )}
+
             </CommandList>
           </TooltipProvider>
         </Command>
