@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from "react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -90,6 +89,12 @@ export function LedgerClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const partyIdFromQuery = searchParams.get('partyId');
+  
+  const allMasters = React.useMemo(() => {
+    return [...customers, ...suppliers, ...agents, ...brokers]
+      .filter(m => m && m.id && m.name && m.type) // Basic validation
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers, suppliers, agents, brokers]);
 
   React.useEffect(() => {
     if (!dateRange) {
@@ -106,12 +111,6 @@ export function LedgerClient() {
       setSelectedPartyId(partyIdFromQuery);
     }
   }, [currentFinancialYearString, partyIdFromQuery, dateRange, selectedPartyId, allMasters]);
-
-  const allMasters = React.useMemo(() => {
-    return [...customers, ...suppliers, ...agents, ...brokers]
-      .filter(m => m && m.id && m.name && m.type) // Basic validation
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [customers, suppliers, agents, brokers]);
 
   const partyOptions = React.useMemo(() => {
     return allMasters.map(p => ({ value: p.id, label: `${p.name} (${p.type})` }));
