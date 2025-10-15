@@ -187,25 +187,24 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     }
   }, [purchaseToEdit, isOpen, reset, getDefaultValues]);
   
-  const handleOpenMasterForm = (type: MasterItemType) => {
+  const handleOpenMasterForm = React.useCallback((type: MasterItemType) => {
     setMasterItemToEdit(null);
     setMasterFormItemType(type);
     setIsMasterFormOpen(true);
-  };
+  }, []);
   
-  const handleEditMasterItem = (type: MasterItemType, id: string) => {
-    let itemToEdit: MasterItem | null = null;
+  const handleEditMasterItem = React.useCallback((type: MasterItemType, id: string) => {
     const allMasters = getAllMasters();
-    itemToEdit = allMasters.find(i => i.id === id) || null;
+    const itemToEdit = allMasters.find(i => i.id === id) || null;
 
     if (itemToEdit) {
         setMasterItemToEdit(itemToEdit);
         setMasterFormItemType(type);
         setIsMasterFormOpen(true);
     }
-  };
+  }, [getAllMasters]);
 
-  const handleMasterFormSubmit = (newItem: MasterItem) => {
+  const handleMasterFormSubmit = React.useCallback((newItem: MasterItem) => {
     setMasterData(newItem.type, (prev: MasterItem[]) => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     if (newItem.type === masterFormItemType) {
         if (newItem.type === 'Supplier') methods.setValue('supplierId', newItem.id, { shouldValidate: true });
@@ -216,9 +215,9 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     setIsMasterFormOpen(false);
     setMasterFormItemType(null);
     toast({ title: `${newItem.type} "${newItem.name}" added/updated successfully!` });
-  };
+  }, [setMasterData, masterFormItemType, methods, toast]);
 
-  const processSubmit = (values: PurchaseFormValues) => {
+  const processSubmit = React.useCallback((values: PurchaseFormValues) => {
     setIsSubmitting(true);
     
     const totalAmount = Math.round(summary.totalAmount);
@@ -256,7 +255,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
     onSubmit(purchaseData);
     setIsSubmitting(false);
     onClose();
-  };
+  }, [summary, purchaseToEdit, warehouses, suppliers, agents, transporters, getAllMasters, onSubmit, onClose]);
 
   return (
     <>

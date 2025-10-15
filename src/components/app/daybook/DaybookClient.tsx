@@ -1,6 +1,7 @@
+
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
-import type { DaybookEntry, Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry } from "@/lib/types";
+import type { DaybookEntry } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Printer, ShoppingCart, Receipt as ReceiptIcon, ArrowRightCircle, ArrowLeftCircle, ArrowRightLeft, FileText, BookMarked } from "lucide-react";
@@ -16,6 +17,7 @@ import { DataTableColumnHeader } from '@/components/shared/DataTableColumnHeader
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/shared/DataTable';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useHydrated } from '@/hooks/useHydrated';
 
 
 const typeToIconMap: Record<DaybookEntry['type'], React.ElementType> = {
@@ -38,6 +40,7 @@ const typeToColorMap: Record<DaybookEntry['type'], string> = {
 
 export function DaybookClient() {
   const { isAppHydrating } = useSettings();
+  const isHydrated = useHydrated();
   const router = useRouter();
 
   // Data states from central hook
@@ -54,7 +57,7 @@ export function DaybookClient() {
   }, [dateRange]);
 
   const allDaybookEntries = useMemo((): DaybookEntry[] => {
-    if (isAppHydrating) return [];
+    if (isAppHydrating || !isHydrated) return [];
     
     const entries: DaybookEntry[] = [];
 
@@ -110,7 +113,7 @@ export function DaybookClient() {
     });
 
     return entries.sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [isAppHydrating, purchases, sales, payments, receipts, locationTransfers, ledgerData]);
+  }, [isAppHydrating, isHydrated, purchases, sales, payments, receipts, locationTransfers, ledgerData]);
 
   const filteredEntries = useMemo(() => {
     let filtered = allDaybookEntries;
@@ -195,7 +198,7 @@ export function DaybookClient() {
     }
   ], []);
 
-  if (isAppHydrating) {
+  if (isAppHydrating || !isHydrated) {
       return <div>Loading Daybook...</div>;
   }
 

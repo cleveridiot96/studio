@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import type { LocationTransfer, MasterItemType, StockAdjustment } from "@/lib/types";
+import type { LocationTransfer } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowRightLeft, ListChecks, Boxes, Printer, Trash2, Edit, Download, MoreVertical } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,7 +73,7 @@ export function LocationTransferClient() {
     }
   }, [dateRange]);
 
-  const handleAddOrUpdateTransfer = (transfer: LocationTransfer) => {
+  const handleAddOrUpdateTransfer = React.useCallback((transfer: LocationTransfer) => {
     const isEditing = locationTransfers.some(t => t.id === transfer.id);
     setLocationTransfers(prev => {
       return isEditing ? prev.map(t => (t.id === transfer.id ? transfer : t)) : [{ ...transfer, id: transfer.id || `lt-${Date.now()}` }, ...prev];
@@ -104,12 +104,12 @@ export function LocationTransferClient() {
     toast({ title: isEditing ? "Transfer Updated" : "Transfer Created", description: isEditing ? "Location transfer details saved." : "New location transfer recorded successfully." });
     setTransferToEdit(null);
     window.dispatchEvent(new CustomEvent('reindex-search'));
-  };
+  }, [locationTransfers, setLocationTransfers, addLedgerEntry, removeLedgerEntries, toast]);
 
-  const handleEditTransfer = (transfer: LocationTransfer) => { setTransferToEdit(transfer); setIsAddFormOpen(true); };
-  const handleDeleteTransferAttempt = (transfer: LocationTransfer) => { setItemToDelete(transfer); setShowDeleteConfirm(true); };
+  const handleEditTransfer = React.useCallback((transfer: LocationTransfer) => { setTransferToEdit(transfer); setIsAddFormOpen(true); }, []);
+  const handleDeleteTransferAttempt = React.useCallback((transfer: LocationTransfer) => { setItemToDelete(transfer); setShowDeleteConfirm(true); }, []);
 
-  const confirmDeleteTransfer = () => {
+  const confirmDeleteTransfer = React.useCallback(() => {
     if (itemToDelete) {
       setLocationTransfers(prev => prev.filter(t => t.id !== itemToDelete!.id));
       removeLedgerEntries(itemToDelete.id);
@@ -117,7 +117,7 @@ export function LocationTransferClient() {
       setItemToDelete(null); setShowDeleteConfirm(false);
       window.dispatchEvent(new CustomEvent('reindex-search'));
     }
-  };
+  }, [itemToDelete, setLocationTransfers, removeLedgerEntries, toast]);
 
   const triggerDownloadTransferPdf = React.useCallback((transfer: LocationTransfer) => {
     setTransferForPdf(transfer);
@@ -152,7 +152,7 @@ export function LocationTransferClient() {
           const xOffset = (pdfWidth - imgWidth) / 2;
           const yOffset = (pdfHeight - imgHeight) / 2;
           pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
-          const timestamp = format(new Date(), 'ddMMyy_HHmm');
+          const timestamp = formatDateFn(new Date(), 'ddMMyy_HHmm');
           pdf.save(`TransferSlip_${transferForPdf.id.slice(-4)}_${timestamp}.pdf`);
           toast({ title: "PDF Generated", description: `Slip for transfer ${transferForPdf.id.slice(-4)} downloaded.` });
         } catch (err) {

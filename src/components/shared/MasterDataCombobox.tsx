@@ -214,7 +214,7 @@ export const MasterDataCombobox: React.FC<MasterDataComboboxProps> = ({
                   onSelect={handleAddNew}
                   className="cursor-pointer mt-1 border-t aria-selected:bg-accent aria-selected:text-accent-foreground hover:bg-accent hover:text-foreground"
                 >
-                  <Plus className="h-4 w-4 mr-2" /> {addNewLabel}
+                  <Plus className="h-4 w-4 mr-2" /> {addNewLabel} "{search}"
                 </CommandItem>
               )}
             </CommandList>

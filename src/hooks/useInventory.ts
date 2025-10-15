@@ -1,11 +1,12 @@
 
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import type { CostBreakdown, LocationTransferItem, PurchaseItem, SaleItem, StockAdjustment } from '@/lib/types';
 import { isDateInFinancialYear } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTransactions } from './useTransactions';
+import { useHydrated } from './useHydrated';
 
 const KEY_SEPARATOR = '_$_';
 
@@ -16,6 +17,7 @@ export interface AggregatedInventoryItem {
   currentWeight: number;
   averageWeightPerBag: number;
   effectiveRate: number; // Final landed cost per kg
+  cogs: number; // Current value of remaining stock
   purchaseRate: number; // Base rate
   locationId: string;
   locationName: string;
@@ -33,14 +35,12 @@ export interface AggregatedInventoryItem {
  * It encapsulates the complex logic of inventory aggregation from various transactions.
  */
 export const useInventory = (saleToEditId?: string | null) => {
-    const { financialYear, isAppHydrating } = useSettings();
+    const { financialYear, isAppHydrating: isSettingsHydrating } = useSettings();
     const transactions = useTransactions();
-    const [hydrated, setHydrated] = React.useState(false);
-
-    React.useEffect(() => { setHydrated(true); }, []);
+    const isTransactionsHydrated = useHydrated(); 
 
     const allAggregatedInventory = useMemo((): AggregatedInventoryItem[] => {
-      if (isAppHydrating || !hydrated) return [];
+      if (isSettingsHydrating || !isTransactionsHydrated) return [];
       
       const { purchases, purchaseReturns, sales, saleReturns, locationTransfers, adjustments } = transactions;
 
@@ -186,13 +186,13 @@ export const useInventory = (saleToEditId?: string | null) => {
       });
       
       return result;
-    }, [transactions, financialYear, isAppHydrating, hydrated, saleToEditId]);
+    }, [transactions, financialYear, isSettingsHydrating, isTransactionsHydrated, saleToEditId]);
 
     const availableStock = useMemo(() => 
       allAggregatedInventory.filter(item => item.currentBags > 0.001)
     , [allAggregatedInventory]);
 
-    return { allAggregatedInventory, availableStock, isLoading: !hydrated };
+    return { allAggregatedInventory, availableStock, isLoading: isSettingsHydrating || !isTransactionsHydrated };
 };
 
 export type { AggregatedInventoryItem };

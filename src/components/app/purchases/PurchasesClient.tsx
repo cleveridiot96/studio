@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Purchase, MasterItem, MasterItemType, Agent, Warehouse, Transporter, PurchaseReturn, LedgerEntry } from "@/lib/types";
+import { PlusCircle, Printer, ListCollapse, RotateCcw } from "lucide-react";
+import type { Purchase, PurchaseReturn } from "@/lib/types";
 import { PurchaseTable } from "./PurchaseTable";
 import { AddPurchaseForm } from "./AddPurchaseForm";
 import { PurchaseChittiPrint } from "./PurchaseChittiPrint";
@@ -30,10 +30,12 @@ import { format as formatDateFn, parseISO } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useHydrated } from "@/hooks/useHydrated";
 
 export function PurchasesClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
+  const isHydrated = useHydrated();
 
   const {
     purchases,
@@ -62,14 +64,14 @@ export function PurchasesClient() {
   const [activeTab, setActiveTab] = React.useState('purchases');
 
   const filteredPurchases = React.useMemo(() => {
-    if (isAppHydrating) return [];
+    if (isAppHydrating || !isHydrated) return [];
     return purchases.filter(purchase => purchase && purchase.date && isDateInFinancialYear(purchase.date, financialYear));
-  }, [purchases, financialYear, isAppHydrating]);
+  }, [purchases, financialYear, isAppHydrating, isHydrated]);
 
   const filteredPurchaseReturns = React.useMemo(() => {
-    if (isAppHydrating) return [];
+    if (isAppHydrating || !isHydrated) return [];
     return purchaseReturns.filter(pr => pr && pr.date && isDateInFinancialYear(pr.date, financialYear));
-  }, [purchaseReturns, financialYear, isAppHydrating]);
+  }, [purchaseReturns, financialYear, isAppHydrating, isHydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
     const isEditing = purchases.some(p => p.id === purchase.id);
@@ -224,7 +226,7 @@ export function PurchasesClient() {
     }
   }, [purchaseForPdf, toast]);
 
-  if (isAppHydrating) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
+  if (isAppHydrating || !isHydrated) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p className="text-lg text-muted-foreground">Loading data...</p></div>;
 
   return (
     <div className="space-y-2 print-area">
