@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -20,22 +19,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import { useOutstandingBalances } from '@/hooks/useOutstandingBalances';
 import { useMasterData } from "@/contexts/MasterDataContext";
-
-const PAYMENTS_STORAGE_KEY = 'paymentsData';
-const PURCHASES_STORAGE_KEY = 'purchasesData';
-
+import { useTransactions } from '@/hooks/useTransactions';
 
 export function PaymentsClient() {
   const { toast } = useToast();
   const { financialYear, isAppHydrating } = useSettings();
   const [hydrated, setHydrated] = React.useState(false);
 
-  const [payments, setPayments] = useLocalStorageState<Payment[]>(PAYMENTS_STORAGE_KEY, []);
-  const [purchases] = useLocalStorageState<Purchase[]>(PURCHASES_STORAGE_KEY, []);
+  const { payments, setPayments, purchases } = useTransactions();
   
   const { payableParties } = useOutstandingBalances();
   const { setMasterData } = useMasterData();
@@ -163,5 +157,3 @@ export function PaymentsClient() {
     </div>
   );
 }
-
-    

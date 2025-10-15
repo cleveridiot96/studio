@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
-import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { PrintHeaderSymbol } from '@/components/shared/PrintHeaderSymbol';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';

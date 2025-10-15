@@ -306,7 +306,7 @@ export const AddPurchaseForm: React.FC<AddPurchaseFormProps> = ({
                                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                                 </Button></FormControl></PopoverTrigger>
                                             <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus />
+                                                <Calendar mode="single" selected={field.value} onSelect={(date) => { if(date) field.onChange(date); setIsDatePickerOpen(false); }} disabled={(date) => date > new Date()} initialFocus />
                                             </PopoverContent>
                                             </Popover><FormMessage />
                                         </FormItem>)} />
