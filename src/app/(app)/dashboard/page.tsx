@@ -14,6 +14,7 @@ import { ProfitAnalysisClient } from '@/components/app/profit-analysis/ProfitAna
 import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummary';
 import { navItems, type StyledNavItem } from '@/lib/config/nav';
 import { useSettings } from '@/contexts/SettingsContext';
+import { WarehouseSummary } from '@/components/app/dashboard/WarehouseSummary';
 
 export default function DashboardPage() {
   const { toast } = useToast();
@@ -60,7 +61,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-6">
       <PrintHeaderSymbol className="text-center text-lg font-semibold text-foreground mb-2" />
       <div className="text-left">
         <h1 className="text-2xl font-bold text-foreground uppercase">Dashboard (FY {financialYear})</h1>
@@ -92,12 +93,10 @@ export default function DashboardPage() {
         className="hidden"
         id="dashboard-restore-input"
       />
-      <Separator className="my-2"/>
+      
+      <WarehouseSummary />
       <OutstandingSummary />
-      <Separator className="my-6"/>
       <ProfitAnalysisClient/>
     </div>
   );
 }
-
-    

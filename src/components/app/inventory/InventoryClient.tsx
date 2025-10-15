@@ -7,7 +7,7 @@ import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { StockAdjustment } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo, SlidersHorizontal, Undo2 } from "lucide-react";
+import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo, SlidersHorizontal, Undo2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,11 @@ import { useInventory } from '@/hooks/useInventory';
 
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
 
-export function InventoryClient() {
+interface InventoryClientProps {
+  warehouseIdFromQuery?: string;
+}
+
+export function InventoryClient({ warehouseIdFromQuery }: InventoryClientProps) {
   const { financialYear, isAppHydrating, lowStockThreshold } = useSettings();
   const { toast } = useToast();
   const { data: masterData } = useMasterData();
@@ -53,12 +57,16 @@ export function InventoryClient() {
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = React.useState(false);
-  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string | null>(null);
+  const [selectedWarehouseId, setSelectedWarehouseId] = React.useState<string | null>(warehouseIdFromQuery || null);
   const [isMergeFormOpen, setIsMergeFormOpen] = React.useState(false);
   const [activeRowSelection, setActiveRowSelection] = React.useState<Record<string, boolean>>({});
   const [archivedRowSelection, setArchivedRowSelection] = React.useState<Record<string, boolean>>({});
   const [isAdjustmentFormOpen, setIsAdjustmentFormOpen] = React.useState(false);
   const [itemToReverse, setItemToReverse] = React.useState<StockAdjustment | null>(null);
+  
+  React.useEffect(() => {
+    setSelectedWarehouseId(warehouseIdFromQuery || null);
+  }, [warehouseIdFromQuery]);
 
   const activeInventory = React.useMemo(() => {
     return allAggregatedInventory.filter(item => !archivedLotKeys.includes(item.key));
@@ -70,7 +78,7 @@ export function InventoryClient() {
 
   const warehouseSummary = React.useMemo(() => {
     const summary: Record<string, { id: string; name: string; bags: number; netWeight: number; totalValue: number }> = {};
-    activeInventory.forEach(item => {
+    allAggregatedInventory.forEach(item => { // Use all inventory for summary
       if (item.currentBags > 0) {
         if (!summary[item.locationId]) {
           summary[item.locationId] = { id: item.locationId, name: item.locationName, bags: 0, netWeight: 0, totalValue: 0 };
@@ -81,7 +89,7 @@ export function InventoryClient() {
       }
     });
     return Object.values(summary).sort((a,b) => a.name.localeCompare(b.name));
-  }, [activeInventory]);
+  }, [allAggregatedInventory]);
 
   const filteredActiveInventory = React.useMemo(() => {
     if (!selectedWarehouseId) return activeInventory;
@@ -233,28 +241,30 @@ export function InventoryClient() {
       <div className="no-print">
         <h2 className="text-xl font-semibold text-foreground mb-3">Warehouse Overview</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <Link href="/inventory">
             <button
                 onClick={() => setSelectedWarehouseId(null)}
                 className={cn(
-                    "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full",
+                    "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full w-full",
                     !selectedWarehouseId ? 'ring-2 ring-primary bg-primary/10' : 'bg-card'
                 )}
             >
                 <CardTitle className="text-lg flex items-center gap-2"><WarehouseIcon className="h-5 w-5 text-primary"/>All Warehouses</CardTitle>
                 <div>
-                  <p className="text-2xl font-bold">{Math.round(activeInventory.reduce((sum, item) => sum + item.currentBags, 0)).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">BAGS</span></p>
-                  <p className="text-sm text-muted-foreground">{activeInventory.reduce((sum, item) => sum + item.currentWeight, 0).toLocaleString()} KG</p>
-                  <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(activeInventory.reduce((sum, item) => sum + item.cogs, 0)).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
+                  <p className="text-2xl font-bold">{Math.round(allAggregatedInventory.reduce((sum, item) => sum + item.currentBags, 0)).toLocaleString()} <span className="text-sm font-normal text-muted-foreground">BAGS</span></p>
+                  <p className="text-sm text-muted-foreground">{allAggregatedInventory.reduce((sum, item) => sum + item.currentWeight, 0).toLocaleString()} KG</p>
+                  <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(allAggregatedInventory.reduce((sum, item) => sum + item.cogs, 0)).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                 </div>
             </button>
+            </Link>
             {warehouseSummary.map(wh => {
               const isLow = wh.bags < lowStockThreshold;
               return (
+                <Link key={wh.id} href={`/inventory?warehouseId=${wh.id}`}>
                 <button
-                  key={wh.id}
                   onClick={() => setSelectedWarehouseId(wh.id)}
                   className={cn(
-                      "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full relative",
+                      "p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow text-left flex flex-col justify-between h-full w-full relative",
                       selectedWarehouseId === wh.id ? 'ring-2 ring-primary bg-primary/10' : 'bg-card',
                       isLow && "border-2 border-destructive"
                   )}
@@ -267,6 +277,7 @@ export function InventoryClient() {
                       <p className="text-sm text-muted-foreground font-semibold flex items-center gap-1 mt-1"><DollarSign className="h-3 w-3"/>{Math.round(wh.totalValue).toLocaleString('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 0})}</p>
                     </div>
                 </button>
+                </Link>
               )
             })}
            {warehouseSummary.length === 0 && <p className="text-muted-foreground col-span-full">No active stock in any warehouse.</p>}
@@ -283,7 +294,16 @@ export function InventoryClient() {
           <Card className="shadow-lg">
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Active Inventory: {getActiveFilterName()}</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                    Active Inventory: {getActiveFilterName()}
+                    {selectedWarehouseId && (
+                       <Link href="/inventory">
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                           <X className="h-4 w-4" />
+                        </Button>
+                       </Link>
+                    )}
+                </CardTitle>
                  {activeSelectionCount > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -437,5 +457,3 @@ export function InventoryClient() {
     </div>
   );
 }
-
-    
