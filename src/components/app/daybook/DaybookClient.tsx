@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useMemo, useState, useEffect } from 'react';
 import type { DaybookEntry, Purchase, Sale, Payment, Receipt, LocationTransfer, LedgerEntry } from "@/lib/types";
@@ -16,18 +15,8 @@ import type { DateRange } from "react-day-picker";
 import { DataTableColumnHeader } from '@/components/shared/DataTableColumnHeader';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/shared/DataTable';
-import { purchaseMigrator, salesMigrator, locationTransferMigrator } from '@/lib/dataMigrators';
-import { useLocalStorageState } from '@/hooks/useLocalStorageState';
+import { useTransactions } from '@/hooks/useTransactions';
 
-
-const keys = {
-  purchases: 'purchasesData',
-  sales: 'salesData',
-  receipts: 'receiptsData',
-  payments: 'paymentsData',
-  locationTransfers: 'locationTransfersData',
-  ledger: 'ledgerData',
-};
 
 const typeToIconMap: Record<DaybookEntry['type'], React.ElementType> = {
     Purchase: ShoppingCart,
@@ -51,13 +40,8 @@ export function DaybookClient() {
   const { isAppHydrating } = useSettings();
   const router = useRouter();
 
-  // Data states
-  const [purchases] = useLocalStorageState<Purchase[]>(keys.purchases, [], purchaseMigrator);
-  const [sales] = useLocalStorageState<Sale[]>(keys.sales, [], salesMigrator);
-  const [receipts] = useLocalStorageState<Receipt[]>(keys.receipts, []);
-  const [payments] = useLocalStorageState<Payment[]>(keys.payments, []);
-  const [locationTransfers] = useLocalStorageState<LocationTransfer[]>(keys.locationTransfers, [], locationTransferMigrator);
-  const [ledgerData] = useLocalStorageState<LedgerEntry[]>(keys.ledger, []);
+  // Data states from central hook
+  const { purchases, sales, receipts, payments, locationTransfers, ledger: ledgerData } = useTransactions();
 
   // Filter and sort states
   const [dateRange, setDateRange] = useState<DateRange | undefined>();

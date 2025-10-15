@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -37,7 +36,7 @@ interface CashLedgerTransaction {
 export function CashbookClient() {
   const { toast } = useToast();
   const { payments, setPayments, receipts, setReceipts } = useTransactions();
-  const { data: masterData } = useMasterData();
+  const { data: masterData, setMasterData } = useMasterData();
   const { Customer: customers, Supplier: suppliers, Agent: agents, Transporter: transporters, Broker: brokers, Expense: expenses } = masterData;
 
   const [baseOpeningBalance, setBaseOpeningBalance] = useLocalStorageState<number>(CASH_OPENING_BALANCE_KEY, 0);
@@ -155,18 +154,7 @@ export function CashbookClient() {
   }, [setReceipts, toast]);
 
   const handleMasterDataUpdateFromCashbook = React.useCallback((type: MasterItemType, newItem: MasterItem) => {
-    const setters = {
-        'Supplier': setMasterData,
-        'Agent': setMasterData,
-        'Transporter': setMasterData,
-        'Customer': setMasterData,
-        'Broker': setMasterData,
-        'Expense': setMasterData
-    };
-    const setter = setters[type as keyof typeof setters];
-    if(setter) {
-        setter(type, (prev: any) => [newItem, ...prev.filter((i: any) => i.id !== newItem.id)]);
-    }
+    setMasterData(type, (prev: any) => [newItem, ...prev.filter((i: any) => i.id !== newItem.id)]);
     toast({title: "Info", description: `Master type ${type} updated.`});
   }, [setMasterData, toast]);
 
