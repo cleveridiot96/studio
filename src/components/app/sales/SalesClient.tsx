@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Printer, Download, ListCollapse, RotateCcw } from "lucide-react";
-import type { Sale, MasterItem, MasterItemType, Broker, Purchase, SaleReturn, PurchaseReturn, LocationTransfer, Receipt, CostBreakdown, SaleItem, PurchaseItem, LocationTransferItem, LedgerEntry } from "@/lib/types";
+import { PlusCircle, Printer, ListCollapse, RotateCcw } from "lucide-react";
+import type { Sale, MasterItem, MasterItemType, SaleReturn, LedgerEntry } from "@/lib/types";
 import { SaleTable } from "./SaleTable";
 import { AddSaleForm } from "./AddSaleForm";
 import { SaleChittiPrint } from "./SaleChittiPrint";
@@ -83,6 +84,11 @@ export function SalesClient() {
 
     return enrichedSales.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [sales, receipts, financialYear, isAppHydrating]);
+
+  const filteredSaleReturns = React.useMemo(() => {
+    if (isAppHydrating) return [];
+    return saleReturns.filter(sr => sr && sr.date && isDateInFinancialYear(sr.date, financialYear));
+  }, [saleReturns, financialYear, isAppHydrating]);
 
 
   const handleAddOrUpdateSale = React.useCallback((sale: Sale) => {
@@ -265,7 +271,7 @@ export function SalesClient() {
             </Button>
              <Button variant="outline" size="icon" onClick={() => window.print()}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
           </div>
-          <SaleReturnTable data={saleReturns} onEdit={handleEditSaleReturn} onDelete={handleDeleteSaleReturnAttempt} />
+          <SaleReturnTable data={filteredSaleReturns} onEdit={handleEditSaleReturn} onDelete={handleDeleteSaleReturnAttempt} />
         </TabsContent>
       </Tabs>
       
@@ -288,3 +294,5 @@ export function SalesClient() {
     </div>
   );
 }
+
+    

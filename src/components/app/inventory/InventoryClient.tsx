@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import Link from 'next/link';
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import type { Purchase, Sale, LocationTransfer, MasterItem, PurchaseReturn, SaleReturn, StockAdjustment } from "@/lib/types";
+import type { StockAdjustment } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Archive, Boxes, Printer, RotateCcw, PlusCircle, ArrowRightLeft, ShoppingCart, Warehouse as WarehouseIcon, DollarSign, AlertTriangle, GitMerge, ListTodo, SlidersHorizontal, Undo2 } from "lucide-react";
@@ -24,63 +25,30 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { isDateInFinancialYear } from "@/lib/utils";
 import { InventoryTable } from "./InventoryTable"; 
 import { cn } from "@/lib/utils";
-import { salesMigrator, purchaseMigrator } from '@/lib/dataMigrators';
 import { PartyBrokerLeaderboard } from "./PartyBrokerLeaderboard";
 import { MergeLotsForm } from "./MergeLotsForm";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LowStockWarning } from "@/components/app/dashboard/LowStockWarning";
 import { useMasterData } from '@/contexts/MasterDataContext';
-import { useTransactions } from '@/hooks/useTransactions.tsx';
+import { useTransactions } from '@/hooks/useTransactions';
 import { AddAdjustmentForm } from "../stock-adjustments/AddAdjustmentForm";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
+import type { AggregatedInventoryItem } from '@/hooks/useInventory';
+import { useInventory } from '@/hooks/useInventory';
 
 const ARCHIVED_LOTS_STORAGE_KEY = 'archivedInventoryLotKeys';
-const KEY_SEPARATOR = '_$_';
-const DEAD_STOCK_THRESHOLD_DAYS = 180;
-
-export interface AggregatedInventoryItem {
-  key: string; // Unique key: lotNumber_$_locationId
-  lotNumber: string;
-  locationId: string;
-  locationName: string;
-  supplierId?: string;
-  supplierName?: string;
-  sourceType: 'Purchase' | 'Transfer';
-  sourceDetails?: string;
-  totalPurchasedBags: number;
-  totalPurchasedWeight: number;
-  totalSoldBags: number;
-  totalSoldWeight: number;
-  totalPurchaseReturnedBags: number; 
-  totalPurchaseReturnedWeight: number; 
-  totalSaleReturnedBags: number; 
-  totalSaleReturnedWeight: number; 
-  totalTransferredOutBags: number;
-  totalTransferredOutWeight: number;
-  totalTransferredInBags: number;
-  totalTransferredInWeight: number;
-  totalAdjustedBags: number;
-  totalAdjustedWeight: number;
-  currentBags: number;
-  currentWeight: number;
-  purchaseDate?: string;
-  purchaseRate: number;
-  effectiveRate: number;
-  cogs: number; // Cost of Goods for remaining stock
-  daysInStock?: number;
-  turnoverRate?: number;
-  isDeadStock?: boolean; 
-}
 
 export function InventoryClient() {
   const { financialYear, isAppHydrating, lowStockThreshold } = useSettings();
   const { toast } = useToast();
   const { data: masterData } = useMasterData();
-  const { warehouses, suppliers } = masterData;
-  const { sales, purchases, locationTransfers, setLocationTransfers, purchaseReturns, saleReturns, adjustments, setAdjustments } = useTransactions();
+  const { warehouses } = masterData;
+  const { locationTransfers, setLocationTransfers, adjustments, setAdjustments } = useTransactions();
   
+  const { allAggregatedInventory, isLoading: isInventoryLoading } = useInventory();
+
   const [archivedLotKeys, setArchivedLotKeys] = useLocalStorageState<string[]>(ARCHIVED_LOTS_STORAGE_KEY, []);
 
   const [itemToArchive, setItemToArchive] = React.useState<AggregatedInventoryItem | null>(null);
@@ -92,128 +60,6 @@ export function InventoryClient() {
   const [isAdjustmentFormOpen, setIsAdjustmentFormOpen] = React.useState(false);
   const [itemToReverse, setItemToReverse] = React.useState<StockAdjustment | null>(null);
 
-  const allAggregatedInventory = React.useMemo(() => {
-    if (isAppHydrating) return [];
-
-    const inventoryMap = new Map<string, AggregatedInventoryItem>();
-
-    const transactions = [
-        ...purchases.map(p => ({ ...p, txType: 'purchase' as const })),
-        ...sales.map(s => ({ ...s, txType: 'sale' as const })),
-        ...locationTransfers.map(lt => ({ ...lt, txType: 'locationTransfer' as const })),
-        ...purchaseReturns.map(pr => ({ ...pr, txType: 'purchaseReturn' as const })),
-        ...saleReturns.map(sr => ({ ...sr, txType: 'saleReturn' as const })),
-        ...(adjustments || []).map(adj => ({ ...adj, txType: 'adjustment' as const }))
-    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    for (const tx of transactions) {
-        if (!isDateInFinancialYear(tx.date, financialYear)) continue;
-
-        if (tx.txType === 'purchase') {
-            tx.items.forEach(item => {
-                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
-                let entry = inventoryMap.get(key);
-                if (!entry) {
-                    entry = {
-                        key, lotNumber: item.lotNumber, locationId: tx.locationId, locationName: tx.locationName || 'Unknown',
-                        supplierId: tx.supplierId, supplierName: tx.supplierName, sourceType: 'Purchase',
-                        purchaseDate: tx.date, purchaseRate: item.rate, effectiveRate: item.landedCostPerKg,
-                        totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
-                        totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
-                        totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
-                        totalAdjustedBags: 0, totalAdjustedWeight: 0,
-                        currentBags: 0, currentWeight: 0, cogs: 0
-                    };
-                    inventoryMap.set(key, entry);
-                }
-                entry.totalPurchasedBags += item.quantity;
-                entry.totalPurchasedWeight += item.netWeight;
-            });
-        } else if (tx.txType === 'locationTransfer') {
-            tx.items.forEach(item => {
-                const fromKey = `${item.originalLotNumber}${KEY_SEPARATOR}${tx.fromWarehouseId}`;
-                const fromEntry = inventoryMap.get(fromKey);
-                if (fromEntry) {
-                    fromEntry.totalTransferredOutBags += item.bagsToTransfer;
-                    fromEntry.totalTransferredOutWeight += item.netWeightToTransfer;
-                }
-
-                const toKey = `${item.newLotNumber}${KEY_SEPARATOR}${tx.toWarehouseId}`;
-                let toEntry = inventoryMap.get(toKey);
-                if (!toEntry) {
-                    const originalPurchase = purchases.find(p => p.items.some(i => i.lotNumber === item.originalLotNumber));
-                    const perKgExpense = (tx.totalExpenses && tx.totalGrossWeight && tx.totalGrossWeight > 0) ? tx.totalExpenses / tx.totalGrossWeight : (tx.perKgExpense || 0);
-
-                    toEntry = {
-                        key: toKey, lotNumber: item.newLotNumber, locationId: tx.toWarehouseId, locationName: tx.toWarehouseName || 'Unknown',
-                        supplierId: fromEntry?.supplierId || originalPurchase?.supplierId, supplierName: fromEntry?.supplierName || originalPurchase?.supplierName,
-                        sourceType: 'Transfer', sourceDetails: `From ${tx.fromWarehouseName}`,
-                        purchaseDate: fromEntry?.purchaseDate || tx.date,
-                        purchaseRate: fromEntry?.purchaseRate || item.preTransferLandedCost || 0,
-                        effectiveRate: (fromEntry?.effectiveRate || item.preTransferLandedCost || 0) + perKgExpense,
-                        totalPurchasedBags: 0, totalPurchasedWeight: 0, totalSoldBags: 0, totalSoldWeight: 0,
-                        totalPurchaseReturnedBags: 0, totalPurchaseReturnedWeight: 0, totalSaleReturnedBags: 0, totalSaleReturnedWeight: 0,
-                        totalTransferredOutBags: 0, totalTransferredOutWeight: 0, totalTransferredInBags: 0, totalTransferredInWeight: 0,
-                        totalAdjustedBags: 0, totalAdjustedWeight: 0,
-                        currentBags: 0, currentWeight: 0, cogs: 0
-                    };
-                    inventoryMap.set(toKey, toEntry);
-                }
-                toEntry.totalTransferredInBags += item.bagsToTransfer;
-                toEntry.totalTransferredInWeight += item.netWeightToTransfer;
-            });
-        } else if (tx.txType === 'sale') {
-            tx.items.forEach(item => {
-                const saleLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
-                const entry = saleLotKey ? inventoryMap.get(saleLotKey) : undefined;
-                if (entry) {
-                    entry.totalSoldBags += item.quantity;
-                    entry.totalSoldWeight += item.netWeight;
-                }
-            });
-        } else if (tx.txType === 'purchaseReturn') {
-            const prLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(tx.originalLotNumber + KEY_SEPARATOR));
-            const entry = prLotKey ? inventoryMap.get(prLotKey) : undefined;
-            if (entry) {
-                entry.totalPurchaseReturnedBags += tx.quantityReturned;
-                entry.totalPurchaseReturnedWeight += tx.netWeightReturned;
-            }
-        } else if (tx.txType === 'saleReturn') {
-            const srLotKey = Array.from(inventoryMap.keys()).find(k => k.startsWith(tx.originalLotNumber + KEY_SEPARATOR));
-            const entry = srLotKey ? inventoryMap.get(srLotKey) : undefined;
-            if (entry) {
-                entry.totalSaleReturnedBags += tx.quantityReturned;
-                entry.totalSaleReturnedWeight += tx.netWeightReturned;
-            }
-        } else if (tx.txType === 'adjustment') {
-          const adjKey = `${tx.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
-          const entry = inventoryMap.get(adjKey);
-          if (entry) {
-            entry.totalAdjustedBags += tx.bags;
-            entry.totalAdjustedWeight += tx.weight;
-          }
-        }
-    }
-
-    const result: AggregatedInventoryItem[] = [];
-    inventoryMap.forEach(item => {
-        item.currentBags = item.totalPurchasedBags + item.totalTransferredInBags + item.totalSaleReturnedBags + item.totalAdjustedBags - (item.totalSoldBags + item.totalTransferredOutBags + item.totalPurchaseReturnedBags);
-        item.currentWeight = item.totalPurchasedWeight + item.totalTransferredInWeight + item.totalSaleReturnedWeight + item.totalAdjustedWeight - (item.totalSoldWeight + item.totalTransferredOutWeight + item.totalPurchaseReturnedWeight);
-        item.cogs = item.currentWeight * item.effectiveRate;
-
-        if (item.purchaseDate) {
-          item.daysInStock = Math.floor((new Date().getTime() - new Date(item.purchaseDate).getTime()) / (1000 * 3600 * 24));
-        }
-        const totalInitialBagsForTurnover = item.totalPurchasedBags + item.totalTransferredInBags;
-        item.turnoverRate = totalInitialBagsForTurnover > 0 ? ((item.totalSoldBags + item.totalTransferredOutBags) / totalInitialBagsForTurnover) * 100 : 0;
-        item.isDeadStock = item.currentBags > 0 && item.daysInStock !== undefined && item.daysInStock > DEAD_STOCK_THRESHOLD_DAYS;
-        
-        result.push(item);
-    });
-
-    return result.sort((a,b) => a.lotNumber.localeCompare(b.lotNumber) || a.locationName.localeCompare(b.locationName));
-  }, [sales, purchases, locationTransfers, purchaseReturns, saleReturns, adjustments, financialYear, isAppHydrating]);
-  
   const activeInventory = React.useMemo(() => {
     return allAggregatedInventory.filter(item => !archivedLotKeys.includes(item.key));
   }, [allAggregatedInventory, archivedLotKeys]);
@@ -249,17 +95,13 @@ export function InventoryClient() {
 
   const allLotsInSystem = React.useMemo(() => {
     const lots = new Set<string>();
-    purchases.forEach(p => p.items.forEach(i => lots.add(i.lotNumber)));
-    locationTransfers.forEach(t => t.items.forEach(i => {
-        lots.add(i.originalLotNumber);
-        lots.add(i.newLotNumber);
-    }));
+    allAggregatedInventory.forEach(item => lots.add(item.lotNumber));
     return Array.from(lots).sort();
-  }, [purchases, locationTransfers]);
+  }, [allAggregatedInventory]);
 
   const filteredAdjustments = React.useMemo(() => {
     if (isAppHydrating) return [];
-    return adjustments
+    return (adjustments || [])
       .filter(adj => isDateInFinancialYear(adj.date, financialYear))
       .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [adjustments, financialYear, isAppHydrating]);
@@ -311,7 +153,7 @@ export function InventoryClient() {
   };
   
   const handleMergeSubmit = (mergeData: Omit<LocationTransfer, 'id' | 'date'>) => {
-    const newTransfer: LocationTransfer = {
+    const newTransfer = {
       id: `lt-merge-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       ...mergeData,
@@ -322,7 +164,7 @@ export function InventoryClient() {
     window.dispatchEvent(new CustomEvent('reindex-search'));
   };
   
-  const handleAddAdjustment = useCallback((newAdjustment: Omit<StockAdjustment, 'id'>) => {
+  const handleAddAdjustment = React.useCallback((newAdjustment: Omit<StockAdjustment, 'id'>) => {
     setAdjustments(prev => [{ ...newAdjustment, id: `adj-${Date.now()}` }, ...prev]);
     toast({ title: 'Adjustment Recorded', description: 'The stock adjustment has been successfully saved.' });
     window.dispatchEvent(new CustomEvent('reindex-search'));
@@ -371,7 +213,7 @@ export function InventoryClient() {
   const archivedSelectionCount = Object.keys(archivedRowSelection).length;
 
 
-  if (isAppHydrating) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
+  if (isAppHydrating || isInventoryLoading) return <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]"><p>Loading inventory...</p></div>;
 
   return (
     <div className="space-y-6 print-area">
@@ -595,3 +437,5 @@ export function InventoryClient() {
     </div>
   );
 }
+
+    

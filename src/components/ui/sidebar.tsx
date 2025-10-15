@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -59,7 +60,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen = false, // Changed to false
+      defaultOpen = false, 
       open: openProp,
       onOpenChange: setOpenProp,
       className,
@@ -415,3 +416,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    

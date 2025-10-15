@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef, type ChangeEvent, useEffect, useCallback } from 'react';
@@ -35,11 +36,14 @@ export default function DashboardPage() {
   
   // Custom event listeners for global shortcuts
   useEffect(() => {
-    window.addEventListener('trigger-backup', handleExportClick);
-    window.addEventListener('trigger-restore', handleRestoreTriggerClick);
+    const handleTriggerBackup = () => handleExportClick();
+    const handleTriggerRestore = () => handleRestoreTriggerClick();
+  
+    window.addEventListener('trigger-backup', handleTriggerBackup);
+    window.addEventListener('trigger-restore', handleTriggerRestore);
     return () => {
-      window.removeEventListener('trigger-backup', handleExportClick);
-      window.removeEventListener('trigger-restore', handleRestoreTriggerClick);
+      window.removeEventListener('trigger-backup', handleTriggerBackup);
+      window.removeEventListener('trigger-restore', handleTriggerRestore);
     };
   }, [handleExportClick, handleRestoreTriggerClick]);
 
@@ -94,3 +98,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
