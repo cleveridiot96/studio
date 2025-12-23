@@ -277,12 +277,10 @@ const AddSaleFormComponent: React.FC<AddSaleFormProps> = ({
   };
   
   const stockOptionsForSale = React.useMemo(() => {
-    const mumbaiWarehouseId = (masterData.Warehouse || []).find(wh => wh.name.toUpperCase() === 'MUMBAI')?.id;
     return availableStock
-      .filter(s => s.locationId === mumbaiWarehouseId)
       .map(s => ({
         value: s.lotNumber,
-        label: `${s.lotNumber} (Avl: ${Math.round(s.currentBags)} bags) @ ₹${Math.round(s.purchaseRate)}`,
+        label: `${s.lotNumber} (${s.locationName} - ${Math.round(s.currentBags)} bags) @ ₹${Math.round(s.purchaseRate)}`,
         tooltipContent: (
           <div>
               <p>Landed Cost: <span className="font-semibold">₹{Math.round(s.effectiveRate)}/kg</span></p>

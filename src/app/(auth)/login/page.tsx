@@ -50,10 +50,10 @@ export default function LoginPage() {
     return false;
   };
   
-  const validatePin = (currentPin: string) => {
+  const validatePin = async (currentPin: string) => {
     if (isLockedOut()) return;
     
-    const inputHash = createPasswordHash(currentPin);
+    const inputHash = await createPasswordHash(currentPin);
 
     if (inputHash === storedPasswordHash) {
       toast({ title: "Login Successful", description: "Welcome back!" });
