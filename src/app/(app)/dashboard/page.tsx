@@ -15,50 +15,18 @@ import { OutstandingSummary } from '@/components/app/dashboard/OutstandingSummar
 import { navItems, type StyledNavItem } from '@/lib/config/nav';
 import { useSettings } from '@/contexts/SettingsContext';
 import { WarehouseSummary } from '@/components/app/dashboard/WarehouseSummary';
+import { useAppData } from '@/contexts/AppDataContext';
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const [lastBackupTimestamp, setLastBackupTimestamp] = useLocalStorageState<number | null>(LAST_BACKUP_TIMESTAMP_KEY, null);
-  const restoreFileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { financialYear } = useSettings();
+  const { saveDataToFile } = useAppData();
 
-  const handleExportClick = useCallback(() => {
-    exportDataToPortableFile({ toast, setLastBackupTimestamp, lastBackupTimestampFromState: lastBackupTimestamp });
-  }, [toast, setLastBackupTimestamp, lastBackupTimestamp]);
-
-
-  const handleRestoreTriggerClick = useCallback(() => {
-    restoreFileInputRef.current?.click();
-  }, []);
-
-  const handleRestoreFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    restoreDataFromFile(event, { toast, setLastBackupTimestamp });
-  }, [toast, setLastBackupTimestamp]);
-  
-  // Custom event listeners for global shortcuts
-  useEffect(() => {
-    const handleTriggerBackup = () => handleExportClick();
-    const handleTriggerRestore = () => handleRestoreTriggerClick();
-  
-    window.addEventListener('trigger-backup', handleTriggerBackup);
-    window.addEventListener('trigger-restore', handleTriggerRestore);
-    return () => {
-      window.removeEventListener('trigger-backup', handleTriggerBackup);
-      window.removeEventListener('trigger-restore', handleTriggerRestore);
-    };
-  }, [handleExportClick, handleRestoreTriggerClick]);
-
-
-  const getActionForItem = (title: string): (() => void) | undefined => {
-    if (title === 'Backup Data') {
-      return handleExportClick;
-    }
-    if (title === 'Restore Data') {
-        return handleRestoreTriggerClick;
-    }
-    return undefined;
-  };
+  const handleSaveClick = useCallback(async () => {
+    await saveDataToFile();
+    toast({ title: "Success", description: "Your data has been saved." });
+  }, [saveDataToFile, toast]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,6 +36,14 @@ export default function DashboardPage() {
       </div>
       
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <DashboardTile
+          title="Save Data"
+          description="Save all your data to a file"
+          iconName="Save"
+          onClick={handleSaveClick}
+          isSaveButton={true}
+          shortcut="Ctrl+S"
+        />
         {navItems.map((action) => {
           const styledAction = action as StyledNavItem;
           return (
@@ -79,20 +55,11 @@ export default function DashboardPage() {
               iconName={action.iconName}
               className={styledAction.style?.color as string || 'text-foreground'} // Pass text color
               style={styledAction.style} // Pass background style
-              onClick={getActionForItem(action.title)}
               shortcut={action.shortcut}
             />
           );
         })}
       </div>
-      <input
-        type="file"
-        ref={restoreFileInputRef}
-        accept=".json"
-        onChange={handleRestoreFileChange}
-        className="hidden"
-        id="dashboard-restore-input"
-      />
       
       <WarehouseSummary />
       <OutstandingSummary />

@@ -1,187 +1,53 @@
-
 "use client";
 
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useAppData } from './AppDataContext';
 
-interface PrintSettings {
-    showProfitOnSaleChitti: boolean;
-}
-
-interface Settings {
-  fontSize: number;
+// 1. Define the context shape
+interface SettingsContextType {
   financialYear: string;
-  isFinancialYearHydrated: boolean;
-  lowStockThreshold: number;
-  printSettings: PrintSettings;
-}
-
-interface SettingsContextType extends Settings {
-  setFontSize: Dispatch<SetStateAction<number>>;
-  setFinancialYear: Dispatch<SetStateAction<string>>;
-  setLowStockThreshold: Dispatch<SetStateAction<number>>;
-  setPrintSettings: Dispatch<SetStateAction<PrintSettings>>;
-  getFinancialYearShort: () => string;
-  getPreviousFinancialYear: () => string;
-  getNextFinancialYear: () => string;
+  setFinancialYear: (year: string) => void;
   isAppHydrating: boolean;
 }
 
-function getDefaultFinancialYear(): string {
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-  if (currentMonth >= 3) {
-    return `${currentYear}-${currentYear + 1}`;
-  } else {
-    return `${currentYear - 1}-${currentYear}`;
-  }
-}
-
-const defaultSettings: Settings = {
-  fontSize: 19,
-  financialYear: getDefaultFinancialYear(),
-  isFinancialYearHydrated: false,
-  lowStockThreshold: 10,
-  printSettings: {
-    showProfitOnSaleChitti: true,
-  },
-};
-
+// 2. Create the context
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [fontSize, setFontSize] = useState<number>(defaultSettings.fontSize);
-  const [financialYear, setFinancialYear] = useState<string>(defaultSettings.financialYear);
-  const [lowStockThreshold, setLowStockThreshold] = useState<number>(defaultSettings.lowStockThreshold);
-  const [printSettings, setPrintSettings] = useState<PrintSettings>(defaultSettings.printSettings);
+// 3. Create the provider component
+export const SettingsProvider = ({ children }: { children: ReactNode }) => {
+  const { appData, setAppData, isDataLoaded } = useAppData();
 
-  const [isFontSizeHydrated, setIsFontSizeHydrated] = useState<boolean>(false);
-  const [isFinancialYearHydrated, setIsFinancialYearHydrated] = useState<boolean>(false);
-  const [isLowStockHydrated, setIsLowStockHydrated] = useState<boolean>(false);
-  const [isPrintSettingsHydrated, setIsPrintSettingsHydrated] = useState<boolean>(false);
-
-  const isAppHydrating = !isFontSizeHydrated || !isFinancialYearHydrated || !isLowStockHydrated || !isPrintSettingsHydrated;
-
-  // Hydration effects
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedFontSize = localStorage.getItem('appFontSize');
-      if (storedFontSize) setFontSize(parseFloat(storedFontSize));
-      setIsFontSizeHydrated(true);
-
-      const storedFy = localStorage.getItem('appFinancialYear');
-      if (storedFy) setFinancialYear(storedFy);
-      setIsFinancialYearHydrated(true);
-
-      const storedLowStock = localStorage.getItem('appLowStockThreshold');
-      if (storedLowStock) setLowStockThreshold(parseInt(storedLowStock, 10));
-      setIsLowStockHydrated(true);
-
-      const storedPrintSettings = localStorage.getItem('appPrintSettings');
-      if (storedPrintSettings) {
-        try {
-            const parsed = JSON.parse(storedPrintSettings);
-            setPrintSettings(prev => ({...prev, ...parsed}));
-        } catch(e) {
-            console.error("Failed to parse print settings from localStorage", e);
-        }
-      }
-      setIsPrintSettingsHydrated(true);
-    }
-  }, []);
-
-  // Persistence effects
-  useEffect(() => {
-    if (isFontSizeHydrated) {
-        document.documentElement.style.fontSize = `${fontSize}px`;
-        localStorage.setItem('appFontSize', fontSize.toString());
-    }
-  }, [fontSize, isFontSizeHydrated]);
-
-  useEffect(() => {
-    if (isFinancialYearHydrated) {
-        localStorage.setItem('appFinancialYear', financialYear);
-    }
-  }, [financialYear, isFinancialYearHydrated]);
-
-  useEffect(() => {
-    if (isLowStockHydrated) {
-        localStorage.setItem('appLowStockThreshold', lowStockThreshold.toString());
-    }
-  }, [lowStockThreshold, isLowStockHydrated]);
-
-  useEffect(() => {
-    if (isPrintSettingsHydrated) {
-        localStorage.setItem('appPrintSettings', JSON.stringify(printSettings));
-    }
-  }, [printSettings, isPrintSettingsHydrated]);
-
-  const getFinancialYearShort = useCallback(() => {
-    const years = financialYear.split('-');
-    if (years.length === 2 && years[0].length >= 4 && years[1].length >=4) {
-        return `${years[0].slice(-2)}-${years[1].slice(-2)}`;
-    }
-    return financialYear;
-  }, [financialYear]);
-
-  const parseFinancialYear = (fy: string): [number, number] | null => {
-    const parts = fy.split('-');
-    if (parts.length === 2) {
-      const startYear = parseInt(parts[0], 10);
-      const endYear = parseInt(parts[1], 10);
-      if (!isNaN(startYear) && !isNaN(endYear) && endYear === startYear + 1) {
-        return [startYear, endYear];
-      }
-    }
-    console.warn("Invalid financial year format for parsing:", fy);
-    return null;
+  const setFinancialYear = (year: string) => {
+    setAppData(prevData => {
+      if (!prevData) return null;
+      return {
+        ...prevData,
+        settings: {
+          ...prevData.settings,
+          financialYear: year,
+        },
+      };
+    });
   };
 
-  const getPreviousFinancialYear = useCallback(() => {
-    const parsed = parseFinancialYear(financialYear);
-    if (parsed) {
-      const [startYear] = parsed;
-      return `${startYear - 1}-${startYear}`;
-    }
-    return financialYear;
-  }, [financialYear]);
-
-  const getNextFinancialYear = useCallback(() => {
-    const parsed = parseFinancialYear(financialYear);
-    if (parsed) {
-      const [, endYear] = parsed;
-      return `${endYear}-${endYear + 1}`;
-    }
-    return financialYear;
-  }, [financialYear]);
-
+  const value: SettingsContextType = {
+    financialYear: appData?.settings?.financialYear || '2023-2024', // Default value
+    setFinancialYear,
+    isAppHydrating: !isDataLoaded,
+  };
 
   return (
-    <SettingsContext.Provider value={{
-      fontSize,
-      setFontSize,
-      financialYear,
-      setFinancialYear,
-      lowStockThreshold,
-      setLowStockThreshold,
-      printSettings,
-      setPrintSettings,
-      isAppHydrating,
-      isFinancialYearHydrated,
-      getFinancialYearShort,
-      getPreviousFinancialYear,
-      getNextFinancialYear,
-    }}>
+    <SettingsContext.Provider value={value}>
       {children}
     </SettingsContext.Provider>
   );
-}
+};
 
-export function useSettings() {
+// 4. Create a custom hook for easy access
+export const useSettings = () => {
   const context = useContext(SettingsContext);
   if (context === undefined) {
     throw new Error('useSettings must be used within a SettingsProvider');
   }
   return context;
-}
+};
