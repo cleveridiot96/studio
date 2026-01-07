@@ -80,9 +80,10 @@ interface DashboardTileProps {
   style?: React.CSSProperties; // New prop for inline styles
   onClick?: () => void;
   shortcut?: string;
+  isSaveButton?: boolean;
 }
 
-const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, style, onClick, shortcut }) => {
+const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName, href, description, className, style, onClick, shortcut, isSaveButton }) => {
   const Icon = iconMap[iconName] || FallbackIcon;
   
   const cardContent = (
@@ -95,13 +96,13 @@ const DashboardTileComponent: React.FC<DashboardTileProps> = ({ title, iconName,
           className={cn(
             "shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out transform group-hover:scale-105",
             "rounded-xl p-3 flex flex-col items-center text-center justify-center h-full min-h-[120px]",
-            className // Pass text color classes here
+            isSaveButton ? "bg-green-600 text-white hover:bg-green-700" : className
           )}
           style={style} // Apply inline styles for background gradients
         >
           <Icon className="h-7 w-7 mb-2" />
           <CardTitle className="text-base font-semibold mb-1 uppercase">{title}</CardTitle>
-          {description && <p className="text-xs opacity-80 uppercase">{description}</p>}
+          {description && <p className={cn("text-xs opacity-80 uppercase", isSaveButton ? "text-green-100" : "")}>{description}</p>}
         </Card>
     </motion.div>
   );

@@ -24,7 +24,7 @@ export default function RecoverPage() {
   const [familyHashSet] = useLocalStorageState<string[]>(AUTH_KEYS.FAMILY_HASH_SET, []);
   const [, setRecoveryFlag] = useLocalStorageState(AUTH_KEYS.RECOVERY_FLAG, false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -33,7 +33,7 @@ export default function RecoverPage() {
       return;
     }
 
-    if (verifyPhoneNumber(phoneNumber, familyHashSet)) {
+    if (await verifyPhoneNumber(phoneNumber, familyHashSet)) {
       toast({
         title: "Verification Successful",
         description: "Please set your new PIN.",

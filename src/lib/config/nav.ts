@@ -128,21 +128,5 @@ export const navItems: StyledNavItem[] = [
     shortcut: 'Alt + M',
     description: "Manage all parties",
     style: { backgroundImage: 'linear-gradient(to right top, #2563eb, #0058d4, #004abf, #003aaa, #092a95)', color: 'white' }
-  },
-  {
-    title: 'Backup Data',
-    href: '#', // Action handled by onClick
-    iconName: 'FileJson',
-    shortcut: 'Alt + B',
-    description: "Save your data",
-    style: { backgroundImage: 'linear-gradient(to right top, #2dd4bf, #00c7c0, #00bac0, #00abbf, #009cbb)', color: 'white' }
-  },
-  {
-    title: 'Restore Data',
-    href: '#', // Action handled by onClick
-    iconName: 'UploadCloud',
-    shortcut: 'Alt + V',
-    description: "Load from backup",
-    style: { backgroundImage: 'linear-gradient(to right top, #d946ef, #c832db, #b71ac8, #a500b5, #9300a2)', color: 'white' }
   }
 ];

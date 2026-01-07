@@ -2,26 +2,50 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocalStorageState } from '@/hooks/useLocalStorageState';
+import { useAppData } from '@/contexts/AppDataContext';
+import { Button } from '@/components/ui/button';
+import { Upload } from 'lucide-react';
 
-// This page now acts as a smart entry point.
 export default function SmartLoaderPage() {
   const router = useRouter();
-  const [isSetupComplete] = useLocalStorageState('kisan_khata_is_setup_complete', false);
+  const { isDataLoaded, loadDataFromFile } = useAppData();
 
   useEffect(() => {
-    if (isSetupComplete) {
+    if (isDataLoaded) {
       router.replace('/dashboard');
-    } else {
-      router.replace('/setup');
     }
-  }, [isSetupComplete, router]);
+  }, [isDataLoaded, router]);
 
-  // Render a simple loading state while redirecting.
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      loadDataFromFile(file);
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen items-center justify-center bg-background">
-      <div className="flex flex-col items-center gap-4">
-        <p className="text-lg text-muted-foreground animate-pulse">LOADING APPLICATION...</p>
+      <div className="flex flex-col items-center gap-6 p-8 border rounded-lg shadow-lg">
+        <h1 className="text-2xl font-bold text-primary">Welcome to Kisan Khata Sahayak</h1>
+        <p className="text-lg text-muted-foreground text-center">
+          To begin, please load your data file.
+        </p>
+        <Button asChild size="lg">
+          <label htmlFor="file-upload" className="cursor-pointer">
+            <Upload className="mr-2 h-5 w-5" />
+            Load Data File
+          </label>
+        </Button>
+        <input
+          id="file-upload"
+          type="file"
+          accept=".json"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        <p className="text-sm text-gray-500 text-center">
+          If you're starting for the first time, you can create a new data file after setting up your masters.
+        </p>
       </div>
     </div>
   );

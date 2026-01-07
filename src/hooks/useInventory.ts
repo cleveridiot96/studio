@@ -127,7 +127,20 @@ export const useInventory = (saleToEditId?: string | null) => {
                       stockMap.set(toKey, toEntry);
                   }
               });
-          } else if (tx.txType === 'sale' && tx.id !== saleToEditId) { 
+          } else if (tx.txType === 'purchaseReturn') {
+            (tx.items || []).forEach((item: PurchaseItem) => {
+                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
+                const entry = stockMap.get(key);
+                if (entry) {
+                    const costOfGoodsReturned = entry.weight > 0 ? (entry.totalCost / entry.weight) * item.netWeight : 0;
+                    entry.bags -= item.quantity;
+                    entry.weight -= item.netWeight;
+                    entry.totalCost -= costOfGoodsReturned;
+                    entry.lastActivityDate = tx.date;
+                }
+            });
+          }
+          else if (tx.txType === 'sale' && tx.id !== saleToEditId) {
                (tx.items || []).forEach((item: SaleItem) => {
                   const saleLotKey = Array.from(stockMap.keys()).find(k => k.startsWith(item.lotNumber + KEY_SEPARATOR));
                   if (saleLotKey) {
@@ -142,7 +155,24 @@ export const useInventory = (saleToEditId?: string | null) => {
                       }
                   }
               });
-          } else if (tx.txType === 'adjustment') {
+          } else if (tx.txType === 'saleReturn' && tx.originalSaleId !== saleToEditId) {
+            (tx.items || []).forEach((item: SaleItem) => {
+                // Sale returns credit a specific lot in a specific location
+                const key = `${item.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
+                let entry = stockMap.get(key);
+
+                if (entry) { // If the lot exists, add back to it
+                    const costOfGoodsReturned = (item.costOfGoodsSold / item.netWeight) * item.netWeight;
+                    entry.bags += item.quantity;
+                    entry.weight += item.netWeight;
+                    entry.totalCost += costOfGoodsReturned;
+                    entry.lastActivityDate = tx.date;
+                    entry.soldQuantity -= item.quantity; // Decrease sold qty
+                }
+                // Note: Logic for if the lot DOESN'T exist is omitted, assuming returns go to existing stock.
+            });
+          }
+          else if (tx.txType === 'adjustment') {
               const key = `${tx.lotNumber}${KEY_SEPARATOR}${tx.locationId}`;
               const entry = stockMap.get(key);
               if (entry) {

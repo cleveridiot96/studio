@@ -1,41 +1,34 @@
 "use client";
 
 // --- IMPORTANT ---
-// This is a simplified, non-cryptographic "hashing" function for prototyping.
-// In a real-world application, a robust library like bcrypt or the Web Crypto API (for Argon2/PBKDF2) should be used.
-// This implementation is for demonstrating the workflow and is NOT secure for production.
-const simpleHash = (input: string, salt: string): string => {
-  const saltedInput = input + salt;
-  let hash = 0;
-  for (let i = 0; i < saltedInput.length; i++) {
-    const char = saltedInput.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0; // Convert to 32bit integer
-  }
-  // Convert to a hex string for storage
-  return 'simulated_hash_' + (hash >>> 0).toString(16);
+// Secure hashing using the Web Crypto API (SHA-256)
+const secureHash = async (input: string, salt: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
+
 const getSaltForIndex = (index: number): string => {
-  // Use a unique, predictable "salt" for each phone number index for this prototype.
   // In a real app, these would be securely and randomly generated and stored.
-  const salts = ["salt_one_A!b", "salt_two_C@d", "salt_three_E#f", "salt_four_G$h"];
+  const salts = ["SALT_ONE_A!B", "SALT_TWO_C@D", "SALT_THREE_E#F", "SALT_FOUR_G$H"];
   return salts[index % salts.length];
 };
 
-export const createPasswordHash = (pin: string): string => {
-  // A simple, static salt for the main password hash in this prototype.
-  return simpleHash(pin, "main_password_salt_KKS");
+export const createPasswordHash = async (pin: string): Promise<string> => {
+  return secureHash(pin, "MAIN_PASSWORD_SALT_KKS_V2");
 };
 
-export const createFamilyHashSet = (phoneNumbers: string[]): string[] => {
-  return phoneNumbers.map((num, index) => simpleHash(num, getSaltForIndex(index)));
+export const createFamilyHashSet = async (phoneNumbers: string[]): Promise<string[]> => {
+  const hashPromises = phoneNumbers.map((num, index) => secureHash(num, getSaltForIndex(index)));
+  return Promise.all(hashPromises);
 };
 
-export const verifyPhoneNumber = (inputNumber: string, storedHashes: string[]): boolean => {
-  // Attempt to verify the input number against each of the four possible "salts".
+export const verifyPhoneNumber = async (inputNumber: string, storedHashes: string[]): Promise<boolean> => {
   for (let i = 0; i < 4; i++) {
-    const inputHash = simpleHash(inputNumber, getSaltForIndex(i));
+    const inputHash = await secureHash(inputNumber, getSaltForIndex(i));
     if (storedHashes.includes(inputHash)) {
       return true;
     }

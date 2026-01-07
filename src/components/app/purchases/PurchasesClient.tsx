@@ -71,12 +71,16 @@ export function PurchasesClient() {
   }, [purchaseReturns, financialYear, isAppHydrating, isHydrated]);
 
   const handleAddOrUpdatePurchase = React.useCallback((purchase: Purchase) => {
-    const isEditing = purchases.some(p => p.id === purchase.id);
+    let isEditing = false;
     setPurchases(prevPurchases => {
-      return isEditing ? prevPurchases.map(p => p.id === purchase.id ? purchase : p) : [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
+      isEditing = prevPurchases.some(p => p.id === purchase.id);
+      if (isEditing) {
+        return prevPurchases.map(p => (p.id === purchase.id ? purchase : p));
+      }
+      return [{ ...purchase, id: purchase.id || `purchase-${Date.now()}` }, ...prevPurchases];
     });
     
-    removeLedgerEntries(purchase.id); // Clear old entries
+    removeLedgerEntries(purchase.id);
     if (purchase.expenses && purchase.expenses.length > 0) {
         const newLedgerEntries = purchase.expenses.filter(exp => exp.amount > 0).map(exp => ({
             id: `ledger-${purchase.id}-${exp.account.replace(/\s/g, '')}`,
@@ -100,9 +104,12 @@ export function PurchasesClient() {
 
     setPurchaseToEdit(null);
     setIsAddPurchaseFormOpen(false);
-    toast({ title: "Success!", description: isEditing ? "Purchase updated." : "Purchase added." });
+    // Use a timeout to allow the state to update before the toast message
+    setTimeout(() => {
+      toast({ title: "Success!", description: isEditing ? "Purchase updated." : "Purchase added." });
+    }, 100);
     window.dispatchEvent(new CustomEvent('reindex-search'));
-  }, [purchases, setPurchases, addLedgerEntry, removeLedgerEntries, toast]);
+  }, [setPurchases, addLedgerEntry, removeLedgerEntries, toast]);
 
   const handleEditPurchase = React.useCallback((purchase: Purchase) => {
     setPurchaseToEdit(purchase);

@@ -77,7 +77,7 @@ export default function SetupPage() {
     }
   };
 
-  const handlePinSubmit = () => {
+  const handlePinSubmit = async () => {
     setError('');
     if (pin.length !== 4 || confirmPin.length !== 4) {
       setError('Both PINs must be 4 digits long.');
@@ -91,7 +91,7 @@ export default function SetupPage() {
     }
     if (isRecoveryMode) {
       // In recovery mode, we just set the password and finish.
-      const hash = createPasswordHash(pin);
+      const hash = await createPasswordHash(pin);
       setPasswordHash(hash);
       setIsSetupComplete(true);
       setIsRecoveryMode(false); // Clear the recovery flag
@@ -110,7 +110,7 @@ export default function SetupPage() {
     setFamilyNumbers(newNumbers);
   };
   
-  const handleRecoverySubmit = () => {
+  const handleRecoverySubmit = async () => {
     setError('');
     const uniqueNumbers = new Set(familyNumbers.filter(num => num.length === 10));
     if (uniqueNumbers.size !== 4) {
@@ -118,8 +118,8 @@ export default function SetupPage() {
         return;
     }
 
-    const pinHash = createPasswordHash(pin);
-    const hashes = createFamilyHashSet(Array.from(uniqueNumbers));
+    const pinHash = await createPasswordHash(pin);
+    const hashes = await createFamilyHashSet(Array.from(uniqueNumbers));
 
     setPasswordHash(pinHash);
     setFamilyHashSet(hashes);

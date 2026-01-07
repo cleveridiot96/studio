@@ -1,105 +1,65 @@
-
 "use client";
 
-import React, { createContext, useContext, useMemo } from 'react';
-import { useLocalStorageState } from '@/hooks/useLocalStorageState';
+import React, { createContext, useContext, ReactNode } from 'react';
 import type { MasterItem, MasterItemType } from '@/lib/types';
+import { useAppData } from './AppDataContext';
 
-// Define storage keys for master data
-const STORAGE_KEYS: Record<MasterItemType, string> = {
-  Customer: 'masterCustomers',
-  Supplier: 'masterSuppliers',
-  Agent: 'masterAgents',
-  Transporter: 'masterTransporters',
-  Broker: 'masterBrokers',
-  Warehouse: 'masterWarehouses',
-  Expense: 'masterExpenses',
-};
-
-const initialMasterData: Record<MasterItemType, MasterItem[]> = {
-  Customer: [],
-  Supplier: [],
-  Agent: [],
-  Transporter: [],
-  Broker: [],
-  Warehouse: [
-    { id: 'fixed-wh-mumbai', name: 'MUMBAI', type: 'Warehouse' },
-    { id: 'fixed-wh-chiplun', name: 'CHIPLUN', type: 'Warehouse' },
-    { id: 'fixed-wh-sawantwadi', name: 'SAWANTWADI', type: 'Warehouse' },
-  ],
-  Expense: [
-    { id: 'fixed-exp-packing', name: 'PACKING CHARGES', type: 'Expense' },
-    { id: 'fixed-exp-labour', name: 'LABOUR CHARGES', type: 'Expense' },
-    { id: 'fixed-exp-misc', name: 'MISC EXPENSES', type: 'Expense' },
-    { id: 'fixed-exp-transport', name: 'TRANSPORT CHARGES', type: 'Expense' },
-    { id: 'exp-comm', name: 'BROKER COMMISSION', type: 'Expense'},
-    { id: 'exp-ext-brokerage', name: 'EXTRA BROKERAGE', type: 'Expense'},
-  ],
-};
-
-
-// Create the context
-const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
-
-// Define the shape of the context
+// 1. Define the context shape
 interface MasterDataContextType {
-  data: Record<MasterItemType, MasterItem[]>;
-  setData: (type: MasterItemType, data: MasterItem[] | ((prev: MasterItem[]) => MasterItem[])) => void;
-  getAllMasters: () => MasterItem[];
+  data: { [key in MasterItemType]: MasterItem[] };
+  setMasterData: (type: MasterItemType, updater: React.SetStateAction<MasterItem[]>) => void;
+  addMasterItem: (item: MasterItem) => void;
+  updateMasterItem: (item: MasterItem) => void;
+  // getMasterItemById: (type: MasterItemType, id: string) => MasterItem | undefined;
 }
 
+// 2. Create the context
+const MasterDataContext = createContext<MasterDataContextType | undefined>(undefined);
 
-// Create the provider component
-export const MasterDataProvider = ({ children }: { children: React.ReactNode }) => {
-  const [customers, setCustomers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Customer, initialMasterData.Customer);
-  const [suppliers, setSuppliers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Supplier, initialMasterData.Supplier);
-  const [agents, setAgents] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Agent, initialMasterData.Agent);
-  const [transporters, setTransporters] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Transporter, initialMasterData.Transporter);
-  const [brokers, setBrokers] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Broker, initialMasterData.Broker);
-  const [warehouses, setWarehouses] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Warehouse, initialMasterData.Warehouse);
-  const [expenses, setExpenses] = useLocalStorageState<MasterItem[]>(STORAGE_KEYS.Expense, initialMasterData.Expense);
+// 3. Create the provider component
+export const MasterDataProvider = ({ children }: { children: ReactNode }) => {
+  const { appData, setAppData } = useAppData();
 
-  const data = useMemo(() => ({
-    Customer: customers,
-    Supplier: suppliers,
-    Agent: agents,
-    Transporter: transporters,
-    Broker: brokers,
-    Warehouse: warehouses,
-    Expense: expenses,
-  }), [customers, suppliers, agents, transporters, brokers, warehouses, expenses]);
-
-  const setData = (type: MasterItemType, value: MasterItem[] | ((prev: MasterItem[]) => MasterItem[])) => {
-    const setters: Record<MasterItemType, React.Dispatch<React.SetStateAction<MasterItem[]>>> = {
-        Customer: setCustomers,
-        Supplier: setSuppliers,
-        Agent: setAgents,
-        Transporter: setTransporters,
-        Broker: setBrokers,
-        Warehouse: setWarehouses,
-        Expense: setExpenses,
-    };
-    const setter = setters[type];
-    if (setter) {
-      setter(value as React.SetStateAction<MasterItem[]>);
-    }
+  const setMasterData = (type: MasterItemType, updater: React.SetStateAction<MasterItem[]>) => {
+    setAppData(prevData => {
+      if (!prevData) return null;
+      const currentItems = prevData.masterData[type] || [];
+      const newItems = typeof updater === 'function' ? updater(currentItems) : updater;
+      return {
+        ...prevData,
+        masterData: {
+          ...prevData.masterData,
+          [type]: newItems,
+        },
+      };
+    });
   };
   
-  const getAllMasters = () => {
-    return Object.values(data).flat().sort((a,b) => a.name.localeCompare(b.name));
-  }
+  const addMasterItem = (item: MasterItem) => {
+    setMasterData(item.type, (prevItems) => [item, ...prevItems]);
+  };
 
+  const updateMasterItem = (item: MasterItem) => {
+    setMasterData(item.type, (prevItems) =>
+      prevItems.map(i => (i.id === item.id ? item : i))
+    );
+  };
 
-  const contextValue = { data, setData, getAllMasters };
+  const value: MasterDataContextType = {
+    data: appData?.masterData || { Customer: [], Supplier: [], Agent: [], Transporter: [], Broker: [], Warehouse: [], Expense: [] },
+    setMasterData,
+    addMasterItem,
+    updateMasterItem,
+  };
 
   return (
-    <MasterDataContext.Provider value={contextValue}>
+    <MasterDataContext.Provider value={value}>
       {children}
     </MasterDataContext.Provider>
   );
 };
 
-// Create a hook to use the context
+// 4. Create a custom hook for easy access
 export const useMasterData = () => {
   const context = useContext(MasterDataContext);
   if (context === undefined) {
@@ -107,5 +67,3 @@ export const useMasterData = () => {
   }
   return context;
 };
-
-    
